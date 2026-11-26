@@ -328,7 +328,7 @@ function placedRuleState(puzzle: VariantPuzzle | undefined, values: string, grid
   const states = [
     globalEntropyState(puzzle, values), endpointLineState(puzzle, values), whispersState(puzzle, values), regionSumState(puzzle, values),
     sandwichState(puzzle, values), littleKillerState(puzzle, values), xSumState(puzzle, values), skyscrapersState(puzzle, values),
-    variantPlacedRuleState(puzzle, values), pillArrowState(puzzle, values), sizedArrowState(rules, values, grid.size),
+    variantPlacedRuleState(puzzle, values), pillArrowState(puzzle, values), sizedArrowState(rules, values, grid.size, gridValueOffset(grid)),
     sizedRegionSumState(sizedRules, values, grid), sizedKillerState(rules, values, grid.size),
     sizedQuadrupleState(sizedRules, values, grid.size),
     nonogramState(sizedRules, values, grid.size),

@@ -333,21 +333,22 @@ export function sizedDigitExclusions(rules: readonly SizedConstraintRule[] | und
   return excluded
 }
 
-export function sizedArrowState(rules: readonly (SizedConstraintRule | VariantRule)[] | undefined, values: string, size: number) {
+export function sizedArrowState(rules: readonly (SizedConstraintRule | VariantRule)[] | undefined, values: string, size: number, valueOffset = 0) {
   const arrows = rules?.filter(rule => rule.type === 'arrow' || rule.type === 'double-arrow')
   if (!arrows?.length) return
   const allowed = Array<number>(values.length).fill((1 << size) - 1)
   const conflicts = new Set<number>()
   const interval = (low: number, high: number) => {
-    const first = Math.max(1, low), last = Math.min(size, high)
+    const first = Math.max(1, low + valueOffset), last = Math.min(size, high + valueOffset)
     return first <= last ? (1 << last) - (1 << (first - 1)) : 0
   }
+  const minValue = 1 - valueOffset, maxValue = size - valueOffset
   const bounds = (cells: readonly number[]) => {
     let low = 0, high = 0
     for (const cell of cells) {
       const digit = Number(values[cell])
-      low += digit || 1
-      high += digit || size
+      low += digit ? digit - valueOffset : minValue
+      high += digit ? digit - valueOffset : maxValue
     }
     return [low, high] as const
   }
@@ -363,8 +364,8 @@ export function sizedArrowState(rules: readonly (SizedConstraintRule | VariantRu
       for (const cell of [...ends, ...rule.cells]) if (values[cell] !== '0') conflicts.add(cell)
       continue
     }
-    restrict(ends, lineLow - (endHigh - size), lineHigh - (endLow - 1))
-    restrict(rule.cells, endLow - (lineHigh - size), endHigh - (lineLow - 1))
+    restrict(ends, lineLow - (endHigh - maxValue), lineHigh - (endLow - minValue))
+    restrict(rule.cells, endLow - (lineHigh - maxValue), endHigh - (lineLow - minValue))
   }
   return { allowed, conflicts }
 }

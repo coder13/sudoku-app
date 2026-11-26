@@ -1,3 +1,4 @@
+mod arrow;
 mod coupled_sums;
 mod crust;
 mod double_arrow;
@@ -23,6 +24,7 @@ use super::{GridSpec, MAX_SIZE, SizedDeduction, SizedGrid};
 pub use crate::variant::{Diagonal as SizedDiagonal, MarkedPairs, Parity as SizedParity};
 use crate::{Analysis, Candidate, ClueDirection, HintAction, House};
 
+use self::arrow::Arrow;
 use self::coupled_sums::CoupledSums;
 use self::crust::Crust;
 pub use self::crust::CrustClue;
@@ -426,7 +428,7 @@ pub struct SizedConstraintGrid {
     thermometers: Vec<(Vec<usize>, bool)>,
     between_lines: Vec<Vec<usize>>,
     renbans: Vec<Vec<usize>>,
-    arrows: Vec<(usize, Vec<usize>)>,
+    arrows: Vec<Option<Arrow>>,
     double_arrows: Vec<Option<DoubleArrow>>,
     region_sums: Vec<Option<RegionSum>>,
     nonograms: Vec<Option<NonogramLine>>,
@@ -600,17 +602,8 @@ impl SizedConstraintGrid {
                     }
                 }
                 SizedConstraint::Arrow { circle, cells } => {
-                    if *circle >= layout.cell_count()
-                        || !(1..=size).contains(&cells.len())
-                        || cells.iter().enumerate().any(|(index, &cell)| {
-                            cell >= layout.cell_count()
-                                || cell == *circle
-                                || cells[..index].contains(&cell)
-                        })
-                    {
-                        return None;
-                    }
-                    arrows.push((*circle, cells.clone()));
+                    arrows.resize_with(index + 1, || None);
+                    arrows[index] = Some(Arrow::compile(&layout, *circle, cells, value_offset)?);
                 }
                 SizedConstraint::DoubleArrow { ends, cells } => {
                     double_arrows.resize_with(index + 1, || None);
@@ -1003,11 +996,11 @@ impl SizedConstraintGrid {
                     }
                 }
             }
-            for (circle, cells) in &self.arrows {
-                let (bulb, shaft) = arrow_masks(*circle, cells, candidates);
-                changed |= candidates[*circle] != bulb;
-                candidates[*circle] = bulb;
-                for (&cell, mask) in cells.iter().zip(shaft) {
+            for arrow in self.arrows.iter().flatten() {
+                let (bulb, shaft) = arrow.support(candidates);
+                changed |= candidates[arrow.circle] != bulb;
+                candidates[arrow.circle] = bulb;
+                for (&cell, mask) in arrow.cells.iter().zip(shaft) {
                     changed |= candidates[cell] != mask;
                     candidates[cell] = mask;
                 }
@@ -1435,13 +1428,14 @@ impl SizedConstraintGrid {
                         eliminations_for(cell, candidates[cell] & !mask, &mut actions);
                     }
                 }
-                SizedConstraint::Arrow { circle, cells } => {
-                    let (bulb, shaft) = arrow_masks(*circle, cells, &domains);
+                SizedConstraint::Arrow { circle, .. } => {
+                    let arrow = self.arrows[rule].as_ref()?;
+                    let (bulb, shaft) = arrow.support(&domains);
                     if bulb == 0 {
                         return None;
                     }
                     eliminations_for(*circle, candidates[*circle] & !bulb, &mut actions);
-                    for (&cell, mask) in cells.iter().zip(shaft) {
+                    for (&cell, mask) in arrow.cells.iter().zip(shaft) {
                         eliminations_for(cell, candidates[cell] & !mask, &mut actions);
                     }
                 }
@@ -2008,8 +2002,8 @@ impl SizedConstraintGrid {
                     let mut support = domains.clone();
                     crust.restrict(&mut support).is_none()
                 }
-                SizedConstraint::Arrow { circle, cells } => {
-                    arrow_masks(*circle, cells, &domains).0 == 0
+                SizedConstraint::Arrow { .. } => {
+                    self.arrows[rule].as_ref()?.support(&domains).0 == 0
                 }
                 SizedConstraint::DoubleArrow { .. } => self.double_arrows[rule]
                     .as_ref()?
@@ -2271,17 +2265,11 @@ impl SizedConstraintGrid {
                     || (u16::BITS - used.leading_zeros() - used.trailing_zeros()) as usize
                         <= cells.len()
             })
-            && self.arrows.iter().all(|(circle, cells)| {
-                let (total, empty) = cells.iter().fold((0, 0), |(total, empty), &cell| {
-                    (
-                        total + usize::from(digits[cell]),
-                        empty + usize::from(digits[cell] == 0),
-                    )
-                });
-                let bulb = usize::from(digits[*circle]);
-                let max = if bulb == 0 { self.layout.size() } else { bulb };
-                total + empty <= max && (bulb == 0 || bulb <= total + empty * self.layout.size())
-            })
+            && self
+                .arrows
+                .iter()
+                .flatten()
+                .all(|arrow| arrow.permits(digits, self.layout.full_mask))
             && self.double_arrows.iter().flatten().all(|arrow| {
                 let size = self.layout.size();
                 let (ends_min, ends_max) = sum_bounds(&arrow.ends, digits, size);
@@ -2381,54 +2369,6 @@ impl SizedConstraintGrid {
     }
 }
 
-fn arrow_masks(circle: usize, cells: &[usize], candidates: &[u16]) -> (u16, [u16; MAX_SIZE]) {
-    let mut support = [0; MAX_SIZE];
-    let totals = u32::from(candidates[circle]) << 1;
-    if totals == 0 {
-        return (0, support);
-    }
-
-    // A bulb holds at most one digit. Prefix sums beyond its largest
-    // candidate cannot contribute to a completion of this arrow.
-    let limit = u32::MAX >> totals.leading_zeros();
-    let mut prefix = [0; MAX_SIZE + 1];
-    prefix[0] = 1;
-    for (index, &cell) in cells.iter().enumerate() {
-        let mut domain = candidates[cell];
-        let mut sums = 0;
-        while domain != 0 {
-            let digit = domain.trailing_zeros() + 1;
-            domain &= domain - 1;
-            sums |= prefix[index] << digit;
-        }
-        prefix[index + 1] = sums & limit;
-        if prefix[index + 1] == 0 {
-            return (0, support);
-        }
-    }
-    let matching = prefix[cells.len()] & totals;
-    if matching == 0 {
-        return (0, support);
-    }
-
-    let mut allowed = matching;
-    for (index, &cell) in cells.iter().enumerate().rev() {
-        let mut domain = candidates[cell];
-        let mut previous = 0;
-        while domain != 0 {
-            let bit = domain & domain.wrapping_neg();
-            domain ^= bit;
-            let viable = prefix[index] & (allowed >> (bit.trailing_zeros() + 1));
-            if viable != 0 {
-                support[index] |= bit;
-                previous |= viable;
-            }
-        }
-        allowed = previous;
-    }
-    ((matching >> 1) as u16, support)
-}
-
 fn sum_bounds(cells: &[usize], digits: &[u8], size: usize) -> (usize, usize) {
     cells.iter().fold((0, 0), |(min, max), &cell| {
         let digit = usize::from(digits[cell]);
@@ -2482,9 +2422,7 @@ fn extra_house_support(cells: &[usize], domains: &[u16], digits: u16) -> [u16; M
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        GridSpec, MAX_SIZE, SizedConstraint, SizedConstraintGrid, SizedConstraintStep, arrow_masks,
-    };
+    use super::{GridSpec, SizedConstraint, SizedConstraintGrid, SizedConstraintStep};
     use crate::{Analysis, ClueDirection, variant::MarkedPairs};
 
     fn digits(solution: &str) -> Vec<u8> {
@@ -2731,39 +2669,5 @@ mod tests {
             );
         }
         assert_eq!(grid.analyze(&solution, 100), Analysis::Unique);
-    }
-
-    #[test]
-    fn bounded_arrow_support_matches_the_general_sum_kernel() {
-        fn check(candidates: &[u16]) {
-            let cells = [1, 2, 3, 4];
-            let shaft = &cells[..candidates.len() - 1];
-            let mut support = [0; MAX_SIZE];
-            let [matched] = crate::variant::sum_support_with_prefix(
-                &candidates[1..],
-                [u128::from(candidates[0]) << 1],
-                &mut support[..shaft.len()],
-                &mut [[0]; MAX_SIZE + 1],
-            );
-            assert_eq!(
-                arrow_masks(0, shaft, candidates),
-                ((matched >> 1) as u16, support)
-            );
-        }
-
-        for bulb in 0..16 {
-            for a in 0..16 {
-                for b in 0..16 {
-                    check(&[bulb, a, b]);
-                    for c in 0..16 {
-                        check(&[bulb, a, b, c]);
-                    }
-                }
-            }
-        }
-        check(&[1 << 15, 1 << 15]);
-        check(&[1 << 15, 1 << 14, 1]);
-        check(&[1 << 15, 1 << 15, 1]);
-        check(&[u16::MAX, u16::MAX, u16::MAX, u16::MAX, u16::MAX]);
     }
 }

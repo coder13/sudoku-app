@@ -301,7 +301,8 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
     if (!Array.isArray(cells) || cells.length > size ** 2 ||
       !cells.every(cell => Number.isInteger(cell) && cell >= 0 && cell < size ** 2)) return false
     if (rule.type === 'arrow') {
-      return Object.keys(rule).length === 3 && cells.length >= 1 && cells.length <= size &&
+      const maxShaftLength = gridValueOffset(grid) === 1 ? 2 * size - 1 : size
+      return Object.keys(rule).length === 3 && cells.length >= 1 && cells.length <= maxShaftLength &&
         Number.isInteger(rule.circle) && rule.circle >= 0 && rule.circle < size ** 2 &&
         !cells.includes(rule.circle) && new Set(cells).size === cells.length
     }

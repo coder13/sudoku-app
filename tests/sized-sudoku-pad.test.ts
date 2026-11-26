@@ -60,6 +60,7 @@ const easyThermoCode = readFileSync(new URL('./fixtures/sudokupad-easy-thermo-1.
 const slowThermo6x6Code = readFileSync(new URL('./fixtures/sudokupad-slow-thermo-6x6.scl', import.meta.url), 'utf8').trim()
 const smallSailboatCode = readFileSync(new URL('./fixtures/sudokupad-small-sailboat.scl', import.meta.url), 'utf8').trim()
 const betweenLinesCode = readFileSync(new URL('./fixtures/sized-sudokupad-between-lines.scl', import.meta.url), 'utf8').trim()
+const mountainClimbingCode = readFileSync(new URL('./fixtures/sudokupad-mountain-climbing.scl', import.meta.url), 'utf8').trim()
 const xSumDotCode = readFileSync(new URL('./fixtures/sized-sudokupad-xsums-white-dots.scl', import.meta.url), 'utf8').trim()
 const blackXSumDotCode = readFileSync(new URL('./fixtures/sized-sudokupad-xsums-black.scl', import.meta.url), 'utf8').trim()
 const weightedLibraCode = readFileSync(new URL('./fixtures/sudoku-pad-weighted-libra.scl', import.meta.url), 'utf8').trim()
@@ -309,6 +310,63 @@ test('#394 imports the published 6 × 6 f-puzzles Anti-Knight and Arrow combinat
   assert.equal(linked.format, 'SudokuPad')
   assert.deepEqual(linked.sizedRules, imported.sizedRules)
   assert.equal(fetch.mock.callCount(), 1)
+})
+
+test('#388 imports the published zero-based 10 × 10 Mountain Climbing export', async () => {
+  const imported = await detectPuzzle(mountainClimbingCode)
+  assert.equal(imported.format, 'SudokuPad')
+  assert.equal(imported.title, 'Mountain Climbing')
+  assert.equal(imported.sizedAuthor, 'Fenners')
+  assert.equal(imported.givens, '0'.repeat(100))
+  assert.deepEqual(imported.grid, { size: 10, boxRows: 2, boxColumns: 5, notation: 'zero-based' })
+  const rules = imported.sizedRules ?? []
+  assert.deepEqual(rules[0], { type: 'kropki', ratioTwo: { pairs: [[8, 9]] } })
+  assert.deepEqual(rules.filter(rule => rule.type === 'adjacent-total'), [
+    { type: 'adjacent-total', cells: [61, 62], sum: 5 },
+    { type: 'adjacent-total', cells: [57, 58], sum: 5 },
+    { type: 'adjacent-total', cells: [13, 23], sum: 5 },
+    { type: 'adjacent-total', cells: [3, 4], sum: 5 },
+    { type: 'adjacent-total', cells: [90, 91], sum: 5 },
+  ])
+  const arrows = rules.filter(rule => rule.type === 'arrow')
+  assert.equal(arrows.length, 10)
+  assert.deepEqual(arrows[0], {
+    type: 'arrow', circle: 80,
+    cells: [71, 61, 52, 42, 33, 23, 14, 4, 5, 15, 26, 36, 47, 57, 68, 78, 89],
+  })
+  assert.equal(arrows[0].cells.length, 17)
+  assert.equal(arrows[6].circle, arrows[7].circle, 'two arrow shafts share their authored bulb')
+  assert.equal(imported.authoredSolution?.length, 100)
+})
+
+test('#388 synthetic zero-based export parses a 17-cell Arrow and colored companion pairs', () => {
+  const size = 10
+  const source = {
+    metadata: {
+      rules: 'Normal 10x10 sudoku rules apply, using the digits 0-9. Place the digits 0-9 once in every row, column, and 2x5 box. ' +
+        'Arrows: Digits on an arrow must sum to the digit in the bulb. The Sun: Digits separated by the yellow sun must be in a 1:2 ratio. ' +
+        'Falling Rocks: Digits separated by grey rocks must sum to 5.',
+    },
+    cells: Array.from({ length: size }, () => Array.from({ length: size }, () => ({}))),
+    regions: Array.from({ length: size }, (_, box) => Array.from({ length: size }, (_, cell) => [
+      Math.floor(box / 2) * 2 + Math.floor(cell / 5), box % 2 * 5 + cell % 5,
+    ])),
+    arrows: [{ wayPoints: [[0.5, 0.65], ...Array.from({ length: 9 }, (_, column) => [0.5, column + 1.5]),
+      ...Array.from({ length: 8 }, (_, column) => [1.5, 9.5 - column])], color: '#123456', thickness: 0.1, headLength: 0.2 }],
+    overlays: [
+      { center: [0.5, 0.5], width: 0.4, height: 0.4, rounded: true, backgroundColor: '#ffffffff', borderColor: '#123456' },
+      { center: [0.5, 2], width: 0.3, height: 0.3, rounded: true, backgroundColor: '#ffc50dff' },
+      { center: [0.5, 3], width: 0.3, height: 0.3, rounded: true, backgroundColor: '#b6b39aff' },
+    ],
+  }
+
+  const imported = readSizedRuleSudokuPad(source)
+  assert.deepEqual(imported.grid, { size: 10, boxRows: 2, boxColumns: 5, notation: 'zero-based' })
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'kropki', ratioTwo: { pairs: [[1, 2]] } },
+    { type: 'adjacent-total', cells: [2, 3], sum: 5 },
+    { type: 'arrow', circle: 0, cells: [1, 2, 3, 4, 5, 6, 7, 8, 9, 19, 18, 17, 16, 15, 14, 13, 12] },
+  ])
 })
 
 test('#87 imports an f-puzzles Jigsaw and Anti-Knight combination without dropping either rule', async () => {
