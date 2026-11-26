@@ -1,6 +1,8 @@
-import type { DigitHighlightMatch } from './highlighting.ts'
+import { defaultDigitHighlight, readDigitHighlight, type DigitHighlight } from './highlighting.ts'
 import { isHintStage, type HintStage } from './hints.ts'
 import { readLegacyDesktopToolPanels } from './play-preferences.ts'
+
+export { defaultDigitHighlight, type DigitHighlight } from './highlighting.ts'
 
 export const PUZZLE_TOOL_ORDER = ['colors', 'subsets', 'chains', 'bookmarks'] as const
 export const TOOL_PANEL_ORDER = ['solution', 'techniques', ...PUZZLE_TOOL_ORDER, 'rules'] as const
@@ -47,8 +49,6 @@ export function closePlayToolPanel(current: ToolPanels, tool: PuzzleTool): ToolP
   return next.open.length ? next : defaultToolPanels
 }
 
-export type DigitHighlight = { mask: number; match: DigitHighlightMatch }
-export const defaultDigitHighlight: DigitHighlight = { mask: 0, match: 'all' }
 type SolutionView = { identity: string; step: number; hintOpen: boolean; hidden?: true }
 export type HintSource = 'suggested' | 'all' | { technique: string }
 export type SavedHintView = {
@@ -114,7 +114,6 @@ function readTabs(value: SavedPuzzleTabs, legacyDesktop: ToolLayout): PuzzleTabs
   const input = value.toolPanels ?? value.mobileInput
   const height = input?.height
   const layout = readToolLayout(input)
-  const highlight = value.digitHighlight
   const solution = value.solutionView
   const hintView = value.hintOpen === true ? readHintView(value.hintView) : undefined
   return {
@@ -123,9 +122,7 @@ function readTabs(value: SavedPuzzleTabs, legacyDesktop: ToolLayout): PuzzleTabs
       ...(typeof height === 'number' && Number.isFinite(height) && height > 0 ? { height } : {}),
     },
     drawingIntent: typeof value?.drawingIntent === 'boolean' ? value.drawingIntent : null,
-    digitHighlight: highlight && Number.isInteger(highlight.mask) && highlight.mask >= 0 && highlight.mask <= 0x1ff
-      ? { mask: highlight.mask, match: highlight.match === 'any' ? 'any' : 'all' }
-      : defaultDigitHighlight,
+    digitHighlight: readDigitHighlight(value.digitHighlight),
     showStrongLinks: value?.showStrongLinks === true,
     hintOpen: value?.hintOpen === true,
     ...(hintView ? { hintView } : {}),

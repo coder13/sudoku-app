@@ -13,6 +13,8 @@ export type ControlsProps = {
     setCandidateKind: (kind: 'center' | 'corner') => void
     selectedDigit: number | null
     highlightedDigitMask?: number
+    pinnedDigitMask?: number
+    onTogglePinnedDigit?: (digit: number, match?: DigitHighlightMatch) => void
     onToggleDigitHighlight?: (digit: number, match: DigitHighlightMatch) => void
     digitHighlightMatch?: DigitHighlightMatch
     onDigitHighlightMatchChange?: (match: DigitHighlightMatch) => void

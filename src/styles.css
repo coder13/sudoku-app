@@ -2217,6 +2217,7 @@ svg { flex-shrink: 0; }
   font-weight: 650;
   color: var(--muted);
 }
+.key-pin { position: absolute; inset-block-start: .25rem; inset-inline-start: .3rem; pointer-events: none; }
 .key:not(:disabled):active { transform: scale(.96); transition-duration: var(--motion-press-duration); }
 .keypad.six-keypad { grid-template: repeat(2, minmax(0, 1fr)) / repeat(3, minmax(0, 1fr)); }
 .keypad.mini-keypad { grid-template: repeat(2, minmax(0, 1fr)) / repeat(2, minmax(0, 1fr)); }

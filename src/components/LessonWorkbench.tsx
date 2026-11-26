@@ -19,6 +19,7 @@ import { applyChainDeduction, pruneChainsAfterMove } from '../sudoku/chain-sketc
 import {
   alternateColorShade,
   COLORS,
+  candidateCount,
   completeCandidateMasks,
   conflictsOf,
   enter,
@@ -31,7 +32,8 @@ import {
   type ColorTarget,
   type Mode,
 } from '../sudoku/game'
-import { functionKeyDigit, givenDigitAt, onlyGivensSelected, type DigitHighlightMatch } from '../sudoku/highlighting'
+import { defaultDigitHighlight, functionKeyDigit, givenDigitAt, onlyGivensSelected, previewPinnedDigit, togglePinnedDigit,
+  type DigitHighlight, type DigitHighlightMatch } from '../sudoku/highlighting'
 import { latestLessonActions, makeLessonGame, revealLessonAction, sameLessonDigits } from '../sudoku/lesson-workbench'
 import { variantLessonClues } from '../sudoku/lesson-examples'
 import { useAppPreferences } from './useAppPreferences'
@@ -107,10 +109,7 @@ export function LessonWorkbench({
   const [active, setActive] = useState(start)
   const [selected, setSelected] = useState<number[]>([])
   const [selectedDigit, setSelectedDigit] = useState<number | null>(null)
-  const [digitHighlights, setDigitHighlights] = useState({
-    mask: 0,
-    match: 'all' as DigitHighlightMatch,
-  })
+  const [digitHighlights, setDigitHighlights] = useState<DigitHighlight>(defaultDigitHighlight)
   const [selectedColor, setSelectedColor] = useState<number | null>(null)
   const [candidateKind, setCandidateKind] = useState<'center' | 'corner'>('corner')
   const [colorTarget, setColorTarget] = useState<ColorTarget>('cell')
@@ -250,7 +249,14 @@ export function LessonWorkbench({
   function toggleDigitHighlight(digit: number, match: DigitHighlightMatch) {
     setSelectedDigit(null)
     setSelected([])
-    setDigitHighlights({ mask: highlightMask ^ (1 << (digit - 1)), match })
+    setDigitHighlights(current => current.pinnedMask ? previewPinnedDigit(current, digit) : { mask: highlightMask ^ (1 << (digit - 1)), match })
+  }
+
+  function pinDigit(digit: number, match?: DigitHighlightMatch) {
+    setDigitHighlights(current => togglePinnedDigit(current, digit, onlyCandidate(highlightMask), match))
+    setSelectedDigit(null)
+    setSelected([])
+    lessonInputMode.disableErase()
   }
 
   function toggleChainErasing() {
@@ -321,7 +327,12 @@ export function LessonWorkbench({
     }
     if ((highlightMode && inputMode === 'value' && onlyGivensSelected(game.givens, cells)) || !cells.length) {
       setSelected([])
-      setDigitHighlights({ mask: 0, match: 'all' })
+      if (digit && digitHighlights.pinnedMask) {
+        setDigitHighlights(current => previewPinnedDigit(current, digit))
+        setSelectedDigit(null)
+        return
+      }
+      setDigitHighlights(defaultDigitHighlight)
       setSelectedDigit(selectedDigit === digit || digit === 0 ? null : digit)
       return
     }
@@ -357,6 +368,10 @@ export function LessonWorkbench({
       return
     }
     if (given) {
+      if (digitHighlights.pinnedMask) {
+        toggleDigitHighlight(given, digitHighlights.match)
+        return
+      }
       setSelectedDigit(given)
       setDigitHighlights({ mask: 0, match: 'all' })
     } else if (pencil && digitHighlights.mask && !selected.length && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
@@ -442,10 +457,13 @@ export function LessonWorkbench({
       } else commit(forward ? redo : undo)
       return
     }
-    const highlighted = highlightedDigitShortcut(event.nativeEvent) ?? functionKeyDigit(event.key)
+    const pinShortcut = highlightedDigitShortcut(event.nativeEvent)
+    const highlighted = pinShortcut ?? functionKeyDigit(event.key)
     if (highlighted !== null) {
       event.preventDefault()
+      if (event.repeat) return
       if (sketch.drawing && !strongLinksVisible) chooseChainDigit(highlighted)
+      else if (pinShortcut && !usingChains) pinDigit(pinShortcut, 'any')
       else toggleDigitHighlight(highlighted, 'any')
       return
     }
@@ -457,7 +475,7 @@ export function LessonWorkbench({
       }
       const focused = event.target instanceof HTMLElement ? event.target.closest<HTMLElement>('[data-cell]') : null
       if (shortcut && !selected.length && !focused) {
-        toggleDigitHighlight(Number(key), 'all')
+        if (!event.repeat) pinDigit(Number(key), 'all')
         return
       }
       const cells = shortcut && !selected.length && focused ? [Number(focused.dataset.cell)] : selected
@@ -665,7 +683,8 @@ export function LessonWorkbench({
               setCandidateKind: setCandidateKind,
               selectedDigit: preview || strongLinksVisible ? null : sketch.drawing ? sketch.active.highlightedDigit : colorMode ? selectedColor : selectedDigit,
               highlightedDigitMask: strongLinksVisible ? highlightMask : sketch.drawing ? 0 : digitHighlights.mask,
-              onToggleDigitHighlight: !sketch.drawing || strongLinksVisible ? toggleDigitHighlight : undefined,
+              pinnedDigitMask: digitHighlights.pinnedMask,
+              onTogglePinnedDigit: usingChains ? undefined : pinDigit,
               digitHighlightMatch: digitHighlights.match,
               onDigitHighlightMatchChange: (match) => setDigitHighlights((current) => ({ ...current, match })),
               hasCellSelection: !preview && !usingChains && selected.length > 0,
@@ -682,6 +701,9 @@ export function LessonWorkbench({
               },
               toggleColorMode: toggleColor,
               onSwitchShade: switchColorShade,
+              clearDigitHighlightsAvailable: !usingChains && !eraseMode &&
+                (Boolean(digitHighlights.pinnedMask) || candidateCount(digitHighlights.mask) > 1),
+              onClearDigitHighlights: () => { setDigitHighlights(defaultDigitHighlight); setSelectedDigit(null) },
               highlightMode: highlightMode,
               toggleHighlightMode: toggleHighlight,
               eraseMode: eraseMode,
