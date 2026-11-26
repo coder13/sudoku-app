@@ -79,13 +79,14 @@ test('#547 imports the complete CS1G rule set without treating shape artwork as 
   assertVariantCompletion(game.variant.puzzle, game.variant.solution)
 })
 
-test('#542, #544 and #547 Coach combinations rely on their active rule families', async () => {
+test('#542, #544, #545 and #547 Coach combinations rely on their active rule families', async () => {
   const { examples } = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-authored-layers.json', import.meta.url), 'utf8')) as {
     examples: { issue: number; code: string }[]
   }
   for (const [issue, necessaryRules] of [
     [542, ['global-entropy', 'entropic']],
     [544, ['global-entropy', 'xv', 'kropki']],
+    [545, ['entropic', 'neighbor-match']],
     [547, ['palindrome', 'kropki']],
   ] as const) {
     const source = examples.find(example => example.issue === issue)
