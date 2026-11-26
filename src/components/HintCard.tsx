@@ -1,8 +1,9 @@
 import { Button, IconButton } from './Button'
 import { ArrowLeft, ArrowRight, BookOpen, Eye, EyeOff, Pin, PinOff, X } from 'lucide-react'
-import { useLayoutEffect, useRef, type ReactNode, type RefObject } from 'react'
+import { createContext, useContext, useLayoutEffect, useRef, type ReactNode, type RefObject } from 'react'
 import type { HintRemoval, PuzzleHint } from '../sudoku/hints'
 import type { lessonDiagram } from '../sudoku/lesson-diagram'
+import { CellReferenceText } from './CellReferenceHighlight'
 
 type HintNavigation = { index: number; count: number; onMove: (offset: -1 | 1) => void }
 type HintDetailNavigation = { first: boolean; last: boolean; onMove: (offset: -1 | 1) => void }
@@ -15,6 +16,9 @@ type ExplanationProps = {
   trace?: ReturnType<typeof lessonDiagram>['trace']
 }
 type OutcomeProps = { removals?: readonly HintRemoval[]; text?: string }
+
+/** Lets the desktop hint slot attach its resize control to the actual card border. */
+export const HintCardResizeContext = createContext<ReactNode>(null)
 
 export function HintCard({ hint, onClose, onShown, visuals, pinned, onTogglePinned, navigation, action, detailNavigation, secondaryAction, lesson, removals, detail, layoutAnchors, ...explanation }: {
   hint: PuzzleHint
@@ -32,12 +36,13 @@ export function HintCard({ hint, onClose, onShown, visuals, pinned, onTogglePinn
   removals?: readonly HintRemoval[]
   layoutAnchors?: {
     card: RefObject<HTMLElement | null>
-    body: RefObject<HTMLDivElement | null>
+    heading: RefObject<HTMLDivElement | null>
     toolbar: RefObject<HTMLDivElement | null>
   }
 } & ExplanationProps) {
   const internalCard = useRef<HTMLElement>(null)
   const card = layoutAnchors?.card ?? internalCard
+  const resizeHandle = useContext(HintCardResizeContext)
   useLayoutEffect(() => {
     if (card.current?.getClientRects().length) onShown?.()
   }, [onShown])
@@ -69,7 +74,8 @@ export function HintCard({ hint, onClose, onShown, visuals, pinned, onTogglePinn
 
   const content = (
     <aside className="hint-card" aria-label="Puzzle hint" data-staged={Boolean(detailNavigation) || undefined} ref={card}>
-      <div className="hint-card-heading">
+      {resizeHandle}
+      <div className="hint-card-heading" ref={layoutAnchors?.heading}>
         <div className="hint-card-summary">
           <div className="hint-card-title">
             <h2>{hint.title}</h2>
@@ -102,7 +108,7 @@ export function HintCard({ hint, onClose, onShown, visuals, pinned, onTogglePinn
           </div>}
         </div>}
       </div>
-      <div className="hint-card-body" ref={layoutAnchors?.body}>
+      <div className="hint-card-body">
         <DeductionExplanation {...explanation} />
         {detail}
         <DeductionOutcome removals={removals} text={hint.text} />
@@ -121,19 +127,19 @@ export function DeductionExplanation({ explanation, explanationSteps, collapseEx
     <>
       {(paragraphs.length > 0 || Boolean(explanationSteps?.length)) && (collapseExplanation ? <details className="hint-card-explanation">
         <summary>Why this works</summary>
-        {paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
-        {explanationSteps?.length ? <ol className="hint-reason-steps">{explanationSteps.map((step, index) => <li key={index}>{step}</li>)}</ol> : null}
+        {paragraphs.map((paragraph, index) => <p key={index}><CellReferenceText text={paragraph} /></p>)}
+        {explanationSteps?.length ? <ol className="hint-reason-steps">{explanationSteps.map((step, index) => <li key={index}><CellReferenceText text={step} /></li>)}</ol> : null}
       </details> : <section className="hint-card-reason" aria-label="Why this works">
         <h3>Why this works</h3>
-        {paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
-        {explanationSteps?.length ? <ol className="hint-reason-steps">{explanationSteps.map((step, index) => <li key={index}>{step}</li>)}</ol> : null}
+        {paragraphs.map((paragraph, index) => <p key={index}><CellReferenceText text={paragraph} /></p>)}
+        {explanationSteps?.length ? <ol className="hint-reason-steps">{explanationSteps.map((step, index) => <li key={index}><CellReferenceText text={step} /></li>)}</ol> : null}
       </section>)}
       {trace && <details className="hint-card-explanation">
         <summary>Read the proof step by step</summary>
         {trace.map(({ assumption, steps, conclusion }, index) => <div key={index}>
-          <p>{assumption}</p>
-          <ol>{steps.map((step, stepIndex) => <li key={stepIndex}>{step}</li>)}</ol>
-          <p>{conclusion}</p>
+          <p><CellReferenceText text={assumption} /></p>
+          <ol>{steps.map((step, stepIndex) => <li key={stepIndex}><CellReferenceText text={step} /></li>)}</ol>
+          <p><CellReferenceText text={conclusion} /></p>
         </div>)}
       </details>}
     </>
@@ -144,7 +150,7 @@ export function DeductionOutcome({ removals, text }: OutcomeProps) {
   return removals?.length ? <section className="hint-card-removals" aria-label="Remove candidates">
     <h3>Remove candidates</h3>
     <ul>{removals.map(({ digit, cells }) => <li key={digit}>
-      <strong>Digit {digit}</strong><span>{cells.join(' · ')}</span>
+      <strong>Digit {digit}</strong><span><CellReferenceText text={cells.join(' · ')} /></span>
     </li>)}</ul>
-  </section> : text ? <p>{text}</p> : null
+  </section> : text ? <p><CellReferenceText text={text} /></p> : null
 }

@@ -2,9 +2,10 @@ import type { Dispatch, RefObject, SetStateAction } from 'react'
 import { findCandidateRecovery } from '../../sudoku/candidate-recovery'
 import { EngineError, type EngineSession } from '../../sudoku/engine'
 import { hintEliminations, type Game } from '../../sudoku/game'
-import { HINT_CANDIDATES_ERROR, HINT_ERROR, moveHintIndex, moveHintStage, techniqueLabel } from '../../sudoku/hints'
+import { HINT_CANDIDATES_ERROR, HINT_ERROR, hintChoiceKey, moveHintIndex, moveHintStage, techniqueLabel } from '../../sudoku/hints'
 import { puzzleHintPage, puzzleHints, type HintPosition } from '../../sudoku/puzzle-help'
 import { solveMini } from '../../sudoku/mini-play'
+import type { HintSource, SavedHintView } from '../../sudoku/play-session'
 import type { HintState } from './usePlayHintModel'
 import type { PuzzleTask } from './usePlayPuzzleTasks'
 
@@ -50,6 +51,7 @@ type Options = {
   actions: {
     setHint: Dispatch<SetStateAction<HintState | null>>
     setHintRevealed: Dispatch<SetStateAction<boolean>>
+    clearSavedHint: () => void
     suspendDrawing: () => void
     closePuzzleMenu: () => void
     closeActions: () => void
@@ -67,7 +69,7 @@ export function usePlayHintActions({
   state: { hintCount, busy, solved, draft, disabled, mobile, visibleHint },
   host: { advancedWorkspace, showBottomPanel },
   focus: { returnTarget: hintReturnFocus, actionsButton, activeInputTab },
-  actions: { setHint, setHintRevealed, suspendDrawing, closePuzzleMenu, closeActions, openHintPanel, focusHint },
+  actions: { setHint, setHintRevealed, clearSavedHint, suspendDrawing, closePuzzleMenu, closeActions, openHintPanel, focusHint },
   tasks,
 }: Options) {
   function prepareHint() {
@@ -77,45 +79,80 @@ export function usePlayHintActions({
       focusHint()
     }
     setHint(null)
+    clearSavedHint()
     closePuzzleMenu()
     closeActions()
     setHintRevealed(true)
   }
 
-  async function showHint(limit: 10 | 'all' = 10) {
+  async function requestHint(source: HintSource, restoring = false, saved?: SavedHintView) {
     if (busy || tasks.hasActiveTask() || solved || draft || disabled) return
-    if (mobile) hintReturnFocus.current = actionsButton.current
-    prepareHint()
+    const technique = typeof source === 'object' ? source.technique : undefined
+    const limit = source === 'suggested' ? 10 : 'all'
+    if (restoring) {
+      if (advancedWorkspace && !showBottomPanel) openHintPanel()
+    } else {
+      if (mobile) hintReturnFocus.current = technique ? activeInputTab.current : actionsButton.current
+      prepareHint()
+    }
+
     const task = tasks.beginPuzzleTask(true)
     const run = task.engine.run
     const requestId = tasks.nextTechniqueHintRequest()
     let result: HintState | undefined
-    const removals = hintEliminations(values, displayedCandidates, eliminations, gridSize)
     try {
-      const collection = limit === 'all' && !game.grid ? ++nextHintCollection : undefined
-      const { choices, candidates, available, offset } = await puzzleHints(game, limit, undefined, collection, run)
+      const collection = source === 'all' && !game.grid ? ++nextHintCollection : undefined
+      const { choices, candidates, available, offset } = await puzzleHints(game, limit, technique, collection, run)
       const page = collection === undefined ? undefined : { collection, offset: offset ?? 0, available }
       if (!candidates) throw new Error('Missing hint candidates')
-      result = { position: hintPosition, choices, candidates, page, index: 0, stage: 'technique' }
+      const initial: HintState = {
+        source, position: hintPosition, choices, candidates, page, index: 0, stage: 'technique',
+        ...(technique && !choices.length ? {
+          error: { title: techniqueLabel(technique), text: 'No patterns are available in the current grid.' },
+        } : {}),
+      }
+      result = initial
+      if (saved?.choice) {
+        let selection = initial
+        if (page && saved.index < page.available && (saved.index < page.offset || saved.index >= page.offset + choices.length)) {
+          try {
+            const next = await puzzleHintPage(game.variant, page.collection, saved.index, run, game.position.entries)
+            selection = { ...initial, choices: next.choices, page: { ...page, offset: next.offset } }
+          } catch {
+            // Keep the first page if the requested page is no longer available.
+          }
+        }
+        const pageOffset = selection.page?.offset ?? 0
+        const selected = selection.choices[saved.index - pageOffset]
+        const match = selected && hintChoiceKey(selected) === saved.choice ? saved.index - pageOffset
+          : selection.choices.findIndex(choice => hintChoiceKey(choice) === saved.choice)
+        if (match >= 0) {
+          result = { ...selection, index: pageOffset + match, stage: saved.stage, visuals: saved.visuals }
+        }
+      }
     } catch (error) {
       if (!tasks.currentTaskGame(task)) return
       const incorrectCandidates = error instanceof EngineError &&
         (error.code === 'invalid-eliminations' ||
-          (error.code === 'unsolvable' && game.variant && [...values].every((digit, cell) => digit === '0' || digit === game.variant!.solution[cell])))
+          (!technique && error.code === 'unsolvable' && game.variant &&
+            [...values].every((digit, cell) => digit === '0' || digit === game.variant!.solution[cell])))
       result = {
-        position: hintPosition,
-        choices: [],
-        index: 0,
-        stage: 'technique',
+        source, position: hintPosition, choices: [], index: 0, stage: 'technique',
         error: incorrectCandidates ? HINT_CANDIDATES_ERROR : HINT_ERROR,
       }
-      if (incorrectCandidates && removals) {
+      const removals = !technique && incorrectCandidates && hintEliminations(values, displayedCandidates, eliminations, gridSize)
+      if (removals) {
         try {
           const answer = game.sized?.solution ?? game.algebraic?.solution ?? game.variant?.solution ??
             (game.grid ? await solveMini(values, run) : await run({ type: 'solve', values }))
           if (answer) result.recovery = findCandidateRecovery(game, answer, removals)
         } catch {
           // Keep the general candidate warning if recovery cannot be verified.
+        }
+        if (result.recovery && saved && !saved.choice && saved.stage !== 'digits') {
+          result.stage = saved.stage
+          result.visuals = saved.visuals
+          result.reviewingRemoval = saved.reviewingRemoval
         }
       }
     } finally {
@@ -124,39 +161,9 @@ export function usePlayHintActions({
     }
   }
 
-  async function showTechniqueHints(technique: string) {
-    if (disabled || busy || tasks.hasActiveTask() || solved || draft) return
-    if (mobile) hintReturnFocus.current = activeInputTab.current
-    prepareHint()
-    const position = hintPosition
-    const task = tasks.beginPuzzleTask(true)
-    const request = tasks.nextTechniqueHintRequest()
-    let result: HintState | undefined
-    try {
-      const { choices, candidates } = await puzzleHints(game, 'all', technique, undefined, task.engine.run)
-      if (!candidates) throw new Error('Missing candidates for the selected technique.')
-      result = {
-        position,
-        choices,
-        candidates,
-        index: 0,
-        stage: 'technique',
-        ...(choices.length ? {} : { error: { title: techniqueLabel(technique), text: 'No patterns are available in the current grid.' } }),
-      }
-    } catch (error) {
-      if (!tasks.currentTaskGame(task)) return
-      result = {
-        position,
-        choices: [],
-        index: 0,
-        stage: 'technique',
-        error: error instanceof EngineError && error.code === 'invalid-eliminations' ? HINT_CANDIDATES_ERROR : HINT_ERROR,
-      }
-    } finally {
-      if (result && tasks.isTechniqueHintRequestCurrent(request) && tasks.currentTaskGame(task)) setHint(result)
-      tasks.finishPuzzleTask(task)
-    }
-  }
+  const showHint = (limit: 10 | 'all' = 10) => requestHint(limit === 'all' ? 'all' : 'suggested')
+  const showTechniqueHints = (technique: string) => requestHint({ technique })
+  const resumeHint = (saved?: SavedHintView) => requestHint(saved?.source ?? 'suggested', true, saved)
 
   async function moveHint(offset: -1 | 1) {
     if (!visibleHint || !hintCount) return
@@ -202,5 +209,5 @@ export function usePlayHintActions({
     })
   }
 
-  return { showHint, showTechniqueHints, moveHint, changeHintDetail }
+  return { showHint, showTechniqueHints, resumeHint, moveHint, changeHintDetail }
 }

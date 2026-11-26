@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createPlaySession, defaultDigitHighlight, defaultToolPanels, puzzleTabsKey } from '../src/sudoku/play-session.ts'
+import { createPlaySession, defaultDigitHighlight, defaultToolPanels, puzzleTabsKey, type SavedHintView } from '../src/sudoku/play-session.ts'
 import { PLAY_PREFERENCES_KEY } from '../src/sudoku/play-preferences.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 
@@ -16,7 +16,7 @@ test('the open input tabs, drawing mode, and pause state survive a reload in thi
   assert.deepEqual(reloaded.getSnapshot(), {
     puzzleId: 'puzzle-a', toolPanels: { open: ['colors', 'chains'], active: 'chains' },
     drawingIntent: true, launchPaused: true,
-    digitHighlight: defaultDigitHighlight, showStrongLinks: false, solutionView: null,
+    digitHighlight: defaultDigitHighlight, showStrongLinks: false, solutionView: null, hintOpen: false,
   })
 
   reloaded.set('puzzle-a', 'drawingIntent', false)
@@ -28,7 +28,7 @@ test('the open input tabs, drawing mode, and pause state survive a reload in thi
   reloaded.activate('puzzle-b')
   assert.deepEqual(reloaded.getSnapshot(), {
     puzzleId: 'puzzle-b', toolPanels: { open: ['colors', 'chains'], active: 'chains' }, drawingIntent: null, launchPaused: false,
-    digitHighlight: defaultDigitHighlight, showStrongLinks: false, solutionView: null,
+    digitHighlight: defaultDigitHighlight, showStrongLinks: false, solutionView: null, hintOpen: false,
   })
 })
 
@@ -51,7 +51,7 @@ test('a saved mobile tab must be one of the open tools', () => {
   assert.deepEqual(createPlaySession(storage).getSnapshot(), {
     puzzleId: 'puzzle-a', toolPanels: { open: ['colors'], active: 'digits' },
     drawingIntent: null, launchPaused: true,
-    digitHighlight: defaultDigitHighlight, showStrongLinks: false, solutionView: null,
+    digitHighlight: defaultDigitHighlight, showStrongLinks: false, solutionView: null, hintOpen: false,
   })
 })
 
@@ -75,8 +75,40 @@ test('saved tab state can resume on app relaunch without restoring a launch paus
     toolPanels: { open: ['solution', 'chains'], active: 'solution', height: 308 },
     digitHighlight: { mask: 10, match: 'any' },
     showStrongLinks: true, drawingIntent: false,
+    hintOpen: false,
     solutionView: { identity: 'givens-a', step: 7, hintOpen: true },
   })
+})
+
+test('an open hint keeps its source, selection and detail on reload for the same puzzle', () => {
+  const storage = new MemoryStorage()
+  const persistent = new MemoryStorage()
+  const session = createPlaySession(storage, persistent)
+  const view: SavedHintView = {
+    source: { technique: 'als-xz' }, position: 'saved position', index: 37,
+    stage: 'explanation', choice: 'selected proof', visuals: 'player',
+  }
+  session.set('puzzle-a', 'hintOpen', true)
+  session.set('puzzle-a', 'hintView', view)
+  const reloaded = createPlaySession(storage, persistent)
+  assert.deepEqual(reloaded.getSnapshot().hintView, view)
+  reloaded.activate('puzzle-b')
+  assert.equal(reloaded.getSnapshot().hintView, undefined)
+  reloaded.activate('puzzle-a')
+  assert.deepEqual(reloaded.getSnapshot().hintView, view)
+  reloaded.set('puzzle-a', 'hintOpen', false)
+  assert.equal(createPlaySession(storage, persistent).getSnapshot().hintView, undefined)
+})
+
+test('an old or invalid hint view can still reopen the hint panel', () => {
+  const storage = new MemoryStorage()
+  const key = 'sudoku-app:v1:play-session'
+  for (const hintView of [undefined, { source: 'all', position: 'saved position', index: -1, stage: 'explanation' }]) {
+    storage.setItem(key, JSON.stringify({ puzzleId: 'puzzle-a', hintOpen: true, hintView }))
+    const snapshot = createPlaySession(storage).getSnapshot()
+    assert.equal(snapshot.hintOpen, true)
+    assert.equal(snapshot.hintView, undefined)
+  }
 })
 
 test('older digit groups restore their mask and match without a mode override', () => {

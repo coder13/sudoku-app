@@ -2,6 +2,7 @@ import { Button } from './Button'
 import { useId, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import type { LessonBlock } from '../sudoku/lesson-content'
+import { CellReferenceText } from './CellReferenceHighlight'
 
 export function ConceptCheck({ block }: { block: Extract<LessonBlock, { type: 'concept-check' }> }) {
   const id = useId()
@@ -20,12 +21,12 @@ export function ConceptCheck({ block }: { block: Extract<LessonBlock, { type: 'c
       }}><RefreshCw size={16} aria-hidden="true" /> New example</Button>
     </header>
     <fieldset className="concept-choices">
-      <legend aria-live="polite">{question.prompt}</legend>
+      <legend aria-live="polite"><CellReferenceText text={question.prompt} /></legend>
       {question.options.map((option, optionIndex) => <Button type="button" key={`${index}:${optionIndex}`}
-        aria-pressed={answer === optionIndex} onClick={() => setAnswer(optionIndex)}>{option}</Button>)}
+        aria-pressed={answer === optionIndex} onClick={() => setAnswer(optionIndex)}><CellReferenceText text={option} /></Button>)}
     </fieldset>
     <div className="concept-feedback" role="status" aria-atomic="true">
-      {answer !== null && <><strong>{correct ? 'Correct.' : 'Try again.'}</strong> {question.explanation}</>}
+      {answer !== null && <><strong>{correct ? 'Correct.' : 'Try again.'}</strong> <CellReferenceText text={question.explanation} /></>}
     </div>
   </section>
 }

@@ -1,4 +1,4 @@
-import { type CSSProperties, type PointerEvent, type ReactNode, type Ref, type RefObject, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { type CSSProperties, type ReactNode, type Ref, type RefObject, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import {
   DEFAULT_DESKTOP_INPUT_WIDTH, DEFAULT_DESKTOP_LAYOUT_WIDTH, DEFAULT_PLAY_PREFERENCES,
@@ -10,13 +10,13 @@ import { usePlayPreference } from './usePlayPreference'
 import { previewDesktopBoards, rememberInlineStyles } from './desktop-resize-preview'
 import { mergeRefs } from './merge-refs'
 import { isPlayLayoutResizing, PlayLayoutAnchorsContext, usePlayLayoutAnchors, type PlayLayoutAnchors } from './play-layout-anchors'
+import { usePointerResizePreview, type ResizePointer } from './usePointerResizePreview'
 
 const HANDLE_CARD_GAP = 6
 const DRAG_SLOP = 4
 
 type WidthPreview = { update: (width: number) => void; clear: (width: number) => void }
 type WidthDrag = {
-  pointerId: number
   startX: number
   startWidth: number
   multiplier: number
@@ -25,7 +25,6 @@ type WidthDrag = {
   moved: boolean
   width: number
   paintedWidth: number
-  frame: number | null
   preview: WidthPreview | null
 }
 
@@ -59,6 +58,51 @@ function PlayResizeHandle({ edge, width, min, max, beginPreview, onSave, onReset
 
   useLayoutEffect(() => { latest.current = { width, beginPreview, onSave } })
 
+  const pointerResize = usePointerResizePreview<HTMLDivElement>({
+    handleRef: handle,
+    onStart(event) {
+      if (isPlayLayoutResizing(anchors)) return false
+      suppressClick.current = false
+      const style = getComputedStyle(event.currentTarget)
+      const scale = Number(style.getPropertyValue('--desktop-layout-scale')) || 1
+      const contentWidth = parseFloat(style.getPropertyValue('--desktop-layout-content-width')) || DEFAULT_DESKTOP_LAYOUT_WIDTH
+      const multiplier = edge ? 2 * direction * DEFAULT_DESKTOP_LAYOUT_WIDTH / contentWidth : direction / scale
+      drag.current = {
+        startX: event.clientX, startWidth: width, multiplier, min, max,
+        moved: false, width, paintedWidth: width, preview: null,
+      }
+      return true
+    },
+    onPreview(point: ResizePointer) {
+      const current = drag.current
+      if (!current || Math.abs(point.clientX - current.startX) < DRAG_SLOP) return
+      current.moved = true
+      current.width = widthAtPointer(current, point.clientX)
+      if (current.width === current.paintedWidth) return
+      current.preview ??= latest.current.beginPreview()
+      current.preview?.update(current.width)
+      current.paintedWidth = current.width
+      describeWidth(handle.current, current.width)
+    },
+    onFinish(point, commit) {
+      const current = drag.current
+      if (!current) return
+      drag.current = null
+      const moved = current.moved || Math.abs(point.clientX - current.startX) >= DRAG_SLOP
+      suppressClick.current = moved || !commit
+      try {
+        if (commit && moved) {
+          const nextWidth = widthAtPointer(current, point.clientX)
+          if (nextWidth !== current.startWidth) flushSync(() => latest.current.onSave(nextWidth))
+        }
+      } finally {
+        current.preview?.clear(latest.current.width)
+        describeWidth(handle.current, latest.current.width)
+      }
+    },
+  })
+  const { cancel: cancelResize, ...pointerHandlers } = pointerResize
+
   function stepWidth(delta: number) {
     const nextWidth = clampWidth(width + delta, min, max)
     if (nextWidth !== width) onSave(nextWidth)
@@ -68,77 +112,10 @@ function PlayResizeHandle({ edge, width, min, max, beginPreview, onSave, onReset
     return clampWidth(current.startWidth + current.multiplier * (x - current.startX), current.min, current.max)
   }
 
-  function startDrag(event: PointerEvent<HTMLDivElement>) {
-    if (event.button !== 0 || !event.isPrimary || drag.current) return
-    if (isPlayLayoutResizing(anchors)) return
-    suppressClick.current = false
-    event.preventDefault()
-    event.currentTarget.setPointerCapture(event.pointerId)
-    const style = getComputedStyle(event.currentTarget)
-    const scale = Number(style.getPropertyValue('--desktop-layout-scale')) || 1
-    const contentWidth = parseFloat(style.getPropertyValue('--desktop-layout-content-width')) || DEFAULT_DESKTOP_LAYOUT_WIDTH
-    // Outer edges move in pairs. The divider moves within the scaled Play area.
-    const multiplier = edge ? 2 * direction * DEFAULT_DESKTOP_LAYOUT_WIDTH / contentWidth : direction / scale
-    drag.current = {
-      pointerId: event.pointerId, startX: event.clientX, startWidth: width, multiplier, min, max,
-      moved: false, width, paintedWidth: width, frame: null, preview: null,
-    }
-  }
-
-  function previewWidth(event: PointerEvent<HTMLDivElement>) {
-    const current = drag.current
-    if (current?.pointerId !== event.pointerId) return
-    if (!current.moved && Math.abs(event.clientX - current.startX) < DRAG_SLOP) return
-    current.moved = true
-    current.width = widthAtPointer(current, event.clientX)
-    if (current.frame !== null || current.width === current.paintedWidth) return
-    // A busy pointer can send several moves before the next paint. Apply only
-    // its latest position, without rendering the React layout for each move.
-    current.frame = requestAnimationFrame(() => {
-      current.frame = null
-      if (drag.current !== current || current.width === current.paintedWidth) return
-      current.preview ??= latest.current.beginPreview()
-      current.preview?.update(current.width)
-      current.paintedWidth = current.width
-      describeWidth(handle.current, current.width)
-    })
-  }
-
-  function finishDrag(commit: boolean, x?: number, pointerId?: number) {
-    const current = drag.current
-    if (!current || pointerId !== undefined && current.pointerId !== pointerId) return
-    drag.current = null
-    if (current.frame !== null) cancelAnimationFrame(current.frame)
-    const moved = current.moved || x !== undefined && Math.abs(x - current.startX) >= DRAG_SLOP
-    suppressClick.current = moved || !commit
-    try {
-      if (commit && moved) {
-        // Pointerup can arrive before the queued preview frame.
-        const nextWidth = widthAtPointer(current, x ?? current.startX)
-        if (nextWidth !== current.startWidth) {
-          // Replace the preview with the saved layout before the next paint.
-          flushSync(() => latest.current.onSave(nextWidth))
-        }
-      }
-    } finally {
-      current.preview?.clear(latest.current.width)
-      describeWidth(handle.current, latest.current.width)
-      if (handle.current?.hasPointerCapture(current.pointerId)) handle.current.releasePointerCapture(current.pointerId)
-    }
-  }
+  function finishDrag() { cancelResize() }
 
   // Bounds or saved preferences can change independently of this gesture.
-  useLayoutEffect(() => { finishDrag(false) }, [width, min, max])
-  useLayoutEffect(() => {
-    const cancel = () => finishDrag(false)
-    window.addEventListener('resize', cancel)
-    window.addEventListener('blur', cancel)
-    return () => {
-      window.removeEventListener('resize', cancel)
-      window.removeEventListener('blur', cancel)
-      cancel()
-    }
-  }, [])
+  useLayoutEffect(() => { finishDrag() }, [width, min, max])
 
   return <><div ref={combinedHandleRef} className={edge ? 'desktop-layout-edge' : 'desktop-layout-divider'} data-grid-click-away-exempt data-edge={edge}
     role="separator" tabIndex={0} aria-orientation="vertical"
@@ -146,30 +123,27 @@ function PlayResizeHandle({ edge, width, min, max, beginPreview, onSave, onReset
     aria-haspopup={edge ? undefined : 'dialog'} title={edge ? 'Drag to resize play layout' : 'Drag to resize or click for size options'}
     aria-controls={edge ? 'sudoku-workspace' : 'standard-digit-input'}
     aria-valuemin={min} aria-valuemax={max} aria-valuenow={width} aria-valuetext={`${width} pixels`}
-    onPointerDown={startDrag} onPointerMove={previewWidth}
-    onPointerUp={(event) => finishDrag(true, event.clientX, event.pointerId)}
-    onPointerCancel={(event) => finishDrag(false, undefined, event.pointerId)}
-    onLostPointerCapture={(event) => finishDrag(false, undefined, event.pointerId)}
+    {...pointerHandlers}
     onClick={(event) => {
       if (!edge && (!suppressClick.current || event.detail === 0)) setOptionsOpen(true)
     }}
     onContextMenu={(event) => {
       event.preventDefault()
-      finishDrag(false)
+      finishDrag()
       onReset()
     }}
     onKeyDown={(event) => {
       if (event.key === 'Home') {
         event.preventDefault()
-        finishDrag(false)
+        finishDrag()
         onReset()
       } else if (!edge && (event.key === 'Enter' || event.key === ' ')) {
         event.preventDefault()
-        finishDrag(false)
+        finishDrag()
         setOptionsOpen(true)
       } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
         event.preventDefault()
-        finishDrag(false)
+        finishDrag()
         stepWidth(direction * (event.key === 'ArrowLeft' ? -RESIZE_STEP : RESIZE_STEP))
       }
     }} />

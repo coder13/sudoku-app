@@ -31,9 +31,10 @@ import { OutsideClues } from './OutsideClues'
 import { cloneLayout } from '../sudoku/clone'
 import { AlgebraicCages, LinkedDoubleArrowClues, SizedRuleClues, VariantClues, cageLabelInset } from './VariantClues'
 import { sizedRuleClueLabels, variantCellLabels } from './VariantClueLabels'
-import { boardGroupDescription, boardGroups, BoardArtwork, BoardLinks, BoardQuickDraw, type BoardAnnotations, type BoardRegion } from './BoardAnnotations'
+import { boardGroupDescription, boardGroups, BoardArtwork, BoardLinks, BoardQuickDraw, mergeBoardAnnotations, type BoardAnnotations, type BoardRegion } from './BoardAnnotations'
 import type { AuthoredMark } from '../sudoku/authored-artwork'
 import { BoardMarks, type BoardMark } from './BoardMarks'
+import { useTouchHold } from './useTouchHold'
 import type { ImportedCellColors } from '../sudoku/imported-colors'
 import { colorCursor } from './color-cursor'
 import { colorToneStyle } from './color-tone'
@@ -41,6 +42,13 @@ import { cellColorGradient } from './cell-color-gradient'
 import { mergeRefs } from './merge-refs'
 import { navigateBoardCandidates } from './board-candidate-navigation'
 import { BoardCell, previewDigitsMask, type CandidateSlot, type CellGeometry } from './BoardCell'
+import { useCellReferenceHighlight } from './CellReferenceHighlight'
+
+function candidateAtTarget(target: EventTarget): Candidate | undefined {
+  const button = target instanceof Element ? target.closest<HTMLButtonElement>('button[data-candidate-digit]') : null
+  const cell = button?.closest<HTMLElement>('[data-cell]')?.dataset.cell
+  if (button && cell !== undefined) return { cell: Number(cell), digit: Number(button.dataset.candidateDigit) }
+}
 
 export type BoardContent = {
   variantPuzzle?: VariantPuzzle
@@ -101,6 +109,7 @@ export type BoardInteraction = {
   onCellDoubleClick?: (index: number, event: MouseEvent) => void
   linkDrawing?: boolean
   onCandidate?: (candidate: Candidate) => void
+  onGroupCandidate?: (candidate: Candidate) => void
   onLinkSelect?: (candidate: Candidate) => void
   onPaintCandidate?: (candidate: Candidate) => void
   onCandidateHover?: (candidate: Candidate | null) => void
@@ -170,6 +179,7 @@ export function gridCellAtPoint(grid: HTMLDivElement | null, { clientX, clientY 
 }
 
 export function Board({ content, appearance, interaction, layout: boardLayout }: BoardProps) {
+  const referenceHighlight = useCellReferenceHighlight()?.highlight
   const {
     variantPuzzle: fullPuzzle,
     fog,
@@ -189,7 +199,7 @@ export function Board({ content, appearance, interaction, layout: boardLayout }:
     highlightedRule,
     errors,
     candidateLayout = 'grid',
-    annotations,
+    annotations: baseAnnotations,
     annotationsOnTop = false,
     region,
     label = 'Sudoku grid',
@@ -208,6 +218,17 @@ export function Board({ content, appearance, interaction, layout: boardLayout }:
     showImportedAnnotations = showPlayerColors,
     colorPreview,
   } = appearance ?? {}
+  const referenceAnnotations = useMemo(() => {
+    if (!referenceHighlight) return undefined
+    if (referenceHighlight.digit) {
+      const previous = baseAnnotations?.candidates?.get(referenceHighlight.cell)?.get(referenceHighlight.digit)
+      return { candidates: new Map([[referenceHighlight.cell, new Map([[referenceHighlight.digit, {
+        ...previous, color: previous?.color ?? 'transparent', emphasized: true, referenceHighlight: true,
+      }]])]]) }
+    }
+    return { cells: new Map([[referenceHighlight.cell, { referenceHighlight: true }]]) }
+  }, [baseAnnotations, referenceHighlight])
+  const annotations = mergeBoardAnnotations(baseAnnotations, referenceAnnotations)
   const {
     selected = NO_SELECTION,
     active = 0,
@@ -219,6 +240,7 @@ export function Board({ content, appearance, interaction, layout: boardLayout }:
     onCellDoubleClick,
     linkDrawing,
     onCandidate,
+    onGroupCandidate,
     onLinkSelect,
     onCandidateHover,
     isLinkTarget,
@@ -236,6 +258,8 @@ export function Board({ content, appearance, interaction, layout: boardLayout }:
   const { modeBorder, modeBoundaryRef, frameRef, modeBadge, layoutBoundaryRef } = boardLayout ?? {}
   const groupDescriptionId = useId()
   const [aqreMode, setAqreMode] = useState<'unshaded' | 'shaded' | 'unknown' | null>(null)
+  const groupCandidate = linkDrawing ? onGroupCandidate : undefined
+  const groupHold = useTouchHold(Boolean(groupCandidate))
   const groupDescriptions = useMemo(
     () => boardGroups(annotations?.links, annotations?.groups).map(([, { point, label }], index) => `${label ?? `Group ${index + 1}`}: ${boardGroupDescription(point)}.`),
     [annotations?.links, annotations?.groups]
@@ -752,7 +776,26 @@ export function Board({ content, appearance, interaction, layout: boardLayout }:
           inert={overlay?.visible || undefined}
           onKeyDown={candidateAction ? navigateBoardCandidates : onGridKeyDown}
           onPointerLeave={onGridPointerLeave}
-          onPointerMove={onCellPointerMove && ((event) => onCellPointerMove(gridCellAtPoint(event.currentTarget, event), event))}
+          onPointerDownCapture={groupCandidate && (event => {
+            const candidate = candidateAtTarget(event.target)
+            groupHold.start(event, candidate ? () => groupCandidate(candidate) : undefined)
+          })}
+          onContextMenuCapture={groupCandidate && groupHold.suppressContextMenu}
+          onClickCapture={groupCandidate && (event => {
+            if (groupHold.suppressClick(event)) {
+              event.stopPropagation()
+              return
+            }
+            if (!event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return
+            const candidate = candidateAtTarget(event.target)
+            if (!candidate) return
+            event.stopPropagation()
+            groupCandidate(candidate)
+          })}
+          onPointerMove={(onCellPointerMove || groupCandidate) && (event => {
+            groupHold.move(event)
+            onCellPointerMove?.(gridCellAtPoint(event.currentTarget, event), event)
+          })}
         >
           {gridRows}
         </div>

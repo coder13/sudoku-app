@@ -16,6 +16,8 @@ import type { BoardLink } from './BoardAnnotations'
 import { usePlayPreference } from './usePlayPreference'
 import { buildChainSketchAnnotations } from './play/chain-sketch-annotations'
 
+export type ChainNotationPart = { sketchId: number; pathIndex: number; kind: 'node' | 'edge'; index: number }
+
 type ChainRedo = {
   gameId: string
   position: Game['position']
@@ -24,6 +26,8 @@ type ChainRedo = {
   future: ChainSketchState[]
 }
 const weakLinkStatus = 'A path can have at most two weak links in a row.'
+const groupDigitStatus = 'All candidates in a group must have the same digit.'
+const groupHouseStatus = 'All candidates in a group must share a row, column, box, or extra house.'
 const EMPTY_GROUP_SELECTION: number[] = []
 
 export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, graphCurrent, canAnalyze, startHighlightDigit, drawingIntent, setDrawingIntent, updateGame }: {
@@ -32,6 +36,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
   updateGame?: (change: (current: Game) => Game) => void
 }) {
   const [hovered, setHovered] = useState<number | null>(null)
+  const [hoveredNotation, setHoveredNotation] = useState<ChainNotationPart | null>(null)
   const [status, setStatus] = useState('')
   const [groupSelection, setGroupSelection] = useState<number[] | null>(null)
   const [previewedProof, setPreviewedProof] = useState<ChainProof | null>(null)
@@ -96,6 +101,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
 
   useEffect(() => {
     setHovered(null)
+    setHoveredNotation(null)
     setStatus('')
     setGroupSelection(null)
   }, [game.id])
@@ -123,8 +129,8 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
 
   const committed = useMemo(() => buildChainSketchAnnotations({
     sketches: analyzed, activeId: active.id, activeHidden: active.hidden, activeAnalysis, canAnalyze,
-    pending, colorPairs, previewedProof, showEliminations, grouping, groupSelection,
-  }), [analyzed, active.id, active.hidden, activeAnalysis, canAnalyze, pending, colorPairs, previewedProof, showEliminations, grouping, groupSelection])
+    pending, colorPairs, previewedProof, showEliminations, grouping, groupSelection, hoveredNotation,
+  }), [analyzed, active.id, active.hidden, activeAnalysis, canAnalyze, pending, colorPairs, previewedProof, showEliminations, grouping, groupSelection, hoveredNotation])
 
   const preview = useMemo<BoardLink | undefined>(() => {
     if (grouping || pending === null || hovered === null) return
@@ -194,8 +200,9 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     save((state) => {
       if (state.activeId !== active.id || state.pending !== pending ||
         state.sketches.find(sketch => sketch.id === state.activeId)?.history.at(-1) !== edges) return state
-      if (graph && weakAdditions.length && weakAdditions.some(weakLinkRun(graph, [...drawnChainEdges(state.sketches, active.id), ...weakAdditions]))) {
-        return state
+      if (graph && weakAdditions.length) {
+        const otherEdges = drawnChainEdges(state.sketches, active.id).filter(edge => !edges.includes(edge))
+        if (weakAdditions.some(weakLinkRun(graph, [...otherEdges, ...next]))) return state
       }
       return updateChainEdges(state, next, endpoint, highlightedDigit, reveal)
     })
@@ -220,7 +227,6 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
       const remaining = edges.filter(edge => !edge.includes(id))
       if (remaining.length === edges.length - 1) {
         changeEdges(remaining)
-        setStatus('Branch tip removed.')
         return true
       }
     }
@@ -261,17 +267,60 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
       return
     }
     if (groupSelection.length && chainNodeDigit(groupSelection[0]) !== candidate.digit) {
-      setStatus('All candidates in a group must have the same digit.')
+      setStatus(groupDigitStatus)
       return
     }
     const next = [...groupSelection, id]
     const group = next.length > 1 ? chainGroup(candidate.digit, next.map(node => chainCandidate(node).cell)) : null
     if (next.length > 1 && (!group || !graph.available(group))) {
-      setStatus('All candidates in a group must share a row, column, box, or extra house.')
+      setStatus(groupHouseStatus)
       return
     }
     setHighlightedDigit(candidate.digit)
     setGroupSelection(next)
+    setHovered(null)
+    setStatus('')
+  }
+
+  function groupCandidate(candidate: Candidate) {
+    if (!drawing || !graph || active.hidden) return
+    const id = candidateId(candidate)
+    if (!graph.available(id)) return
+    if (grouping || pending === null) {
+      select(candidate)
+      return
+    }
+    if (chainNodeDigit(pending) !== candidate.digit) {
+      setStatus(groupDigitStatus)
+      return
+    }
+    const members = chainNodeCandidates(pending)
+    if (members.some(({ cell }) => cell === candidate.cell)) return
+    const group = chainGroup(candidate.digit, [...members.map(({ cell }) => cell), candidate.cell])
+    if (!group || !graph.available(group)) {
+      setStatus(groupHouseStatus)
+      return
+    }
+    const links = edges.filter(edge => edge.includes(pending))
+    if (!links.length) {
+      updateActive(sketch => sketch, group, true)
+    } else {
+      const promote = ([from, to]: ChainEdge): ChainEdge =>
+        [from === pending ? group : from, to === pending ? group : to]
+      const replacements = links.map(promote)
+      if (replacements.some(edge => !graph.strength(...edge))) {
+        setStatus('This group would break an existing link.')
+        return
+      }
+      const next = edges.map(edge => edge.includes(pending) ? promote(edge) : edge)
+        .filter((edge, index, all) => all.findIndex(other => sameEdge(edge, other)) === index)
+      const otherEdges = allDrawnEdges.filter(edge => !edges.includes(edge))
+      if (replacements.some(weakLinkRun(graph, [...otherEdges, ...next]))) {
+        setStatus(weakLinkStatus)
+        return
+      }
+      changeEdges(next, group, candidate.digit)
+    }
     setHovered(null)
     setStatus('')
   }
@@ -290,7 +339,7 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
   }
 
   return {
-    drawing, grouping, groupSelection: grouping ? groupSelection : EMPTY_GROUP_SELECTION, groups,
+    drawing, grouping, groupSelection: grouping ? groupSelection : EMPTY_GROUP_SELECTION,
     canUseGroup: selectedGroup !== null,
     startGroup() {
       if (!enabled || active.hidden) return
@@ -303,13 +352,10 @@ export function useChainSketch(game: Game, graph: ChainGraph | null, { canDraw, 
     useGroup() {
       if (selectedGroup && selectNode(selectedGroup)) setGroupSelection(null)
     },
-    selectGroup(group: ChainGroup) {
-      setGroupSelection(null)
-      selectNode(group)
-    },
     annotations: preview ? { ...committed.annotations, links: [preview, ...(committed.annotations.links ?? [])] } : committed.annotations,
+    highlightNotation(part: ChainNotationPart | null) { setHoveredNotation(part) },
     colorPairs, assignedColors: committed.assigned, usedColorPairs: committed.usedPairs,
-    sketches: analyzed, active, status, pending, beginAt, select, finishLoop, stop, endPath, setHighlightedDigit,
+    sketches: analyzed, active, status, pending, beginAt, select, groupCandidate, finishLoop, stop, endPath, setHighlightedDigit,
     suspend: () => { setDrawingIntent(false); setGroupSelection(null) },
     setPreviewedProof,
     showEliminations,

@@ -3,6 +3,8 @@ import { useRef, useState, type ComponentProps, type ReactNode } from 'react'
 import type { StoryObj } from '@storybook/react-vite'
 import { fn } from 'storybook/test'
 import { HintCard } from '../../src/components/HintCard'
+import { Board } from '../../src/components/Board'
+import { CellReferenceHighlightProvider } from '../../src/components/CellReferenceHighlight'
 import { MobileInputTabs } from '../../src/components/MobileInputTabs'
 import { SelectControl } from '../../src/components/SelectControl'
 import type { ToolPanelTab } from '../../src/sudoku/play-session'
@@ -79,6 +81,19 @@ export const StagedHint: Story = {
     detailNavigation: { first: true, last: false, onMove: fn() },
     action: { label: 'Apply hint', onClick: fn() },
   },
+}
+export const InteractiveCellReferences: Story = {
+  args: { hint: {
+    title: 'ALS-XZ',
+    text: 'Set 1 (blue) is at r2c6. Set 2 (purple) is at r2c1, r2c3, and r2c5.',
+  } },
+  parameters: { layout: 'padded', controls: { disable: true } },
+  render: ({ hint }) => <CellReferenceHighlightProvider>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 16, alignItems: 'start' }}>
+      <Board content={{ givens: '0'.repeat(81), values: '0'.repeat(81), candidates: Array(81).fill(0x1ff) }} />
+      <HintCard hint={hint} onClose={fn()} />
+    </div>
+  </CellReferenceHighlightProvider>,
 }
 export const Dismissible: Story = {
   args: { hint: defaultFallbackHints[0] },

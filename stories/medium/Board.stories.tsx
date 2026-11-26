@@ -970,6 +970,16 @@ export const CroppedChain: Story = {
   },
 }
 
+export const OverlappingAlmostLockedSets: Story = {
+  render: (args) => {
+    const example = lessonExamples['als-discontinuous-nice-loop']
+    const { annotations, region } = lessonDiagram(example)
+    return <LessonFrame><Board {...args}
+      content={{ ...args.content, givens: example.givens, values: lessonValues(example), candidates: example.candidates }}
+      appearance={{ ...args.appearance, annotations, region }} /></LessonFrame>
+  },
+}
+
 function SelectableGrid(props: ComponentProps<typeof Board>) {
   const [selected, setSelected] = useState(2)
   return (

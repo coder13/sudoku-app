@@ -9,7 +9,7 @@ import { Worktable, type WorktableActions } from '../../src/components/Worktable
 import { DesktopPlayLayout, PlayWorkspace } from '../../src/components/DesktopPlayLayout'
 import { useMobileLayout } from '../../src/components/mobile-layout'
 import { newChainSketch } from '../../src/sudoku/chain-sketch'
-import { candidateId, type ChainEdge } from '../../src/sudoku/chains'
+import { candidateId, chainGroup, type ChainEdge } from '../../src/sudoku/chains'
 import { EMPTY, enter, fillEntries, makeGame, paintCells, puzzleIdentity, replaceCandidates, valuesOf, type Game } from '../../src/sudoku/game'
 import { recordAction } from '../../src/sudoku/action-history'
 import { playPreferenceStore } from '../../src/sudoku/play-preferences'
@@ -413,6 +413,57 @@ export const ChainShortcuts: Story = {
     await expect(await grid()).toHaveAccessibleDescription('Highlight mode')
   },
 }
+
+const groupGestureGame = makeGame('candidate-group-gestures', 'Candidate grouping',
+  '180000530000310089063805001006423817314000000000100000605700140071600005000001000', 'imported')
+
+export const CandidateGroupGestures: Story = {
+  args: { game: groupGestureGame, games: [groupGestureGame] },
+  beforeEach: ({ args }) => {
+    playSession.set(args.game.id, 'toolPanels', { open: ['chains'], active: 'chains' })
+    playSession.set(args.game.id, 'drawingIntent', true)
+  },
+}
+
+const [firstFour, rowSixLeft, rowSixRight] = [8, 51, 53].map(cell => candidateId({ cell, digit: 4 }))
+const groupOfFours = chainGroup(4, [15, 24])!
+const groupedLoopLinks: ChainEdge[] = [
+  [firstFour, groupOfFours], [groupOfFours, rowSixLeft], [rowSixLeft, rowSixRight], [rowSixRight, firstFour],
+]
+const groupedLoopGame: Game = {
+  ...groupGestureGame,
+  id: 'grouped-loop-type-summary',
+  chainSketch: { sketches: [{ ...newChainSketch(1), history: [[], groupedLoopLinks] }], activeId: 1, pending: null },
+}
+
+export const GroupedLoopTypeSummary: Story = {
+  args: { game: groupedLoopGame, games: [groupedLoopGame] },
+  beforeEach: ({ args }) => {
+    playSession.set(args.game.id, 'toolPanels', { open: ['chains'], active: 'chains' })
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const chain = await canvas.findByRole('button', { name: /^Chain 1$/ })
+    await expect(within(chain).getByText('Grouped Nice Loop', { exact: true })).toBeVisible()
+    await expect(chain).not.toHaveTextContent(/strong-link coloring|Grouped AIC/)
+    await expect(chain).toHaveAccessibleDescription(/^Grouped Nice Loop /)
+    const notation = canvasElement.querySelector<HTMLElement>('.chain-editor .chain-notation')!
+    const controls = canvasElement.querySelector('.chain-editor .chain-draw-tools')!
+    expect(notation.getBoundingClientRect().top).toBeGreaterThan(controls.getBoundingClientRect().bottom)
+    const notationTokens = within(notation)
+    const firstNode = notationTokens.getAllByText('4r1c9', { exact: true })[0]
+    await userEvent.hover(firstNode)
+    await expect(canvasElement.querySelector('[data-cell="8"] .board-candidate')).toHaveAttribute('data-chain-hover', 'true')
+    await userEvent.unhover(firstNode)
+    const strongLink = notationTokens.getAllByText('=', { exact: true })[0]
+    await userEvent.hover(strongLink)
+    await waitFor(() => expect(canvasElement.querySelectorAll('.board-links g[data-chain-hover="true"]')).toHaveLength(1))
+    await userEvent.unhover(strongLink)
+    const groupNode = notationTokens.getByText('4(r2c7|r3c7)', { exact: true })
+    groupNode.focus()
+    await expect(canvasElement.querySelector('.board-chain-group[data-chain-hover="true"]')).toBeInTheDocument()
+  },
+}
+
 export const InputModeAfterChains: Story = {
   args: { game: branchedGame, games: [branchedGame] },
   beforeEach: () => {
@@ -696,7 +747,7 @@ export const RemoveBranchTip: Story = {
     await expect(tip).toHaveAttribute('aria-pressed', 'true')
     tip.focus()
     await userEvent.keyboard('{Enter}')
-    await expect(canvas.getByText('Branch tip removed.')).toBeVisible()
+    await expect(canvas.queryByText('Branch tip removed.')).not.toBeInTheDocument()
     await expect(chain).not.toHaveTextContent(branchNotation)
     await expect(tip).toBeVisible()
     const undoEdit = canvas.getByRole('button', { name: 'Undo edit' })
@@ -707,7 +758,7 @@ export const RemoveBranchTip: Story = {
     await expect(tip).toHaveAttribute('aria-pressed', 'true')
     await expect(redoEdit).toBeEnabled()
     await userEvent.keyboard('{Control>}z{/Control}')
-    await expect(chain).toHaveTextContent('No links yet.')
+    await expect(chain).toHaveTextContent(/^Chain 1$/)
     await userEvent.keyboard('{Control>}y{/Control}')
     await expect(chain).toHaveTextContent(branchNotation)
     await userEvent.keyboard('{Meta>}{Shift>}Z{/Shift}{/Meta}')
@@ -722,9 +773,11 @@ export const RemoveBranchTip: Story = {
     await expect(redoEdit).toBeDisabled()
 
     await userEvent.click(canvas.getByRole('button', { name: 'Done drawing' }))
-    const showLinks = canvas.getByRole('button', { name: 'Show strong links' })
+    const displayOptions = canvas.getByRole('button', { name: 'Chain display options' })
+    await userEvent.click(displayOptions)
+    const showLinks = canvas.getByRole('menuitemcheckbox', { name: 'Show strong links' })
     await userEvent.click(showLinks)
-    await expect(showLinks).toHaveAttribute('aria-pressed', 'true')
+    await expect(showLinks).toHaveAttribute('aria-checked', 'true')
     await expect(canvas.queryByText('Select a candidate or link to start drawing.')).not.toBeInTheDocument()
   },
 }
@@ -1357,16 +1410,19 @@ export const DesktopHintFits: Story = {
     await userEvent.click(showHint)
     const more = await canvas.findByRole('button', { name: 'More detail' }, { timeout: 5000 })
     const card = canvas.getByRole('complementary', { name: 'Puzzle hint' })
+    const handle = canvas.getByRole('separator', { name: 'Resize hint panel' })
     const slot = card.closest('.standard-hint-slot')!
     await Promise.allSettled(slot.getAnimations({ subtree: true }).map(animation => animation.finished))
+    const bottom = card.getBoundingClientRect().bottom
     const expectFit = () => {
-      const bounds = stack.getBoundingClientRect()
       const hintBounds = card.getBoundingClientRect()
       const puzzleBounds = puzzle.getBoundingClientRect()
+      const grip = handle.getBoundingClientRect()
       expect(grid.getBoundingClientRect().bottom).toBeLessThan(hintBounds.top)
-      expect(hintBounds.bottom).toBeCloseTo(bounds.bottom, 0)
-      expect(hintBounds.left).toBeCloseTo(puzzleBounds.left, 0)
-      expect(hintBounds.right).toBeCloseTo(puzzleBounds.right, 0)
+      expect(hintBounds.bottom).toBeCloseTo(bottom, 0)
+      expect(hintBounds.left + hintBounds.right).toBeCloseTo(puzzleBounds.left + puzzleBounds.right, 0)
+      expect(Math.abs(grip.left - hintBounds.left)).toBeLessThan(1)
+      expect(Math.abs(grip.right - hintBounds.right)).toBeLessThan(1)
       expect(hintBounds.right).toBeLessThanOrEqual(divider.getBoundingClientRect().left)
       expect(divider.getBoundingClientRect().left).toBeCloseTo(dividerLeft, 0)
       expect(stack.scrollHeight).toBeLessThanOrEqual(stack.clientHeight + 1)
@@ -1376,6 +1432,13 @@ export const DesktopHintFits: Story = {
     await expect(canvas.getByRole('button', { name: 'Apply hint' })).toBeVisible()
     expectFit()
 
+    const automaticHeight = card.offsetHeight
+    handle.focus()
+    await userEvent.keyboard('{ArrowUp}')
+    expect(card.offsetHeight).toBeGreaterThan(automaticHeight)
+    expectFit()
+    await userEvent.keyboard('{Home}')
+    expect(card.offsetHeight).toBe(automaticHeight)
     expect(getComputedStyle(slot).transitionDuration).toBe('0s')
     await userEvent.click(canvas.getByRole('button', { name: 'Close hint' }))
     await waitFor(() => expect(width()).toBeCloseTo(initialWidth, 0))

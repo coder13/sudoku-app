@@ -15,14 +15,15 @@ export type BoardLink = {
   opacity?: number
   muted?: boolean
   dashed?: boolean
+  emphasized?: boolean
   colorBreak?: boolean
   arrow?: boolean
   selectFrom?: Candidate
 }
 
-export type CellAnnotation = { fill?: string; fills?: readonly string[]; ink?: string; label?: string }
-export type CandidateAnnotation = { color: string; opacity?: number; mark?: 'ring' | 'emphasized' | 'strike'; strike?: boolean; label?: string }
-export type BoardGroup = { point: BoardPoint; color: string; opacity?: number; label?: string }
+export type CellAnnotation = { fill?: string; fills?: readonly string[]; ink?: string; label?: string; referenceHighlight?: boolean }
+export type CandidateAnnotation = { color: string; opacity?: number; mark?: 'ring' | 'emphasized' | 'strike'; strike?: boolean; emphasized?: boolean; referenceHighlight?: boolean; label?: string }
+export type BoardGroup = { point: BoardPoint; color: string; opacity?: number; emphasized?: boolean; label?: string }
 
 export type BoardAnnotations = {
   cells?: ReadonlyMap<number, CellAnnotation>
@@ -85,11 +86,11 @@ const NO_GROUPS: readonly BoardGroup[] = []
 
 export function boardGroups(links: readonly BoardLink[] = NO_LINKS, groups: readonly BoardGroup[] = NO_GROUPS) {
   const byKey = new Map<string, BoardGroup>()
-  for (const { from, to, color, opacity } of links) for (const point of [from, to]) {
+  for (const { from, to, color, opacity, emphasized } of links) for (const point of [from, to]) {
     const key = boardGroupKey(point)
     if (!key) continue
     const previous = byKey.get(key)
-    if (!previous || (opacity ?? 1) > (previous.opacity ?? 1)) byKey.set(key, { point, color, opacity })
+    if (!previous || (opacity ?? 1) > (previous.opacity ?? 1)) byKey.set(key, { point, color, opacity, emphasized })
   }
   for (const group of groups) {
     const key = boardGroupKey(group.point)
@@ -112,14 +113,14 @@ export function BoardLinks({ links = NO_LINKS, groups = NO_GROUPS, region, candi
   const grouped = useMemo(() => boardGroups(links, groups), [links, groups])
   const items = useMemo(() => {
     const counts = new Map<string, number>()
-    const marks: BoardMark[] = grouped.map(([key, { point, color, opacity, label }]) => {
+    const marks: BoardMark[] = grouped.map(([key, { point, color, opacity, label, emphasized }]) => {
       const points = boardGroupOutline(point, candidateInsets).map(({ x, y }) => `${x},${y}`).join(' ')
-      return <g key={`group-${key}`} className="board-chain-group" data-chain-group={key} opacity={opacity}>
+      return <g key={`group-${key}`} className="board-chain-group" data-chain-group={key} data-chain-hover={emphasized || undefined} opacity={opacity}>
         <title>{label ?? `Candidate group: ${boardGroupDescription(point)}`}</title>
-        <polygon points={points} fill={color} fillOpacity=".07" stroke={color} strokeWidth=".3" strokeLinejoin="round" />
+        <polygon points={points} fill={color} fillOpacity=".07" stroke={color} strokeWidth={emphasized ? '.55' : '.3'} strokeLinejoin="round" />
       </g>
     })
-    for (const [index, { color, opacity, dashed, arrow, muted, colorBreak, selectFrom }] of links.entries()) {
+    for (const [index, { color, opacity, dashed, arrow, muted, colorBreak, selectFrom, emphasized }] of links.entries()) {
       const points = routes[index]
       if (points.length < 2) continue
       const [start, end] = [points[0], points[points.length - 1]]
@@ -131,13 +132,13 @@ export function BoardLinks({ links = NO_LINKS, groups = NO_GROUPS, region, candi
       const vertices = points.map(({ x, y }) => `${x},${y}`).join(' ')
       const middle = Math.floor(points.length / 2)
       const [before, after] = [points[middle - 1], points[middle]]
-      marks.push(<g key={key} opacity={opacity}>
+      marks.push(<g key={key} data-chain-hover={emphasized || undefined} opacity={opacity}>
         {arrow && <marker id={marker} markerWidth="2.5" markerHeight="2.5" refX="2.3" refY="1.25"
           markerUnits="userSpaceOnUse" orient="auto">
           <path d="M 0 0 L 2.5 1.25 L 0 2.5 Z" fill={color} />
         </marker>}
         <polyline points={vertices} fill="none"
-          stroke={color} strokeWidth={muted ? ".3" : ".45"} strokeLinecap="round" strokeLinejoin="round"
+          stroke={color} strokeWidth={emphasized ? '.75' : muted ? ".3" : ".45"} strokeLinecap="round" strokeLinejoin="round"
           strokeDasharray={dashed ? '1 .9' : undefined} markerEnd={arrow ? `url(#${marker})` : undefined} />
         {colorBreak && <circle className="chain-color-break" cx={(before.x + after.x) / 2} cy={(before.y + after.y) / 2}
           r=".9" fill="var(--board-bg)" stroke={color} strokeWidth=".42" />}

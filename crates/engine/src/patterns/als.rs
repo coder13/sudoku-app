@@ -146,6 +146,10 @@ impl AlsSearch {
                 let targets = match link.digits.count_ones() {
                     1 => common_targets(a, b, link.digits, positions),
                     2 => {
+                        // Two bivalue peers with both digits restricted form a naked pair.
+                        if a.cells.count_ones() == 1 && b.cells.count_ones() == 1 {
+                            continue;
+                        }
                         // Each RCC occurs in one set, so each set uses all its other digits.
                         let mut targets = common_targets(a, b, !link.digits, positions);
                         for set in [a, b] {

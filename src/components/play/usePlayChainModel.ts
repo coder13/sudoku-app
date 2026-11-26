@@ -43,9 +43,9 @@ export function usePlayChainModel({
   const chainsActive = !colorsActive && !game.grid && (chainDrawingRequested || startDrawingOnOpen || showStrongLinks)
   const showChainSketches = !colorsActive && (chainsActive || !game.grid && Boolean(game.chainSketch))
   const chainMasks = useMemo(() => {
-    if (!showChainSketches || draft || solved) return null
+    if ((!showChainSketches && !chainsPanelOpen) || draft || solved) return null
     return notesMatch ? toolMasks : candidateToolMasks(noteMasks, values, displayedCandidates, eliminations)
-  }, [showChainSketches, draft, solved, notesMatch, toolMasks, noteMasks, values, displayedCandidates, eliminations])
+  }, [showChainSketches, chainsPanelOpen, draft, solved, notesMatch, toolMasks, noteMasks, values, displayedCandidates, eliminations])
   const missingChainCandidates = chainMasks?.some((mask, cell) => !mask && values[cell] === '0')
   const canAnalyzeChains = Boolean(masks && !missingChainCandidates && !disabled)
   const playerHighlightMask = colorMode || eraseMode ? 0 : highlightedDigitMask

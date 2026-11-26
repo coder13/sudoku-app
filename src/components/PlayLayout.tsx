@@ -1,6 +1,7 @@
-import { type ComponentProps, type PointerEvent, type ReactNode, type Ref, type RefObject, useId, useLayoutEffect, useMemo, useRef } from 'react'
+import { type ComponentProps, type ReactNode, type Ref, type RefObject, useId, useLayoutEffect, useMemo, useRef } from 'react'
 import { X } from 'lucide-react'
 import { IconButton } from './Button'
+import { HintCardResizeContext } from './HintCard'
 import { MobilePanelLayout } from './MobilePanelLayout'
 import { animatePanelLayout, MotionSurface, motionDuration } from './Presence'
 import { RESIZE_STEP } from './ResizeStepControls'
@@ -8,7 +9,8 @@ import { PanelActivityBoundary } from './PanelActivity'
 import { moveRovingTab, scrollActiveTabIntoView } from './tab-navigation'
 import { mergeRefs } from './merge-refs'
 import { isPlayLayoutResizing, usePlayLayoutAnchors } from './play-layout-anchors'
-import { availableDesktopHintHeight, measureDesktopHintSpacing } from './desktop-hint-sizing'
+import { clampDesktopHintHeight, desktopHintHeight, desktopHintPuzzleScale, measureDesktopHintBounds, type DesktopHintBounds } from './desktop-hint-sizing'
+import { usePointerResizePreview } from './usePointerResizePreview'
 
 type InsightTab<Id extends string> = { id: Id; label: string }
 type Insights<Id extends string> = {
@@ -27,10 +29,12 @@ type MobilePlay = Omit<ComponentProps<typeof MobilePanelLayout>, 'panels'> & {
 /** Host-owned refs for fixed-height desktop hint fitting and resizing. */
 export type PlayLayoutHintLayout = {
   column: RefObject<HTMLDivElement | null>
-  frame: RefObject<HTMLDivElement | null>
+  puzzle: RefObject<HTMLElement | null>
   card: RefObject<HTMLElement | null>
-  body: RefObject<HTMLDivElement | null>
+  heading: RefObject<HTMLDivElement | null>
   toolbar: RefObject<HTMLDivElement | null>
+  size: RefObject<number | undefined>
+  onSizeChange: (size: number | undefined) => void
 }
 
 /** Use the same grid, input, hint, and insight slots for every playable puzzle. */
@@ -51,78 +55,6 @@ export function PlayLayout<Id extends string>({ desktop, puzzle, input, hintLayo
   const puzzleStackRef = useMemo(() => mergeRefs(puzzleStack, anchors?.puzzleStack), [anchors])
   const hintSlotRef = useMemo(() => mergeRefs(hintSlot, anchors?.hintSlot), [anchors])
   const inputStackRef = useMemo(() => mergeRefs(inputStack, anchors?.inputStack), [anchors])
-  const standardDesktop = desktop && !advanced
-  const hintOpen = Boolean(hint)
-  useLayoutEffect(() => {
-    if (!standardDesktop) return
-    const stack = puzzleStack.current
-    const slot = hintSlot.current
-    if (!stack || !slot) return
-    if (!hintOpen) {
-      slot.style.removeProperty('--desktop-hint-size')
-      slot.style.removeProperty('--desktop-hint-height')
-      slot.style.removeProperty('--desktop-hint-toolbar-height')
-      stack.style.removeProperty('--desktop-hint-board-width')
-      return
-    }
-
-    const column = hintLayout?.column.current
-    const frame = hintLayout?.frame.current
-    const card = hintLayout?.card.current
-    const toolbar = hintLayout?.toolbar.current
-    if (!column || !frame || !card) return
-
-    stack.style.removeProperty('--desktop-hint-board-width')
-    const baseFrameWidth = frame.getBoundingClientRect().width
-    const baseColumnHeight = column.getBoundingClientRect().height
-
-    slot.style.removeProperty('--desktop-hint-height')
-    slot.style.removeProperty('--desktop-hint-size')
-    const spacing = measureDesktopHintSpacing(slot, toolbar)
-    const { gap, bottomGap, toolbarHeight } = spacing
-    slot.style.setProperty('--desktop-hint-toolbar-height', `${toolbarHeight}px`)
-    const cardHeight = card.offsetHeight
-    const maxInitialHeight = availableDesktopHintHeight(stack.clientHeight, spacing)
-    const initialHeight = Math.min(Math.ceil(cardHeight), maxInitialHeight)
-    slot.style.setProperty('--desktop-hint-height', `${initialHeight}px`)
-
-    const fitBoard = () => {
-      if (isPlayLayoutResizing(anchors)) return
-      const savedHintSize = Number.parseFloat(slot.style.getPropertyValue('--desktop-hint-size'))
-      const initialHintSize = Number.parseFloat(slot.style.getPropertyValue('--desktop-hint-height'))
-      const hintCardHeight = Number.isFinite(savedHintSize) ? savedHintSize : initialHintSize
-      const hintToolbar = hintLayout?.toolbar.current
-      const currentSpacing = measureDesktopHintSpacing(slot, hintToolbar)
-      slot.style.setProperty('--desktop-hint-toolbar-height', `${currentSpacing.toolbarHeight}px`)
-      const hintHeight = (Number.isFinite(hintCardHeight) ? hintCardHeight : 0) + currentSpacing.toolbarHeight + currentSpacing.gap + currentSpacing.bottomGap
-      if (!hintHeight) {
-        stack.style.removeProperty('--desktop-hint-board-width')
-        return
-      }
-      const scale = Number(getComputedStyle(stack).getPropertyValue('--desktop-layout-scale')) || 1
-      const style = getComputedStyle(frame)
-      const dimension = (name: string) => Number(style.getPropertyValue(name))
-      const rows = (dimension('--board-rows') || 9) + dimension('--outside-top') + dimension('--outside-bottom')
-      const columns = (dimension('--board-columns') || 9) + dimension('--outside-left') + dimension('--outside-right')
-      const aspect = columns / rows
-      const room = stack.getBoundingClientRect().height - baseColumnHeight
-      const spareHeight = room - hintHeight
-      const width = Math.min(baseFrameWidth / scale,
-        Math.max(0, Math.floor((baseFrameWidth + spareHeight * aspect) / scale)))
-      const limit = `${width}px`
-      if (stack.style.getPropertyValue('--desktop-hint-board-width') !== limit) {
-        stack.style.setProperty('--desktop-hint-board-width', limit)
-      }
-    }
-
-    fitBoard()
-    const layoutObserver = new ResizeObserver(fitBoard)
-    for (const element of [stack, slot, column]) layoutObserver.observe(element, { box: 'border-box' })
-    return () => {
-      layoutObserver.disconnect()
-    }
-  }, [standardDesktop, hintOpen, hintLayout?.column, hintLayout?.frame, hintLayout?.card, hintLayout?.toolbar, anchors])
-
   if (advanced) return advanced
   if (!desktop) {
     const { inputTitle, hintPlaceholder, ...layout } = mobile
@@ -135,10 +67,11 @@ export function PlayLayout<Id extends string>({ desktop, puzzle, input, hintLayo
   return <>
     <div ref={puzzleStackRef} className="standard-puzzle-stack">
       {puzzle}
-      <div ref={hintSlotRef} className="standard-hint-slot" id="standard-puzzle-hint" data-open={hintOpen}>
+      {hintLayout ? <DesktopHintSlot stackRef={puzzleStack} slotRef={hintSlot} forwardedRef={hintSlotRef} layout={hintLayout}>
+        {hint}
+      </DesktopHintSlot> : <div ref={hintSlotRef} className="standard-hint-slot" id="standard-puzzle-hint" data-open={Boolean(hint)}>
         <div className="standard-hint-content"><MotionSurface speed="tabs">{hint}</MotionSurface></div>
-        {hint && hintLayout && <DesktopHintDivider stackRef={puzzleStack} slotRef={hintSlot} layout={hintLayout} />}
-      </div>
+      </div>}
     </div>
     <div ref={inputStackRef} className="standard-input-stack" id="standard-digit-input">
       {input}
@@ -148,144 +81,181 @@ export function PlayLayout<Id extends string>({ desktop, puzzle, input, hintLayo
 }
 
 type HintDrag = {
-  divider: HTMLDivElement
-  slot: HTMLElement
-  pointerId: number
+  bounds: DesktopHintBounds
   startY: number
-  y: number
   height: number
-  min: number
-  max: number
+  previewHeight: number
   scale: number
-  savedSize: string
-  frame: number | null
 }
 
-function DesktopHintDivider({ stackRef, slotRef, layout }: {
+function DesktopHintSlot({ stackRef, slotRef, forwardedRef, layout, children }: {
   stackRef: RefObject<HTMLDivElement | null>
   slotRef: RefObject<HTMLDivElement | null>
+  forwardedRef: Ref<HTMLDivElement>
   layout: PlayLayoutHintLayout
+  children: ComponentProps<typeof MotionSurface>['children']
 }) {
+  const open = Boolean(children)
   const anchors = usePlayLayoutAnchors()
   const divider = useRef<HTMLDivElement>(null)
   const drag = useRef<HintDrag | null>(null)
+  const animations = useRef<Animation[]>([])
+
+  function stopMotion() {
+    for (const animation of animations.current) animation.cancel()
+    animations.current = []
+  }
 
   function measure() {
-    const slot = slotRef.current
-    const stack = stackRef.current
-    const card = layout.card.current
-    if (!slot || !stack || !card) return
-    const height = card.offsetHeight
-    const body = layout.body.current
-    const toolbar = layout.toolbar.current
-    const spacing = measureDesktopHintSpacing(slot, toolbar)
-    const max = Math.max(height, availableDesktopHintHeight(stack.clientHeight, spacing))
-    const min = Math.min(max, Math.max(96, height - (body?.offsetHeight ?? height) + 24))
-    return { slot, height, min, max }
+    const stack = stackRef.current, slot = slotRef.current
+    const { column, puzzle, card, heading, toolbar } = layout
+    if (!stack || !slot || !column.current || !puzzle.current || !card.current || !heading.current || !toolbar.current) return
+    return measureDesktopHintBounds(stack, slot, column.current, puzzle.current, card.current, heading.current, toolbar.current)
   }
 
-  function reportHeight() {
-    const range = measure()
-    if (!range) return
-    const { height, min, max } = range
-    divider.current?.setAttribute('aria-valuemin', String(Math.min(min, height)))
-    divider.current?.setAttribute('aria-valuemax', String(Math.max(max, height)))
-    divider.current?.setAttribute('aria-valuenow', String(height))
-    divider.current?.setAttribute('aria-valuetext', `${height} pixels`)
+  function applyHeight(height: number, bounds: DesktopHintBounds) {
+    slotRef.current?.style.setProperty('--desktop-hint-slot-height', `${height + bounds.chrome}px`)
+    const puzzleStyle = layout.puzzle.current?.style
+    const scale = desktopHintPuzzleScale(height, bounds)
+    if (scale === 1) puzzleStyle?.removeProperty('--desktop-hint-board-scale')
+    else puzzleStyle?.setProperty('--desktop-hint-board-scale', String(scale))
+    const handle = divider.current
+    handle?.setAttribute('aria-valuemin', String(bounds.min))
+    handle?.setAttribute('aria-valuemax', String(bounds.max))
+    handle?.setAttribute('aria-valuenow', String(height))
+    handle?.setAttribute('aria-valuetext', `${height} pixels`)
   }
 
-  function finish(pointerId?: number, y?: number) {
-    const current = drag.current
-    if (!current || (pointerId !== undefined && current.pointerId !== pointerId)) return
-    const { slot, divider } = current
-    drag.current = null
-    if (current.frame !== null) cancelAnimationFrame(current.frame)
-    if (y !== undefined && y !== current.startY) {
-      slot.style.setProperty('--desktop-hint-size', `${heightAtPointer(current, y)}px`)
-    } else if (current.savedSize) {
-      slot.style.setProperty('--desktop-hint-size', current.savedSize)
-    } else {
-      slot.style.removeProperty('--desktop-hint-size')
+  function syncHeight(bounds: DesktopHintBounds | undefined, animate = false) {
+    const slot = slotRef.current, puzzle = layout.puzzle.current
+    if (!slot || !puzzle) return
+    const duration = animate ? motionDuration('tabs') : 0
+    const previousHeight = duration ? slot.offsetHeight : 0
+    const previousScale = duration ? Number(getComputedStyle(puzzle).scale) || 1 : 1
+    stopMotion()
+
+    const height = bounds ? desktopHintHeight(bounds, layout.size.current) : 0
+    const nextHeight = bounds ? height + bounds.chrome : 0
+    const nextScale = bounds ? desktopHintPuzzleScale(height, bounds) : 1
+    if (bounds) applyHeight(height, bounds)
+    else {
+      slot.style.removeProperty('--desktop-hint-slot-height')
+      puzzle.style.removeProperty('--desktop-hint-board-scale')
     }
-    slot.removeAttribute('data-hint-resizing')
-    if (divider.hasPointerCapture(current.pointerId)) divider.releasePointerCapture(current.pointerId)
+
+    if (!duration) return
+    const easing = getComputedStyle(document.documentElement).getPropertyValue('--motion-move').trim()
+    const timing = { duration, easing }
+    if (previousHeight !== nextHeight) {
+      animations.current.push(slot.animate([{ blockSize: `${previousHeight}px` }, { blockSize: `${nextHeight}px` }], timing))
+    }
+    if (previousScale !== nextScale) {
+      animations.current.push(puzzle.animate([{ scale: previousScale }, { scale: nextScale }], timing))
+    }
   }
+
+  function commitHeight(height: number, bounds: DesktopHintBounds, preferred: number | undefined) {
+    applyHeight(height, bounds)
+    if (layout.size.current === preferred) return
+    // The observer can run before React publishes the preference to its ref.
+    layout.size.current = preferred
+    layout.onSizeChange(preferred)
+  }
+
+  const { cancel, ...pointerHandlers } = usePointerResizePreview<HTMLDivElement>({
+    handleRef: divider,
+    onStart(event) {
+      if (isPlayLayoutResizing(anchors)) return false
+      const bounds = measure(), slot = slotRef.current, card = layout.card.current
+      if (!bounds || !slot || !card || bounds.min === bounds.max || card.offsetHeight < bounds.min) return false
+      const height = clampDesktopHintHeight(card.offsetHeight, bounds)
+      const scale = Number(getComputedStyle(slot).getPropertyValue('--desktop-layout-scale')) || 1
+      drag.current = { bounds, startY: event.clientY, height, previewHeight: height, scale }
+      slot.setAttribute('data-hint-resizing', '')
+      stopMotion()
+      applyHeight(height, bounds)
+      return true
+    },
+    onPreview(point) {
+      const current = drag.current
+      if (!current) return
+      const height = heightAtPointer(current, point.clientY)
+      if (height === current.previewHeight) return
+      current.previewHeight = height
+      applyHeight(height, current.bounds)
+    },
+    onFinish(point, commit) {
+      const current = drag.current
+      if (!current) return
+      drag.current = null
+      const height = heightAtPointer(current, point.clientY)
+      if (commit && height !== current.height) commitHeight(height, current.bounds, height)
+      else applyHeight(desktopHintHeight(current.bounds, layout.size.current), current.bounds)
+      slotRef.current?.removeAttribute('data-hint-resizing')
+    },
+  })
 
   useLayoutEffect(() => {
-    const slot = slotRef.current
-    if (!slot) return
-    reportHeight()
-    const observer = new ResizeObserver(reportHeight)
-    const card = layout.card.current
-    const stack = stackRef.current
-    const toolbar = layout.toolbar.current
-    if (card) observer.observe(card)
-    if (toolbar) observer.observe(toolbar)
-    if (stack) observer.observe(stack)
-    const cancel = () => finish()
-    window.addEventListener('resize', cancel)
-    window.addEventListener('blur', cancel)
-    return () => {
+    let bounds = open ? measure() : undefined
+    syncHeight(bounds, true)
+    if (!open) return
+    const observer = new ResizeObserver(() => {
+      const next = measure()
+      if (!next || (bounds && next.chrome === bounds.chrome && next.room === bounds.room &&
+        next.puzzleHeight === bounds.puzzleHeight && next.min === bounds.min && next.max === bounds.max)) return
+      bounds = next
       cancel()
-      observer.disconnect()
-      window.removeEventListener('resize', cancel)
-      window.removeEventListener('blur', cancel)
-    }
-  }, [layout, slotRef, stackRef])
-
-  function heightAtPointer(current: HintDrag, y: number) {
-    const height = current.height + (current.startY - y) / current.scale
-    return Math.min(current.max, Math.max(current.min, Math.round(height)))
-  }
-
-  function start(event: PointerEvent<HTMLDivElement>) {
-    if (!event.isPrimary || event.button !== 0 || drag.current || isPlayLayoutResizing(anchors)) return
-    const range = measure()
-    if (!range) return
-    const { slot, height, min, max } = range
-    const scale = Number(getComputedStyle(slot).getPropertyValue('--desktop-layout-scale')) || 1
-    drag.current = {
-      divider: event.currentTarget, slot, pointerId: event.pointerId, startY: event.clientY, y: event.clientY,
-      height, min, max, scale,
-      savedSize: slot.style.getPropertyValue('--desktop-hint-size'), frame: null,
-    }
-    event.preventDefault()
-    event.currentTarget.setPointerCapture(event.pointerId)
-  }
-
-  function move(event: PointerEvent<HTMLDivElement>) {
-    const current = drag.current
-    if (current?.pointerId !== event.pointerId) return
-    current.y = event.clientY
-    if (current.frame !== null) return
-    current.frame = requestAnimationFrame(() => {
-      current.frame = null
-      current.slot.setAttribute('data-hint-resizing', '')
-      current.slot.style.setProperty('--desktop-hint-size', `${heightAtPointer(current, current.y)}px`)
+      syncHeight(bounds, animations.current.some(animation => animation.playState === 'running'))
     })
-  }
+    for (const element of [stackRef.current, layout.column.current, layout.heading.current, layout.toolbar.current]) {
+      if (element) observer.observe(element, { box: 'border-box' })
+    }
+    return () => {
+      observer.disconnect()
+      cancel()
+    }
+  }, [open, layout, stackRef])
 
-  return <div ref={divider} className="desktop-hint-divider" role="separator" aria-orientation="horizontal"
+  useLayoutEffect(() => {
+    const puzzle = layout.puzzle.current
+    return () => {
+      stopMotion()
+      puzzle?.style.removeProperty('--desktop-hint-board-scale')
+    }
+  }, [layout.puzzle])
+
+  const handle = open && <div ref={divider} className="desktop-hint-divider" role="separator" aria-orientation="horizontal"
     aria-label="Resize hint panel" aria-controls="standard-puzzle-hint" title="Drag to resize hint panel" tabIndex={0}
-    onPointerDown={start} onPointerMove={move}
-    onPointerUp={event => finish(event.pointerId, event.clientY)}
-    onPointerCancel={event => finish(event.pointerId)}
-    onLostPointerCapture={event => finish(event.pointerId)}
+    data-grid-click-away-exempt
+    {...pointerHandlers}
     onKeyDown={event => {
       if (!['ArrowUp', 'ArrowDown', 'Home'].includes(event.key)) return
-      const range = measure()
-      if (!range) return
+      const bounds = measure(), card = layout.card.current
+      if (!bounds || !card) return
       event.preventDefault()
       event.stopPropagation()
-      finish()
-      const { slot, height, min, max } = range
+      cancel()
+      stopMotion()
       if (event.key === 'Home') {
-        slot.style.removeProperty('--desktop-hint-size')
+        commitHeight(desktopHintHeight(bounds), bounds, undefined)
       } else {
         const step = event.key === 'ArrowUp' ? RESIZE_STEP : -RESIZE_STEP
-        slot.style.setProperty('--desktop-hint-size', `${Math.min(max, Math.max(min, height + step))}px`)
+        const current = card.offsetHeight
+        const height = clampDesktopHintHeight(current + step, bounds)
+        if (height !== current) commitHeight(height, bounds, height)
       }
     }} />
+  return <div ref={forwardedRef} className="standard-hint-slot" id="standard-puzzle-hint" data-fitted data-open={open}>
+    <div className="standard-hint-content">
+      <HintCardResizeContext.Provider value={handle}>
+        <MotionSurface speed="tabs">{children}</MotionSurface>
+      </HintCardResizeContext.Provider>
+    </div>
+  </div>
+}
+
+function heightAtPointer(drag: HintDrag, y: number) {
+  return clampDesktopHintHeight(drag.height + (drag.startY - y) / drag.scale, drag.bounds)
 }
 
 function PlayInsights<Id extends string>({ tabs, active, content, onSelect, onClose, tabListRef, className, ...props }:

@@ -91,7 +91,6 @@ export function usePlayPuzzleTasks({ game, readWorkingGame, setBusy }: Options) 
     finishPuzzleTask,
     cancelHintWork,
     cancelPendingPuzzleWork,
-    invalidateTechniqueHints,
     hasActiveTask,
     nextTechniqueHintRequest,
     isTechniqueHintRequestCurrent,

@@ -1,4 +1,5 @@
 import type { DigitHighlightMatch } from './highlighting.ts'
+import { isHintStage, type HintStage } from './hints.ts'
 import { readLegacyDesktopToolPanels } from './play-preferences.ts'
 
 export const PUZZLE_TOOL_ORDER = ['colors', 'chains', 'bookmarks'] as const
@@ -49,6 +50,16 @@ export function closePlayToolPanel(current: ToolPanels, tool: PuzzleTool): ToolP
 export type DigitHighlight = { mask: number; match: DigitHighlightMatch }
 export const defaultDigitHighlight: DigitHighlight = { mask: 0, match: 'all' }
 type SolutionView = { identity: string; step: number; hintOpen: boolean; hidden?: true }
+export type HintSource = 'suggested' | 'all' | { technique: string }
+export type SavedHintView = {
+  position: string
+  source: HintSource
+  index: number
+  stage: HintStage
+  choice?: string
+  visuals?: 'player'
+  reviewingRemoval?: true
+}
 
 type PuzzleTabs = {
   toolPanels: ToolPanels
@@ -56,6 +67,9 @@ type PuzzleTabs = {
   digitHighlight: DigitHighlight
   showStrongLinks: boolean
   solutionView: SolutionView | null
+  hintOpen: boolean
+  hintView?: SavedHintView
+  desktopHintSize?: number
 }
 export type PlaySession = PuzzleTabs & { puzzleId: string | null; launchPaused: boolean }
 export type PlaySessionField = keyof Omit<PlaySession, 'puzzleId'>
@@ -64,7 +78,7 @@ type SavedPuzzleTabs = Partial<PuzzleTabs> & { mobileInput?: Partial<ToolPanels>
 type ToolLayout = Pick<ToolPanels, 'open' | 'active'>
 const defaultTabs: PuzzleTabs = {
   toolPanels: defaultToolPanels, drawingIntent: null, digitHighlight: defaultDigitHighlight,
-  showStrongLinks: false, solutionView: null,
+  showStrongLinks: false, solutionView: null, hintOpen: false,
 }
 const initial: PlaySession = { ...defaultTabs, puzzleId: null, launchPaused: false }
 const key = 'sudoku-app:v1:play-session'
@@ -80,12 +94,29 @@ function readToolLayout(input: unknown, fromDesktop = false): ToolLayout {
   return { open, active: open.find(tool => tool === active) ?? (fromDesktop ? open[0] : undefined) ?? 'digits' }
 }
 
+function readHintView(view: SavedHintView | undefined): SavedHintView | undefined {
+  if (!view || typeof view.position !== 'string' || !Number.isSafeInteger(view.index) || view.index < 0 || !isHintStage(view.stage)) return
+  const source = view.source
+  if (source !== 'suggested' && source !== 'all' &&
+    (!source || typeof source !== 'object' || typeof source.technique !== 'string' || !source.technique)) return
+  return {
+    position: view.position,
+    source: typeof source === 'object' ? { technique: source.technique } : source,
+    index: view.index,
+    stage: view.stage,
+    ...(typeof view.choice === 'string' ? { choice: view.choice } : {}),
+    ...(view.visuals === 'player' ? { visuals: 'player' } : {}),
+    ...(view.reviewingRemoval === true ? { reviewingRemoval: true } : {}),
+  }
+}
+
 function readTabs(value: SavedPuzzleTabs, legacyDesktop: ToolLayout): PuzzleTabs {
   const input = value.toolPanels ?? value.mobileInput
   const height = input?.height
   const layout = readToolLayout(input)
   const highlight = value.digitHighlight
   const solution = value.solutionView
+  const hintView = value.hintOpen === true ? readHintView(value.hintView) : undefined
   return {
     toolPanels: {
       ...(value.toolPanels !== undefined || layout.open.length || height ? layout : legacyDesktop),
@@ -96,6 +127,10 @@ function readTabs(value: SavedPuzzleTabs, legacyDesktop: ToolLayout): PuzzleTabs
       ? { mask: highlight.mask, match: highlight.match === 'any' ? 'any' : 'all' }
       : defaultDigitHighlight,
     showStrongLinks: value?.showStrongLinks === true,
+    hintOpen: value?.hintOpen === true,
+    ...(hintView ? { hintView } : {}),
+    ...(typeof value?.desktopHintSize === 'number' && Number.isFinite(value.desktopHintSize) && value.desktopHintSize >= 96
+      ? { desktopHintSize: Math.min(4000, value.desktopHintSize) } : {}),
     solutionView: solution && typeof solution.identity === 'string' && Number.isSafeInteger(solution.step) && solution.step >= 0
       ? { identity: solution.identity, step: solution.step, hintOpen: solution.hintOpen === true,
         ...(solution.hidden === true ? { hidden: true } : {}) }

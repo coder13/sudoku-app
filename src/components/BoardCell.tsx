@@ -276,7 +276,8 @@ export const BoardCell = memo(function BoardCell({ geometry, content, appearance
         annotation, annotationsOnTop, placeInGrid: group === 0 })
       const className = ['board-candidate', colorClass].filter(Boolean).join(' ')
       const normal = <span key={digit} className={className} style={style}
-        data-mark={annotation && (annotation.mark ?? 'ring')} data-strike={annotation?.strike || undefined}>{digit}</span>
+        data-mark={annotation && (annotation.mark ?? 'ring')} data-strike={annotation?.strike || undefined}
+        data-chain-hover={annotation?.emphasized || undefined} data-reference-highlight={annotation?.referenceHighlight || undefined}>{digit}</span>
       return [digit, { normal, highlighted: cloneElement(normal, { className: `${className} candidate-match` }) }] as const
   }))), [candidateAction, visibleGridCandidates, visibleCenterCandidates, candidateAnnotations, candidateColors, importedCandidateColors, boxColumns, annotationsOnTop])
 
@@ -307,10 +308,11 @@ export const BoardCell = memo(function BoardCell({ geometry, content, appearance
         highlighted && 'highlighted', linkTarget && 'can link to the selected candidate'].filter(Boolean).join(', ')
       const classes = `board-candidate candidate-button ${onPaintCandidate ? 'paint-candidate' : canSelectLinkCandidate ? 'chain-candidate' : ''}`
       return <button type="button" key={digit} className={classes} style={style}
-        aria-label={candidateLabel} data-candidate-button="" data-paint-candidate={onPaintCandidate ? '' : undefined}
+        aria-label={candidateLabel} data-candidate-button="" data-candidate-digit={digit} data-paint-candidate={onPaintCandidate ? '' : undefined}
         data-link-target={linkTarget || undefined}
         aria-pressed={onCandidate ? pending : undefined} data-mark={annotation && (annotation.mark ?? 'ring')}
-        data-strike={annotation?.strike || undefined}
+        data-strike={annotation?.strike || undefined} data-chain-hover={annotation?.emphasized || undefined}
+        data-reference-highlight={annotation?.referenceHighlight || undefined}
         tabIndex={tabCandidateDigit === digit && tabCandidateSlotted === slotted ? 0 : -1}
         onPointerEnter={onCandidateHover && ((event) => {
           if (event.pointerType !== 'touch') onCandidateHover(candidate)
@@ -324,6 +326,7 @@ export const BoardCell = memo(function BoardCell({ geometry, content, appearance
     }
     return <span key={digit} className={['board-candidate', colorClass, highlightClass].filter(Boolean).join(' ')}
       style={style} data-mark={annotation && (annotation.mark ?? 'ring')} data-strike={annotation?.strike || undefined}
+      data-chain-hover={annotation?.emphasized || undefined} data-reference-highlight={annotation?.referenceHighlight || undefined}
       data-candidate-preview={previewEdit}>{digit}</span>
   }, [readOnlyCandidates, candidateAnnotations, candidateColors, importedCandidateColors, previewEditMask, previewSlotted, previewAction, boxColumns, candidateHighlightMask,
     candidateAction, index, row, col, selectedCandidateMask, linkTargetMask, onPaintCandidate, onCandidate, annotationsOnTop,
@@ -347,6 +350,7 @@ export const BoardCell = memo(function BoardCell({ geometry, content, appearance
 
   return <Cell role="gridcell" data-cell={index} data-fogged={fogged || undefined} data-clone={geometry.cloneLabel} className={classes} style={renderedCellStyle} aria-label={label}
     data-region-color={geometry.regionColor} data-house-fill={geometry.houseFill || undefined}
+    data-reference-highlight={cellAnnotation?.referenceHighlight || undefined}
     data-whispers-links={geometry.whispersLinks} data-pointer-focused={pointerFocused || undefined}
     aria-description={preview ? `${previewAction === 'add' ? 'Add' : 'Remove'} ${previewDigits.length === 1 ? 'candidate' : 'candidates'} ${previewDigits.join(', ')}` : undefined}
     data-box-edge={geometry.boxEdge || undefined} data-region-right={geometry.regionRight || undefined}

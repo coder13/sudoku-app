@@ -15,6 +15,7 @@ type Options = {
   showEliminations: boolean
   grouping: boolean
   groupSelection: readonly number[] | null
+  hoveredNotation: { sketchId: number; pathIndex: number; kind: 'node' | 'edge'; index: number } | null
 }
 
 type ChainColorAssignment = { pair: ChainColorPair; side: 0 | 1 }
@@ -23,7 +24,7 @@ type Coloring = Map<ChainNode, ChainColorAssignment>
 /** Project analyzed chain sketches into the annotations and assigned colors rendered on the board. */
 export function buildChainSketchAnnotations({
   sketches, activeId, activeHidden, activeAnalysis, canAnalyze, pending, colorPairs,
-  previewedProof, showEliminations, grouping, groupSelection,
+  previewedProof, showEliminations, grouping, groupSelection, hoveredNotation,
 }: Options) {
   const candidateMarks = new Map<number, Map<number, CandidateAnnotation>>()
   const assigned = new Map<number, ChainColorAssignment>()
@@ -45,7 +46,7 @@ export function buildChainSketchAnnotations({
     }
   }
 
-  const visible = sketches.filter(sketch => !sketch.hidden)
+  const visible = sketches.filter(sketch => !sketch.hidden || sketch.id === hoveredNotation?.sketchId)
   const { usedPairs, nextPair } = nextChainColorPair(colorPairs, visible)
   const neutral = 'var(--chain-neutral)'
   const colorings = new Map<number, Coloring>(visible.map(sketch => {
@@ -67,31 +68,40 @@ export function buildChainSketchAnnotations({
   const ordered = [...visible.filter(({ id }) => id !== activeId), ...visible.filter(({ id }) => id === activeId)]
   for (const sketch of ordered) {
     const coloring = colorings.get(sketch.id)!
-    for (const { nodes, strengths } of sketch.paths) {
+    for (const [pathIndex, { nodes, strengths }] of sketch.paths.entries()) {
       strengths.forEach((strength, i) => {
         const color = coloring.get(nodes[i])
         const from = nodes[i]
         const to = nodes[i + 1]
         const inProof = proof?.strengths ? proofEdges.some(edge => sameEdge(edge, [from, to]))
           : strength === 'strong' && proofNodes.has(from) && proofNodes.has(to)
-        const opacity = proof && sketch.id === activeId && !inProof ? 0.5 : undefined
-        links.push({ from: chainPoint(from), to: chainPoint(to), dashed: strength === 'weak', opacity,
+        const notationFocus = hoveredNotation?.sketchId === sketch.id ? hoveredNotation : null
+        const focused = notationFocus?.kind === 'edge' && notationFocus.pathIndex === pathIndex && notationFocus.index === i
+        const opacity = Math.min(proof && sketch.id === activeId && !inProof ? 0.5 : 1,
+          notationFocus && !focused ? 0.2 : 1)
+        links.push({ from: chainPoint(from), to: chainPoint(to), dashed: strength === 'weak', opacity, emphasized: focused,
           color: strength === 'strong' && color ? chainColor(color.pair[0]) : neutral })
       })
     }
 
+    const notationFocus = hoveredNotation?.sketchId === sketch.id ? hoveredNotation : null
+    const focusedNode = notationFocus?.kind === 'node'
+      ? sketch.paths[notationFocus.pathIndex]?.nodes[notationFocus.index] : undefined
     for (const node of sketch.components.flat()) {
       const color = coloring.get(node)
-      if (typeof node === 'string') groupMarks.push({ point: chainPoint(node),
+      const focused = node === focusedNode
+      const opacity = notationFocus && !focused ? 0.2 : undefined
+      if (typeof node === 'string') groupMarks.push({ point: chainPoint(node), emphasized: focused,
         color: color ? chainColor(color.pair[color.side]) : neutral,
-        opacity: proof && sketch.id === activeId && !proofNodes.has(node) ? 0.5 : undefined, label: 'Candidate group' })
+        opacity: opacity ?? (proof && sketch.id === activeId && !proofNodes.has(node) ? 0.5 : undefined), label: 'Candidate group' })
       if (color) {
         for (const candidate of chainNodeCandidates(node)) assigned.set(candidateId(candidate), color)
         mark(node, { color: chainColor(color.pair[color.side]),
-          mark: 'emphasized', label: `${typeof node === 'string' ? 'Group' : 'Chain'} color ${color.side === 0 ? 'A' : 'B'}` }, sketch.id === activeId)
+          opacity, emphasized: focused, mark: 'emphasized', label: focused ? 'Highlighted chain node' : `${typeof node === 'string' ? 'Group' : 'Chain'} color ${color.side === 0 ? 'A' : 'B'}` }, sketch.id === activeId)
       } else {
         for (const candidate of chainNodeCandidates(node)) assigned.delete(candidateId(candidate))
-        mark(node, { color: neutral, mark: 'emphasized', label: typeof node === 'string' ? 'Linked candidate group' : 'Linked candidate' }, sketch.id === activeId)
+        mark(node, { color: neutral, opacity, emphasized: focused, mark: 'emphasized',
+          label: focused ? 'Highlighted chain node' : typeof node === 'string' ? 'Linked candidate group' : 'Linked candidate' }, sketch.id === activeId)
       }
     }
   }

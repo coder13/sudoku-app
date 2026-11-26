@@ -28,6 +28,83 @@ const contradictionFill = `color-mix(in srgb, ${removalColor} 24%, var(--board-b
 type Evidence = Deduction['evidence']
 const list = new Intl.ListFormat('en')
 const either = new Intl.ListFormat('en', { type: 'disjunction' })
+const setColors = [
+  { name: 'blue', fill: 'var(--lesson-pattern-fill)' },
+  { name: 'purple', fill: 'var(--lesson-als-second-set-fill)' },
+  { name: 'teal', fill: 'var(--lesson-set-teal)' },
+  { name: 'pink', fill: 'var(--lesson-set-pink)' },
+  { name: 'gold', fill: 'var(--lesson-set-gold)' },
+  { name: 'gray', fill: 'var(--lesson-set-gray)' },
+  { name: 'green', fill: 'var(--lesson-set-green)' },
+] as const
+
+type DiagramSet = { cells: readonly number[]; label?: string }
+
+function proofCellSets(evidence: Deduction['evidence']): DiagramSet[] {
+  if ('als-xz' in evidence) return evidence['als-xz'].sets
+  if ('als-chain' in evidence) return evidence['als-chain'].sets
+  if ('sue-de-coq' in evidence) {
+    const { line, block, intersection } = evidence['sue-de-coq']
+    return [
+      { cells: line.cells, label: 'Line set' },
+      { cells: block.cells, label: 'Box set' },
+      { cells: intersection, label: 'Intersection' },
+    ]
+  }
+  if ('death-blossom' in evidence) {
+    const { stem, petals } = evidence['death-blossom']
+    return [
+      ...petals.map(({ digit, set }) => ({ cells: set.cells, label: `Petal for ${digit}` })),
+      { cells: [stem], label: 'Stem' },
+    ]
+  }
+  if ('firework-als-wing' in evidence) {
+    const { pivots, wings, bivalue } = evidence['firework-als-wing']
+    return [
+      ...wings.map((groups, index) => ({ cells: [pivots[index], ...groups.flat()], label: `Firework ${index + 1}` })),
+      { cells: [bivalue], label: 'Two-candidate cell' },
+    ]
+  }
+  if ('multi-sector-locked-sets' in evidence) {
+    const { core, attachments } = evidence['multi-sector-locked-sets']
+    return [{ cells: core, label: 'Core' }, { cells: attachments, label: 'Attachments' }].filter(({ cells }) => cells.length)
+  }
+  if ('inference' in evidence) {
+    const sets = new Map<string, DiagramSet>()
+    for (const { source } of evidence.inference.links) {
+      const set = 'almost-locked-set' in source ? source['almost-locked-set']
+        : 'almost-locked-set-cell' in source ? source['almost-locked-set-cell'].set : undefined
+      if (set) sets.set(set.cells.join(','), set)
+    }
+    return [...sets.values()]
+  }
+  return []
+}
+
+function styledSets(sets: readonly DiagramSet[]) {
+  return sets.map(({ cells, label }, index) => ({
+    cells, label: label ?? `Set ${index + 1}`, ...setColors[index % setColors.length],
+  }))
+}
+
+function setLocations(sets: ReturnType<typeof styledSets>, nameCell: (cell: number) => string) {
+  return sets.map(({ cells, label, name }) =>
+    `${label} (${name}) is at ${list.format(cells.map(nameCell))}.`).join(' ')
+}
+
+function setAnnotations(sets: ReturnType<typeof styledSets>) {
+  const cells = new Map<number, CellAnnotation & { fill: string }>()
+  for (const { cells: members, label, fill } of sets) {
+    for (const cell of new Set(members)) {
+      const previous = cells.get(cell)
+      cells.set(cell, previous
+        ? { ...previous, label: `${previous.label} and ${label}`, fills: [...(previous.fills ?? [previous.fill]), fill] }
+        : { label, fill })
+    }
+  }
+  return cells
+}
+
 export const cellName = (cell: number) => `R${Math.floor(cell / 9) + 1}C${cell % 9 + 1}`
 export const lessonValues = ({ givens, entries }: Pick<PositionSnapshot, 'givens' | 'entries'>) =>
   [...givens].map((digit, cell) => digit === '0' ? entries[cell] : digit).join('')
@@ -147,6 +224,11 @@ export function hintLocation(hint: HintChoice, style: CellReferenceStyle, diffic
   }
 
   const { evidence, pattern } = hint
+  const sets = styledSets(proofCellSets(evidence))
+  if (sets.length && !('inference' in evidence)) return {
+    text: setLocations(sets, cell => cellReference(cell, style, difficulty, grid.size)),
+    annotations: { cells: setAnnotations(sets) },
+  }
   if (!pattern) return
   const coloring = 'coloring' in evidence ? evidence.coloring : undefined
   const colored = coloring?.colors.flat() ?? ('multi-coloring' in evidence ? evidence['multi-coloring'].groups.flat(2) : undefined)
@@ -664,7 +746,8 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
     return { houses, cells: corners, candidates: marks(corners, digits), links, description, reason }
   }
   if ('als-xz' in evidence || 'als-chain' in evidence) {
-    const { sets, links } = 'als-xz' in evidence ? evidence['als-xz'] : evidence['als-chain']
+    const alsXz = 'als-xz' in evidence
+    const { sets, links } = alsXz ? evidence['als-xz'] : evidence['als-chain']
     const setLocation = (index: number) => list.format(sets[index].cells.map(nameCell))
     const linkConflict = (index: number, digit: number) => {
       const locations = marks([...sets[index].cells, ...sets[index + 1].cells], [digit]).map(({ cell }) => cell)
@@ -674,14 +757,21 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
     }
     const last = sets.length - 1
     const cells = sets.flatMap(({ cells }) => cells)
+    const ends = [...sets[0].cells, ...sets[last].cells]
+    const singlyLinked = alsXz && links.length === 1
     const pattern = {
-      cells, candidates: sets.flatMap(({ cells, digits }) => marks(cells, digits)),
-      mainLabel: 'Set candidate',
+      cells,
+      candidates: alsXz && !singlyLinked ? sets.flatMap(({ cells, digits }) => marks(cells, digits)) : marks(ends, [first.digit]),
+      mainLabel: singlyLinked ? 'Unrestricted common candidate' : alsXz ? 'Set candidate' : 'Common candidate at the ends',
+      accent: {
+        candidates: links.flatMap((digit, index) =>
+          marks(alsXz ? cells : [...sets[index].cells, ...sets[index + 1].cells], [digit])),
+        label: 'Restricted common candidate',
+      },
       description: 'Each set shares one house, so its cells need different digits. Each set has one extra candidate digit and must use all the others.',
     }
     if (sets.length === 2) {
-      const setup = `Set 1 is at ${setLocation(0)}. Set 2 is at ${setLocation(1)}.`
-      const reasonSteps = [setup, ...links.map(digit => `${linkConflict(0, digit)} Placing ${digit} in one set rules it out in the other.`)]
+      const reasonSteps = links.map(digit => `${linkConflict(0, digit)} Placing ${digit} in one set rules it out in the other.`)
       if (links.length === 2) {
         reasonSteps.push(`One set must skip ${links[0]} and the other must skip ${links[1]}. Each set must use all its remaining digits.`)
         const targets = actions.flatMap(action => 'eliminate' in action ? [action.eliminate] : [])
@@ -702,7 +792,6 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
       }
       return { ...pattern, ...explainSteps(reasonSteps) }
     }
-    const ends = [...sets[0].cells, ...sets[last].cells]
     const reasonSteps = [
       `Start with set 1 at ${setLocation(0)}. If it skips ${first.digit}, it must use ${links[0]}.`,
       ...links.map((digit, index) => `${linkConflict(index, digit)} Placing ${digit} in set ${index + 1} rules it out in set ${index + 2} (${setLocation(index + 1)}). This set must use ${links[index + 1] ?? first.digit}.`),
@@ -716,8 +805,12 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
     const stemDigits = petals.map(({ digit }) => digit)
     return {
       cells: [stem, ...petals.flatMap(({ set }) => set.cells)],
-      candidates: petals.flatMap(({ set }) => marks(set.cells, set.digits)),
-      accent: { candidates: marks([stem], stemDigits), label: 'Starting cell candidate' },
+      candidates: petals.flatMap(({ set }) => marks(set.cells, [first.digit])),
+      mainLabel: 'Common candidate in the petals',
+      accent: {
+        candidates: [...marks([stem], stemDigits), ...petals.flatMap(({ digit, set }) => marks(set.cells, [digit]))],
+        label: 'Linking candidate',
+      },
       description: `The stem is ${nameCell(stem)}. Each of its candidates rules out one digit throughout its own petal. That petal then needs all its other digits.`,
       ...explainSteps([
         ...petals.map(({ digit, set }) => `If ${nameCell(stem)} is ${digit}, that rules out ${digit} in the set at ${list.format(set.cells.map(nameCell))}. That set must use ${first.digit}.`),
@@ -911,6 +1004,8 @@ export function lessonDiagram({ deduction, candidates, pattern: lessonPattern }:
     ? proof && { ...proof, description: variant.description, reason: variant.reason, reasonSteps: variant.reasonSteps, trace: variant.trace }
     : describePattern(deduction, candidates, displayCellName(displayOptions)) ?? (proof && { ...proof, description: '', reason: '', ...explainProof(deduction, displayCellName(displayOptions)) })
   if (!pattern) throw new Error(`Missing diagram for ${deduction.technique}`)
+  const sets = styledSets(proofCellSets(deduction.evidence))
+  const setCells = setAnnotations(sets)
   const cells = new Map<number, CellAnnotation>()
   const candidateMarks = new Map<number, Map<number, CandidateAnnotation>>()
   const roles = wingCellRoles(deduction.evidence, cell => candidateCount(candidates[cell] ?? 0))
@@ -926,7 +1021,10 @@ export function lessonDiagram({ deduction, candidates, pattern: lessonPattern }:
   }
   tint(pattern.otherHouses, 'var(--lesson-secondary-fill)')
   tint(pattern.houses, 'var(--lesson-area-fill)')
-  for (const cell of pattern.cells ?? []) cells.set(cell, { fill: 'var(--lesson-pattern-fill)', label: 'pattern cell' })
+  if (!sets.length) {
+    for (const cell of pattern.cells ?? []) cells.set(cell, { fill: 'var(--lesson-pattern-fill)', label: 'pattern cell' })
+  }
+  for (const [cell, annotation] of setCells) cells.set(cell, annotation)
   for (const cell of pattern.contradictionCells ?? []) cells.set(cell, { fill: contradictionFill, label: 'contradiction cell' })
   for (const cell of roles.wings) cells.set(cell, { fill: 'var(--lesson-wing-fill)', label: 'wing cell' })
   for (const cell of roles.pivots) cells.set(cell, { fill: 'var(--lesson-pivot-fill)', label: 'pivot cell' })
@@ -937,7 +1035,7 @@ export function lessonDiagram({ deduction, candidates, pattern: lessonPattern }:
   for (const action of showActions ? deduction.actions : []) {
     if ('place' in action) {
       const { cell } = action.place
-      cells.set(cell, { ...cells.get(cell), fill: 'var(--lesson-result-fill)' })
+      cells.set(cell, { ...cells.get(cell), fill: 'var(--lesson-result-fill)', fills: undefined })
       mark(action.place, resultColor, 'to place')
       const bit = 1 << (action.place.digit - 1)
       for (const peer of placementPeers(cell, grid)) {
@@ -949,8 +1047,11 @@ export function lessonDiagram({ deduction, candidates, pattern: lessonPattern }:
   }
   const results = deductionResults(deduction.actions, displayOptions)
   const annotations: BoardAnnotations = { cells, candidates: candidateMarks, links: pattern.links }
-  const { description, reason, reasonSteps, mainLabel = 'Pattern candidate', accent, trace } = pattern
-  const focus = [...candidateMarks.keys(), ...(pattern.contradictionCells ?? []),
+  const { description, mainLabel = 'Pattern candidate', accent, trace } = pattern
+  const { reason, reasonSteps } = sets.length
+    ? explainSteps([setLocations(sets, displayCellName(displayOptions)), ...(pattern.reasonSteps ?? [pattern.reason])])
+    : pattern
+  const focus = [...candidateMarks.keys(), ...setCells.keys(), ...(pattern.contradictionCells ?? []),
     ...('house' in deduction.evidence ? houseCells(deduction.evidence.house, grid) : [])]
   return { annotations, region: enclosingRegion(focus.length ? focus : [...cells.keys()], grid.size), description, reason, reasonSteps, mainLabel, accentLabel: accent?.label, results, trace }
 }
