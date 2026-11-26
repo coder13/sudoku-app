@@ -4,8 +4,10 @@ import { test } from 'node:test'
 import { runEngine } from '../src/sudoku/engine.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
-import { parsePuzzleExport, puzzleExportText } from '../src/sudoku/puzzle-sharing.ts'
+import { parsePuzzleExport, puzzleDefinitionForSharing, puzzleExportText } from '../src/sudoku/puzzle-sharing.ts'
 import { readGame } from '../src/sudoku/storage.ts'
+import { syncRequest } from '../src/sudoku/sync-engine.ts'
+import { syncDatabase } from './helpers/sync-database.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 
@@ -39,4 +41,32 @@ test('#196 imports the reviewed Terrain source and checks its transformed maxima
   const shared = parsePuzzleExport(puzzleExportText(game))
   assert.deepEqual(shared.variant, { id: game.variant?.id, puzzle: game.variant?.puzzle })
   assert.deepEqual(shared.givenCellColors, game.givenCellColors)
+
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    const api = syncRequest(undefined, fetcher)
+    const definition = puzzleDefinitionForSharing(game)
+    const { id } = await api<{ id: string }>('shares', 'POST', definition)
+    assert.deepEqual(await api(`shares/${id}`), JSON.parse(JSON.stringify(definition)))
+
+    type RulePayload = {
+      type: string
+      cells?: number[]
+      direction?: string
+      maximum?: number
+      transforms?: { multiplier: number; offset: number }[]
+    }
+    type VariantPayload = { puzzle: { rules: RulePayload[] } }
+    const changeTerrain = (edit: (rule: RulePayload) => void) => {
+      const invalid = JSON.parse(JSON.stringify(definition)) as { variant: VariantPayload }
+      edit(invalid.variant.puzzle.rules.find(rule => rule.type === 'terrain-sandwich')!)
+      return invalid
+    }
+    const invalidTransform = changeTerrain(rule => { rule.transforms![0].multiplier = 3 })
+    const invalidMaximum = changeTerrain(rule => { rule.maximum = 127 })
+    const invalidRay = changeTerrain(rule => { rule.cells!.reverse() })
+    for (const invalid of [invalidTransform, invalidMaximum, invalidRay]) {
+      await assert.rejects(api('shares', 'POST', invalid), { status: 400 })
+    }
+  } finally { sqlite.close() }
 })

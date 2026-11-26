@@ -725,6 +725,18 @@ const authoredArtwork = list(mark => fields(mark, { type: oneOf('outline'), poin
 const pairs = list(list(cell, 2, 2), 0)
 const house = list(cell, 9, 9)
 const direction = oneOf('north', 'east', 'south', 'west')
+const terrainTransform = value => fields(value, { multiplier: oneOf(1, 2), offset: oneOf(-3, 0, 3) }) &&
+  (value.multiplier === 1 || value.offset === 0)
+const outsideNineRay = (cells, direction) => {
+  if (!house(cells) || new Set(cells).size !== 9) return false
+  const [dr, dc] = direction === 'north' ? [-1, 0] : direction === 'east' ? [0, 1]
+    : direction === 'south' ? [1, 0] : [0, -1]
+  const first = cells[0], row = Math.floor(first / 9), column = first % 9
+  const outside = (r, c) => r < 0 || r >= 9 || c < 0 || c >= 9
+  return outside(row - dr, column - dc) && cells.every((cell, offset) =>
+    cell === (row + dr * offset) * 9 + column + dc * offset) &&
+    outside(row + dr * cells.length, column + dc * cells.length)
+}
 const marks = value => fields(value, {}, { pairs, negative: boolean })
 const regions = value => fields(value, { type: oneOf('boxes') }) ||
   (fields(value, { type: oneOf('jigsaw'), regions: list(house, 9, 9) }) && new Set(value.regions.flat()).size === 81) ||
@@ -787,6 +799,7 @@ const ruleFields = {
   renban: [{ cells: list(cell, 1, 9) }, { segments }],
   whispers: [{ cells: list(cell, 2, 82), minDifference: integer(1, 8) }],
   'x-sum': [{ direction, cells: house, sum: integer(1, 45) }],
+  'terrain-sandwich': [{ direction, cells: house, maximum: integer(-14, 126), transforms: list(terrainTransform, 9, 9) }],
   xv: [{}, { five: marks, ten: marks }],
   'anti-king': [{}],
   'anti-knight': [{}],
@@ -815,6 +828,7 @@ const rule = value => {
   if (typeof value?.type !== 'string' || !Object.hasOwn(ruleFields, value.type)) return false
   const [required, optional] = ruleFields[value.type]
   if (!fields(value, { type: oneOf(value.type), ...required }, optional)) return false
+  if (value.type === 'terrain-sandwich') return outsideNineRay(value.cells, value.direction)
   if (value.type === 'entropy-window-group') {
     const [topLeft, topRight, bottomLeft, bottomRight] = value.cells
     return topLeft < 72 && topLeft % 9 < 8 && topRight === topLeft + 1 &&
