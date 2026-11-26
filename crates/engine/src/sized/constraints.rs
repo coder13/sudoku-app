@@ -707,11 +707,13 @@ impl SizedConstraintGrid {
                     sum,
                 } => {
                     x_sums.resize_with(index + 1, || None);
-                    x_sums[index] = Some(XSum::compile(size, *direction, cells, *sum)?);
+                    x_sums[index] =
+                        Some(XSum::compile(size, *direction, cells, *sum, value_offset)?);
                 }
                 SizedConstraint::XSumDot { ends, relation } => {
                     x_sum_dots.resize_with(index + 1, || None);
-                    x_sum_dots[index] = Some(XSumDot::compile(&layout, *ends, *relation)?);
+                    x_sum_dots[index] =
+                        Some(XSumDot::compile(&layout, *ends, *relation, value_offset)?);
                 }
                 SizedConstraint::Renban { cells } => {
                     if !(1..=size).contains(&cells.len())

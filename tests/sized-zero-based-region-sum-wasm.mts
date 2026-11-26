@@ -232,3 +232,25 @@ test('zero-based Sandwich uses displayed totals and the zero/highest endpoint sy
     ...position, rules: [{ type: 'sandwich', direction: 'south', cells: [0, 6, 12, 18, 24, 30], sum: 11 }],
   } }))
 })
+
+test('zero-based X-Sums count displayed values and expose displayed totals to linked clues', async () => {
+  const grid = { size: 6, boxRows: 2, boxColumns: 3 }
+  const appGrid = { ...grid, notation: 'zero-based' as const }
+  const solution = Array.from('123456456123234561561234345612612345', Number)
+  const rules: SizedConstraintPosition['rules'] = [
+    { type: 'x-sum' as const, direction: 'east' as const, cells: [0, 1, 2, 3, 4, 5], sum: 0 },
+    { type: 'x-sum' as const, direction: 'east' as const, cells: [12, 13, 14, 15, 16, 17], sum: 1 },
+    { type: 'x-sum' as const, direction: 'east' as const, cells: [24, 25, 26, 27, 28, 29], sum: 5 },
+    { type: 'x-sum' as const, direction: 'east' as const, cells: [30, 31, 32, 33, 34, 35], sum: 11 },
+    { type: 'x-sum-dot' as const, ends: [{ direction: 'east' as const, index: 0 }, { direction: 'west' as const, index: 4 }], relation: 'consecutive' as const },
+  ]
+  const position: SizedConstraintPosition = { version: 2, grid, zeroBased: true, digits: solution, rules }
+  assert.equal(isSizedRuleList(rules, appGrid), true)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: { ...position, rules: rules.slice(0, 4) } }), 'unique')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position, rules: rules.map((rule, index) => index === 1
+      ? { type: 'x-sum', direction: 'east', cells: [12, 13, 14, 15, 16, 17], sum: 2 }
+      : rule),
+  } }), 'conflict')
+})

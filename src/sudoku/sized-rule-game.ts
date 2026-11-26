@@ -255,11 +255,13 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
     }
     if (rule.type === 'sandwich') return validSizedSandwich(rule as Record<string, unknown>, size, gridValueOffset(grid))
     if (rule.type === 'x-sum') {
+      const valueOffset = gridValueOffset(grid)
       if (Object.keys(rule).some(key => !['type', 'cells', 'direction', 'sum'].includes(key)) ||
         Object.keys(rule).length !== 4 || !['north', 'east', 'south', 'west'].includes(String(rule.direction)) ||
         !Array.isArray(rule.cells) || rule.cells.length !== size ||
         rule.cells.some((cell: unknown) => typeof cell !== 'number' || !Number.isInteger(cell) || cell < 0 || cell >= size ** 2) ||
-        !Number.isInteger(rule.sum) || Number(rule.sum) < 1 || Number(rule.sum) > size * (size + 1) / 2) return false
+        !Number.isInteger(rule.sum) || Number(rule.sum) < 1 - valueOffset ||
+        Number(rule.sum) > size * (size + 1 - 2 * valueOffset) / 2) return false
       const cells = rule.cells as number[]
       const first = cells[0]
       const direction = rule.direction
