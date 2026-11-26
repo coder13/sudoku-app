@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { runEngine } from '../src/sudoku/engine.ts'
-import { enter, restartGame, valuesOf } from '../src/sudoku/game.ts'
+import { enter, restartGame, setAqreShade, valuesOf } from '../src/sudoku/game.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { findImportAttempt, prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
@@ -182,6 +182,11 @@ test('#543 and #546 solve and preserve the complete Aqre imports through save an
       const aqre = game.variant.puzzle.rules?.find(rule => rule.type === 'aqre')
       assert.ok(aqre?.type === 'aqre' && aqre.kind === kind)
       assert.equal(aqre?.type === 'aqre' ? aqre.givenShades.length : -1, issue === 543 ? 16 : 0)
+      const shades = variantPosition(game.variant, game.position).shades
+      if (aqre?.type === 'aqre') for (const given of aqre.givenShades) {
+        assert.equal(shades?.[given.cell], given.shade === 'shaded' ? '2' : '1')
+        assert.equal(setAqreShade(game, given.cell, given.shade === 'shaded' ? 'unshaded' : 'shaded'), game)
+      }
       if (issue === 546) assert.equal(game.variant.puzzle.rules?.filter(rule => rule.type === 'renban').length, 6)
 
       const saved = readGame(game.id, JSON.stringify(game))
