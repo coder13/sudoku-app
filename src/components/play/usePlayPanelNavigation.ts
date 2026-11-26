@@ -25,7 +25,6 @@ type Options = {
     closePuzzleMenu: () => void
     closeActions: () => void
     changeHintVisuals: () => void
-    revealHintDetails: (revealed: boolean) => void
     hideSolutionPath: () => void
     openRightPanel: () => void
   }
@@ -36,7 +35,7 @@ export function usePlayPanelNavigation({ host, panels, controls, actions }: Opti
   const { mobile, disabled, previewing, advancedWorkspace, showRightPanel } = host
   const { toolPanels, openPuzzlePanels, openInsightTabs, activeDesktopTab, isAvailable, setOpenPanels } = panels
   const { puzzleMenuButtonRef } = controls
-  const { closePuzzleMenu, closeActions, changeHintVisuals, revealHintDetails, hideSolutionPath, openRightPanel } = actions
+  const { closePuzzleMenu, closeActions, changeHintVisuals, hideSolutionPath, openRightPanel } = actions
   const rulesButtonRef = useRef<HTMLButtonElement>(null)
   const rulesPanelRef = useRef<HTMLElement>(null)
   const focusRulesAfterDialog = useRef(false)
@@ -52,9 +51,8 @@ export function usePlayPanelNavigation({ host, panels, controls, actions }: Opti
       if (tab !== 'rules') changeHintVisuals()
       if (advancedWorkspace && !showRightPanel) openRightPanel()
     }
-    if (tab === 'solution' || tab === 'techniques') revealHintDetails(false)
     setOpenPanels(current => selectPlayToolPanel(current, tab, alsoOpen))
-  }, [openPuzzlePanels, isAvailable, changeHintVisuals, advancedWorkspace, showRightPanel, openRightPanel, revealHintDetails, setOpenPanels])
+  }, [openPuzzlePanels, isAvailable, changeHintVisuals, advancedWorkspace, showRightPanel, openRightPanel, setOpenPanels])
 
   const closeToolPanel = useCallback((tool: PuzzleTool, fromMenu = false) => {
     if (tool === 'solution') hideSolutionPath()

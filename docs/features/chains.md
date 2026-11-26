@@ -1,7 +1,9 @@
 # Edit a chain branch
 
-Press **X** to open **Chains** and start drawing. Press **X** again to stop drawing. You can also open **Chains** from **Puzzle options**.
+Press **X** to open **Chains** and start drawing. Press **X** again to stop drawing. You can also open **Chains** from **Puzzle options**. The chain icon beside **Chain display options** toggles drawing.
 Reloading the same browser tab restores the open Chains panel and its drawing mode.
+
+Select a candidate, then **Shift-click** or **press and hold** another candidate of the same digit to make them one endpoint. With the keyboard, focus that second candidate and press **Shift+Enter**. Both candidates must share a house. Repeat to add more candidates to the group.
 
 1. In **Draw links** mode, select **End path** to clear the current selection.
 2. Select a candidate with one link in the active chain.

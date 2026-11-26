@@ -347,6 +347,14 @@ test('ALS chains and both Nice Loops are selectable and expose replayable proofs
     const trace = await run({ type: 'logical-solve', values, entries, eliminations, techniqueOrder: [technique] })
     assert.ok(trace.steps.length > 0)
     assert.ok(trace.rating.score.points > 0)
+    if (technique === 'als-discontinuous-nice-loop') {
+      const { annotations } = lessonDiagram({ deduction, candidates })
+      assert.deepEqual(annotations.cells?.get(66)?.setMarkers, [
+        { color: 'var(--lesson-pattern-fill)', label: 'Set 1' },
+        { color: 'var(--lesson-als-second-set-fill)', label: 'Set 2' },
+      ])
+      assert.equal(annotations.cells?.has(64), false)
+    }
     if (technique === 'als-continuous-nice-loop') {
       assert.ok(deduction.actions.length)
       const diagram = lessonDiagram({ deduction, candidates })

@@ -963,9 +963,9 @@ export const ConflictingDigits: Story = {
     return <Board {...args} content={{ ...args.content, values }} appearance={{ ...args.appearance, errors: conflictsOf(values) }} />
   },
 }
-export const CroppedChain: Story = {
+const chainDiagramStory = (technique: 'xy-chain' | 'als-chain'): Story => ({
   render: (args) => {
-    const example = lessonExamples['xy-chain']
+    const example = lessonExamples[technique]
     const { annotations, region } = lessonDiagram(example)
     return (
       <LessonFrame>
@@ -981,6 +981,25 @@ export const CroppedChain: Story = {
         />
       </LessonFrame>
     )
+  },
+})
+
+export const CroppedChain = chainDiagramStory('xy-chain')
+export const AlsChainLinks = chainDiagramStory('als-chain')
+
+export const OverlappingAlmostLockedSets: Story = {
+  render: (args) => {
+    const example = lessonExamples['als-discontinuous-nice-loop']
+    const { annotations, region } = lessonDiagram(example)
+    const overlappingCell = [...(annotations.cells ?? [])]
+      .find(([, annotation]) => (annotation.setMarkers?.length ?? 0) > 1)?.[0]
+    const topRow = Array.from({ length: region.columns }, (_, column) => region.row * 9 + region.column + column)
+    const paintedCell = topRow.find(cell => example.candidates[cell] && !annotations.cells?.get(cell)?.setMarkers)
+    const cellColors = Object.fromEntries([overlappingCell, paintedCell].filter(cell => cell !== undefined).map(cell => [cell, [5]]))
+    return <LessonFrame><Board {...args}
+      content={{ ...args.content, givens: example.givens, values: lessonValues(example), candidates: example.candidates,
+        position: { ...starter.position, cellColors } }}
+      appearance={{ ...args.appearance, annotations, region }} /></LessonFrame>
   },
 }
 
