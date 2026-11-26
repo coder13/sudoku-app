@@ -52,6 +52,7 @@ export function useLessonChainModel({
     masks: chainMasks,
     sketch: {
       canDraw: chainsOpen && interactive,
+      canErase: chainsOpen && interactive,
       graphCurrent: Boolean(chainMasks),
       canAnalyze: Boolean(chainMasks),
       startHighlightDigit: onlyCandidate(highlightMask),
@@ -62,7 +63,7 @@ export function useLessonChainModel({
     strongLinks: { visible: strongLinksVisible, digitMask: highlightMask },
   })
   const { graph: chainGraph, sketch, selectedCandidates: selectedChainCandidates, strongLinkOverlay: strongLinks } = chainCapability
-  const usingChains = sketch.drawing || strongLinksVisible
+  const usingChains = sketch.drawing || sketch.erasing || strongLinksVisible
   const sketchAnnotations: BoardAnnotations | undefined = chainsOpen && sketch.annotations.links?.length ? sketch.annotations : undefined
 
   return { baseMasks, chainMasks, chainGraph, sketch, strongLinksVisible, strongLinks, usingChains, sketchAnnotations, selectedChainCandidates }

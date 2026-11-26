@@ -93,6 +93,7 @@ export type BoardCellAppearance = {
   linkTargetMask: number
   highlightsLinkTargetCell: boolean
   canSelectLinkCandidate: boolean
+  eraseChainNodes?: boolean
   highlightedLinkDigit: number | null
   selectedCandidateMask: number
 }
@@ -160,7 +161,7 @@ export const BoardCell = memo(function BoardCell({ geometry, content, appearance
     cellAnnotation, aqreShade, candidateAnnotations, annotationsOnTop, selected, selectionEdges, active, pointerFocused,
     error, related, matching, ruleHighlighted, cellHighlight, countHighlighted, candidateHighlightMask,
     highlightLabel, countLabel, linkTargetMask, highlightsLinkTargetCell, canSelectLinkCandidate,
-    highlightedLinkDigit, selectedCandidateMask,
+    eraseChainNodes, highlightedLinkDigit, selectedCandidateMask,
   } = appearance
   const {
     preview, tabCandidateDigit, tabCandidateSlotted, onCandidateFocus,
@@ -322,12 +323,12 @@ export const BoardCell = memo(function BoardCell({ geometry, content, appearance
       const pending = hasCandidate(selectedCandidateMask, digit)
       const linkTarget = hasCandidate(linkTargetMask, digit)
       const candidateLabel = [`${digit} in row ${row}, column ${col}`, ...candidateMarkDescriptions({ annotation, color, imported }),
-        highlighted && 'highlighted', linkTarget && 'can link to the selected candidate'].filter(Boolean).join(', ')
+        highlighted && 'highlighted', linkTarget && (eraseChainNodes ? 'can erase chain node' : 'can link to the selected candidate')].filter(Boolean).join(', ')
       const classes = `board-candidate candidate-button ${onPaintCandidate ? 'paint-candidate' : canSelectLinkCandidate ? 'chain-candidate' : ''}`
       return <button type="button" key={digit} className={classes} style={style}
         aria-label={candidateLabel} data-candidate-button="" data-candidate-digit={digit} data-paint-candidate={onPaintCandidate ? '' : undefined}
         data-link-target={linkTarget || undefined}
-        aria-pressed={onCandidate ? pending : undefined} data-mark={mark}
+        aria-pressed={onCandidate && !eraseChainNodes ? pending : undefined} aria-disabled={eraseChainNodes && !linkTarget || undefined} data-mark={mark}
         data-strike={annotation?.strike || undefined} data-chain-hover={annotation?.emphasized || undefined}
         data-reference-highlight={annotation?.referenceHighlight || undefined}
         tabIndex={tabCandidateDigit === digit && tabCandidateSlotted === slotted ? 0 : -1}
@@ -337,7 +338,7 @@ export const BoardCell = memo(function BoardCell({ geometry, content, appearance
         onPointerLeave={onCandidateHover && (() => onCandidateHover(null))}
         onMouseDown={onPaintCandidate ? undefined : (event) => event.preventDefault()}
         onFocus={() => onCandidateFocus({ ...candidate, slotted })}
-        onClick={() => selectCandidate(digit, slotted)}>
+        onClick={() => { if (!eraseChainNodes || linkTarget) selectCandidate(digit, slotted) }}>
         <span className={['candidate-glyph', colorClass, !mark && (highlighted || linkTarget) && 'candidate-match'].filter(Boolean).join(' ')}>{digit}</span>
       </button>
     }
@@ -347,7 +348,7 @@ export const BoardCell = memo(function BoardCell({ geometry, content, appearance
       data-candidate-preview={previewEdit}>{digit}</span>
   }, [readOnlyCandidates, candidateAnnotations, candidateColors, importedCandidateColors, previewEditMask, previewSlotted, previewAction, boxColumns, candidateHighlightMask,
     candidateAction, index, row, col, selectedCandidateMask, linkTargetMask, onPaintCandidate, onCandidate, annotationsOnTop,
-    gridCandidatesInOrder, tabCandidateDigit, tabCandidateSlotted, onCandidateHover, onCandidateFocus, selectCandidate])
+    gridCandidatesInOrder, tabCandidateDigit, tabCandidateSlotted, onCandidateHover, onCandidateFocus, selectCandidate, eraseChainNodes])
 
   // Selection and cell fill changes must not restart the candidate/value fades.
   const gridItems = useMemo(() => !value && visibleGridCandidates.length

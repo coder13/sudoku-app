@@ -12,6 +12,7 @@ type Options = {
   puzzle?: VariantPuzzle
   sketch: {
     canDraw: boolean
+    canErase: boolean
     graphCurrent: boolean
     canAnalyze: boolean
     startHighlightDigit: number | null

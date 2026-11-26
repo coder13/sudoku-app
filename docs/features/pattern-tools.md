@@ -24,7 +24,7 @@ Open **Chains** and select **Show strong links**. Press 1–9 or tap the keypad 
 
 The overlay cycles through five pairs, with two alternating colors per connected group. Select a candidate or line to add its connected links, starting with **Chain 1**. The selected candidate becomes the endpoint for the next link. Other strong links stay visible while you draw branches. Turn off **Show strong links** to hide the automatic overlay.
 
-Choose **End path** to clear the current endpoint while you keep drawing. A link to an existing path extends its chain. The first link of a disconnected path opens a separate chain card. You can also start with **New chain**.
+Choose **End path** to finish the current path and keep drawing. A link to an existing path extends its chain. The first link of a disconnected candidate path opens a separate chain card. After ending a saved-set path, select another candidate or set to start a separate chain.
 
 The overlay stays visible when you switch to the mobile Digits tab or the Advanced workspace Input tab.
 

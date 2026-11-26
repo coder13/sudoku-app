@@ -100,6 +100,32 @@ test('Advanced Play reveals Subsets after making a set from the grid', async ({ 
   await expect(panel(page).getByRole('button', { name: 'Set 1', exact: true })).toBeVisible()
 })
 
+test('creating and editing a subset preserves the highlighted digit', async ({ page }) => {
+  await page.goto(workbench())
+  const subsets = panel(page)
+  const start = subsets.getByRole('button', { name: 'New subset' })
+  const done = subsets.getByRole('button', { name: 'Done editing subsets' })
+  await expect(start).toBeVisible()
+  await page.keyboard.press('F4')
+  const matchingCell = cell(page, 24)
+  const highlightedDigit = /cell highlighted for candidate 4/
+  await expect(matchingCell).toHaveAttribute('aria-label', highlightedDigit)
+
+  await start.click()
+  await expect(matchingCell).toHaveAttribute('aria-label', highlightedDigit)
+  await cell(page, 22).click()
+  await done.click()
+  await expect(matchingCell).toHaveAttribute('aria-label', highlightedDigit)
+
+  await subsets.getByRole('button', { name: 'Edit Set 1' }).click()
+  await expect(matchingCell).toHaveAttribute('aria-label', highlightedDigit)
+  await matchingCell.click()
+  await expect(matchingCell).toHaveAttribute('aria-label', /Set 1/)
+  await expect(matchingCell).toHaveAttribute('aria-label', highlightedDigit)
+  await done.click()
+  await expect(matchingCell).toHaveAttribute('aria-label', highlightedDigit)
+})
+
 test('visibility and deletion work while building subsets and numbering restarts after deletion', async ({ page }) => {
   await page.goto(workbench())
   const subsets = panel(page)
@@ -209,6 +235,7 @@ test('drawing a disconnected path creates another card and a connected path exte
   await page.getByRole('tab', { name: 'Chains', exact: true }).click()
   const chainPanel = chains(page)
   await chainPanel.getByRole('button', { name: 'Draw links' }).click({ timeout: 20000 })
+  await expect(chainPanel.getByRole('button', { name: 'New chain', exact: true })).toHaveCount(0)
   const grid = page.getByRole('grid', { name: 'Sudoku grid for drawing links' })
   const click = (index: number, digit: number) => grid.locator(`[data-cell="${index}"] button[data-candidate-digit="${digit}"]`).click()
   const cards = chainPanel.getByRole('list', { name: 'Drawn chains' }).getByRole('listitem')
@@ -295,11 +322,20 @@ test('clicking candidates in four saved subsets reproduces the ALS chain from th
   await expect(rings.filter({ hasText: /^6$/ })).toHaveAttribute('style', /--annotation-color: var\(--chain-teal\)/)
   await expect(rings.filter({ hasText: /^9$/ })).toHaveAttribute('style', /--annotation-color: var\(--chain-purple\)/)
 
-  await chainPanel.getByRole('button', { name: 'New chain', exact: true }).click()
-  await chooseChainAction(page, 'Add Set 1')
+  await chainPanel.getByRole('button', { name: 'Draw links', exact: true }).click()
+  await chainPanel.getByRole('button', { name: 'End path' }).click()
+  await expect(chainPanel.getByRole('button', { name: 'Chain 2', exact: true })).toHaveCount(0)
+  await grid.locator('[data-cell="25"] button[data-candidate-digit="3"]').click()
+  await expect(chainPanel.getByRole('button', { name: 'Chain 2', exact: true })).toBeVisible()
   const originalSet = chainPanel.getByRole('listitem').first().getByText('r3c8 {34}', { exact: true })
   await originalSet.hover()
   await expect(firstTint).toHaveCSS('filter', 'brightness(1.12)')
+
+  await chainPanel.getByRole('button', { name: 'End path' }).click()
+  await grid.locator('[data-cell="80"] button[data-candidate-digit="9"]').click()
+  await grid.locator('[data-cell="80"] button[data-candidate-digit="4"]').click()
+  const third = chainPanel.getByRole('group', { name: 'Edit chain 3' })
+  await expect(third.locator('.chain-notation')).toHaveText('9r9c9 = 4r9c9')
 })
 
 test('clicking an outside candidate and a saved ALS draws a strong link', async ({ page }) => {

@@ -31,6 +31,7 @@ type Options = {
   completed: boolean
   disabled: boolean
   chainsPanelOpen: boolean
+  chainsVisible: boolean
   startDrawingOnOpen: boolean
   showStrongLinks: boolean
   hintVisualsActive: boolean
@@ -40,7 +41,7 @@ type Options = {
 export function usePlayChainModel({
   game, puzzle, visibleCells, values, masks, noteMasks, notesMatch, displayedCandidates, eliminations, toolMasks, drawingIntent,
   highlightedDigitMask, coloringDigit, savedHighlightMode, colorsActive, colorMode, eraseMode, brush,
-  draft, solved, completed, disabled, chainsPanelOpen, startDrawingOnOpen, showStrongLinks, hintVisualsActive,
+  draft, solved, completed, disabled, chainsPanelOpen, chainsVisible, startDrawingOnOpen, showStrongLinks, hintVisualsActive,
 }: Options) {
   const chainDrawingRequested = drawingIntent ?? (game.chainSketch?.pending != null)
   const chainsActive = !colorsActive && !game.grid && (chainDrawingRequested || startDrawingOnOpen || showStrongLinks)
@@ -65,6 +66,7 @@ export function usePlayChainModel({
     puzzle,
     sketch: {
       canDraw: chainsActive && !completed,
+      canErase: chainsVisible && !colorsActive && !game.grid && !completed,
       graphCurrent: Boolean(masks),
       canAnalyze: canAnalyzeChains,
       startHighlightDigit,
@@ -77,7 +79,7 @@ export function usePlayChainModel({
   const { graph: chainGraph, sketch, selectedCandidates: selectedChainCandidates, strongLinkOverlay: strongLinks } = chainCapability
   const canApplyChainEdits = chainsPanelOpen && Boolean(chainMasks && canAnalyzeChains && sketch.allActions.length)
   const chainHighlightDigit = sketch.active.highlightedDigit
-  const browsingStrongLinks = strongLinksVisible && !sketch.drawing
+  const browsingStrongLinks = strongLinksVisible && !sketch.drawing && !sketch.erasing
 
   return {
     drawingIntent,
