@@ -779,4 +779,32 @@ mod tests {
         ];
         assert!(dot.permits(&digits));
     }
+
+    #[test]
+    fn zero_based_x_sum_digit_ratio_uses_displayed_first_digit() {
+        let layout = SizedGrid::new(crate::GridSpec {
+            size: 6,
+            box_rows: 2,
+            box_columns: 3,
+        })
+        .unwrap();
+        let dot = XSumDot::compile(
+            &layout,
+            [
+                SizedSumEnd::XSum {
+                    direction: ClueDirection::West,
+                    index: 3,
+                },
+                SizedSumEnd::Digit(23),
+            ],
+            XSumDotRelation::Ratio,
+            1,
+        )
+        .unwrap();
+        let digits = [
+            1, 2, 3, 4, 5, 6, 4, 5, 6, 1, 2, 3, 2, 3, 4, 5, 6, 1, 5, 6, 1, 2, 3, 4, 3, 4, 5, 6, 1,
+            2, 6, 1, 2, 3, 4, 5,
+        ];
+        assert!(dot.permits(&digits));
+    }
 }

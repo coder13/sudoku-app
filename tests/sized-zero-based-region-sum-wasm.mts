@@ -242,7 +242,9 @@ test('zero-based X-Sums count displayed values and expose displayed totals to li
     { type: 'x-sum' as const, direction: 'east' as const, cells: [12, 13, 14, 15, 16, 17], sum: 1 },
     { type: 'x-sum' as const, direction: 'east' as const, cells: [24, 25, 26, 27, 28, 29], sum: 5 },
     { type: 'x-sum' as const, direction: 'east' as const, cells: [30, 31, 32, 33, 34, 35], sum: 11 },
+    { type: 'x-sum' as const, direction: 'west' as const, cells: [23, 22, 21, 20, 19, 18], sum: 6 },
     { type: 'x-sum-dot' as const, ends: [{ direction: 'east' as const, index: 0 }, { direction: 'west' as const, index: 4 }], relation: 'consecutive' as const },
+    { type: 'x-sum-dot' as const, ends: [{ direction: 'west' as const, index: 3 }, 23], relation: 'ratio' as const },
   ]
   const position: SizedConstraintPosition = { version: 2, grid, zeroBased: true, digits: solution, rules }
   assert.equal(isSizedRuleList(rules, appGrid), true)
