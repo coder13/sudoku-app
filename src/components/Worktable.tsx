@@ -828,10 +828,12 @@ export function Worktable({
     clearDigitSelection,
     showDigitHighlights,
     toggleDigitHighlight,
+    pinDigit,
+    showPinnedDigitPreview,
     changeDigitHighlightMatch,
   } = usePlayDigitActions({
     puzzle: { gridSize },
-    selection: { selectedDigit, highlightedDigitMask, cellDrivenHighlight, brush },
+    selection: { selectedDigit, highlightedDigitMask, pinnedDigitMask: digitHighlight.pinnedMask ?? 0, cellDrivenHighlight, brush },
     capability: { canPaint },
     actions: {
       setDigitHighlight,
@@ -1166,6 +1168,7 @@ export function Worktable({
     actions: {
       edit,
       clearHighlightedDigits,
+      showPinnedDigitPreview,
       paintCandidateDigits,
       changeHintVisuals,
       leaveChainInput,
@@ -1850,10 +1853,11 @@ export function Worktable({
         event.preventDefault()
         if (event.repeat) return
         if (shortcutDigit && hasInputSelection && brush === null) input(shortcutDigit, candidateMode)
-        else toggleDigitHighlight(digitShortcut, shortcutDigit ? 'all' : 'any')
+        else pinDigit(digitShortcut, shortcutDigit ? 'all' : 'any')
       } else if (!draft && !shortcut && highlightedDigit) {
         event.preventDefault()
         if (cellDrivenHighlight) setSelected([])
+        if (showPinnedDigitPreview(highlightedDigit)) return
         clearHighlightedDigits()
         setHighlightCandidatePairs(false)
         setSelectedDigit(highlightedDigit)
@@ -3059,7 +3063,9 @@ export function Worktable({
           selectedDigit: browsingStrongLinks || sketch.drawing ? (strongLinksVisible ? null : chainHighlightDigit) : selectedDigit,
           hasCellSelection: hasInputSelection,
           highlightedDigitMask: strongLinksVisible ? strongLinkMask : sketch.drawing || eraseMode ? 0 : highlightedDigitMask,
-          onToggleDigitHighlight: strongLinksVisible ? toggleStrongLinkDigit : !sketch.drawing && !sketch.erasing && !draft && !solved && !previewing ? toggleDigitHighlight : undefined,
+          pinnedDigitMask: digitHighlight.pinnedMask,
+          onTogglePinnedDigit: !browsingStrongLinks && !sketch.drawing && !sketch.erasing && !draft && !solved && !previewing ? pinDigit : undefined,
+          onToggleDigitHighlight: strongLinksVisible ? toggleStrongLinkDigit : undefined,
           digitHighlightMatch: digitHighlight.match,
           onDigitHighlightMatchChange: !draft && !solved && !previewing ? changeDigitHighlightMatch : undefined,
           values: values,
@@ -3086,7 +3092,8 @@ export function Worktable({
           onPaintCandidateGroup: () => {
             if (candidateBrush !== null) paintSelectedCandidateDigits(candidateBrush)
           },
-          clearDigitHighlightsAvailable: !sketch.drawing && !sketch.erasing && !browsingStrongLinks && !eraseMode && candidateCount(highlightedDigitMask) > 1,
+          clearDigitHighlightsAvailable: !sketch.drawing && !sketch.erasing && !browsingStrongLinks && !eraseMode &&
+            (Boolean(digitHighlight.pinnedMask) || candidateCount(highlightedDigitMask) > 1),
           onClearDigitHighlights: clearDigitSelection,
           highlightMode: highlightMode,
           toggleHighlightMode: toggleHighlightMode,

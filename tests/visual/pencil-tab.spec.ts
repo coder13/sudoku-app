@@ -108,3 +108,42 @@ test('selecting several digits keeps the current input mode', async ({ page }) =
   await highlight.tap()
   await expect(grid).toHaveAccessibleDescription('Pencil mode')
 })
+
+test('touch holds pin digits and taps replace the candidate combination on the grid', async ({ page }) => {
+  await page.goto('/iframe.html?id=large-play-worktable--starter&viewMode=story')
+  const pad = page.getByRole('group', { name: 'Digit pad' })
+  const key = (digit: number) => pad.locator('.key').filter({ hasText: new RegExp(`^${digit}$`) })
+  const cell = page.locator('[role="gridcell"][data-cell="2"]')
+  await page.getByRole('button', { name: 'Pencil mode', exact: true }).tap()
+  await cell.tap()
+  await key(2).tap()
+  await key(4).tap()
+  await expect(cell.locator('.board-candidate')).toHaveText(['2', '4'])
+
+  const touch = await page.context().newCDPSession(page)
+  async function hold(digit: number, pinned: boolean) {
+    const box = (await key(digit).boundingBox())!
+    await touch.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [{ x: box.x + box.width / 2, y: box.y + box.height / 2 }],
+    })
+    if (pinned) await expect(key(digit)).toHaveAttribute('data-pinned-digit', 'true')
+    else await expect(key(digit)).not.toHaveAttribute('data-pinned-digit')
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+  }
+
+  await hold(2, true)
+  await key(4).tap()
+  await expect(cell).toHaveAccessibleName(/highlighted for candidates 2, 4/)
+  await key(7).tap()
+  await expect(cell).not.toHaveAccessibleName(/highlighted for candidates/)
+  await expect(pad.locator('.key[aria-pressed="true"]')).toHaveText(['2', '7'])
+  await hold(7, true)
+  await key(4).tap()
+  await expect(pad.locator('.key[aria-pressed="true"]')).toHaveText(['2', '4', '7'])
+  await hold(7, false)
+  await expect(cell).toHaveAccessibleName(/highlighted for candidates 2, 4/)
+  await page.getByRole('button', { name: 'Clear digit highlights' }).tap()
+  await expect(pad.locator('.key[data-pinned-digit], .key[aria-pressed="true"]')).toHaveCount(0)
+  await expect(cell.locator('.board-candidate')).toHaveText(['2', '4'])
+})

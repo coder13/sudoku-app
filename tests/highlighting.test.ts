@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { activeHighlightDigit, functionKeyDigit, givenDigitAt, nextIncompleteDigit, onlyGivensSelected } from '../src/sudoku/highlighting.ts'
+import { activeHighlightDigit, defaultDigitHighlight, functionKeyDigit, givenDigitAt, nextIncompleteDigit, onlyGivensSelected,
+  previewPinnedDigit, readDigitHighlight, togglePinnedDigit } from '../src/sudoku/highlighting.ts'
 import { HIGHLIGHT_KEY, readPreferences } from '../src/sudoku/preferences.ts'
 
 test('a selected placed digit drives matching candidate highlights', () => {
@@ -55,4 +56,26 @@ test('older highlight preferences keep the automatic toggles and discard the can
   assert.deepEqual(read({ defaultsVersion: 2, candidateStyle: 'text', matchingCandidates: false }), {
     relatedCells: true, matchingDigits: true, matchingCandidates: false,
   })
+})
+
+test('pinned digits stay highlighted while each tap replaces the preview digit', () => {
+  const pinTwo = togglePinnedDigit(defaultDigitHighlight, 2)
+  const previewFive = previewPinnedDigit(pinTwo, 5)
+  assert.deepEqual(previewFive, { mask: 18, pinnedMask: 2, previewDigit: 5, match: 'all' })
+  assert.equal(previewPinnedDigit(previewFive, 5), previewFive)
+  const previewSeven = previewPinnedDigit(previewFive, 7)
+  assert.deepEqual(previewSeven, { mask: 66, pinnedMask: 2, previewDigit: 7, match: 'all' })
+  const pinSeven = togglePinnedDigit(previewSeven, 7)
+  assert.deepEqual(pinSeven, { mask: 66, pinnedMask: 66, match: 'all' })
+  assert.deepEqual(previewPinnedDigit(previewPinnedDigit(pinSeven, 4), 2), pinSeven)
+  assert.deepEqual(togglePinnedDigit(pinSeven, 7), pinTwo)
+  assert.deepEqual(togglePinnedDigit(pinTwo, 2), defaultDigitHighlight)
+})
+
+test('saving pins retains the preview and keeps older digit highlights readable', () => {
+  const pinThree = togglePinnedDigit(defaultDigitHighlight, 3, 1, 'any')
+  assert.deepEqual(pinThree, { mask: 5, pinnedMask: 4, previewDigit: 1, match: 'any' })
+  assert.deepEqual(readDigitHighlight({ ...pinThree, mask: 0 }), pinThree)
+  assert.deepEqual(togglePinnedDigit(pinThree, 3), { mask: 1, match: 'any' })
+  assert.deepEqual(readDigitHighlight({ mask: 80, match: 'all' }), { mask: 80, match: 'all' })
 })

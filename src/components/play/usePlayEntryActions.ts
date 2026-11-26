@@ -32,6 +32,7 @@ type Options = {
   actions: {
     edit: (transform: (current: Game) => Game) => void
     clearHighlightedDigits: () => void
+    showPinnedDigitPreview: (digit: number) => boolean
     paintCandidateDigits: (digits: readonly number[], color: number) => void
     changeHintVisuals: (visuals: 'hint' | 'player') => void
     leaveChainInput: (switchMobileToDigits?: boolean) => void
@@ -50,7 +51,7 @@ export function usePlayEntryActions({ puzzle, state, modes, actions }: Options) 
   const { values, visibleGivens, gridSize, selected, completed, draft } = puzzle
   const { mode, highlightMode, selectedDigit, highlightedDigitMask, brush, colorBrush, colorTarget,
     givenHighlightSelection, multi } = state
-  const { edit, clearHighlightedDigits, paintCandidateDigits, changeHintVisuals, leaveChainInput,
+  const { edit, clearHighlightedDigits, showPinnedDigitPreview, paintCandidateDigits, changeHintVisuals, leaveChainInput,
     setSelectedDigit, setSelected, setHighlightCandidatePairs, setSelectedColor, setColorBrush,
     setEraseMode, placeNakedSingles } = actions
 
@@ -108,12 +109,14 @@ export function usePlayEntryActions({ puzzle, state, modes, actions }: Options) 
       setSelected([])
       cells = []
     }
-    if (!cells.length || digit === 0) clearHighlightedDigits()
     if (digit > 0) setEraseMode(false)
+    if (!cells.length && showPinnedDigitPreview(digit)) return
+    if (!cells.length || digit === 0) clearHighlightedDigits()
     if (cells.length && (highlightMode || placeInSelection || multi)) {
       if (highlightMode && !placeInSelection && inputMode === 'value' && digit > 0 && onlyGivensSelected(visibleGivens, cells)) {
-        clearHighlightedDigits()
         setSelected([])
+        if (showPinnedDigitPreview(digit)) return
+        clearHighlightedDigits()
         setHighlightCandidatePairs(false)
         setSelectedDigit(digit)
         return
