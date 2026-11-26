@@ -905,6 +905,59 @@ test('an empty negative default Ratio layer remains active beside sized custom R
   } }), 'conflict', 'an empty labeled Difference layer uses the default difference 1')
 })
 
+test('empty sized Coach negative defaults exempt matching custom-labeled marks across layers', async () => {
+  const solution = '1234341221434321'
+  const edges = Array.from({ length: 16 }, (_, cell) => [
+    ...(cell % 4 < 3 ? [[cell, cell + 1] as const] : []),
+    ...(cell < 12 ? [[cell, cell + 4] as const] : []),
+  ]).flat()
+  const ratioTwo = edges.filter(([a, b]) => Math.max(Number(solution[a]), Number(solution[b])) === 2 * Math.min(Number(solution[a]), Number(solution[b])))
+  const ratioThree = edges.find(([a, b]) => Math.max(Number(solution[a]), Number(solution[b])) === 3 * Math.min(Number(solution[a]), Number(solution[b])))
+  const differenceOne = edges.filter(([a, b]) => Math.abs(Number(solution[a]) - Number(solution[b])) === 1)
+  const differenceTwo = edges.find(([a, b]) => Math.abs(Number(solution[a]) - Number(solution[b])) === 2)
+  assert.ok(ratioTwo.length && ratioThree && differenceOne.length && differenceTwo)
+  const givens = [...solution].map((digit, cell) => cell === 1 ? '0' : digit).join('')
+
+  const ratio = await detectPuzzle(coachCode({ gridSize: 4, givenDigits: givens, givenConstraints: [
+    { type: 'ratio', settings: { negativeConstraint: true }, segments: [] },
+    { type: 'ratio', settings: { negativeConstraint: false }, segments: [
+      ...ratioTwo.map(cells => ({ cells, parameters: { ratio: 2 } })),
+      { cells: ratioThree, parameters: { ratio: 3 } },
+    ] },
+  ] }))
+  const ratioPosition = sizedRulePosition(ratio.grid!, { rules: ratio.sizedRules! }, ratio.givens!)
+  const ratioCandidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: ratioPosition })
+  assert.ok(ratioCandidates)
+  assert.equal(ratioCandidates[1], 1 << 1, 'the labeled 1:2 edge is exempt from default negative Ratio')
+  const ratioEdgeToRemove = ratioTwo.find(([a, b]) => a !== 0 || b !== 1)!
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...ratioPosition,
+    digits: [...solution].map(Number),
+    rules: ratioPosition.rules.map(rule => rule.type === 'labeled-dots' && rule.relation === 'ratio'
+      ? { ...rule, marks: rule.marks.filter(mark => mark.cells[0] !== ratioEdgeToRemove[0] || mark.cells[1] !== ratioEdgeToRemove[1]) }
+      : rule),
+  } }), 'conflict', 'removing one 1:2 mark leaves that edge forbidden')
+
+  const difference = await detectPuzzle(coachCode({ gridSize: 4, givenDigits: givens, givenConstraints: [
+    { type: 'difference', settings: { negativeConstraint: true }, segments: [] },
+    { type: 'difference', settings: { negativeConstraint: false }, segments: [
+      ...differenceOne.map(cells => ({ cells, parameters: { difference: 1 } })),
+      { cells: differenceTwo, parameters: { difference: 2 } },
+    ] },
+  ] }))
+  const differencePosition = sizedRulePosition(difference.grid!, { rules: difference.sizedRules! }, difference.givens!)
+  const differenceCandidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: differencePosition })
+  assert.ok(differenceCandidates)
+  assert.equal(differenceCandidates[1], 1 << 1, 'the marked difference-1 edge is exempt from default negative Difference')
+  const differenceEdgeToRemove = differenceOne.find(([a, b]) => a !== 0 || b !== 1)!
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...differencePosition,
+    digits: [...solution].map(Number),
+    rules: differencePosition.rules.filter(rule => rule.type !== 'difference' || rule.difference !== 1 ||
+      rule.cells[0] !== differenceEdgeToRemove[0] || rule.cells[1] !== differenceEdgeToRemove[1]),
+  } }), 'conflict', 'removing one difference-1 mark leaves that edge forbidden')
+})
+
 const coachSumQuadruples = JSON.parse(readFileSync(new URL('./fixtures/sum-quadruple-coach.json', import.meta.url), 'utf8')) as {
   url: string; title: string; coach: string; solution: string
 }[]

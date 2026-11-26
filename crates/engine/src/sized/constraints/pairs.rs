@@ -414,6 +414,12 @@ pub(super) fn compile_pairs(
             if !(1..size as u8).contains(&difference) {
                 return None;
             }
+            if difference == 1 {
+                labeled_marked
+                    .entry((SizedDotRelation::Difference, difference))
+                    .or_default()
+                    .insert(cells);
+            }
             let mut constraint = differences[usize::from(difference)]
                 .get_or_insert_with(|| {
                     PairConstraint::from_relation([0, 1], size, |x, y| x.abs_diff(y) == difference)
@@ -626,7 +632,17 @@ pub(super) fn compile_pairs(
     }
     for (kind, index) in negative.into_iter().enumerate() {
         if let Some(index) = index {
-            add_unmarked_links(size, kind, &marked, &mut groups[index], None, value_offset);
+            let default_value = if kind == 0 { 1 } else { 2 };
+            let relation = if kind == 0 {
+                SizedDotRelation::Difference
+            } else {
+                SizedDotRelation::Ratio
+            };
+            let mut exempt = marked.clone();
+            if let Some(labeled) = labeled_marked.get(&(relation, default_value)) {
+                exempt.extend(labeled.iter().copied());
+            }
+            add_unmarked_links(size, kind, &exempt, &mut groups[index], None, value_offset);
         }
     }
     for ((relation, value), index) in labeled_negative {
