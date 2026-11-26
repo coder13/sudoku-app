@@ -251,8 +251,13 @@ test('an X-Sums declaration rejects ambiguous totals, markings and unsupported c
     })))
   })
   try {
+    const importedTerrain = await detectPuzzle('sudoku.coach/s/' + terrain.sudoku_id)
+    assert.equal(importedTerrain.format, 'Sudoku Coach')
+    assert.equal(importedTerrain.variant?.puzzle.rules?.filter(rule => rule.type === 'terrain-sandwich').length, 15)
+    assert.ok(importedTerrain.givenCellColors)
+
     for (const [id, error] of [
-      ['Extra', /has author instructions/], [terrain.sudoku_id, /Terrain puzzle uses transformed values/],
+      ['Extra', /has author instructions/],
       ['Empty', /has no outside totals/], ['Corner', /beside a row or column/], ['Interior', /beside a row or column/],
       ['Fraction', /beside a row or column/], ['BadTotal', /1 through 45/], ['Duplicate', /multiple X-Sums/],
       ['Graphic', /layer uses unsupported settings/], ['Color', /unsupported authored markings|invalid authored colors/],
