@@ -69,7 +69,7 @@ export function useControlsPanelResize({ compact, workspaceRoot, draft, inputSiz
     setPanelHeight(Math.min(bounds.max, Math.max(bounds.min, Math.round(next))))
   }
 
-  const resizeHandleProps = useLinearResize<HTMLButtonElement>({
+  const resizeHandle = useLinearResize<HTMLButtonElement>({
     value: panelHeight,
     min: bounds.min,
     max: bounds.max,
@@ -79,6 +79,14 @@ export function useControlsPanelResize({ compact, workspaceRoot, draft, inputSiz
     onResize: resizePanel,
     onBegin: beginResize,
   })
+  const resizeHandleProps = {
+    onPointerDown: resizeHandle.onPointerDown,
+    onPointerMove: resizeHandle.onPointerMove,
+    onPointerUp: resizeHandle.onPointerUp,
+    onPointerCancel: resizeHandle.onPointerCancel,
+    onLostPointerCapture: resizeHandle.onLostPointerCapture,
+    onKeyDown: resizeHandle.onKeyDown,
+  }
 
   return { mobile, controlsRoot, resizeHandleProps }
 }

@@ -53,11 +53,18 @@ async function snapshot(page) {
   return page.evaluate(() => {
     const layout = document.querySelector('.mobile-panel-layout')
     const input = document.querySelector('.mobile-input-tabs')
+    const missing = (name, element) => element ? null : name
+    const baseMissing = [missing('panel layout', layout), missing('input tabs', input)].filter(Boolean)
+    if (baseMissing.length) throw new Error(`Mobile resize fixture is missing: ${baseMissing.join(', ')}`)
+    const inputPanel = input.querySelector('.mobile-input-panels')
     const digit = input.querySelector('.key')
     const grid = document.querySelector('.sudoku-grid')
     const frame = document.querySelector('.board-frame')
     const badge = document.querySelector('.puzzle-mode-tab')
     const handle = document.querySelector('.mobile-input-resize')
+    const missingGeometry = [missing('input panels', inputPanel), missing('digit key', digit), missing('grid', grid), missing('board frame', frame),
+      missing('mode badge', badge), missing('resize handle', handle)].filter(Boolean)
+    if (missingGeometry.length) throw new Error(`Mobile resize fixture is missing: ${missingGeometry.join(', ')}`)
     const box = element => {
       const { x, y, width, height } = element.getBoundingClientRect()
       return { x, y, width, height }
@@ -65,15 +72,18 @@ async function snapshot(page) {
     const badgeBox = box(badge)
     const handleBox = box(handle)
     return {
-      input: box(input), digit: box(digit), grid: box(grid), frame: box(frame), badge: badgeBox,
+      input: box(input), inputPanel: box(inputPanel), digit: box(digit), grid: box(grid), frame: box(frame), badge: badgeBox,
       outsideClues: [...document.querySelectorAll('[data-outside-clue]')].map(clue => ({
         type: clue.dataset.outsideClue, box: box(clue),
       })),
       edge: document.querySelector('[data-mobile-panel="input"]').dataset.resizeEdge,
-      preview: Boolean(document.querySelector('[data-resize-preview], .puzzle[style*="--mobile-input-resize-puzzle-scale"]')),
+      preview: layout.hasAttribute('data-input-sized') && layout.hasAttribute('data-input-resizing'),
       resizing: layout.hasAttribute('data-input-resizing'),
       commits: window.resizeCommits.length,
       savedHeight: layout.style.getPropertyValue('--mobile-resized-input-height'),
+      resizeMin: Number(handle.getAttribute('aria-valuemin')),
+      resizeMax: Number(handle.getAttribute('aria-valuemax')),
+      resizeValue: Number(handle.getAttribute('aria-valuenow')),
       boardLimit: layout.style.getPropertyValue('--mobile-fit-board-height'),
       resizeHandleReachable: handle.contains(document.elementFromPoint(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2)),
       badgeVisible: badge.contains(document.elementFromPoint(badgeBox.x + badgeBox.width / 2, badgeBox.y + badgeBox.height / 2)),
@@ -423,12 +433,25 @@ try {
       localStorage.setItem('sudoku-app:v1:mobile-panel-order', JSON.stringify(['input', 'puzzle', 'hint', 'completion']))
     })
     const page = await context.newPage()
-    page.on('pageerror', error => errors.push(error.message))
+    page.on('pageerror', error => {
+      errors.push(error.message)
+      console.error(`Browser page error: ${error.message}`)
+    })
     const client = await context.newCDPSession(page)
     await client.send('Performance.enable')
     await client.send('Emulation.setCPUThrottlingRate', { rate: cpuRate })
     await page.goto(`${url}${query}`)
-    await page.locator('.mobile-input-resize').waitFor()
+    await page.locator('.mobile-input-resize').waitFor({ timeout: 5000 }).catch(async () => {
+      const state = await page.evaluate(() => ({
+        panels: [...document.querySelectorAll('.mobile-panel')].map(panel => ({
+          id: panel.getAttribute('data-mobile-panel'), edge: panel.getAttribute('data-resize-edge'),
+        })),
+        inputTabs: Boolean(document.querySelector('.mobile-input-tabs')),
+        inputControls: Boolean(document.querySelector('.mobile-input-digits .controls')),
+        grid: Boolean(document.querySelector('.sudoku-grid')),
+      }))
+      throw new Error(`Mobile resize handle did not render: ${JSON.stringify({ state, errors })}`)
+    })
     await page.evaluate(() => document.fonts.ready)
     await page.waitForTimeout(350)
     await frames(page, 4)
@@ -447,10 +470,11 @@ try {
             await moveDrag(page, client, start, distance)
             await finishDrag(page, client)
             const after = await snapshot(page)
-            const initialHeight = parseFloat(before.savedHeight) || before.input.height
+            const initialHeight = parseFloat(before.savedHeight) || before.inputPanel.height
+            const heightChange = parseFloat(after.savedHeight) - initialHeight
             assert.equal(after.commits, before.commits + 1, 'a completed drag must save exactly once')
-            assert.ok(Math.abs(parseFloat(after.savedHeight) - initialHeight - expected) < 1,
-              `a ${distance} px input drag must snap to the nearest 8 px anchor`)
+            assert.ok(Math.abs(heightChange - expected) < 1,
+              `a ${distance} px input drag must snap to ${expected} px (got ${heightChange} px from ${initialHeight} to ${after.savedHeight}; edge ${before.edge}, bounds ${after.resizeMin}–${after.resizeMax})`)
             await page.locator('[data-mobile-panel="input"]').evaluate(panel =>
               Promise.allSettled(panel.getAnimations().map(animation => animation.finished)))
           }

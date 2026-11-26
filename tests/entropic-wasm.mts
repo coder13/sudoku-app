@@ -363,7 +363,9 @@ test('three practice positions, checked moves and fresh drills preserve independ
     seed: 227,
     exclude: examples[0].position.puzzle.givens,
   })
-  assert.equal(countLineSolutions(fresh.position.puzzle).count, 1)
+  const freshUnique = await runEngine({ type: 'variant', operation: 'solve-unique', position: fresh.position })
+  assert.equal(freshUnique.status, 'unique')
+  assertVariantCompletion(fresh.position.puzzle, freshUnique.solution)
   assertEntropicProof(fresh.position.puzzle, fresh.deduction)
 })
 

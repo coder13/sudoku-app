@@ -11,6 +11,7 @@
   --space-4: 4px;
   --space-6: 6px;
   --space-8: 8px;
+  --panel-inner-padding-min: var(--space-8);
   --space-10: 10px;
   --space-12: 12px;
   --space-14: 14px;
@@ -1228,7 +1229,7 @@ svg { flex-shrink: 0; }
   width: var(--hint-card-width);
   max-width: 100%;
   margin-inline: auto;
-  padding: var(--space-6) var(--space-8) var(--space-8);
+  padding: var(--panel-inner-padding-min);
   border: 1px solid var(--border-strong);
   border-radius: 14px;
   background: var(--surface);
@@ -4117,7 +4118,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     translate: none;
   }
 
-  .standard-workspace-page .compact-controls { height: auto; padding: var(--space-6); }
+  .standard-workspace-page .compact-controls { height: auto; padding: var(--panel-inner-padding-min); }
   .mobile-input-tabs {
     --tool-target-size: 40px;
     position: relative;
@@ -4299,7 +4300,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   }
   .mobile-input-tool :is(.cell-color-palette, .chains-panel, .bookmarks-panel) {
     gap: var(--space-4);
-    padding: var(--space-8);
+    padding: var(--panel-inner-padding-min);
     font-size: 0.75rem;
   }
   .mobile-input-tool .cell-color-palette p { min-height: 0; font-size: inherit; }
@@ -4478,7 +4479,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
     overflow: hidden;
-    padding: var(--space-4) var(--space-10) var(--space-6);
+    padding: var(--panel-inner-padding-min) var(--space-10) var(--panel-inner-padding-min);
     border: 1px solid var(--border-strong);
     border-radius: 14px;
     background: var(--surface);
@@ -4518,7 +4519,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   }
   .mobile-input-hint .mobile-hint-panel .hint-toolbar {
     margin: 0;
-    padding-inline: var(--space-4);
+    padding-inline: var(--panel-inner-padding-min);
   }
   .mobile-input-hint .mobile-hint-panel .hint-card {
     flex: 1 1 auto;
@@ -4526,7 +4527,7 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
     max-height: none;
     min-height: 0;
     width: 100%;
-    padding: var(--space-2) var(--space-4);
+    padding: var(--panel-inner-padding-min);
     border: 0;
     border-radius: 0;
     background: transparent;

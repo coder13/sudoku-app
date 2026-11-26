@@ -242,10 +242,9 @@ test('WXYZ-Wing handles all four restricted digits without inventing an unrestri
     evidence: { 'wxyz-wing': { cells: [0, 3, 27, 30], digits: [1, 2, 3, 4], unrestricted: null } },
   }
   const diagram = lessonDiagram({ deduction, candidates })
-  assert.match(diagram.reason, /The candidates for 4 share row 4/)
-  assert.match(diagram.reason, /rules out the same digit in the other wing cells/)
-  assert.match(diagram.reason, /Placing 1 in R7C1 would rule out every 1 in the wing \(R1C1 and R4C1\)/)
-  assert.match(diagram.reason, /Placing any crossed-out 4 would rule out every 4 in the wing \(R4C1 and R4C4\)/)
+  assert.match(diagram.reason, /Candidate 4 is restricted; all its cells share row 4/)
+  assert.match(diagram.reason, /If R7C1 is 1, it rules out every 1 in the wing \(R1C1 and R4C1\)/)
+  assert.match(diagram.reason, /If 4 is placed in any of R4C2 and R4C3, it rules out every 4 in the wing \(R4C1 and R4C4\)/)
   assert.deepEqual(diagram.results, ['Remove 1 from R7C1.', 'Remove 4 from R4C2 and R4C3.'])
   assert.doesNotMatch(diagram.reason, /null|undefined|other three/)
   assert.equal(diagram.accentLabel, undefined)

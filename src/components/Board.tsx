@@ -169,7 +169,13 @@ export function gridCellAtPoint(grid: HTMLDivElement | null, { clientX, clientY 
   return cell && grid?.contains(cell) ? Number(cell.dataset.cell) : null
 }
 
-export function Board({ content, appearance, interaction, layout: boardLayout }: BoardProps) {
+export function Board(props: BoardProps) {
+  // Keep pre-grouped renderers working while consumers move to the typed grouped API.
+  const legacyProps = props as BoardProps & BoardContent & BoardAppearance & BoardInteraction & BoardLayout
+  const content = legacyProps.content ?? legacyProps
+  const appearance = legacyProps.appearance ?? legacyProps
+  const interaction = legacyProps.interaction ?? legacyProps
+  const boardLayout = legacyProps.layout ?? legacyProps
   const {
     variantPuzzle: fullPuzzle,
     fog,

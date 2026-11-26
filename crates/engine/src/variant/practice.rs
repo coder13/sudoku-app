@@ -171,12 +171,18 @@ pub(crate) fn generate_practice_example(
                     DEFAULT_VARIANT_SEARCH_NODES,
                 ) == Ok(Analysis::Unique);
             if unique
-                && let Some((focused, focused_suggestion)) =
+                && let Some(example) =
                     focus_position(&compiled, position.clone(), technique, Some(suggestion))
-                && let Ok(example) =
-                    exercise_with(&compiled, 0, &focused, technique, focused_suggestion)
+                        .and_then(|(focused, focused_suggestion)| {
+                            exercise_with(&compiled, 0, &focused, technique, focused_suggestion)
+                                .ok()
+                        })
+                        .or_else(|| {
+                            exercise_with(&compiled, 0, &position, technique, suggestion).ok()
+                        })
             {
                 edits += 1;
+                let focused = &example.position;
                 let values = std::array::from_fn(|cell| {
                     focused.puzzle.givens[cell].max(focused.entries[cell])
                 });
@@ -208,14 +214,18 @@ fn exercise(
         .puzzle
         .compile()
         .map_err(|_| VariantPracticeError::InvalidPosition(index))?;
-    let (position, suggestion) = focus_position(
+    if let Some(example) = focus_position(
         &compiled,
         position.clone(),
         technique,
         Some(preferred_suggestion),
     )
-    .unwrap_or((position, preferred_suggestion));
-    exercise_with(&compiled, index, &position, technique, suggestion)
+    .and_then(|(focused, suggestion)| {
+        exercise_with(&compiled, index, &focused, technique, suggestion).ok()
+    }) {
+        return Ok(example);
+    }
+    exercise_with(&compiled, index, &position, technique, preferred_suggestion)
 }
 
 fn focus_position(

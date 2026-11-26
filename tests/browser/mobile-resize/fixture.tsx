@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/client'
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Board } from '../../../src/components/Board'
 import { Controls } from '../../../src/components/Controls'
 import { MobileInputTabs } from '../../../src/components/MobileInputTabs'
@@ -64,9 +64,28 @@ function Fixture() {
   const [savedHeight, setSavedHeight] = useState<number>()
   const [puzzlePosition, setPuzzlePosition] = useState({ space: 0, shrink: 0 })
   const boundary = useRef<HTMLDivElement>(null)
+  const puzzleColumn = useRef<HTMLDivElement>(null)
+  const puzzleCard = useRef<HTMLElement>(null)
+  const boardFrame = useRef<HTMLDivElement>(null)
+  const inputTabs = useRef<HTMLDivElement>(null)
+  const inputToolbar = useRef<HTMLDivElement>(null)
+  const inputPanels = useRef<HTMLDivElement>(null)
+  const digitsPanel = useRef<HTMLDivElement>(null)
+  const activeInputPanel = useRef<HTMLDivElement>(null)
+  const inputTabsLayoutRefs = useMemo(() => ({ inputTabs, inputToolbar, inputPanels, digitsPanel, activeInputPanel }), [])
+  const digitControls = useRef<HTMLDivElement>(null)
   const zoom = usePuzzleZoom(true, 'resize-regression', noop)
+  const inputResizeRefs = useMemo(() => ({
+    puzzle: puzzleCard,
+    puzzleColumn,
+    boardViewport: zoom.viewport,
+    boardFrame,
+    ...inputTabsLayoutRefs,
+    digitControls,
+    overflowRegions: [],
+  }), [inputTabsLayoutRefs, zoom.viewport])
   const controls = (
-    <div className="workspace-controls">
+    <div ref={digitControls} className="workspace-controls">
       <Controls
         digits={{ mode: 'value', pencil: false, candidateKind: 'center', setCandidateKind: noop, selectedDigit: null, hasCellSelection: false, values: empty, input: noop }}
         tools={{
@@ -83,6 +102,7 @@ function Fixture() {
           toggleMulti: noop,
         }}
         history={{ undo: noop, redo: noop, canUndo: false, canRedo: false }}
+        actions={{}}
         layout={{ advancedModes: DEFAULT_ADVANCED_MODES, compact: true, disabled: false, draft: false, inputSize: 210, panelHeight: 280, setPanelHeight: noop, beginResize: noop }}
       />
     </div>
@@ -105,6 +125,7 @@ function Fixture() {
             blocked={false}
             withHint={withHint}
             resizableInput
+            inputResizeRefs={inputResizeRefs}
             savedInputHeight={savedHeight}
             puzzleTopSpace={puzzlePosition.space}
             puzzleShrink={puzzlePosition.shrink}
@@ -124,8 +145,8 @@ function Fixture() {
               puzzle: {
                 title: 'Puzzle',
                 content: (
-                  <div className="puzzle-column" data-reserve-badge-space>
-                    <section className="puzzle puzzle-flat" aria-label="Dense candidate puzzle">
+                  <div ref={puzzleColumn} className="puzzle-column" data-reserve-badge-space>
+                    <section ref={puzzleCard} className="puzzle puzzle-flat" aria-label="Dense candidate puzzle">
                       <div className="mobile-puzzle-toolbar" data-no-panel-hold>
                         <div className="puzzle-metadata">
                           <span className="puzzle-difficulty">Hard</span>
@@ -155,6 +176,7 @@ function Fixture() {
                               layout={{
                                 modeBorder: 'pencil',
                                 modeBoundaryRef: boundary,
+                              frameRef: boardFrame,
                                 modeBadge: (
                                   <ModeBadge
                                     mode="pencil"
@@ -189,12 +211,13 @@ function Fixture() {
                     active="digits"
                     open={[]}
                     activeTabRef={null}
+                    layoutRefs={inputTabsLayoutRefs}
                     toolsDisabled={false}
                     toolToggles={<button className="button">Settings</button>}
                     onSelect={noop}
                     onClose={noop}
                     panels={{
-                      digits: () => controls,
+                      digits: controls,
                       solution: () => null,
                       techniques: () => null,
                       colors: () => null,

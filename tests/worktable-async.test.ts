@@ -89,8 +89,16 @@ function capture(game: Game, extra: Record<string, unknown> = {}) {
   return (label: string) => {
     const node = nodes.find(node => typeof node.props.onClick === 'function' &&
       (node.props.title === label || text(node.props.children).trim() === label))
-    assert.ok(node, `Missing action: ${label}`)
-    return node.props.onClick as () => void
+    if (node) return node.props.onClick as () => void
+
+    // Worktable delegates pinned-button rendering to PinnedActionBar. Read the
+    // same feature-owned command that the bar renders instead of expecting its
+    // child button to exist in Worktable's unrendered element tree.
+    const pinnedBar = nodes.find(node => typeof node.type === 'function' && node.type.name === 'PinnedActionBar')
+    const pinnedActions = pinnedBar?.props.actions as { command: { id: string; label: string; run: () => void } }[] | undefined
+    const pinned = pinnedActions?.find(({ command }) => command.label === label)
+    assert.ok(pinned, `Missing action: ${label}`)
+    return pinned.command.run
   }
 }
 
@@ -129,14 +137,27 @@ test('actual generate-candidates handler rejects a result after note or color ed
 })
 
 test('generating candidates requires confirmation before replacing center or corner candidates', async () => {
-  for (const mode of ['center', 'corner'] as const) {
-    const game = enter(playing(`confirm-${mode}`), [8], mode, 7)
-    roomStore.add(game)
-    const before = TestWorker.all.length
-    capture(game)('Generate candidates')()
-    await settle()
-    assert.equal(TestWorker.all.length, before)
-    assert.equal(latest(game.id), game)
+  const oldDocument = Object.getOwnPropertyDescriptor(globalThis, 'document')
+  const oldHTMLElement = Object.getOwnPropertyDescriptor(globalThis, 'HTMLElement')
+  class TestHTMLElement {}
+  const body = new TestHTMLElement()
+  Object.defineProperty(globalThis, 'HTMLElement', { configurable: true, value: TestHTMLElement })
+  Object.defineProperty(globalThis, 'document', { configurable: true, value: { activeElement: body, body } })
+  try {
+    for (const mode of ['center', 'corner'] as const) {
+      const game = enter(playing(`confirm-${mode}`), [8], mode, 7)
+      roomStore.add(game)
+      const before = TestWorker.all.length
+      capture(game)('Generate candidates')()
+      await settle()
+      assert.equal(TestWorker.all.length, before)
+      assert.equal(latest(game.id), game)
+    }
+  } finally {
+    if (oldDocument) Object.defineProperty(globalThis, 'document', oldDocument)
+    else Reflect.deleteProperty(globalThis, 'document')
+    if (oldHTMLElement) Object.defineProperty(globalThis, 'HTMLElement', oldHTMLElement)
+    else Reflect.deleteProperty(globalThis, 'HTMLElement')
   }
 })
 

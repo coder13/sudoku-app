@@ -7,6 +7,9 @@ import { sizedRegionSumParts } from '../sudoku/region-sum'
 import { fractionalRegionEdges } from '../sudoku/fractional-regions'
 import { buildVariantClueModel, kropkiDots, pairKey } from './variant-clue-model'
 
+// Keep these exports available to the frozen renderer used for performance comparisons.
+export { sizedRuleClueLabels, variantCellLabels } from './VariantClueLabels'
+
 const x = (cell: number, size = 9) => cell % size
 const y = (cell: number, size = 9) => Math.floor(cell / size)
 const center = (cell: number, size = 9) => [x(cell, size) + 0.5, y(cell, size) + 0.5] as const
