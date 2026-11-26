@@ -238,6 +238,11 @@ export function isSizedRuleList(value: unknown, grid: SizedGrid): value is Sized
       const marks = [rule.five, rule.ten].flatMap(value => (value as MarkedPairs | undefined)?.pairs ?? [])
       return new Set(marks.map(([a, b]) => Math.min(a, b) * size ** 2 + Math.max(a, b))).size === marks.length
     }
+    if (rule.type === 'adjacent-total') return Object.keys(rule).length === 3 &&
+      Array.isArray(rule.cells) && rule.cells.length === 2 &&
+      rule.cells.every((cell: unknown) => Number.isInteger(cell) && Number(cell) >= 0 && Number(cell) < size ** 2) &&
+      rule.cells[0] !== rule.cells[1] && gridCellsShareEdge(rule.cells[0], rule.cells[1], size) &&
+      Number.isInteger(rule.sum) && Number(rule.sum) >= 3 && Number(rule.sum) <= 2 * size - 1
     if (rule.type === 'whispers') {
       const cells: unknown[] = Array.isArray(rule.cells) ? rule.cells : []
       return Object.keys(rule).length === 3 && Number.isInteger(rule.minDifference) &&
@@ -375,7 +380,9 @@ export function restoreSizedRuleGame({ rules, solution, author }: SizedRuleGame,
     Array.from(givens).some((digit, cell) => digit !== '0' && digit !== solution[cell]) ||
     conflictsOf(solution, undefined, grid).size) return
   for (const rule of rules) {
-    if (rule.type === 'corner-kropki') {
+    if (rule.type === 'adjacent-total') {
+      if (digit(rule.cells[0]) + digit(rule.cells[1]) !== rule.sum) return
+    } else if (rule.type === 'corner-kropki') {
       for (const kind of cornerKropkiKinds) for (const corner of rule[kind] ?? []) {
         if (cornerPairs(corner, grid.size).some(([a, b]) =>
           !cornerKropkiAllows(digit(a), digit(b), kind))) return
@@ -545,6 +552,7 @@ export function sizedRuleDescriptions(grid: SizedGrid, rules: SizedRuleGame['rul
     else if (rule.type === 'fractional-regions') clues.add(FRACTIONAL_REGIONS_DESCRIPTION)
     else if (rule.type === 'skyscrapers') clues.add('Each outside clue shows how many buildings are visible from that side of its row or column. A digit is visible when it is taller than every digit between it and that side.')
     else if (rule.type === 'xv') clues.add('Digits joined by V add to 5. Digits joined by X add to 10.')
+    else if (rule.type === 'adjacent-total') clues.add('The digits joined by each numbered sum clue add to its total.')
     else if (rule.type === 'between') clues.add('Each interior digit on a Between line lies strictly between the digits at its two endpoints.')
     else if (rule.type === 'kropki') {
       if (rule.consecutive?.pairs?.length) clues.add('Digits separated by a white dot are consecutive.')

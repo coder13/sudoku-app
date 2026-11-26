@@ -288,6 +288,12 @@ export function sizedDigitExclusions(rules: readonly SizedConstraintRule[] | und
   if (!rules) return 0
   let excluded = kropkiDigitExclusions(rules, cell, other, digit, size, valueOffset)
   for (const rule of rules) {
+    if (rule.type === 'adjacent-total' &&
+      (rule.cells[0] === cell && rule.cells[1] === other || rule.cells[1] === cell && rule.cells[0] === other)) {
+      const partner = rule.sum + 2 * valueOffset - digit
+      const allowed = partner >= 1 && partner <= size ? 1 << (partner - 1) : 0
+      excluded |= ((1 << size) - 1) & ~allowed
+    }
     if (rule.type === 'non-consecutive' && gridCellsShareEdge(cell, other, size) &&
       !rule.except?.some(([a, b]) => a === cell && b === other || a === other && b === cell)) {
       excluded |= (digit > 1 ? 1 << (digit - 2) : 0) | (digit < size ? 1 << digit : 0)

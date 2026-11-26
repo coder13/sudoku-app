@@ -40,6 +40,27 @@ test('six-by-six Coach decoding preserves the box orientation, clue order and bo
   assert.deepEqual(tall.grid, { size: 6, boxRows: 3, boxColumns: 2 })
 })
 
+test('six-by-six Coach two-cell sums preserve totals other than V and X', async () => {
+  const imported = await decodeCoachSix(coachCode({ ...six, regions: rectangularRegions(2, 3), givenConstraints: [{
+    type: 'twoCellSum', settings: {}, segments: [
+      { cells: [0, 1], parameters: { sum: 7 } },
+      { cells: [7, 13], parameters: { sum: 9 } },
+      { cells: [20, 26], parameters: { sum: 11 } },
+    ],
+  }] }))
+  assert.deepEqual(imported.rules, [
+    { type: 'adjacent-total', cells: [0, 1], sum: 7 },
+    { type: 'adjacent-total', cells: [7, 13], sum: 9 },
+    { type: 'adjacent-total', cells: [20, 26], sum: 11 },
+  ])
+  await assert.rejects(decodeCoachSix(coachCode({ ...six, regions: rectangularRegions(2, 3), givenConstraints: [{
+    type: 'twoCellSum', settings: {}, segments: [{ cells: [0, 1], parameters: { sum: 12 } }],
+  }] })), /invalid rules/)
+  await assert.rejects(decodeCoachSix(coachCode({ ...six, regions: rectangularRegions(2, 3), givenConstraints: [{
+    type: 'twoCellSum', settings: {}, segments: [{ cells: [0, 7], parameters: { sum: 7 } }],
+  }] })), /invalid rules/)
+})
+
 test('six-by-six Coach inequality imports reject unknown layer, setting and segment fields', async () => {
   const inequality = { type: 'greaterLess', settings: {}, segments: [{ cells: [0, 1], parameters: {} }] }
   const invalid = [

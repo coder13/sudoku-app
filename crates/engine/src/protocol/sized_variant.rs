@@ -240,6 +240,9 @@ impl TryFrom<Rule> for SizedConstraint {
                 }
             }
             Rule::Variant(PuzzleRule::Xv { five, ten }) => Self::Xv { five, ten },
+            Rule::Variant(PuzzleRule::AdjacentTotal { cells, sum }) => {
+                Self::AdjacentTotal { cells, sum }
+            }
             Rule::Variant(PuzzleRule::Sandwich {
                 cells,
                 direction,

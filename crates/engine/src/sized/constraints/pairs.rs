@@ -200,6 +200,7 @@ pub(super) fn compile_pairs(
                 | SizedConstraint::Clone { .. }
                 | SizedConstraint::NonConsecutive { .. }
                 | SizedConstraint::Inequality { .. }
+                | SizedConstraint::AdjacentTotal { .. }
                 | SizedConstraint::Minimum { .. }
                 | SizedConstraint::Maximum { .. }
                 | SizedConstraint::AntiKnight
@@ -528,6 +529,20 @@ pub(super) fn compile_pairs(
                     });
                 }
             }
+            continue;
+        }
+        if let SizedConstraint::AdjacentTotal { cells, sum } = rule {
+            if *sum < 3 || usize::from(*sum) > 2 * size - 1 {
+                return None;
+            }
+            let cells = adjacent_edge(*cells, size)?;
+            let displayed_total = *sum + 2 * value_offset;
+            groups[index].push(SizedPairLink {
+                constraint: PairConstraint::from_relation(cells, size, |x, y| {
+                    x + y == displayed_total
+                }),
+                kropki: None,
+            });
             continue;
         }
         if let SizedConstraint::CornerKropki {
