@@ -1961,6 +1961,13 @@ mod terrain_sandwich_tests {
         });
         let compiled = puzzle.compile().unwrap();
         assert!(compiled.candidates(&solution, &[0; 81]).is_ok());
+        let candidates = compiled.candidates(&[0; 81], &[0; 81]).unwrap();
+        assert!(
+            solution
+                .iter()
+                .enumerate()
+                .all(|(cell, digit)| { candidates[cell] & (1 << (digit - 1)) != 0 })
+        );
 
         let PuzzleRule::TerrainSandwich { maximum, .. } = &mut puzzle.rules[0] else {
             unreachable!();
