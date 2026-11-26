@@ -212,6 +212,37 @@ test('shared 9 × 9 puzzles retain published Minimum, Maximum and numbered-dot r
   } finally { sqlite.close() }
 })
 
+test('published Coach rule additions round-trip through the public share API', async () => {
+  const magicSquare = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-magic-square.json', import.meta.url), 'utf8')) as { code: string }
+  const unknownCages = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-unknown-cage-totals.json', import.meta.url), 'utf8')) as { code: string }
+  const distantNeighbors = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-distant-neighbors.json', import.meta.url), 'utf8')) as { code: string }
+  const entropySources = JSON.parse(readFileSync(new URL('./fixtures/entropic-coach.json', import.meta.url), 'utf8')).examples as
+    { url: string; code: string }[]
+  const examples = [
+    { title: 'Magic Square', code: magicSquare.code, type: 'magic-square' },
+    { title: 'Unknown cage sums', code: unknownCages.code, type: 'unknown-cage-sums' },
+    { title: 'Distant Neighbors', code: distantNeighbors.code, type: 'distant-neighbors' },
+    { title: 'Entropic Spiral', code: entropySources.find(({ url }) => url.endsWith('/LEjN'))!.code, type: 'forbidden-entropic-connection' },
+    { title: 'Entropic Order', code: entropySources.find(({ url }) => url.endsWith('/7nms'))!.code, type: 'digit-order' },
+  ]
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    const api = syncRequest(undefined, fetcher)
+    for (const example of examples) {
+      const imported = await detectPuzzle(example.code)
+      assert.ok(imported.variant, example.title)
+      assert.ok(imported.variant.puzzle.rules?.some(rule => rule.type === example.type), example.title)
+      const game = { ...makeGame(createGameId(), example.title, imported.givens, 'imported'), variant: imported.variant,
+        ...(imported.givenCellColors && { givenCellColors: imported.givenCellColors }) }
+      const definition = puzzleDefinitionForSharing(game)
+      let id: string
+      try { ({ id } = await api<{ id: string }>('shares', 'POST', definition)) }
+      catch (error) { assert.fail(`${example.title} share failed: ${String(error)}`) }
+      assert.deepEqual(await api(`shares/${id}`), JSON.parse(JSON.stringify(definition)), example.title)
+    }
+  } finally { sqlite.close() }
+})
+
 test('public share links preserve the Quad-Arrows arithmetic', async () => {
   const { sqlite, fetcher } = syncDatabase()
   try {

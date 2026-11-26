@@ -786,10 +786,14 @@ const ruleFields = {
   between: [{ cells: list(cell, 3, 81) }],
   lockout: [{ cells: uniqueCells(2, 81) }],
   clone: [{ groups: list(list(cell, 2, 81), 1) }],
+  'digit-order': [{ cells: house, digits: list(integer(1, 9), 3, 3) }],
+  'distant-neighbors': [{ markedCells: house }],
   entropic: [{ cells: list(cell, 1) }],
   'entropy-window-group': [{ cells: list(cell, 4, 4), group: oneOf('low', 'middle', 'high') }],
+  'forbidden-entropic-connection': [{ cells: list(cell, 4, 4) }],
   'global-entropy': [{}],
   inequality: [{ less: cell, greater: cell }],
+  'magic-square': [{ cells: list(cell, 9, 9) }],
   minimum: [{ cells: uniqueCells(1, 81) }, { ignoreMarkedNeighbors: boolean }],
   maximum: [{ cells: uniqueCells(1, 81) }, { ignoreMarkedNeighbors: boolean }],
   'little-killer': [{ direction: diagonalDirection, cells: list(cell, 1, 9), sum: integer(1, 81) }],
@@ -800,6 +804,8 @@ const ruleFields = {
   whispers: [{ cells: list(cell, 2, 82), minDifference: integer(1, 8) }],
   'x-sum': [{ direction, cells: house, sum: integer(1, 45) }],
   'terrain-sandwich': [{ direction, cells: house, maximum: integer(-14, 126), transforms: list(terrainTransform, 9, 9) }],
+  'unknown-cage-sums': [{ cages: list(cage => list(cell, 1, 9)(cage), 15, 15),
+    consecutivePairs: list(pair => list(integer(0, 14), 2, 2)(pair), 0, 105) }],
   xv: [{}, { five: marks, ten: marks }],
   'anti-king': [{}],
   'anti-knight': [{}],
@@ -810,7 +816,7 @@ const ruleFields = {
   'distinct-cells': [{ cells: uniqueCells(2, 8) }, { color: clueColor }],
   'consecutive-run': [{ cells: uniqueCells(2, 9) }, { color: clueColor, fromBulb: boolean }],
   'inside-grid': [{ rows: insideGridRows }],
-  'killer-cages': [{ cages: list(value => fields(value, { cells, sum: integer(1, 45) }), 1) }, { coverGrid: boolean }],
+  'killer-cages': [{ cages: list(value => fields(value, { cells, sum: integer(1, 45) }, { showSum: boolean }), 1) }, { coverGrid: boolean }],
   kropki: [{}, { consecutive: marks, ratioTwo: marks }],
   'non-consecutive': [{}, { except: pairs }],
   parity: [{ cells, parity: oneOf('odd', 'even') }],
@@ -829,6 +835,39 @@ const rule = value => {
   const [required, optional] = ruleFields[value.type]
   if (!fields(value, { type: oneOf(value.type), ...required }, optional)) return false
   if (value.type === 'terrain-sandwich') return outsideNineRay(value.cells, value.direction)
+  if (value.type === 'digit-order') {
+    if (new Set(value.cells).size !== 9 || ![[1, 2, 3], [4, 5, 6], [7, 8, 9]].some(group =>
+      group.every((digit, index) => value.digits[index] === digit))) return false
+    const row = Math.floor(value.cells[0] / 9), column = value.cells[0] % 9
+    return value.cells.every((cell, index) => cell === row * 9 + index) ||
+      value.cells.every((cell, index) => cell === row * 9 + 8 - index) ||
+      value.cells.every((cell, index) => cell === index * 9 + column) ||
+      value.cells.every((cell, index) => cell === (8 - index) * 9 + column)
+  }
+  if (value.type === 'distant-neighbors') {
+    const boxes = Array.from({ length: 9 }, () => 0)
+    return new Set(value.markedCells).size === 9 && value.markedCells.every(cell =>
+      boxes[Math.floor(cell / 27) * 3 + Math.floor(cell % 9 / 3)]++ === 0)
+  }
+  if (value.type === 'forbidden-entropic-connection') return new Set(value.cells).size === 4 &&
+    value.cells.slice(1).every((cell, index) =>
+      Math.abs(Math.floor(cell / 9) - Math.floor(value.cells[index] / 9)) +
+      Math.abs(cell % 9 - value.cells[index] % 9) === 1)
+  if (value.type === 'magic-square') {
+    if (new Set(value.cells).size !== 9) return false
+    const rows = value.cells.map(cell => Math.floor(cell / 9)), columns = value.cells.map(cell => cell % 9)
+    const top = Math.min(...rows), left = Math.min(...columns)
+    return Math.max(...rows) - top === 2 && Math.max(...columns) - left === 2 &&
+      Array.from({ length: 3 }, (_, row) => Array.from({ length: 3 }, (_, column) =>
+        (top + row) * 9 + left + column)).flat().every(cell => value.cells.includes(cell))
+  }
+  if (value.type === 'unknown-cage-sums') {
+    const cells = value.cages.flat()
+    return cells.length === 81 && new Set(cells).size === 81 &&
+      value.consecutivePairs.every(([first, second]) => first !== second) &&
+      new Set(value.consecutivePairs.map(([first, second]) => [first, second].sort((a, b) => a - b).join(':'))).size ===
+        value.consecutivePairs.length
+  }
   if (value.type === 'entropy-window-group') {
     const [topLeft, topRight, bottomLeft, bottomRight] = value.cells
     return topLeft < 72 && topLeft % 9 < 8 && topRight === topLeft + 1 &&
