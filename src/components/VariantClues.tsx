@@ -273,12 +273,12 @@ export function SizedRuleClues({ rules, size, values }: { rules: readonly SizedC
     {rules.map((rule, index) => rule.type === 'product-cage' && <g key={index} className="variant-product-cage" data-product-cage={rule.product}>
       {rule.cells.map(cell => <rect key={cell} className="variant-product-cage-fill" data-product-cage-cell={cell}
         x={x(cell, size)} y={y(cell, size)} width="1" height="1" fill={rule.color ?? '#ffbfff'} fillOpacity=".4" />)}
-      <Cage cells={rule.cells} captionWidth={.72} captionInset={cageLabelInset(Math.min(...rule.cells), rules, size)} size={size} />
+      <Cage cells={rule.cells} captionWidth={cageCaptionWidth(rule.product, size)} captionInset={cageLabelInset(Math.min(...rule.cells), rules, size)} size={size} />
     </g>)}
     {rules.map((rule, index) => rule.type === 'extra-house' && <ExtraRegion key={index} cells={rule.cells} size={size} />)}
     {rules.map((rule, index) => rule.type === 'killer-cages' && <g key={index}>
       {rule.cages.map(({ cells, sum }) => <g key={Math.min(...cells)} data-killer-cage={sum}>
-        <Cage cells={cells} captionWidth={sum < 10 ? .17 : .3} captionInset={cageLabelInset(Math.min(...cells), rules, size)} size={size} />
+        <Cage cells={cells} captionWidth={cageCaptionWidth(sum, size)} captionInset={cageLabelInset(Math.min(...cells), rules, size)} size={size} />
       </g>)}
     </g>)}
     {rules.map((rule, index) => rule.type === 'diagonal' && <DiagonalClue key={index} diagonal={rule.diagonal} size={size} />)}
@@ -450,6 +450,12 @@ function Cage({ cells, captionWidth, captionInset, size = 9 }: {
       return <path key={cell} className="variant-cage-edge" d={segments.join(' ')} />
     })}
   </>
+}
+
+function cageCaptionWidth(label: number | string, size: number) {
+  // Board cage totals use 2.2cqw text. Match the rendered digit widths,
+  // plus a small gap, before starting the top border.
+  return 2.2 * size / 100 * .68 * String(label).length + .02
 }
 
 /** Outline arithmetic cages and include captions when used without Board. */
