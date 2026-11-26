@@ -1,7 +1,8 @@
 import { createFutoshiki, type FutoshikiPuzzle } from './engine.ts'
 import { numberPuzzleDifficulties, type NumberPuzzleDifficulty, type NumberPuzzleEntry } from '../number-puzzles/catalog.ts'
+import type { ImportedCellColors } from '../sudoku/imported-colors.ts'
 
-export type FutoshikiEntry = NumberPuzzleEntry & { puzzle: FutoshikiPuzzle }
+export type FutoshikiEntry = NumberPuzzleEntry & { puzzle: FutoshikiPuzzle; givenCellColors?: ImportedCellColors }
 type Recipe = { given?: [number, number][]; edges: [number, number][] }
 const recipes: Record<NumberPuzzleDifficulty, { size: number; boards: Recipe[] }> = {
   easy: { size: 4, boards: [

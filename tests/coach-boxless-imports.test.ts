@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import { solveLatin, checkLatin } from '../src/latin/engine.ts'
 import { readImportedFutoshiki } from '../src/futoshiki/imported.ts'
 import { readImportedCalcudoku } from '../src/calcudoku/imported.ts'
+import { encodeImportedNumberPuzzle } from '../src/number-puzzles/imported-codec.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import worker from '../cloudflare/pages/_worker.js'
@@ -213,12 +214,21 @@ test('#476 enforces Anti-Knight with boxless Futoshiki and Calcudoku rules', asy
   assert.equal(checkLatin(calcudoku.calcudoku.puzzle, calcudokuSolution).complete, true)
 })
 
-test('boxless Coach cell colors reject explicitly until the Latin-square flow can retain them', async () => {
-  const givenColours = Array(16).fill('').map((value, cell) => cell === 0 ? '0' : value).join(',')
-  await assert.rejects(detectPuzzle(coachCode({
+test('boxless Coach Futoshiki cell colors survive import and saved-definition reload', async () => {
+  const givenColours = Array(16).fill('').map((value, cell) => cell === 0 ? '0' : cell === 1 ? '1' : value).join(',')
+  const code = coachCode({
     gridSize: 4, regions: [], givenDigits: '1234341221434321',
-    colours: ['red'], givenColours,
-  })), /cell colors that the Latin-square import cannot preserve/)
+    colours: ['red', 'blue'], givenColours,
+  })
+  const imported = await detectPuzzle(code)
+  assert.ok(imported.futoshiki)
+  assert.deepEqual(imported.futoshiki.givenCellColors, { 0: ['red'], 1: ['blue'] })
+  assert.deepEqual(readImportedFutoshiki(imported.futoshiki.id)?.givenCellColors, imported.futoshiki.givenCellColors)
+  const preview = await prepareImportedPuzzle(code)
+  assert.deepEqual(preview.futoshiki?.givenCellColors, imported.futoshiki.givenCellColors)
+  assert.equal(readImportedFutoshiki(encodeImportedNumberPuzzle('f1', {
+    size: 4, givens: '1234341221434321', inequalities: [], parity: [], givenCellColors: { 16: ['red'] },
+  })), undefined)
 })
 
 test('#456/#459/#460 keep Coach Thermometers, Arrows, and Renban rules in boxless Futoshiki and Calcudoku', async () => {

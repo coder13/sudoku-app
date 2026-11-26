@@ -83,6 +83,15 @@ export const ImportedParityPreview: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
 }
 
+export const ImportedCoachColorsPreview: Story = {
+  render: () => <div className="import-preview">
+    <FutoshikiImportPreview entry={createImportedFutoshiki(4, '1234341221434321', [], [], undefined, {
+      givenCellColors: { 0: ['red'], 1: ['blue', 'yellow'], 6: ['limeHeavy'] },
+    })} />
+  </div>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+}
+
 export const LoadingDifficultyResults: Story = {
   render: function LoadingResults() {
     const [difficulty, setDifficulty] = useState<NumberPuzzleDifficulty>('easy')

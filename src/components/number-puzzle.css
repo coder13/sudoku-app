@@ -260,6 +260,14 @@
 .number-puzzle-cell[data-edges*="l"] { --edge-left: 1.5px; }
 .number-puzzle-cell[data-given="true"] { background: var(--given-bg); font-weight: 800; }
 .number-puzzle-cell[data-context="true"]:not([data-hint="true"]) { background: var(--surface-active); }
+.number-puzzle-cell[data-authored-color="true"]:not([data-conflict="true"]) {
+  background-color: var(--number-puzzle-authored-fill, var(--board-bg));
+  background-image: var(--number-puzzle-authored-image, none);
+}
+.number-puzzle-grid:not([data-toggle-cells]) .number-puzzle-cell[aria-pressed="true"][data-authored-color="true"]:not([data-conflict="true"]) {
+  background-color: var(--number-puzzle-authored-fill, var(--board-bg));
+  background-image: var(--number-puzzle-authored-image, none);
+}
 .number-puzzle-cell[data-decorated="true"] .number-puzzle-notes { height: 72%; align-self: end; }
 .number-puzzle-cell-label {
   position: absolute;

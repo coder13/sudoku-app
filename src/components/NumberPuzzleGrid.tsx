@@ -1,5 +1,7 @@
 import type { CSSProperties, KeyboardEventHandler } from 'react'
 import type { NumberBoard, NumberGame } from './NumberPuzzleTypes'
+import { cellColorGradient } from './cell-color-gradient'
+import { importedColorFill, importedColorLabel } from '../sudoku/imported-colors'
 
 export type NumberPuzzleGridAppearance = {
   values: readonly number[]
@@ -46,13 +48,20 @@ export function NumberPuzzleGrid({ content, appearance, interaction, ariaLabel, 
     </div>
   }
 
-  function renderCell({ label: clue, block, decoration, edges, given, endpoint, printed }: NumberBoard['cells'][number], index: number) {
+  function renderCell({ label: clue, authoredColors = [], block, decoration, edges, given, endpoint, printed }: NumberBoard['cells'][number], index: number) {
     if (block) return renderBlock(index)
     const value = given || values[index]
     const marks = digits.filter(digit => (notes[index] ?? 0) & (1 << (digit - 1)))
     const description = printed !== undefined ? String(printed)
       : given ? `given ${given}` : value ? String(value) : marks.length ? `notes ${marks.join(', ')}` : 'empty'
-    const label = `${cellName(index)}, ${description}${clue ? ', ' + clue : ''}`
+    const colorLabels = authoredColors.map(importedColorLabel)
+    const label = `${cellName(index)}, ${description}${clue ? ', ' + clue : ''}${colorLabels.length ? `, colored ${colorLabels.join(' and ')}` : ''}`
+    const colorFills = authoredColors.map(importedColorFill)
+    const authoredColorStyle = colorFills.length ? {
+      '--number-puzzle-authored-fill': `color-mix(in srgb, ${colorFills[0]} 34%, var(--board-selected-bg))`,
+      '--number-puzzle-authored-image': cellColorGradient(colorFills.map(fill =>
+        `color-mix(in srgb, ${fill} 34%, var(--board-selected-bg))`)),
+    } as CSSProperties : undefined
     const content = <>
       {decoration}
       {printed !== undefined ? <span>{printed}</span> : value ? endpoint ? <span className="number-puzzle-endpoint">{value}</span> : value
@@ -71,7 +80,9 @@ export function NumberPuzzleGrid({ content, appearance, interaction, ariaLabel, 
       'data-given': Boolean(given),
       'data-endpoint': endpoint,
       'data-decorated': Boolean(decoration),
+      'data-authored-color': Boolean(colorFills.length),
       'aria-label': label,
+      style: authoredColorStyle,
     } as const
     if (!interaction && readOnlySemantics === 'image') {
       return <div key={index} {...visualProps} role="img">{content}</div>

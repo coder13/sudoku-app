@@ -560,11 +560,8 @@ function readCoachStandalone(data: Record<string, unknown>): ImportResult | unde
   const diagonals = readCoachDiagonals(rawLayers)
   const standaloneRules = readCoachStandaloneRules(rawLayers, Number(size))
   if (isFutoshiki) {
-    if (givenCellColors && Object.keys(givenCellColors).length) {
-      throw new Error('This boxless Sudoku Coach puzzle uses cell colors that the Latin-square import cannot preserve.')
-    }
     const futoshiki = createImportedFutoshiki(Number(size), givens, readCoachInequalities(rawLayers), parity, position,
-      { diagonals, ...standaloneRules })
+      { diagonals, ...standaloneRules, ...(givenCellColors && { givenCellColors }) })
     return { givens, futoshiki }
   }
   const cages = readCoachCalcudokuCages(rawLayers, Number(size))
