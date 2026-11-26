@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { runEngine } from '../src/sudoku/engine.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 
 useWasmWorker()
@@ -18,4 +19,8 @@ test('#423 Magic Square import passes the complete puzzle through the Rust engin
     puzzle: imported.variant.puzzle,
     entries: source.solution,
   } }), 'unique')
+
+  const preview = await prepareImportedPuzzle(source.code, [], { deferRating: true })
+  assert.equal(preview.game.variant?.solution, source.solution)
+  assert.equal(preview.ratingPending, true)
 })
