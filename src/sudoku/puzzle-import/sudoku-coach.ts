@@ -765,7 +765,22 @@ function readCoachLetteredQuadruples(constraints: readonly unknown[]): VariantRu
 async function fromCoach(code: string, publication?: CoachPublication | null, fromCollection = false): Promise<ImportResult> {
   const data: Record<string, unknown> = /^[0-9]{81}$/.test(code) ? { gridSize: 9, givenDigits: code } : await decodeCoach(code)
   const terrain = await readReviewedCoachTerrain(code, data)
-  if (terrain) throw new Error('This Sudoku Coach Terrain puzzle uses transformed values that the engine does not support yet.')
+  if (terrain) {
+    const givens = data.givenDigits === undefined ? EMPTY : data.givenDigits
+    if (typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens)) throw new Error('This Sudoku Coach puzzle has invalid givens.')
+    const transforms = terrain.cellColors.map(color => color === 'yellow'
+      ? { multiplier: 2, offset: 0 }
+      : color === 'green' ? { multiplier: 1, offset: 3 }
+        : color === 'purple' ? { multiplier: 1, offset: -3 }
+          : { multiplier: 1, offset: 0 })
+    const rules: VariantRule[] = terrain.clues.map(({ direction, index, maximum }) => {
+      const cells = Array.from({ length: 9 }, (_, offset) => direction === 'south' ? offset * 9 + index : index * 9 + offset)
+      return { type: 'terrain-sandwich', direction, cells, maximum, transforms: cells.map(cell => transforms[cell]) }
+    })
+    const imported = makeImportedPuzzle(givens, rules, undefined)
+    const givenCellColors = Object.fromEntries(terrain.cellColors.flatMap((color, cell) => color ? [[cell, [color]]] : []))
+    return { ...imported, givenCellColors, title: publication?.title ?? 'Terrain Variants I: Diamond Sandwich' }
+  }
   const crust = await readReviewedCoachCrust(code, data)
   if (crust) {
     const grid = crust.size === 7 ? SEVEN_BOXLESS_GRID : NINE_BOXLESS_GRID

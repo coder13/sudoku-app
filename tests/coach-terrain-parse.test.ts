@@ -45,9 +45,12 @@ test('reviewed Coach Terrain parser preserves its transforms and maximum Sandwic
     assert.equal(Math.max(...possible), clue.maximum, `${clue.direction}:${clue.index}`)
   }
 
-  // Parsing the reviewed source must not silently import its typed empty layer
-  // as an ordinary Sandwich puzzle before the engine supports Terrain values.
-  await assert.rejects(detectPuzzle(source.source.sudoku), /transformed values.*engine does not support/i)
+  const imported = await detectPuzzle(source.source.sudoku)
+  assert.equal(imported.format, 'Sudoku Coach')
+  assert.equal(imported.variant?.id, 'mixed')
+  const rules = imported.variant?.puzzle.rules ?? []
+  assert.equal(rules.filter(rule => rule.type === 'terrain-sandwich').length, 15)
+  assert.deepEqual(imported.givenCellColors, Object.fromEntries(terrain.cellColors.flatMap((color, cell) => color ? [[cell, [color]]] : [])))
 })
 
 test('Coach Terrain semantics are restricted to the exact reviewed export', async () => {

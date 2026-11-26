@@ -41,6 +41,16 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
         assert.equal(row.slice(Math.min(one, nine) + 1, Math.max(one, nine)).reduce((sum, digit) => sum + digit, 0), rule.sum)
         break
       }
+      case 'terrain-sandwich': {
+        const values = rule.cells.map((cell, index) => digits[cell] * rule.transforms[index].multiplier + rule.transforms[index].offset)
+        const possible = values.flatMap((first, start) => values.flatMap((last, end) =>
+          first === 1 && last === 9 && start !== end
+            ? [values.slice(Math.min(start, end) + 1, Math.max(start, end)).reduce((sum, value) => sum + value, 0)]
+            : []))
+        assert.ok(possible.length)
+        assert.equal(Math.max(...possible), rule.maximum)
+        break
+      }
       case 'clone':
         for (const group of rule.groups) for (const cell of group) assert.equal(digits[cell], digits[group[0]])
         break

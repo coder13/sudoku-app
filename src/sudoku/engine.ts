@@ -84,6 +84,7 @@ export type VariantRule =
   | { type: 'pill-arrow'; pill: readonly [number, number]; cells: readonly number[]; fromTens?: boolean }
   | { type: 'region-sum'; cells: readonly number[]; groupByRegion?: boolean; segments?: readonly (readonly number[])[] }
   | { type: 'sandwich'; direction: ClueDirection; cells: readonly number[]; sum: number }
+  | { type: 'terrain-sandwich'; direction: ClueDirection; cells: readonly number[]; maximum: number; transforms: readonly { multiplier: number; offset: number }[] }
   | { type: 'x-sum'; direction: ClueDirection; cells: readonly number[]; sum: number }
   | { type: 'little-killer'; direction: DiagonalDirection; cells: readonly number[]; sum: number }
   | { type: 'skyscrapers'; direction: ClueDirection; cells: readonly number[]; count: number }

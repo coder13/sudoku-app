@@ -2,7 +2,7 @@ import type { VariantRule } from './engine.ts'
 import type { SizedConstraintRule, SizedOutsideTextRule } from './engine.ts'
 
 type CrustOutsideClue = { type: 'crust-clue'; direction: Direction; cells: readonly number[]; sum: number; crossed?: number }
-export type OutsideRule = Extract<VariantRule, { type: 'sandwich' | 'little-killer' | 'x-sum' | 'skyscrapers' }>
+export type OutsideRule = Extract<VariantRule, { type: 'sandwich' | 'little-killer' | 'x-sum' | 'skyscrapers' | 'terrain-sandwich' }>
   | Extract<VariantRule, { type: 'digit-order' }>
   | Extract<SizedConstraintRule, { type: 'nonogram' }>
   | SizedOutsideTextRule
@@ -10,6 +10,7 @@ export type OutsideRule = Extract<VariantRule, { type: 'sandwich' | 'little-kill
 export type OutsideRuleSource = VariantRule | Extract<SizedConstraintRule, { type: 'sandwich' | 'nonogram' | 'x-sum' | 'outside-text' }> | CrustOutsideClue
 const ORTHOGONAL_CLUES = {
   sandwich: { prefix: 'S', name: 'Sandwich' },
+  'terrain-sandwich': { prefix: 'T', name: 'Terrain Sandwich' },
   'x-sum': { prefix: 'X', name: 'X-Sums' },
   skyscrapers: { prefix: 'Sk', name: 'Skyscrapers' },
   'crust-clue': { prefix: 'C', name: 'Crust' },
@@ -88,6 +89,8 @@ export function outsideClueLabel(rule: OutsideRule, size = 9) {
   const location = `${side} of ${side === 'top' || side === 'bottom' ? 'column ' + ((rule.cells[0] % size) + 1) : 'row ' + (Math.floor(rule.cells[0] / size) + 1)}`
   if (rule.type === 'skyscrapers')
     return `Skyscrapers ${rule.count}, ${location}: looking from ${cellName(rule.cells[0], size)}, count the first building and each new tallest building. Exactly ${rule.count} ${rule.count === 1 ? 'building is' : 'buildings are'} visible.`
+  if (rule.type === 'terrain-sandwich')
+    return `Terrain Sandwich maximum ${rule.maximum}, ${location}: use transformed values between transformed 1 and 9.`
   return rule.type === 'x-sum'
     ? `X-Sum ${rule.sum}, ${location}: the first digit counts how many cells to add, including itself, starting at ${cellName(rule.cells[0], size)}.`
     : `Sandwich ${rule.sum}, ${location}: digits strictly between 1 and ${size} sum to ${rule.sum}; 1 and ${size} are excluded.`
@@ -154,7 +157,8 @@ export function outsideClueLayout(rules?: readonly OutsideRuleSource[], size = 9
       anchors.set(key, { lane: prior.lane + 1, extent })
       continue
     }
-    if (rule.type !== 'sandwich' && rule.type !== 'little-killer' && rule.type !== 'outside-text' && rule.type !== 'x-sum' && rule.type !== 'skyscrapers' && rule.type !== 'crust-clue') continue
+    if (rule.type !== 'sandwich' && rule.type !== 'little-killer' && rule.type !== 'outside-text' && rule.type !== 'x-sum' &&
+      rule.type !== 'terrain-sandwich' && rule.type !== 'skyscrapers' && rule.type !== 'crust-clue') continue
     const [dr, dc] = clueDelta(rule.direction),
       first = rule.cells[0]
     const ox = (first % size) + 0.5 - dc,
@@ -165,7 +169,7 @@ export function outsideClueLayout(rules?: readonly OutsideRuleSource[], size = 9
       const x = (first % size) + 0.5 - dc * (0.85 + prior.extent),
         y = Math.floor(first / size) + 0.5 - dr * (0.85 + prior.extent)
       const family = rule.type === 'crust-clue' ? 'crust-clue' : rule.type
-      const label = (legend.length ? ORTHOGONAL_CLUES[family].prefix : '') + (rule.type === 'skyscrapers' ? rule.count : rule.type === 'crust-clue' ? rule.sum : rule.sum)
+      const label = (legend.length ? ORTHOGONAL_CLUES[family].prefix : '') + (rule.type === 'skyscrapers' ? rule.count : rule.type === 'crust-clue' ? rule.sum : rule.type === 'terrain-sandwich' ? rule.maximum : rule.sum)
       const secondaryLabel = rule.type === 'crust-clue' && rule.crossed !== undefined ? String(rule.crossed) : undefined
       clues.push({ rule, lane: prior.lane, x, y, dr, dc, label, ...(secondaryLabel !== undefined && { secondaryLabel }) })
       const extent = prior.extent + (legend.length ? 0.9 : secondaryLabel !== undefined ? 1.3 : 0.7)

@@ -2,6 +2,7 @@ import { useEffect, useState, type ComponentProps } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Board, type BoardAppearance, type BoardContent, type BoardInteraction, type BoardLayout, type BoardProps } from '../../src/components/Board'
 import type { SizedConstraintRule, VariantPuzzle } from '../../src/sudoku/engine'
+import type { ImportedCellColors } from '../../src/sudoku/imported-colors'
 import { projectFogPuzzle } from '../../src/sudoku/fog'
 import { conflictsOf, enter, paintCandidates, valuesOf } from '../../src/sudoku/game'
 import { fiveJigsawForSeed, MINI_GRID, NINE_BOXLESS_GRID, SEVEN_BOXLESS_GRID, SIX_BOXLESS_GRID, type SizedGrid } from '../../src/sudoku/grid'
@@ -15,6 +16,7 @@ import authoredLayers from '../../tests/fixtures/sudoku-coach-authored-layers.js
 import coachNonogram from '../../tests/fixtures/sized-coach-nonogram.json'
 import coachSkyscrapers from '../../tests/fixtures/skyscrapers-unsupported-9W3o.json'
 import coachCrust from '../../tests/fixtures/sudoku-coach-crust.json'
+import coachTerrain from '../../tests/fixtures/sandwich-terrain-unsupported.json'
 import coachRowEquations from '../../tests/fixtures/coach-row-equations.json'
 import coachFractionalRegions from '../../tests/fixtures/coach-fractional-regions.json'
 import coachUnknownCageSums from '../../tests/fixtures/sudoku-coach-unknown-cage-totals.json'
@@ -308,6 +310,29 @@ function CoachCrustBoard({ finished = false }: { finished?: boolean }) {
 
 export const CoachCrustEdgeCountUnfinished: Story = { render: () => <CoachCrustBoard /> }
 export const CoachCrustEdgeCountFinished: Story = { render: () => <CoachCrustBoard finished /> }
+
+function CoachTerrainBoard({ finished = false }: { finished?: boolean }) {
+  const [puzzle, setPuzzle] = useState<{ givens: string; solution: string; variantPuzzle: VariantPuzzle; givenCellColors: ImportedCellColors }>()
+  useEffect(() => {
+    void detectPuzzle(coachTerrain.source.sudoku).then(imported => {
+      if (imported.variant && imported.givenCellColors) setPuzzle({
+        givens: imported.givens,
+        solution: coachTerrain.source.solution,
+        variantPuzzle: imported.variant.puzzle,
+        givenCellColors: imported.givenCellColors,
+      })
+    })
+  }, [])
+  if (!puzzle) return <p>Loading the published Sudoku Coach Terrain puzzle…</p>
+  return <div>
+    <p>Yellow cells count double, green cells add 3, and purple cells subtract 3. Add transformed values between transformed 1 and 9; when several pairs qualify, use the largest total.</p>
+    <BoardExample givens={puzzle.givens} values={finished ? puzzle.solution : puzzle.givens}
+      variantPuzzle={puzzle.variantPuzzle} givenCellColors={puzzle.givenCellColors} showGuides />
+  </div>
+}
+
+export const CoachTerrainUnfinished: Story = { render: () => <CoachTerrainBoard /> }
+export const CoachTerrainFinished: Story = { render: () => <CoachTerrainBoard finished /> }
 
 const coachEntropyExamples = coachEntropy.examples as { url: string; title: string; code: string; solution: string }[]
 const coachEntropySpiral = coachEntropyExamples.find(example => example.url.endsWith('/LEjN'))!
