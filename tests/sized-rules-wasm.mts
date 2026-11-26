@@ -776,6 +776,32 @@ test('Coach Ratio layers with different labels keep their negative settings inde
   assert.equal(candidates[4], 1 << 2, 'the marked 1:3 edge remains active')
 })
 
+test('Coach Difference layers with different labels keep their negative settings independent', async () => {
+  const solution = '1234341221434321'
+  const digits = [...solution].map(Number)
+  const edges = Array.from({ length: 16 }, (_, cell) => [
+    ...(cell % 4 < 3 ? [[cell, cell + 1] as const] : []),
+    ...(cell < 12 ? [[cell, cell + 4] as const] : []),
+  ]).flat()
+  const differenceOnePair = edges.find(([a, b]) => Math.abs(digits[a] - digits[b]) === 1)
+  const differenceTwoPairs = edges.filter(([a, b]) => Math.abs(digits[a] - digits[b]) === 2)
+  assert.ok(differenceOnePair && differenceTwoPairs.length > 0)
+  const imported = await detectPuzzle(coachCode({ gridSize: 4, givenDigits: solution, givenConstraints: [
+    { type: 'difference', settings: { negativeConstraint: false }, segments: [
+      { cells: differenceOnePair, parameters: { difference: 1 } },
+    ] },
+    { type: 'difference', settings: { negativeConstraint: true }, segments: differenceTwoPairs.map(cells => ({
+      cells, parameters: { difference: 2 },
+    })) },
+  ] }))
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'kropki', consecutive: { pairs: [differenceOnePair], negative: false } },
+    { type: 'labeled-dots', relation: 'difference', marks: differenceTwoPairs.map(cells => ({ cells, value: 2 })), negative: true },
+  ])
+  const position = sizedRulePosition(imported.grid!, { rules: imported.sizedRules! }, imported.givens!)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+})
+
 const coachSumQuadruples = JSON.parse(readFileSync(new URL('./fixtures/sum-quadruple-coach.json', import.meta.url), 'utf8')) as {
   url: string; title: string; coach: string; solution: string
 }[]
