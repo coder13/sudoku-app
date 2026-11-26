@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
+import { runEngine } from '../src/sudoku/engine.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { parsePuzzleExport, puzzleExportText } from '../src/sudoku/puzzle-sharing.ts'
@@ -18,6 +19,17 @@ test('#196 imports the reviewed Terrain source and checks its transformed maxima
   const parsed = await detectPuzzle(source.source.sudoku)
   assert.ok(parsed.variant)
   assertVariantCompletion(parsed.variant.puzzle, source.source.solution)
+
+  const rules = parsed.variant.puzzle.rules ?? []
+  const firstTerrainRule = rules.findIndex(rule => rule.type === 'terrain-sandwich')
+  assert.notEqual(firstTerrainRule, -1)
+  const alteredRules = rules.map((rule, index) => index === firstTerrainRule && rule.type === 'terrain-sandwich'
+    ? { ...rule, maximum: rule.maximum + 1 }
+    : rule)
+  const altered = await runEngine({ type: 'variant', operation: 'solve-unique', position: {
+    puzzle: { ...parsed.variant.puzzle, rules: alteredRules },
+  } })
+  assert.notEqual(altered.status, 'unique', 'the Wasm engine must enforce every imported Terrain maximum')
 
   const { game } = await prepareImportedPuzzle(source.source.sudoku)
   assert.equal(game.variant?.solution, source.source.solution)
