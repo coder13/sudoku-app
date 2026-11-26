@@ -21,6 +21,7 @@ export function LessonOverview() {
       <section className="lesson-overview-section" data-lesson-difficulty>
         <h2 className="article-subheading">{learnOverview.difficultyTitle}</h2>
         {learnOverview.difficultyParagraphs.map((paragraph, index) => <p className="article-paragraph" key={index}>{paragraph}</p>)}
+        <p className="article-paragraph"><Link to="/about">See techniques and typical ratings by tier</Link></p>
       </section>
       {lessonsByVariant.map(({ title, group, difficulties }) => <section className="lesson-overview-section" key={title}>
         <h2 className="article-subheading" data-lesson-group-title={group?.index}>{title}</h2>

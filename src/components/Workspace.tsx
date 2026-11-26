@@ -2,7 +2,7 @@ import { Button, IconButton, buttonClassName } from './Button'
 import { Link, useLocation, useMatch, useNavigate, useRouterState } from '@tanstack/react-router'
 import { createContext, type CSSProperties, type ReactNode, type SetStateAction, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {
-  ArrowDownToLine, BarChart3, BookOpen, Check, Dices, Grid3X3, Keyboard, Menu, Minus, PanelBottom, PanelLeft, PanelRight, PanelsTopLeft, Plus,
+  ArrowDownToLine, BarChart3, BookOpen, Check, Dices, Grid3X3, Info, Keyboard, Menu, Minus, PanelBottom, PanelLeft, PanelRight, PanelsTopLeft, Plus,
   Monitor, Moon, SlidersHorizontal, Sun,
 } from 'lucide-react'
 import { stepAppTextZoom } from '../sudoku/app-text-zoom'
@@ -569,6 +569,7 @@ export function SudokuShell({ children }: { children: ReactNode }) {
               </Link>
               <button onClick={() => openSettings()}><SlidersHorizontal size={17} /> Settings</button>
               <button onClick={() => openSettings('shortcuts')}><Keyboard size={17} /> Keyboard shortcuts</button>
+              <Link to="/about" onClick={() => setMenuOpen(false)}><Info size={17} /> About</Link>
               {playing && game?.source === 'draft' && <button onClick={checkPuzzle}><Check size={17} /> Validate puzzle</button>}
               <div className="app-menu-separator" />
               <button onClick={openImport}><ArrowDownToLine size={17} /> Import</button>

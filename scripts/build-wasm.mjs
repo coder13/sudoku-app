@@ -30,7 +30,7 @@ export async function buildBrowserEngine(profile = appEngineProfile, outputDirec
 
   const capabilities = request('capabilities')
   const examples = capabilities.teaching ? request('lesson-examples') : {}
-  const { techniques: classicTechniques } = request('techniques')
+  const { techniques: classicTechniques, difficultyOrder } = request('techniques')
   const techniques = capabilities.variants ? request('techniques', { variant: true }).techniques : classicTechniques
   if (capabilities.teaching && capabilities.variants) {
     for (const { id } of techniques) {
@@ -48,6 +48,9 @@ export async function buildBrowserEngine(profile = appEngineProfile, outputDirec
 
   mkdirSync(outputDirectory, { recursive: true })
   writeFileSync(resolve(outputDirectory, 'engine.wasm'), bytes)
+  const generationTiers = new Map(classicTechniques.map(({ id, difficulty }) => [id, difficulty]))
+  const generationTechniques = difficultyOrder.map(id => ({ id, tier: generationTiers.get(id) }))
+  writeFileSync(resolve(outputDirectory, 'classic-generation-techniques.json'), `${JSON.stringify(generationTechniques)}\n`)
   if (capabilities.teaching) {
     writeFileSync(resolve(outputDirectory, 'lesson-examples.json'), `${JSON.stringify(examples)}\n`)
     writeFileSync(resolve(outputDirectory, 'lesson-difficulties.json'), `${JSON.stringify(difficulties)}\n`)
