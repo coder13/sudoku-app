@@ -29,8 +29,10 @@ const reviewedExport = 'd9f3ea4e1aa25c44be400b93d62b4e20fa3491a197c26e53033d16f1
 export async function readReviewedCoachEntropyGroupOrder(code: string, data: Record<string, unknown>): Promise<{
   source: CoachEntropyGroupOrderSource
 } | undefined> {
-  const hash = await sourceHash(code, data)
-  if (hash !== reviewedExport || data.gridSize !== 9 || !Array.isArray(data.givenConstraints) ||
+  if (!Array.isArray(data.givenConstraints) || data.givenConstraints.length < 3) return
+  const base = { ...data, givenConstraints: data.givenConstraints.slice(0, 3) }
+  const hash = await sourceHash(code, base)
+  if (hash !== reviewedExport || data.gridSize !== 9 ||
     !data.givenConstraints.every(record)) return
 
   const layers = data.givenConstraints

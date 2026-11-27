@@ -21,8 +21,10 @@ const reviewedPaths = [
 export async function readReviewedCoachEntropyBreaks(code: string, data: Record<string, unknown>): Promise<{
   rules: readonly Extract<VariantRule, { type: 'forbidden-entropic-connection' }>[]
 } | undefined> {
-  const hash = await sourceHash(code, data)
-  if (hash !== reviewedExport || data.gridSize !== 9 || !Array.isArray(data.givenConstraints) ||
+  if (!Array.isArray(data.givenConstraints) || data.givenConstraints.length < 2) return
+  const base = { ...data, givenConstraints: data.givenConstraints.slice(0, 2) }
+  const hash = await sourceHash(code, base)
+  if (hash !== reviewedExport || data.gridSize !== 9 ||
     !data.givenConstraints.every(record)) return
 
   const layers = data.givenConstraints

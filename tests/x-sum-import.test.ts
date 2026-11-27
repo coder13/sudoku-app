@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import type { VariantPuzzle, VariantRule } from '../src/sudoku/engine.ts'
 import { conflictsOf, enter, fillEntries, makeGame, redo, undo } from '../src/sudoku/game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
 import { xSumState } from '../src/sudoku/x-sum.ts'
 import { outsideClueLabel, outsideClueLayout } from '../src/sudoku/outside-clues.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
@@ -11,6 +12,7 @@ import { isPlayablePuzzle, variantIdForPuzzle, variantRuleDescriptions } from '.
 import { countLineSolutions } from './helpers/line-oracle.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { transformedBoard } from './helpers/transformed-board.ts'
+import { coachCode } from './helpers/coach-code.ts'
 
 const empty = '0'.repeat(81),
   row = Array.from({ length: 9 }, (_, i) => i)
@@ -85,6 +87,17 @@ test('original Coach AsnF imports its published cosmetic X-Sums and complete def
   const counted = countLineSolutions(imported.variant!.puzzle)
   assert.equal(counted.count, 1)
   assert.equal(counted.solution, source.metadata.solution)
+})
+
+test('Coach AsnF keeps its authored X-Sum labels beside an appended Ratio rule', async () => {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/x-sum-AsnF.json', import.meta.url), 'utf8'))
+  const data = await decodeSudokuCoachPayload(source.metadata.sudoku)
+  const ratio = { type: 'ratio', segments: [{ cells: [0, 1], parameters: {} }] }
+  const imported = await detectPuzzle(coachCode({ ...data, givenConstraints: [...data.givenConstraints, ratio] }))
+  const rules = imported.variant?.puzzle.rules ?? []
+  assert.equal(rules.filter(rule => rule.type === 'x-sum').length, 16)
+  assert.ok(rules.some(rule => rule.type === 'kropki' && rule.ratioTwo?.pairs.some(([a, b]) => a === 0 && b === 1)))
+  assertVariantCompletion(imported.variant!.puzzle, source.metadata.solution)
 })
 
 test('local X-Sum support agrees with direct nine-digit permutations for every total and varied partial rows', () => {

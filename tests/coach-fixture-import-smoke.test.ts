@@ -107,6 +107,31 @@ test('the published Every Constraint Coach source retains every mixed rule famil
   })
 })
 
+test('K95q keeps its authored complete-black-dot rule with an appended Ratio companion', async () => {
+  const examples = JSON.parse(readFileSync(join(fixturePath, 'global-entropy-coach.json'), 'utf8')).examples as {
+    url: string; code: string; solution: string
+  }[]
+  const source = examples.find(example => example.url.endsWith('/K95q'))!
+  const data = await decodeSudokuCoachPayload(source.code)
+  const pair = Array.from({ length: 81 }, (_, cell) => cell).flatMap(cell => {
+    const row = Math.floor(cell / 9), column = cell % 9
+    return [row < 8 ? cell + 9 : -1, column < 8 ? cell + 1 : -1]
+      .filter(other => other >= 0 && (Number(source.solution[cell]) === 2 * Number(source.solution[other]) ||
+        Number(source.solution[other]) === 2 * Number(source.solution[cell])))
+      .map(other => [cell, other] as [number, number])
+  })[0]
+  assert.ok(pair)
+  const ratio = { type: 'ratio', segments: [{ cells: pair, parameters: {} }] }
+  const imported = await detectPuzzle(coachCode({ ...data, givenConstraints: [...data.givenConstraints, ratio] }))
+  const rules = imported.variant?.puzzle.rules ?? []
+  assert.ok(rules.some(rule => rule.type === 'global-entropy'))
+  const blackLayers = rules.filter(rule => rule.type === 'kropki' && rule.ratioTwo)
+  assert.ok(blackLayers.length >= 2)
+  assert.ok(blackLayers.every(rule => rule.type === 'kropki' && rule.ratioTwo?.negative === true))
+  assert.ok(blackLayers.some(rule => rule.type === 'kropki' &&
+    rule.ratioTwo?.pairs.some(([a, b]) => a === pair[0] && b === pair[1])))
+})
+
 test('all preserved published Coach links import the same rules as their raw exports', async ({ mock }) => {
   assert.equal(publicCoachLinks.size, 81)
   const authoredRules: Record<string, string> = {

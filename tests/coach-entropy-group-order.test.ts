@@ -48,3 +48,12 @@ test('7nms parsing rejects changed puzzle data and keeps progress-bearing outsid
   assert.equal(imported.progress?.entries[0], '1')
   assert.equal(imported.variant?.puzzle.rules?.filter(rule => rule.type === 'digit-order').length, 7)
 })
+
+test('7nms keeps authored outside orders with an appended supported Ratio rule', async () => {
+  const data = await decodeSudokuCoachPayload(source.code)
+  const ratio = { type: 'ratio', segments: [{ cells: [0, 1], parameters: {} }] }
+  const imported = await detectPuzzle(coachCode({ ...data, givenConstraints: [...data.givenConstraints, ratio] }))
+  const rules = imported.variant?.puzzle.rules ?? []
+  assert.equal(rules.filter(rule => rule.type === 'digit-order').length, 7)
+  assert.ok(rules.some(rule => rule.type === 'kropki' && rule.ratioTwo?.pairs.some(([a, b]) => a === 0 && b === 1)))
+})

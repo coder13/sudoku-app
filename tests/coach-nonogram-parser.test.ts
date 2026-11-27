@@ -2,11 +2,13 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
+import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { coachNonogramRules } from '../src/sudoku/coach-nonogram.ts'
 import { nonogramState, validNonogramRule } from '../src/sudoku/sized-nonogram.ts'
+import { coachCode } from './helpers/coach-code.ts'
 
 const source = JSON.parse(readFileSync(new URL('./fixtures/sized-coach-nonogram.json', import.meta.url), 'utf8')) as {
-  sudoku: string; description: string
+  sudoku: string; description: string; solution: string
 }
 
 test('the published Coach Nonogram text establishes ordered even-digit run clues', async () => {
@@ -50,4 +52,21 @@ test('Coach text and decorative labels do not become guessed Nonogram rules', as
     change(changed.find(layer => layer.type === 'cosmeticText')!)
     assert.throws(() => coachNonogramRules(changed, 6, source.description), /unsupported settings|unsupported segment fields/)
   }
+})
+
+test('the reviewed Coach Nonogram keeps its text clues with an appended Ratio rule', async () => {
+  const payload = await decodeSudokuCoachPayload(source.sudoku)
+  const pair = Array.from({ length: 36 }, (_, cell) => cell).flatMap(cell => {
+    const row = Math.floor(cell / 6), column = cell % 6
+    return [row < 5 ? cell + 6 : -1, column < 5 ? cell + 1 : -1]
+      .filter(other => other >= 0 && (Number(source.solution[cell]) === 2 * Number(source.solution[other]) ||
+        Number(source.solution[other]) === 2 * Number(source.solution[cell])))
+      .map(other => [cell, other] as [number, number])
+  })[0]
+  assert.ok(pair)
+  const ratio = { type: 'ratio', segments: [{ cells: pair, parameters: {} }] }
+  const imported = await detectPuzzle(coachCode({ ...payload, givenConstraints: [...payload.givenConstraints, ratio] }))
+  assert.equal(imported.sizedRules?.filter(rule => rule.type === 'nonogram').length, 12)
+  assert.ok(imported.sizedRules?.some(rule => rule.type === 'kropki' &&
+    rule.ratioTwo?.pairs.some(([a, b]) => a === pair[0] && b === pair[1])))
 })

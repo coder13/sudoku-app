@@ -240,6 +240,11 @@ const authoredAsnFXSumsCoachExport = '40049b467057c5860aea9fd909abd6eba8f1ea3694
 // from the copied SCv7 payload. Recognize only this reviewed source fingerprint.
 const allBlackDotsCoachExport = 'd23c1148acfca2fe7c543a29fc3c4b52bd1aa70d9287fab8088333239d54d4e0'
 
+async function coachConstraintPrefixHash(code: string, data: Record<string, unknown>, count: number) {
+  if (!Array.isArray(data.givenConstraints) || data.givenConstraints.length < count) return
+  return sourceHash(code, { ...data, givenConstraints: data.givenConstraints.slice(0, count) })
+}
+
 async function readCoachInsideDigitGroups(code: string, data: Record<string, unknown>) {
   if (!Array.isArray(data.givenConstraints) || data.givenConstraints.length < 3 ||
     await sourceHash(code, { ...data, givenConstraints: data.givenConstraints.slice(0, 3) }) !== coachInsideDigitGroupsExport) return
@@ -910,9 +915,9 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     const reviewedEntropicRunaround = publication?.authoredRule === 'sized-entropic-runaround' && data.gridSize === 6 &&
       await sourceHash(code, data) === '80e6ee3c1b96047b9e28201a75d19e68c6886f4bf61e3a01932b9bf4ec274cca'
     const reviewedSkyscrapers = publication?.authoredRule === 'sized-skyscrapers' ||
-      await sourceHash(code, data) === coachSkyscrapersExport
+      await coachConstraintPrefixHash(code, data, 1) === coachSkyscrapersExport
     const reviewedNonogram = publication?.authoredRule === 'sized-nonogram' ||
-      await sourceHash(code, data) === coachNonogramExport
+      await coachConstraintPrefixHash(code, data, 4) === coachNonogramExport
     if (fromCollection && (!publication || publication.hasAuthorInstructions) ||
       publication?.hasAuthorInstructions && publication.authoredRule !== 'wrapped-regions' && publication.authoredRule !== 'sized-nonogram' &&
       publication.authoredRule !== 'sized-skyscrapers' && publication.authoredRule !== 'x-sum' && !reviewedEntropicRunaround) {
@@ -968,7 +973,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     throw new Error('The Aqre export does not match its published shading rules.')
   }
   if (publication?.authoredRule === 'xv-empty-cosmetic-cage' &&
-    await sourceHash(code, data) !== '8518f3fb3c90f87ce51db6de41e48f5b84310d2a1277d33dce5d76dab836691c') {
+    await coachConstraintPrefixHash(code, data, 4) !== '8518f3fb3c90f87ce51db6de41e48f5b84310d2a1277d33dce5d76dab836691c') {
     throw new Error('The XV Entropy export does not match its reviewed empty cage layer.')
   }
   if (aqre) {
@@ -996,8 +1001,8 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   }
   const entropyGroupOrder = await readReviewedCoachEntropyGroupOrder(code, data)
   const entropyBreaks = await readReviewedCoachEntropyBreaks(code, data)
-  if (publication?.authoredRule === 'entropy-window-groups' &&
-    await sourceHash(code, data) !== sunnyEntropyExport) {
+  const sunnyEntropyMatch = await coachConstraintPrefixHash(code, data, 6) === sunnyEntropyExport
+  if (publication?.authoredRule === 'entropy-window-groups' && !sunnyEntropyMatch) {
     throw new Error('The Global Entropy export does not match its reviewed shape clues.')
   }
   if (publication?.authoredRule === 'entropic-breaks' && !entropyBreaks) {
@@ -1011,18 +1016,20 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   const unknownCageSums = await readCoachUnknownCageSums(code, data)
   const distantNeighbors = await readCoachDistantNeighbors(code, data)
   const authoredAsnFXSums = !publication && constraints.some(layer => record(layer) && layer.type === 'cosmeticText') &&
-    await sourceHash(code, data) === authoredAsnFXSumsCoachExport
+    await coachConstraintPrefixHash(code, data, 1) === authoredAsnFXSumsCoachExport
   const authoredAllBlackDots = !publication && constraints.some(layer => record(layer) && layer.type === 'ratio') &&
-    await sourceHash(code, data) === allBlackDotsCoachExport
+    await coachConstraintPrefixHash(code, data, 6) === allBlackDotsCoachExport
   const reviewed220VLineLegend = !publication && constraints.some(layer => record(layer) && layer.type === 'cosmeticLine') &&
-    await sourceHash(code, data) === coach220VLineColoursExport
+    await coachConstraintPrefixHash(code, data, 6) === coach220VLineColoursExport
   if (publication?.authoredRule === 'unknown-cage-sums' && !unknownCageSums) {
     throw new Error('The Sudoku Coach export does not match its published unknown cage totals.')
   }
   if (publication?.authoredRule === 'distant-neighbors' && !distantNeighbors) {
     throw new Error('The Sudoku Coach export does not match its published box identity clues.')
   }
-  const artwork = await readReviewedCoachArtwork(code, constraints, data)
+  const artworkData = sunnyEntropyMatch
+    ? { ...data, givenConstraints: (data.givenConstraints as unknown[]).slice(0, 6) } : data
+  const artwork = await readReviewedCoachArtwork(code, constraints, artworkData)
   if (publication?.authoredRule === 'reviewed-artwork' && !artwork?.layers) {
     throw new Error('The CS1G export does not match its reviewed authored artwork.')
   }
@@ -1043,10 +1050,10 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   const declaredLettered = publication?.authoredRule === 'lettered-quadruples'
   const exportHash = (!publication && hasQuadruples || declaredInsideGrid || declaredLettered || hasShapeLayer || !fog && cellColours?.some(Boolean))
     ? await sourceHash(code, data) : undefined
-  const entropyLayers = exportHash === sunnyEntropyExport
-    ? constraints.filter(layer => record(layer) && layer.type === 'cosmeticShape') : []
+  const entropyLayers = sunnyEntropyMatch
+    ? constraints.slice(0, 6).filter(layer => record(layer) && layer.type === 'cosmeticShape') : []
   const entropyGroups = entropyLayers.length ? parseCoachEntropyWindowGroups(entropyLayers) : undefined
-  if (exportHash === sunnyEntropyExport && (!entropyGroups || entropyGroups.length !== 14)) {
+  if (sunnyEntropyMatch && (!entropyGroups || entropyGroups.length !== 14)) {
     throw new Error('The Sudoku Coach export does not match its published Global Entropy shape windows.')
   }
   const textClueLayers = textClues || entropyGroupOrder
@@ -1132,8 +1139,9 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     }
   }
   if (authoredRule === 'all-black-dots') {
-    const black = rules.find(rule => rule.type === 'kropki' && rule.ratioTwo !== undefined)
-    if (black?.type !== 'kropki' || !black.ratioTwo) {
+    const blackLayers = rules.filter((rule): rule is Extract<VariantRule, { type: 'kropki' }> =>
+      rule.type === 'kropki' && rule.ratioTwo !== undefined)
+    if (!blackLayers.length) {
       throw new Error('The Sudoku Coach export is missing the black Kropki dot layer from the published rules.')
     }
     // Native negative Kropki exempts edges with either color of dot. The
@@ -1141,7 +1149,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     if (rules.some(rule => rule.type === 'kropki' && rule.consecutive?.pairs?.length)) {
       throw new Error('This Sudoku Coach puzzle uses white dots with an authored complete black-dot rule.')
     }
-    black.ratioTwo = { ...black.ratioTwo, negative: true }
+    for (const black of blackLayers) black.ratioTwo = { ...black.ratioTwo!, negative: true }
   }
   const declaration = publication?.declaredRules
   if (declaration && 'cageTotals' in declaration) {

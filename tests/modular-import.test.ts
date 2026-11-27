@@ -245,6 +245,27 @@ test('the reviewed 220V raw Coach code applies its published color legend withou
   assertVariantCompletion(imported.variant!.puzzle, source.solution)
 })
 
+test('220V keeps its authored colored lines with an appended Ratio rule', async () => {
+  const source = load('coach').examples.find((example: { url: string }) => example.url.endsWith('/7rs9'))
+  assert.ok(source)
+  const data = await decodeSudokuCoachPayload(source.code)
+  const pair = Array.from({ length: 81 }, (_, cell) => cell).flatMap(cell => {
+    const row = Math.floor(cell / 9), column = cell % 9
+    return [row < 8 ? cell + 9 : -1, column < 8 ? cell + 1 : -1]
+      .filter(other => other >= 0 && (Number(source.solution[cell]) === 2 * Number(source.solution[other]) ||
+        Number(source.solution[other]) === 2 * Number(source.solution[cell])))
+      .map(other => [cell, other] as [number, number])
+  })[0]
+  assert.ok(pair)
+  const ratio = { type: 'ratio', segments: [{ cells: pair, parameters: {} }] }
+  const imported = await detectPuzzle(coachCode({ ...data, givenConstraints: [...data.givenConstraints, ratio] }))
+  const rules = imported.variant?.puzzle.rules ?? []
+  assert.ok(rules.some(rule => rule.type === 'region-sum'))
+  assert.ok(rules.some(rule => rule.type === 'modular'))
+  assert.ok(rules.some(rule => rule.type === 'kropki' && rule.ratioTwo?.pairs.some(([a, b]) => a === pair[0] && b === pair[1])))
+  assertVariantCompletion(imported.variant!.puzzle, source.solution)
+})
+
 test('the 220V line legend does not apply to a modified raw export', async () => {
   const source = load('coach').examples.find((example: { url: string }) => example.url.endsWith('/7rs9'))
   assert.ok(source)

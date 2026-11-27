@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import { runEngine, type VariantDeduction, type VariantPuzzle } from '../src/sudoku/engine.ts'
 import { applyDeduction, enter, isSolved, makeGame, redo, undo, valuesOf } from '../src/sudoku/game.ts'
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
+import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
 import { puzzleHintPage, puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import {
   generatePlayableVariant,
@@ -19,6 +20,7 @@ import { countLineSolutions } from './helpers/line-oracle.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { transformedBoard } from './helpers/transformed-board.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
+import { coachCode } from './helpers/coach-code.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
 useWasmWorker()
 
@@ -42,6 +44,19 @@ test('the reviewed original Coach AsnF export imports and verifies through the a
   assert.equal(game.variant?.solution, authoredCoach.metadata.solution)
   assert.equal(game.variant?.puzzle.rules?.length, 16)
   assertVariantCompletion(game.variant!.puzzle, authoredCoach.metadata.solution)
+})
+
+test('the reviewed Coach AsnF export composes with Ratio through the app engine', async () => {
+  const data = await decodeSudokuCoachPayload(authoredCoach.metadata.sudoku)
+  const ratio = { type: 'ratio', segments: [{ cells: [0, 1], parameters: {} }] }
+  const imported = await prepareImportedPuzzle(coachCode({ ...data, givenConstraints: [...data.givenConstraints, ratio] }))
+  assert.equal(imported.game.variant?.solution, authoredCoach.metadata.solution)
+  assert.equal(imported.game.variant?.puzzle.rules?.filter(rule => rule.type === 'x-sum').length, 16)
+  assert.ok(imported.game.variant?.puzzle.rules?.some(rule => rule.type === 'kropki' &&
+    rule.ratioTwo?.pairs.some(([a, b]) => a === 0 && b === 1)))
+  assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: {
+    puzzle: imported.game.variant!.puzzle, entries: authoredCoach.metadata.solution,
+  } }), 'unique')
 })
 
 for (const [index, source] of sources.entries()) {

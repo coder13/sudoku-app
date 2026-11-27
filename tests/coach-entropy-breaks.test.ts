@@ -38,3 +38,12 @@ test('the Entropic Spiral review rejects changed geometry and supports progress-
   assert.equal(imported.progress?.entries[0], '1')
   assert.equal(imported.variant?.puzzle.rules?.filter(rule => rule.type === 'forbidden-entropic-connection').length, 16)
 })
+
+test('Entropic Spiral keeps its broken joins with an appended supported Ratio rule', async () => {
+  const data = await decodeSudokuCoachPayload(source.code)
+  const ratio = { type: 'ratio', segments: [{ cells: [0, 1], parameters: {} }] }
+  const imported = await detectPuzzle(coachCode({ ...data, givenConstraints: [...data.givenConstraints, ratio] }))
+  const rules = imported.variant?.puzzle.rules ?? []
+  assert.equal(rules.filter(rule => rule.type === 'forbidden-entropic-connection').length, 16)
+  assert.ok(rules.some(rule => rule.type === 'kropki' && rule.ratioTwo?.pairs.some(([a, b]) => a === 0 && b === 1)))
+})
