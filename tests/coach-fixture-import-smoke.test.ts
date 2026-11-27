@@ -106,6 +106,15 @@ test('all preserved published Coach links import the same rules as their raw exp
       puzzle: raw.variant.puzzle,
       fog: raw.variant.fog,
     }, `${source}: linked variant rules`)
+    for (const field of [
+      'sizedAuthor', 'futoshiki', 'calcudoku', 'progress', 'authoredSolution', 'authoredSolutionOnly',
+      'givenCellColors', 'authoredArtwork', 'whispersGuide',
+    ] as const) {
+      // Import results can include runtime rule callbacks. Compare their
+      // serialized puzzle data, while checking those callbacks separately via
+      // the existing engine and import contract tests.
+      assert.equal(JSON.stringify(linked[field]), JSON.stringify(raw[field]), `${source}: linked ${field}`)
+    }
   }
 })
 
