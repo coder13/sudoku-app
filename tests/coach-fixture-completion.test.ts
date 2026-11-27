@@ -25,7 +25,7 @@ function assertClassicCompletion(givens: string, solution: string, source: strin
 }
 
 test('published completions satisfy every preserved Sudoku Coach fixture combination', async () => {
-  assert.equal(sources.size, 80)
+  assert.equal(sources.size, 81)
   const standaloneSeen = new Set<string>()
 
   for (const source of sources.values()) {
@@ -65,7 +65,7 @@ test('every published 9 × 9 Coach combination preserves its completion under al
       transformed++
     }
   }
-  assert.equal(transformed, 464)
+  assert.equal(transformed, 472)
 })
 
 test('all published 9 × 9 Coach combinations survive actual library reload with progress and undo history', async () => {
@@ -123,7 +123,7 @@ test('all published 9 × 9 Coach combinations survive actual library reload with
       expectedGames.set(game.id, game)
       restoredCount++
     }
-    assert.equal(restoredCount, 58)
+    assert.equal(restoredCount, 59)
 
     const reloaded = (await import('../src/sudoku/storage.ts?coach-combinations-library-reload')).roomStore.getSnapshot()
     assert.equal(reloaded.games.length, expectedGames.size, 'every imported Coach combination remains in the library')

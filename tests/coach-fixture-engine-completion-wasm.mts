@@ -38,7 +38,7 @@ function coachProgress(givens: string, solution: string) {
 }
 
 test('published Sudoku Coach completions pass the Rust engine with every imported rule combination', async () => {
-  assert.equal(sources.size, 80)
+  assert.equal(sources.size, 81)
   const standaloneSeen = new Set<string>()
   let checked = 0, transformedChecks = 0
 
@@ -111,8 +111,8 @@ test('published Sudoku Coach completions pass the Rust engine with every importe
     checked++
   }
 
-  assert.equal(checked, 77)
-  assert.equal(transformedChecks, 464)
+  assert.equal(checked, 78)
+  assert.equal(transformedChecks, 472)
   assert.deepEqual([...standaloneSeen].sort(), [...standaloneCoachSolutionSources].sort())
 })
 
@@ -156,6 +156,31 @@ test('the published Every Constraint combination compiles and propagates in the 
   assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: {
     puzzle: contradictoryPuzzle,
   } }), { status: 'unsolvable' }, 'a valid contradictory companion makes the imported combination unsatisfiable')
+})
+
+test('HBR9 imports Jigsaw and Anti-Royal rules together without promoting colors to constraints', async () => {
+  const fixture = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-jigsaw-anti-royal.json', import.meta.url), 'utf8'))
+  const imported = await detectPuzzle(fixture.code)
+  assert.ok(imported.variant)
+  assert.equal(imported.variant.puzzle.regions?.type, 'jigsaw')
+  assert.deepEqual(imported.variant.puzzle.rules.map(rule => rule.type), [
+    'anti-knight', 'anti-king', 'non-consecutive',
+  ])
+  assert.ok(imported.givenCellColors && Object.keys(imported.givenCellColors).length > 0,
+    'the source colors remain presentation metadata outside the engine puzzle')
+
+  const solved = await runEngine({ type: 'variant', operation: 'solve-unique', position: {
+    puzzle: imported.variant.puzzle,
+  } })
+  assert.deepEqual(solved, { status: 'unique', solution: fixture.solution })
+
+  const withoutNonconsecutive = {
+    ...imported.variant.puzzle,
+    rules: imported.variant.puzzle.rules.filter(rule => rule.type !== 'non-consecutive'),
+  }
+  assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: {
+    puzzle: withoutNonconsecutive,
+  } }), { status: 'multiple' }, 'the imported non-consecutive rule contributes to this source')
 })
 
 test('published Jigsaw Coach combination needs both Killer and Little Killer rules for uniqueness', async () => {

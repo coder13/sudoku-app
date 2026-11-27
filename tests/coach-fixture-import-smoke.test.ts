@@ -50,7 +50,7 @@ const expectedRejections = new Map([
 ])
 
 test('every preserved raw Coach fixture imports or matches its explicit unsupported control', async () => {
-  assert.equal(codes.size, 120)
+  assert.equal(codes.size, 121)
   const rejected = new Set<string>()
 
   for (const [code, source] of [...codes].sort(([, left], [, right]) => left.localeCompare(right))) {
@@ -133,7 +133,7 @@ test('K95q keeps its authored complete-black-dot rule with an appended Ratio com
 })
 
 test('all preserved published Coach links import the same rules as their raw exports', async ({ mock }) => {
-  assert.equal(publicCoachLinks.size, 81)
+  assert.equal(publicCoachLinks.size, 82)
   const authoredRules: Record<string, string> = {
     K95q: 'all-black-dots',
     '7rs9': 'line-colours',
@@ -286,7 +286,7 @@ test('preserved Coach exports reject unknown root, layer, setting, segment and p
       }
     }
   }
-  assert.equal(mutations, 6730)
+  assert.equal(mutations, 6737)
 })
 
 test('every preserved Coach Sudoku export survives public sharing and reopen', async () => {
