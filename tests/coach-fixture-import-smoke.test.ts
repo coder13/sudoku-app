@@ -8,6 +8,7 @@ import { makeGame } from '../src/sudoku/game.ts'
 import { MAX_DECODED_LENGTH, MAX_IMPORT_LENGTH } from '../src/sudoku/puzzle-import/shared.ts'
 import { puzzleExportText } from '../src/sudoku/puzzle-sharing.ts'
 import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
+import { isPlayablePuzzle } from '../src/sudoku/variants.ts'
 import { coachCode } from './helpers/coach-code.ts'
 
 const fixtureRoot = new URL('./fixtures/', import.meta.url)
@@ -51,6 +52,24 @@ test('every preserved raw Coach fixture imports or matches its explicit unsuppor
   }
 
   assert.deepEqual([...rejected].sort(), [...expectedRejections.keys()].sort())
+})
+
+test('every imported Coach rule rejects unknown engine fields', async () => {
+  let mutations = 0
+  for (const [code, source] of [...codes].sort(([, left], [, right]) => left.localeCompare(right))) {
+    if (expectedRejections.has(source)) continue
+    const imported = await detectPuzzle(code)
+    const variant = imported.variant
+    if (!variant?.puzzle.rules) continue
+    variant.puzzle.rules.forEach((rule, index) => {
+      const changed = { ...variant.puzzle, rules: variant.puzzle.rules!.map((candidate, ruleIndex) =>
+        ruleIndex === index ? { ...candidate, futureSemantics: true } : candidate) }
+      assert.equal(isPlayablePuzzle(variant.id, changed, variant.fog), false,
+        `${source}: ${rule.type} rule ${index + 1} must reject unknown engine fields`)
+      mutations++
+    })
+  }
+  assert.ok(mutations > 100)
 })
 
 test('preserved Coach exports reject unknown fields on every populated rule layer, setting and segment', async () => {

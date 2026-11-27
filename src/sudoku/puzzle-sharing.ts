@@ -121,10 +121,12 @@ function validatePuzzleDefinition(value: unknown, source: 'link' | 'export' = 'e
     throw new Error(unsupported)
   }
   const data = value as Partial<SharedPuzzlePayload>
-  if (Object.keys(data).some(key => ![
+  const allowedKeys = [
     'version', 'title', 'givens', 'variant', 'collection', 'grid', 'algebraic', 'sixRules', 'sixAuthor',
-    'sizedRules', 'sizedAuthor', 'whispersGuide', 'givenCellColors', 'authoredArtwork', 'format',
-  ].includes(key))) throw new Error(unsupported)
+    'sizedRules', 'sizedAuthor', 'whispersGuide', 'givenCellColors', 'authoredArtwork',
+    ...(source === 'export' ? ['format'] : []),
+  ]
+  if (Object.keys(data).some(key => !allowedKeys.includes(key))) throw new Error(unsupported)
   const { version, title, givens, variant, collection, grid, algebraic, sixRules, sixAuthor, whispersGuide, givenCellColors, authoredArtwork } = data
   const legacy = sixRules !== undefined || sixAuthor !== undefined
   const sizedRules = legacy ? sixRules : data.sizedRules
@@ -137,7 +139,7 @@ function validatePuzzleDefinition(value: unknown, source: 'link' | 'export' = 'e
     (sizedRules !== undefined && (!grid || algebraic !== undefined || !isSizedRuleList(sizedRules, grid) ||
       (grid.size === 4 && !('regions' in grid) && !sizedRules.length))) ||
     (sizedAuthor !== undefined && (!sizedRules || !isSizedRuleAuthor(sizedAuthor))) ||
-    (variant !== undefined && (!variant || !isPuzzleVariantId(variant.id) ||
+    (variant !== undefined && (!hasOnlyKeys(variant, ['id', 'puzzle', 'fog']) || !isPuzzleVariantId(variant.id) ||
       !isPlayablePuzzle(variant.id, variant.puzzle, variant.fog) || variant.puzzle.givens !== givens)) ||
     (whispersGuide !== undefined && (whispersGuide !== true || variant?.id !== 'whispers' || !whispersLinkCounts(variant.puzzle))) ||
     (givenCellColors !== undefined && (variant?.fog !== undefined ||
@@ -149,6 +151,11 @@ function validatePuzzleDefinition(value: unknown, source: 'link' | 'export' = 'e
   return { version, title, givens, variant, collection, grid, sizedRules, sizedAuthor,
     ...(algebraic && { algebraic }), ...(whispersGuide && { whispersGuide }), ...(givenCellColors && { givenCellColors }),
     ...(authoredArtwork && { authoredArtwork }) }
+}
+
+function hasOnlyKeys(value: unknown, keys: readonly string[]): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value) &&
+    Object.keys(value).every(key => keys.includes(key)))
 }
 
 function validSharedAlgebraic(value: unknown): value is NonNullable<SharedPuzzleDefinition['algebraic']> {

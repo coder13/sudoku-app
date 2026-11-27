@@ -679,6 +679,7 @@ test('malformed formats reject invalid dimensions, regions, rules, givens, and U
   const invalid = [
     '', '1'.repeat(80), '1'.repeat(82), '0'.repeat(MAX_IMPORT_LENGTH + 1),
     'https://example.org/#variant=%7B', 'https://example.org/#variant=' + encodeURIComponent(JSON.stringify({ id: 'classic', puzzle: { version: 1, givens: EMPTY } })),
+    'https://example.org/#variant=' + encodeURIComponent(JSON.stringify({ id: 'anti-knight', puzzle: { version: 1, givens: EMPTY, rules: [{ type: 'anti-knight' }] }, futureVariantSemantics: true })),
     'https://example.org/#puzzle=' + STARTER + '1',
     'https://sudokuexchange.com/play/?s=zzzz', 'https://sudokupad.app/sclunsupported',
     'https://f-puzzles.com/?load=not_a_compressed_puzzle',

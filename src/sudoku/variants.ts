@@ -573,8 +573,60 @@ function validAuthoredRegions(regions: unknown, partial: boolean): boolean {
   return !partial || regions.every(region => connectedGridCells(region, 9))
 }
 
+const PLAYABLE_RULE_KEYS: Record<VariantRule['type'], readonly string[]> = {
+  'little-killer': ['type', 'cells', 'direction', 'sum'],
+  sandwich: ['type', 'cells', 'direction', 'sum'],
+  'terrain-sandwich': ['type', 'cells', 'direction', 'maximum', 'transforms'],
+  'x-sum': ['type', 'cells', 'direction', 'sum'],
+  skyscrapers: ['type', 'cells', 'direction', 'count'],
+  clone: ['type', 'groups'],
+  minimum: ['type', 'cells', 'ignoreMarkedNeighbors'],
+  maximum: ['type', 'cells', 'ignoreMarkedNeighbors'],
+  inequality: ['type', 'less', 'greater'],
+  parity: ['type', 'cells', 'parity'],
+  'digit-restriction': ['type', 'cells', 'digits', 'shape'],
+  quadruple: ['type', 'topLeft', 'digits'],
+  'quadruple-sum': ['type', 'topLeft', 'digits'],
+  'lettered-quadruples': ['type', 'clues'],
+  'global-entropy': ['type', 'groups'],
+  'entropy-window-group': ['type', 'cells', 'group'],
+  'digit-order': ['type', 'cells', 'digits'],
+  'forbidden-entropic-connection': ['type', 'cells'],
+  aqre: ['type', 'kind', 'regions', 'givenShades'],
+  'neighbor-match': ['type', 'clues'],
+  'magic-square': ['type', 'cells'],
+  'unknown-cage-sums': ['type', 'cages', 'consecutivePairs'],
+  'distant-neighbors': ['type', 'markedCells'],
+  'anti-knight': ['type'],
+  'anti-king': ['type'],
+  'non-consecutive': ['type', 'except'],
+  diagonal: ['type', 'diagonal'],
+  'extra-house': ['type', 'cells'],
+  'inside-grid': ['type', 'rows'],
+  'consecutive-run': ['type', 'cells', 'color', 'fromBulb'],
+  'distinct-cells': ['type', 'cells', 'color'],
+  entropic: ['type', 'cells'],
+  modular: ['type', 'cells'],
+  whispers: ['type', 'cells', 'minDifference'],
+  thermometer: ['type', 'cells'],
+  between: ['type', 'cells'],
+  lockout: ['type', 'cells'],
+  'region-sum': ['type', 'cells', 'groupByRegion', 'segments'],
+  palindrome: ['type', 'cells', 'segments'],
+  renban: ['type', 'cells', 'segments'],
+  arrow: ['type', 'circle', 'cells'],
+  'pill-arrow': ['type', 'pill', 'cells', 'fromTens'],
+  'killer-cages': ['type', 'cages', 'coverGrid'],
+  'labeled-dots': ['type', 'relation', 'negative', 'marks'],
+  kropki: ['type', 'consecutive', 'ratioTwo'],
+  'adjacent-total': ['type', 'cells', 'sum'],
+  xv: ['type', 'five', 'ten'],
+}
+
 function isPlayableRule(rule: VariantRule): boolean {
   if (!rule || typeof rule !== 'object') return false
+  if (!Object.hasOwn(PLAYABLE_RULE_KEYS, rule.type) ||
+    Object.keys(rule).some(key => !PLAYABLE_RULE_KEYS[rule.type].includes(key))) return false
   switch (rule.type) {
     case 'little-killer': return Object.keys(rule).every(key => ['type', 'cells', 'direction', 'sum'].includes(key)) &&
       Number.isInteger(rule.sum) && validOutsideRay(rule.cells, rule.direction, true) && rule.sum >= rule.cells.length && rule.sum <= rule.cells.length * 9
@@ -646,8 +698,9 @@ function isPlayableRule(rule: VariantRule): boolean {
       if (cells.length !== 81 || new Set(cells).size !== 81 || !cells.every(cell => Number.isInteger(cell) && cell >= 0 && cell < 81)) return false
       if (!rule.regions.every(region => region && Object.keys(region).every(key => ['cells', 'count'].includes(key)) &&
         validCells(region.cells, 1) && connectedGridCells(region.cells, 9) &&
-        (region.count === undefined || region.count?.type === 'fixed' && Number.isInteger(region.count.value) &&
-          region.count.value >= 0 && region.count.value <= region.cells.length || region.count?.type === 'digit-cell' &&
+        (region.count === undefined || region.count?.type === 'fixed' && Object.keys(region.count).every(key => ['type', 'value'].includes(key)) &&
+          Number.isInteger(region.count.value) && region.count.value >= 0 && region.count.value <= region.cells.length ||
+          region.count?.type === 'digit-cell' && Object.keys(region.count).every(key => ['type', 'cell'].includes(key)) &&
           Number.isInteger(region.count.cell) && region.cells.includes(region.count.cell)) &&
         (rule.kind !== 'plus' || region.count?.type === 'digit-cell'))) return false
       const shadeCells = rule.givenShades.map(given => given?.cell)
@@ -717,7 +770,8 @@ function isPlayableRule(rule: VariantRule): boolean {
       Array.isArray(rule.pill) && rule.pill.length === 2 && Array.isArray(rule.cells) && validCells([...rule.pill, ...rule.cells], 3) &&
       Math.abs(Math.floor(rule.pill[0] / 9) - Math.floor(rule.pill[1] / 9)) <= 1 && Math.abs(rule.pill[0] % 9 - rule.pill[1] % 9) <= 1 &&
       (rule.fromTens === undefined || typeof rule.fromTens === 'boolean')
-    case 'killer-cages': return Array.isArray(rule.cages) && rule.cages.length > 0 && rule.cages.every((cage) =>
+    case 'killer-cages': return (rule.coverGrid === undefined || typeof rule.coverGrid === 'boolean') &&
+      Array.isArray(rule.cages) && rule.cages.length > 0 && rule.cages.every((cage) =>
       cage && Object.keys(cage).every(key => ['cells', 'sum', 'showSum'].includes(key)) && validCells(cage.cells, 1) &&
       Number.isInteger(cage.sum) && cage.sum >= 1 && cage.sum <= 45 &&
       (cage.showSum === undefined || typeof cage.showSum === 'boolean'))
@@ -726,17 +780,20 @@ function isPlayableRule(rule: VariantRule): boolean {
         rule.negative !== undefined && typeof rule.negative !== 'boolean') return false
       const ratio = rule.relation === 'ratio'
       return Array.isArray(rule.marks) && rule.marks.length <= 144 && (rule.marks.length > 0 || rule.negative === true) &&
-        rule.marks.every(mark => validCells(mark?.cells, 2) && mark.cells.length === 2 &&
+        rule.marks.every(mark => mark && Object.keys(mark).every(key => ['cells', 'value'].includes(key)) &&
+          validCells(mark.cells, 2) && mark.cells.length === 2 &&
           cellsShareEdge(mark.cells[0], mark.cells[1]) && Number.isInteger(mark.value) && mark.value >= (ratio ? 2 : 1) && mark.value <= (ratio ? 9 : 8))
     }
     case 'kropki': return [rule.consecutive, rule.ratioTwo].every((marks) => marks === undefined ||
-      marks && (marks.negative === undefined || typeof marks.negative === 'boolean') &&
+      marks && Object.keys(marks).every(key => ['negative', 'pairs'].includes(key)) &&
+      (marks.negative === undefined || typeof marks.negative === 'boolean') &&
       (marks.pairs === undefined || Array.isArray(marks.pairs) &&
         marks.pairs.every((pair) => validCells(pair, 2) && pair.length === 2)))
     case 'adjacent-total': return validCells(rule.cells, 2) && rule.cells.length === 2 && cellsShareEdge(rule.cells[0], rule.cells[1]) &&
       Number.isInteger(rule.sum) && rule.sum >= 3 && rule.sum <= 17
     case 'xv': return [rule.five, rule.ten].every(marks => marks === undefined ||
-      marks && (marks.negative === undefined || typeof marks.negative === 'boolean') &&
+      marks && Object.keys(marks).every(key => ['negative', 'pairs'].includes(key)) &&
+      (marks.negative === undefined || typeof marks.negative === 'boolean') &&
       (marks.pairs === undefined || Array.isArray(marks.pairs) && marks.pairs.every(pair =>
         validCells(pair, 2) && pair.length === 2 && cellsShareEdge(pair[0], pair[1]))))
     default: return false
@@ -763,8 +820,11 @@ export function variantIdForPuzzle(puzzle: VariantPuzzle): PuzzleVariantId {
 export function isPlayablePuzzle(id: unknown, puzzle: unknown, fog?: unknown): puzzle is VariantPuzzle {
   if ((!isPuzzleVariantId(id) || id === 'classic') ||
     !puzzle || typeof puzzle !== 'object') return false
+  if (Object.keys(puzzle).some(key => !['version', 'givens', 'rules', 'regions'].includes(key))) return false
   const { version, givens, rules, regions } = puzzle as VariantPuzzle
   if (version !== 1 || typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens)) return false
+  if (regions !== undefined && (!regions || typeof regions !== 'object' || Array.isArray(regions) ||
+    Object.keys(regions).some(key => key !== 'type' && !(regions.type !== 'boxes' && key === 'regions')))) return false
   if (regions !== undefined && regions?.type !== 'boxes' &&
     !(hasAuthoredRegions(regions) && validAuthoredRegions(regions.regions, regions.type === 'partial'))) return false
   // A 9×9 grid has 144 shared edges, so the cell count cannot cap its clues.
