@@ -121,6 +121,10 @@ function validatePuzzleDefinition(value: unknown, source: 'link' | 'export' = 'e
     throw new Error(unsupported)
   }
   const data = value as Partial<SharedPuzzlePayload>
+  if (Object.keys(data).some(key => ![
+    'version', 'title', 'givens', 'variant', 'collection', 'grid', 'algebraic', 'sixRules', 'sixAuthor',
+    'sizedRules', 'sizedAuthor', 'whispersGuide', 'givenCellColors', 'authoredArtwork', 'format',
+  ].includes(key))) throw new Error(unsupported)
   const { version, title, givens, variant, collection, grid, algebraic, sixRules, sixAuthor, whispersGuide, givenCellColors, authoredArtwork } = data
   const legacy = sixRules !== undefined || sixAuthor !== undefined
   const sizedRules = legacy ? sixRules : data.sizedRules
