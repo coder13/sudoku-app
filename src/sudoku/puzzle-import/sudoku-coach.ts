@@ -832,9 +832,13 @@ const coach220VLineColoursExport = '7cf6d6e8cb55e93db7199f2d9c6c90e64f60dde46df8
 
 // The Rainbow colors repeat the region map. Revival's yellow pattern adds no
 // rule. Match the reviewed exports in full because other colors can encode clues.
-const reviewedCoachColorExports = new Map<string, { title: string; constraintCount: number }>([
+const reviewedCoachColorExports = new Map<string, { title?: string; constraintCount?: number }>([
   ['3c5e14b3fada38879b5f42667ad02820548f06ea6282db2b98d07edc8cfe3d17', { title: 'Entro Quad Rainbow Jigsaw', constraintCount: 2 }],
   ['b255fa64004bfdd04e71a07ac68863131e8906d992bf77af35af53296d812228', { title: 'Revival', constraintCount: 2 }],
+  // This puzzle's description uses green cells to illustrate a property of
+  // Anti-Knight + Anti-King + Non-Consecutive Sudoku. Keep its fills as visual
+  // annotations; the encoded rule layers remain the complete engine rules.
+  ['5a9256e784a20ddc80881f0bc008c943aa936c15756490ae877bd367e370327c', { constraintCount: 3 }],
 ])
 
 function readCoachInsideGrid(constraints: readonly unknown[]): VariantRule[] {
@@ -1125,12 +1129,14 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   if (declaredLettered && !lettered) throw new Error('The export does not match its published lettered Quadruples.')
   if (declaredInsideGrid && !insideGrid) throw new Error('The export does not match its published Inside Grid.')
   const rawQuadArrows = !publication && await coachConstraintPrefixHash(code, data, 1) === quadArrowsExport
-  let reviewedColorTitle = !fog && !publication?.hasAuthorInstructions && exportHash
-    ? reviewedCoachColorExports.get(exportHash)?.title : undefined
+  let reviewedColorReview = !fog && !publication?.hasAuthorInstructions && exportHash
+    ? reviewedCoachColorExports.get(exportHash) : undefined
+  let reviewedColorTitle = reviewedColorReview?.title
   if (!reviewedColorTitle && !fog && !publication?.hasAuthorInstructions && Array.isArray(data.givenConstraints)) {
     for (const [reviewedHash, review] of reviewedCoachColorExports) {
-      if (data.givenConstraints.length <= review.constraintCount) continue
+      if (review.constraintCount === undefined || data.givenConstraints.length <= review.constraintCount) continue
       if (await coachConstraintPrefixHash(code, data, review.constraintCount) === reviewedHash) {
+        reviewedColorReview = review
         reviewedColorTitle = review.title
         break
       }
@@ -1204,7 +1210,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
           (fromCollection || LEGACY_COACH_CODE.test(code))
         const fills = readCoachColorNames(remaining, palette)
         if (fills && !plainCollectionArtwork) fillTitle = reviewedColorTitle ?? await reviewedCoachFillTitle(data, fills)
-        if (plainCollectionArtwork || fillTitle) givenCellColors = fills
+        if (plainCollectionArtwork || fillTitle || reviewedColorReview) givenCellColors = fills
       }
       if (!givenCellColors) {
         const cellColors = fog && regions?.type === 'jigsaw' && !publication?.hasAuthorInstructions
