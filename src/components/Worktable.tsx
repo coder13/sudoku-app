@@ -113,7 +113,7 @@ import {
 import { puzzleInputMode } from '../sudoku/puzzle-input-mode'
 import { techniqueDifficulties } from '../sudoku/technique-difficulties'
 import { playerActions } from '../sudoku/technique-progress'
-import { variantName, type VariantRuleSectionId } from '../sudoku/variants'
+import { puzzleForVariantTools, variantName, type VariantRuleSectionId } from '../sudoku/variants'
 import { solveSingleValues } from '../sudoku/solve-singles'
 import { Board, gridCellAtPoint } from './Board'
 import { BookmarksPanel } from './BookmarksPanel'
@@ -681,6 +681,9 @@ export function Worktable({
   const currentNotes = puzzleNotes?.values === values && puzzleNotes.eliminationKey === eliminationKey ? puzzleNotes : undefined
   const masks = currentNotes?.masks
   const toolMasks = useMemo(() => candidateToolMasks(masks, values, displayedCandidates, eliminations), [masks, values, displayedCandidates, eliminations])
+  const singlesPuzzle = useMemo(() => variant && puzzle
+    ? puzzleForVariantTools(puzzle, advancedModes.solveSinglesVariants)
+    : puzzle, [variant, puzzle, advancedModes.solveSinglesVariants])
   const alsHighlight = useAlsHighlight({
     gameId: id,
     enabled: alsHighlightEnabled,
@@ -696,8 +699,8 @@ export function Worktable({
   const { active: alsHighlightActive, annotations: alsAnnotations } = alsHighlight
   const autoGenerateCandidates = advancedModes.autoGenerateCandidates && !draft && !solved && needsInitialCandidates(game)
   const hasSingles = useMemo(
-    () => !draft && !solved && Boolean(masks && singleFromCandidates(values, displayedCandidates ?? masks, eliminations, puzzle, grid, sized?.rules)),
-    [draft, solved, masks, values, displayedCandidates, eliminations, puzzle, grid, sized]
+    () => !draft && !solved && Boolean(toolMasks && singleFromCandidates(values, toolMasks, eliminations, singlesPuzzle, grid, sized?.rules)),
+    [draft, solved, toolMasks, values, eliminations, singlesPuzzle, grid, sized]
   )
   const needsSinglesCheck = !grid && !generatedWithAuto && difficulty !== 'easy'
   const offerSingles =
