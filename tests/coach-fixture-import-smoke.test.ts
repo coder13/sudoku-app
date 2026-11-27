@@ -58,7 +58,7 @@ test('preserved Coach exports reject unknown fields on every populated rule laye
     if (!Array.isArray(constraints)) continue
     for (let index = 0; index < constraints.length; index++) {
       const original = constraints[index]
-      for (const location of ['layer', 'settings', 'segment'] as const) {
+      for (const location of ['layer', 'settings'] as const) {
         const changed = structuredClone(constraints)
         const layer = changed[index]
         if (!layer || typeof layer !== 'object' || Array.isArray(layer)) continue
@@ -68,19 +68,31 @@ test('preserved Coach exports reject unknown fields on every populated rule laye
           const settings = layer.settings && typeof layer.settings === 'object' && !Array.isArray(layer.settings)
             ? layer.settings : {}
           layer.settings = { ...settings, futureSemantics: true }
-        } else if (Array.isArray(layer.segments) && layer.segments.length) {
-          const segment = layer.segments[0]
-          if (!segment || typeof segment !== 'object' || Array.isArray(segment)) continue
-          segment.futureSemantics = true
-        } else continue
+        }
 
         await assert.rejects(detectPuzzle(coachCode({ ...payload, givenConstraints: changed })),
           `${source}: unknown ${location} data on Coach ${original?.type ?? 'rule'} layer ${index + 1} must reject the whole import`)
         mutations++
       }
+
+      const segments = original && typeof original === 'object' && !Array.isArray(original) ? original.segments : undefined
+      if (Array.isArray(segments)) {
+        for (let segmentIndex = 0; segmentIndex < segments.length; segmentIndex++) {
+          const changed = structuredClone(constraints)
+          const layer = changed[index]
+          const segment = layer && typeof layer === 'object' && !Array.isArray(layer) && Array.isArray(layer.segments)
+            ? layer.segments[segmentIndex] : undefined
+          if (!segment || typeof segment !== 'object' || Array.isArray(segment)) continue
+          segment.futureSemantics = true
+
+          await assert.rejects(detectPuzzle(coachCode({ ...payload, givenConstraints: changed })),
+            `${source}: unknown segment data on Coach ${original?.type ?? 'rule'} layer ${index + 1}, segment ${segmentIndex + 1} must reject the whole import`)
+          mutations++
+        }
+      }
     }
   }
-  assert.equal(mutations, 1476)
+  assert.equal(mutations, 3822)
 })
 
 test('every preserved Coach Sudoku export survives public sharing and reopen', async () => {
