@@ -86,8 +86,8 @@ const reviewedDrawings = new Map<string, { layer: string; title: string; partial
   ['92fb9f50af4684ebef1af0c900d104784c2b9265e9fb48b960f2511cce963804', { layer: 'cosmeticLine', title: 'AJT’s Bento 🍱 flavoured with Entropy', partialRegions: true, constraintCount: 12 }],
   ['925fb0996956769908a041dd7cf20450b1f4d5bbbd873a9dfce8010b256561a1', { layer: 'cosmeticLine', title: 'Non-con 🍱', partialRegions: true, constraintCount: 16 }],
   ['88426e68300e971314123430cdee9a623df296fed7c39fce9635571994d40c96', { layer: 'cosmeticLine', title: 'FUN-ky Bento II 🍱', partialRegions: true, constraintCount: 17 }],
-  ['fb7f80c65aca408b1967c405a14b046925ceb62519f474e222d2091d69b495ba', { layer: 'cosmeticLine', title: 'Windoku I' }],
-  ['683b64457ad9033e09bc3165664a7fa94564086649a3165fa3ee7a2e1cbd79ce', { layer: 'cosmeticShape', title: 'Khachkar' }],
+  ['fb7f80c65aca408b1967c405a14b046925ceb62519f474e222d2091d69b495ba', { layer: 'cosmeticLine', title: 'Windoku I', constraintCount: 10 }],
+  ['683b64457ad9033e09bc3165664a7fa94564086649a3165fa3ee7a2e1cbd79ce', { layer: 'cosmeticShape', title: 'Khachkar', constraintCount: 3 }],
 ])
 
 // CS1G uses dense, rotated rectangle layers to spell the author's thank-you.

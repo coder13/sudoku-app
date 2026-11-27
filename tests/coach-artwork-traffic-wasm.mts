@@ -5,6 +5,7 @@ import { runEngine } from '../src/sudoku/engine.ts'
 import { enter, restartGame, setAqreShade, valuesOf } from '../src/sudoku/game.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
 import { findImportAttempt, prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { publishSharedPuzzle, puzzleDefinitionForSharing } from '../src/sudoku/puzzle-sharing.ts'
 import { syncRequest } from '../src/sudoku/sync-engine.ts'
@@ -269,6 +270,21 @@ test('both reviewed originals preserve all rules and artwork through import, pla
     await assert.rejects(detectPuzzle(changedDrawing), /unsupported or invalid digit restrictions/)
   } finally {
     sqlite.close()
+  }
+})
+
+test('Windoku I and Khachkar retain reviewed artwork with an appended companion rule', async () => {
+  for (const source of [windoku, khachkar]) {
+    const data = await decodeSudokuCoachPayload(source.sudoku)
+    const original = await detectPuzzle(source.sudoku)
+    const combined = await detectPuzzle(coachCode({ ...data, givenConstraints: [
+      ...(data.givenConstraints as unknown[]), { type: 'antiKnight', segments: [], settings: {} },
+    ] }))
+
+    assert.equal(combined.title, source.name)
+    assert.ok(combined.authoredArtwork)
+    assert.deepEqual(combined.variant?.puzzle.rules?.slice(0, -1), original.variant?.puzzle.rules)
+    assert.equal(combined.variant?.puzzle.rules?.at(-1)?.type, 'anti-knight')
   }
 })
 
