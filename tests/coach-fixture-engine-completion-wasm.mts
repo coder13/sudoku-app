@@ -57,6 +57,16 @@ test('published Sudoku Coach completions pass the Rust engine with every importe
         puzzle: imported.variant.puzzle,
         entries: source.solution,
       } }), 'unique', sourceName)
+      const repeatedDigitCells = Array.from(source.solution, (digit, cell) => digit === '1' ? cell : -1)
+        .filter(cell => cell >= 0)
+      assert.equal(repeatedDigitCells.length, 9, `${sourceName}: published solution contains nine ones`)
+      assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: {
+        puzzle: {
+          ...imported.variant.puzzle,
+          rules: [...(imported.variant.puzzle.rules ?? []), { type: 'extra-house', cells: repeatedDigitCells }],
+        },
+        entries: source.solution,
+      } }), 'conflict', `${sourceName}: the engine rejects an added rule that contradicts its completion`)
       for (let symmetry = 0; symmetry < 8; symmetry++) {
         const puzzle = reflectVariant(imported.variant.puzzle, symmetry)
         const solution = transformedBoard(source.solution, symmetry)
