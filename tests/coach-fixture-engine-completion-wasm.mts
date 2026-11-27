@@ -130,6 +130,13 @@ test('the published Every Constraint combination compiles and propagates in the 
   } })
   assert.equal(solved.status, 'unique', 'the full-rule source has one completion under the imported combination')
   assert.ok('solution' in solved)
+  assertSolutionCandidates(candidates, imported.givens, solved.solution, 'published Every Constraint')
+  const progress = coachProgress(imported.givens, solved.solution)
+  const progressedCandidates = await runEngine({ type: 'variant', operation: 'candidates', position: {
+    puzzle: imported.variant.puzzle,
+    entries: progress.entries,
+  } })
+  assertSolutionCandidates(progressedCandidates, progress.values, solved.solution, 'Every Constraint after player entries')
   for (let symmetry = 0; symmetry < 8; symmetry++) {
     const puzzle = reflectVariant(imported.variant.puzzle, symmetry)
     const solution = transformedBoard(solved.solution, symmetry)
