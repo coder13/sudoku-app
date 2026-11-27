@@ -73,6 +73,13 @@ const COACH_DRAWINGS = ['quickDrawLineSegments', 'quickDrawSymbols', 'cells']
 
 const CLUE_STYLING = new Set(['opacity', 'colour', 'shapeSize', 'borderColour', 'borderThickness'])
 const LINE_STYLING = new Set(['colour', 'colourSync', 'lineThickness', 'lineEndOffset', 'borderColour', 'borderThickness', 'opacity'])
+const COACH_CONSTRAINT_TYPES = new Set([
+  'diagonalNegative', 'diagonalPositive', 'antiKnight', 'antiKing', 'nonconsecutive', 'twoCellSum',
+  'thermometer', 'arrow', 'pillArrow', 'whisper', 'betweenLine', 'lockoutLine', 'renban', 'entropicLine',
+  'modularLine', 'consecutiveLine', 'palindromeLine', 'regionSumLine', 'oddEven', 'odd', 'even', 'minimum',
+  'maximum', 'difference', 'ratio', 'greaterLess', 'cage', 'cosmeticCage', 'quadruple', 'sandwich',
+  'littleKiller', 'fog', 'cosmeticLine', 'cosmeticShape', 'cosmeticText', 'globalEntropy', 'region',
+])
 const BULB_STYLING = new Set(['bulbSize', 'bulbBorderThickness', 'bulbBorderColour', 'bulbFillColour'])
 function unsupportedClueStyling(settings: unknown) {
   return hasData(settings) && (!record(settings) || Object.keys(settings).some(key => !CLUE_STYLING.has(key)))
@@ -1233,6 +1240,9 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
   for (const constraint of constraints) {
     if (!record(constraint) || !Array.isArray(constraint.segments) || typeof constraint.type !== 'string') {
       throw new Error('This Sudoku Coach puzzle has invalid rules.')
+    }
+    if (!COACH_CONSTRAINT_TYPES.has(constraint.type)) {
+      throw new Error(`This Sudoku Coach puzzle uses an unsupported rule type (${constraint.type}).`)
     }
     // Sudoku Coach's `oddEven` layer is a legacy cell-mark format. Its
     // segments are not the alternating-line representation used by the app.
