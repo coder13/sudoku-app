@@ -490,12 +490,12 @@ test('reports unsupported or damaged codes without treating them as Classic', as
   })
   await assert.rejects(detectPuzzle('https://sudoku.coach/en/s/DMnw'), /published puzzle could not be found/)
   await assert.rejects(detectPuzzle('https://sudokupad.app/example-share-id'), /published puzzle could not be found/)
-  await assert.rejects(detectPuzzle(coach({ givenConstraints: [{ type: 'globalModularity', segments: [] }] })), /not supported yet.*globalModularity/)
+  await assert.rejects(detectPuzzle(coach({ givenConstraints: [{ type: 'globalModularity', segments: [] }] })), /unsupported rule type \(globalModularity\)/)
   await assert.rejects(detectPuzzle(coach({ givenConstraints: [{ type: 'cage', segments: [] }] })), /no Killer cages/)
   await assert.rejects(detectPuzzle(coach({ givenConstraints: [
     { type: 'antiKnight', segments: [] },
     { type: 'globalModularity', segments: [] },
-  ] })), /not supported yet.*globalModularity/)
+  ] })), /unsupported rule type \(globalModularity\)/)
   await assert.rejects(detectPuzzle('x'.repeat(MAX_IMPORT_LENGTH + 1)), /one puzzle at a time/)
   const oversizedExport = JSON.stringify({ format: 'sudoku-app-puzzle', version: 1, title: 'Large export',
     givens: STARTER, padding: 'x'.repeat(MAX_DECODED_LENGTH) })
