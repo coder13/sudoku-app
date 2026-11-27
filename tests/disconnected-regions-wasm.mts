@@ -5,10 +5,12 @@ import source from './fixtures/coach-golden-stars-regions.json' with { type: 'js
 import { isJigsawGrid } from '../src/sudoku/grid.ts'
 import { puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
 import { prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { publishSharedPuzzle } from '../src/sudoku/puzzle-sharing.ts'
 import { readGame } from '../src/sudoku/storage.ts'
 import { syncDatabase } from './helpers/sync-database.ts'
+import { coachCode } from './helpers/coach-code.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 
 useWasmWorker()
@@ -76,4 +78,21 @@ test('Hallowteeth keeps reviewed cell colors with its typed 6×6 rules', async (
     assert.deepEqual(shared.game.givenCellColors, imported.givenCellColors)
     assert.deepEqual(shared.game.sized?.rules, game.sized?.rules)
   } finally { sqlite.close() }
+})
+
+test('Hallowteeth keeps its reviewed color fills when a valid Ratio rule is appended', async () => {
+  const data = await decodeSudokuCoachPayload(hallowteeth.code)
+  const original = await detectPuzzle(hallowteeth.code)
+  const code = coachCode({ ...data, givenConstraints: [
+    ...(data.givenConstraints as unknown[]),
+    { type: 'ratio', segments: [{ cells: [1, 7], parameters: {} }], settings: {} },
+  ] })
+  const combined = await detectPuzzle(code)
+
+  assert.equal(combined.title, hallowteeth.title)
+  assert.deepEqual(combined.grid, original.grid)
+  assert.deepEqual(combined.givenCellColors, original.givenCellColors)
+  assert.deepEqual(combined.sizedRules?.slice(0, -1), original.sizedRules)
+  assert.equal(combined.sizedRules?.at(-1)?.type, 'kropki')
+  assert.equal((await puzzleSolution((await prepareImportedPuzzle(code)).game)).board, hallowteeth.solution)
 })

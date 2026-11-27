@@ -288,6 +288,29 @@ test('Windoku I and Khachkar retain reviewed artwork with an appended companion 
   }
 })
 
+test('Sudoku Spider keeps its reviewed color fills beside a Ratio companion', async () => {
+  const data = await decodeSudokuCoachPayload(spider.sudoku)
+  const original = await detectPuzzle(spider.sudoku)
+  const digits = [...spider.solution].map(Number)
+  const pair = Array.from({ length: 81 }, (_, cell) => {
+    const right = cell % 9 < 8 ? cell + 1 : -1
+    const down = cell < 72 ? cell + 9 : -1
+    return [right, down].filter(next => next >= 0 && Math.max(digits[cell], digits[next]) === 2 * Math.min(digits[cell], digits[next]))
+      .map(next => [cell, next] as [number, number])
+  }).flat()[0]
+  assert.ok(pair)
+  const code = coachCode({ ...data, givenConstraints: [
+    ...(data.givenConstraints as unknown[]), { type: 'ratio', segments: [{ cells: pair, parameters: {} }], settings: {} },
+  ] })
+  const combined = await detectPuzzle(code)
+
+  assert.equal(combined.title, spider.name)
+  assert.deepEqual(combined.givenCellColors, original.givenCellColors)
+  assert.deepEqual(combined.variant?.puzzle.rules?.slice(0, -1), original.variant?.puzzle.rules)
+  assert.equal(combined.variant?.puzzle.rules?.at(-1)?.type, 'kropki')
+  assert.equal((await puzzleSolution((await prepareImportedPuzzle(code)).game)).board, spider.solution)
+})
+
 test('the complete published Traffic export verifies within the import budget', async ({ mock }) => {
   const { sqlite, fetcher } = syncDatabase()
   const url = base + traffic.sudoku_id
