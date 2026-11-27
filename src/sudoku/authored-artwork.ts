@@ -1,4 +1,5 @@
 import type { ImportedCellColors } from './imported-colors.ts'
+import { canonicalCoachCode } from './puzzle-import/coach-code.ts'
 
 type Point = readonly [x: number, y: number]
 
@@ -132,7 +133,7 @@ export async function reviewedCoachFillTitle(data: Record<string, unknown>, fill
 }
 
 export async function readReviewedCoachArtwork(code: string, constraints: readonly unknown[]) {
-  const hash = await reviewKey(code)
+  const hash = await reviewKey(canonicalCoachCode(code))
   const textTitle = hash && reviewedTextArtwork.get(hash)
   if (textTitle) {
     const layers = constraints.filter(layer => record(layer) && layer.type === 'cosmeticText')

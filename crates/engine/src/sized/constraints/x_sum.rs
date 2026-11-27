@@ -11,6 +11,7 @@ pub(super) struct XSum {
     size: usize,
     sum: usize,
     direction: ClueDirection,
+    value_offset: u8,
 }
 
 #[derive(Clone, Debug)]
@@ -29,6 +30,7 @@ impl XSum {
         direction: ClueDirection,
         cells: &[usize],
         sum: u16,
+        value_offset: u8,
     ) -> Option<Self> {
         if cells.len() != size || cells.iter().any(|&cell| cell >= size * size) {
             return None;
@@ -58,14 +60,18 @@ impl XSum {
             }
             _ => false,
         };
-        if !valid || usize::from(sum) > size * (size + 1) / 2 {
+        let sum = usize::from(sum);
+        let minimum_sum = 1 - usize::from(value_offset);
+        let maximum_sum = size * (size + 1 - 2 * usize::from(value_offset)) / 2;
+        if !valid || sum < minimum_sum || sum > maximum_sum {
             return None;
         }
         Some(Self {
             cells: cells.to_vec(),
             size,
-            sum: usize::from(sum),
+            sum,
             direction,
+            value_offset,
         })
     }
 
@@ -88,17 +94,45 @@ impl XSum {
 
     fn outcomes_for(&self, domains: &[u16], only_total: Option<usize>) -> Vec<XSumOutcome> {
         let all = u16::MAX >> (u16::BITS as usize - self.size);
-        let maximum = self.size * (self.size + 1) / 2;
+        let maximum_displayed_total =
+            self.size * (self.size + 1 - 2 * usize::from(self.value_offset)) / 2;
+        let maximum_internal_sum = self.size * (self.size + 1) / 2;
         let first_digit_stride = self.size + 1;
         let total_slots = only_total
             .map(|_| first_digit_stride)
-            .unwrap_or((maximum + 1) * first_digit_stride);
+            .unwrap_or((maximum_displayed_total + 1) * first_digit_stride);
         // Keep each first digit separate: a dot may relate the derived sum to
         // that digit, so supports for different prefix lengths cannot merge.
         let mut totals = vec![None::<[u16; MAX_SIZE]>; total_slots];
-        for length in 1..=self.size {
-            let first = 1u16 << (length - 1);
+        for length in
+            (1 - usize::from(self.value_offset))..=self.size - usize::from(self.value_offset)
+        {
+            let first_rank = length + usize::from(self.value_offset);
+            let first = 1u16 << (first_rank - 1);
             if domains[self.cells[0]] & first == 0 {
+                continue;
+            }
+            if length == 0 {
+                if only_total.is_some_and(|target| target != 0) {
+                    continue;
+                }
+                let mut suffix_domains = [0; MAX_SIZE];
+                for (domain, &cell) in suffix_domains.iter_mut().zip(&self.cells[1..]) {
+                    *domain = domains[cell];
+                }
+                let mut suffix_support = [0; MAX_SIZE];
+                if !assignment_support(
+                    all ^ first,
+                    &suffix_domains[..self.size - 1],
+                    &mut suffix_support[..self.size - 1],
+                ) {
+                    continue;
+                }
+                let support = totals[0].get_or_insert([0; MAX_SIZE]);
+                support[0] |= first;
+                for (offset, mask) in suffix_support[..self.size - 1].iter().enumerate() {
+                    support[offset + 1] |= mask;
+                }
                 continue;
             }
             let mut prefix_domains = [0; MAX_SIZE];
@@ -111,9 +145,12 @@ impl XSum {
             }
             let subsets = &subsets_by_size_sum()[length];
             let (first_sum, last_sum) = only_total
-                .map(|target| (target, target))
-                .unwrap_or((length, maximum));
-            if first_sum < length || last_sum > maximum {
+                .map(|target| {
+                    let internal_total = target + length * usize::from(self.value_offset);
+                    (internal_total, internal_total)
+                })
+                .unwrap_or((length * (length + 1) / 2, maximum_internal_sum));
+            if first_sum < length * (length + 1) / 2 || last_sum > maximum_internal_sum {
                 continue;
             }
             for sum in first_sum..=last_sum {
@@ -137,10 +174,11 @@ impl XSum {
                     ) {
                         continue;
                     }
+                    let displayed_total = sum - length * usize::from(self.value_offset);
                     let slot = if only_total.is_some() {
                         length
                     } else {
-                        sum * first_digit_stride + length
+                        displayed_total * first_digit_stride + length
                     };
                     let support = totals[slot].get_or_insert([0; MAX_SIZE]);
                     support[0] |= first;
@@ -184,7 +222,7 @@ enum DotEnd {
 }
 
 impl DotEnd {
-    fn compile(layout: &SizedGrid, end: SizedSumEnd) -> Option<Self> {
+    fn compile(layout: &SizedGrid, end: SizedSumEnd, value_offset: u8) -> Option<Self> {
         let size = layout.size();
         match end {
             SizedSumEnd::Digit(cell) if cell < layout.cell_count() => Some(Self::Digit(cell)),
@@ -201,7 +239,13 @@ impl DotEnd {
                 if cells.contains(&usize::MAX) {
                     return None;
                 }
-                Some(Self::XSum(XSum::compile(size, direction, &cells, 1)?))
+                Some(Self::XSum(XSum::compile(
+                    size,
+                    direction,
+                    &cells,
+                    1,
+                    value_offset,
+                )?))
             }
             _ => None,
         }
@@ -214,7 +258,7 @@ impl DotEnd {
         }
     }
 
-    fn outcomes(&self, domains: &[u16], size: usize) -> Vec<XSumOutcome> {
+    fn outcomes(&self, domains: &[u16], size: usize, value_offset: u8) -> Vec<XSumOutcome> {
         match self {
             Self::Digit(cell) => (1..=size)
                 .filter(|digit| domains[*cell] & (1 << (digit - 1)) != 0)
@@ -222,7 +266,7 @@ impl DotEnd {
                     let mut support = [0; MAX_SIZE];
                     support[0] = 1 << (digit - 1);
                     XSumOutcome {
-                        total: digit,
+                        total: digit - usize::from(value_offset),
                         support,
                     }
                 })
@@ -238,6 +282,7 @@ pub(super) struct XSumDot {
     relation: XSumDotRelation,
     cells: Vec<usize>,
     size: usize,
+    value_offset: u8,
 }
 
 impl XSumDot {
@@ -245,13 +290,14 @@ impl XSumDot {
         layout: &SizedGrid,
         ends: [SizedSumEnd; 2],
         relation: XSumDotRelation,
+        value_offset: u8,
     ) -> Option<Self> {
         if ends[0] == ends[1] || ends.iter().all(|end| matches!(end, SizedSumEnd::Digit(_))) {
             return None;
         }
         let compiled = [
-            DotEnd::compile(layout, ends[0])?,
-            DotEnd::compile(layout, ends[1])?,
+            DotEnd::compile(layout, ends[0], value_offset)?,
+            DotEnd::compile(layout, ends[1], value_offset)?,
         ];
         let cells_a = compiled[0].cells();
         let cells_b = compiled[1].cells();
@@ -288,6 +334,7 @@ impl XSumDot {
             relation,
             cells,
             size: layout.size(),
+            value_offset,
         })
     }
 
@@ -302,8 +349,8 @@ impl XSumDot {
     ) -> bool {
         let left_cells = self.ends[0].cells();
         let right_cells = self.ends[1].cells();
-        let left = self.ends[0].outcomes(domains, self.size);
-        let right = self.ends[1].outcomes(domains, self.size);
+        let left = self.ends[0].outcomes(domains, self.size, self.value_offset);
+        let right = self.ends[1].outcomes(domains, self.size, self.value_offset);
         for a in &left {
             for b in &right {
                 if !relation_matches(a.total, b.total, self.relation) {
@@ -418,7 +465,9 @@ mod tests {
             }
 
             let totals = dot.ends.each_ref().map(|end| match end {
-                DotEnd::Digit(cell) => Some(usize::from(digits[*cell])),
+                DotEnd::Digit(cell) => {
+                    Some(usize::from(digits[*cell]) - usize::from(dot.value_offset))
+                }
                 DotEnd::XSum(x_sum) => {
                     let used = x_sum
                         .cells
@@ -427,11 +476,12 @@ mod tests {
                     if used.count_ones() != dot.size as u32 {
                         return None;
                     }
-                    let prefix_length = usize::from(digits[x_sum.cells[0]]);
+                    let prefix_length =
+                        usize::from(digits[x_sum.cells[0]]) - usize::from(dot.value_offset);
                     Some(
                         x_sum.cells[..prefix_length]
                             .iter()
-                            .map(|&cell| usize::from(digits[cell]))
+                            .map(|&cell| usize::from(digits[cell]) - usize::from(dot.value_offset))
                             .sum(),
                     )
                 }
@@ -472,13 +522,13 @@ mod tests {
 
     #[test]
     fn four_by_four_east_x_sum_uses_first_digit_as_prefix_length_and_keeps_distinct_digits() {
-        let x_sum = XSum::compile(4, ClueDirection::East, &[0, 1, 2, 3], 10).unwrap();
+        let x_sum = XSum::compile(4, ClueDirection::East, &[0, 1, 2, 3], 10, 0).unwrap();
         let domains = [0b1111; 16];
         let mut supported = [0; MAX_SIZE * MAX_SIZE];
         assert!(x_sum.support(&domains, &mut supported));
         assert_eq!(supported[..4], [0b1000, 0b0111, 0b0111, 0b0111]);
 
-        let impossible_prefix = XSum::compile(4, ClueDirection::East, &[0, 1, 2, 3], 9).unwrap();
+        let impossible_prefix = XSum::compile(4, ClueDirection::East, &[0, 1, 2, 3], 9, 0).unwrap();
         let mut supported = [0; MAX_SIZE * MAX_SIZE];
         assert!(impossible_prefix.support(&domains, &mut supported));
         assert_eq!(supported[0], 0b0100);
@@ -488,7 +538,7 @@ mod tests {
 
     #[test]
     fn requested_total_outcomes_match_the_same_bucket_from_all_derived_totals() {
-        let x_sum = XSum::compile(4, ClueDirection::East, &[0, 1, 2, 3], 1).unwrap();
+        let x_sum = XSum::compile(4, ClueDirection::East, &[0, 1, 2, 3], 1, 0).unwrap();
         let mut domains = [0; MAX_SIZE * MAX_SIZE];
         domains[..4].copy_from_slice(&[0b1111, 0b1011, 0b1110, 0b1101]);
 
@@ -510,13 +560,14 @@ mod tests {
 
     #[test]
     fn rejects_a_ray_that_does_not_start_at_the_declared_edge() {
-        assert!(XSum::compile(4, ClueDirection::East, &[1, 2, 3, 4], 10).is_none());
+        assert!(XSum::compile(4, ClueDirection::East, &[1, 2, 3, 4], 10, 0).is_none());
     }
 
     #[test]
     fn sixteen_by_sixteen_x_sum_keeps_the_sixteen_bit_domain_and_wide_total() {
         let cells = (0..MAX_SIZE).collect::<Vec<_>>();
-        let x_sum = XSum::compile(MAX_SIZE, ClueDirection::East, &cells, MAX_SUM as u16).unwrap();
+        let x_sum =
+            XSum::compile(MAX_SIZE, ClueDirection::East, &cells, MAX_SUM as u16, 0).unwrap();
         let domains = [u16::MAX; MAX_SIZE * MAX_SIZE];
         let mut supported = [0; MAX_SIZE * MAX_SIZE];
         assert!(x_sum.support(&domains, &mut supported));
@@ -525,6 +576,24 @@ mod tests {
             supported[1..MAX_SIZE]
                 .iter()
                 .all(|&mask| mask == (1 << (MAX_SIZE - 1)) - 1)
+        );
+    }
+
+    #[test]
+    fn zero_based_sixteen_by_sixteen_x_sum_keeps_the_maximum_displayed_total() {
+        let cells = (0..MAX_SIZE).collect::<Vec<_>>();
+        let x_sum = XSum::compile(MAX_SIZE, ClueDirection::East, &cells, 120, 1).unwrap();
+        let digits: [u8; MAX_SIZE] = [16, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 1];
+        let mut domains = [u16::MAX; MAX_SIZE * MAX_SIZE];
+        for (cell, digit) in digits.into_iter().enumerate() {
+            domains[cell] = 1 << (digit - 1);
+        }
+        let mut supported = [0; MAX_SIZE * MAX_SIZE];
+
+        assert!(x_sum.support(&domains, &mut supported));
+        assert_eq!(
+            supported[..MAX_SIZE],
+            digits.map(|digit| 1u16 << (digit - 1))
         );
     }
 
@@ -549,6 +618,7 @@ mod tests {
                 },
             ],
             XSumDotRelation::Consecutive,
+            0,
         )
         .unwrap();
         let solution = [4, 3, 2, 1, 2, 1, 3, 4, 1, 2, 4, 3, 3, 4, 1, 2];
@@ -575,6 +645,7 @@ mod tests {
                 SizedSumEnd::Digit(4),
             ],
             XSumDotRelation::Consecutive,
+            0,
         )
         .unwrap();
         let solution = [4, 3, 2, 1, 2, 1, 3, 4, 1, 2, 4, 3, 3, 4, 1, 2];
@@ -613,7 +684,7 @@ mod tests {
 
         for ends in end_pairs {
             for relation in [XSumDotRelation::Consecutive, XSumDotRelation::Ratio] {
-                let dot = XSumDot::compile(&layout, ends, relation).unwrap();
+                let dot = XSumDot::compile(&layout, ends, relation, 0).unwrap();
                 for seed in 0..6 {
                     let mut domains = [0b1111; MAX_SIZE * MAX_SIZE];
                     if seed != 0 {
@@ -649,6 +720,7 @@ mod tests {
                 },
             ],
             XSumDotRelation::Ratio,
+            0,
         )
         .unwrap();
         let first: [u8; 16] = [16, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
@@ -688,6 +760,7 @@ mod tests {
                 },
             ],
             XSumDotRelation::Consecutive,
+            0,
         )
         .unwrap();
         let domains = [u16::MAX; MAX_SIZE * MAX_SIZE];
@@ -695,5 +768,109 @@ mod tests {
 
         assert!(dot.support(&domains, &mut supported));
         assert!(dot.cells().all(|cell| supported[cell] != 0));
+    }
+
+    #[test]
+    fn zero_based_dot_uses_displayed_x_sum_totals() {
+        let layout = SizedGrid::new(crate::GridSpec {
+            size: 6,
+            box_rows: 2,
+            box_columns: 3,
+        })
+        .unwrap();
+        let dot = XSumDot::compile(
+            &layout,
+            [
+                SizedSumEnd::XSum {
+                    direction: ClueDirection::East,
+                    index: 0,
+                },
+                SizedSumEnd::XSum {
+                    direction: ClueDirection::West,
+                    index: 4,
+                },
+            ],
+            XSumDotRelation::Consecutive,
+            1,
+        )
+        .unwrap();
+        let digits = [
+            1, 2, 3, 4, 5, 6, 4, 5, 6, 1, 2, 3, 2, 3, 4, 5, 6, 1, 5, 6, 1, 2, 3, 4, 3, 4, 5, 6, 1,
+            2, 6, 1, 2, 3, 4, 5,
+        ];
+        assert!(dot.permits(&digits));
+    }
+
+    #[test]
+    fn zero_based_x_sum_digit_ratio_uses_displayed_first_digit() {
+        let layout = SizedGrid::new(crate::GridSpec {
+            size: 6,
+            box_rows: 2,
+            box_columns: 3,
+        })
+        .unwrap();
+        let dot = XSumDot::compile(
+            &layout,
+            [
+                SizedSumEnd::XSum {
+                    direction: ClueDirection::West,
+                    index: 3,
+                },
+                SizedSumEnd::Digit(23),
+            ],
+            XSumDotRelation::Ratio,
+            1,
+        )
+        .unwrap();
+        let digits = [
+            1, 2, 3, 4, 5, 6, 4, 5, 6, 1, 2, 3, 2, 3, 4, 5, 6, 1, 5, 6, 1, 2, 3, 4, 3, 4, 5, 6, 1,
+            2, 6, 1, 2, 3, 4, 5,
+        ];
+        assert!(dot.permits(&digits));
+    }
+
+    #[test]
+    fn zero_based_x_sum_dot_support_matches_exhaustive_assignments() {
+        let layout = SizedGrid::new(crate::GridSpec {
+            size: 4,
+            box_rows: 2,
+            box_columns: 2,
+        })
+        .unwrap();
+        let end_pairs = [
+            [
+                SizedSumEnd::XSum {
+                    direction: ClueDirection::South,
+                    index: 0,
+                },
+                SizedSumEnd::XSum {
+                    direction: ClueDirection::South,
+                    index: 1,
+                },
+            ],
+            [
+                SizedSumEnd::XSum {
+                    direction: ClueDirection::East,
+                    index: 1,
+                },
+                SizedSumEnd::Digit(4),
+            ],
+        ];
+
+        for ends in end_pairs {
+            for relation in [XSumDotRelation::Consecutive, XSumDotRelation::Ratio] {
+                let dot = XSumDot::compile(&layout, ends, relation, 1).unwrap();
+                for seed in 0..5 {
+                    let mut domains = [0b1111; MAX_SIZE * MAX_SIZE];
+                    if seed != 0 {
+                        for (offset, cell) in dot.cells().enumerate() {
+                            let mask = (seed * 7 + offset * 11) & 0b1111;
+                            domains[cell] = if mask == 0 { 0b1111 } else { mask as u16 };
+                        }
+                    }
+                    assert_support_matches_exhaustive(&dot, &domains);
+                }
+            }
+        }
     }
 }

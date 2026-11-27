@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { enter, restartGame, valuesOf } from '../src/sudoku/game.ts'
+import { runEngine } from '../src/sudoku/engine.ts'
+import { enter, restartGame, setAqreShade, valuesOf } from '../src/sudoku/game.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { findImportAttempt, prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
@@ -78,6 +79,32 @@ test('#547 imports the complete CS1G rule set without treating shape artwork as 
   assertVariantCompletion(game.variant.puzzle, game.variant.solution)
 })
 
+test('#542, #544, #545 and #547 Coach combinations rely on their active rule families', async () => {
+  const { examples } = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-authored-layers.json', import.meta.url), 'utf8')) as {
+    examples: { issue: number; code: string }[]
+  }
+  for (const [issue, necessaryRules] of [
+    [542, ['global-entropy', 'entropic']],
+    [544, ['global-entropy', 'xv', 'kropki']],
+    [545, ['entropic', 'neighbor-match']],
+    [547, ['palindrome', 'kropki']],
+  ] as const) {
+    const source = examples.find(example => example.issue === issue)
+    assert.ok(source)
+    const { game } = await prepareImportedPuzzle(source.code)
+    assert.ok(game.variant)
+    const complete = await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle: game.variant.puzzle } })
+    assert.equal(complete.status, 'unique', `#${issue} should be unique with every imported rule family active`)
+    assert.equal(complete.solution, game.variant.solution)
+
+    for (const type of necessaryRules) {
+      const withoutFamily = { ...game.variant.puzzle, rules: game.variant.puzzle.rules?.filter(rule => rule.type !== type) }
+      const result = await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle: withoutFamily } })
+      assert.equal(result.status, 'multiple', `#${issue} should have multiple solutions without ${type}`)
+    }
+  }
+})
+
 test('#544 verifies the XV Entropy puzzle with its empty cosmetic cage omitted', async () => {
   const examples = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-authored-layers.json', import.meta.url), 'utf8')) as {
     examples: { issue: number; code: string }[]
@@ -147,11 +174,19 @@ test('#543 and #546 solve and preserve the complete Aqre imports through save an
       assert.ok(game.variant && direct.variant)
       assert.deepEqual(game.variant.puzzle, direct.variant.puzzle)
       assert.equal(game.variant.solution.length, 81)
-      assertVariantCompletion({ ...game.variant.puzzle,
-        rules: game.variant.puzzle.rules?.filter(rule => rule.type !== 'aqre') }, game.variant.solution)
+      const digitPuzzle = { ...game.variant.puzzle,
+        rules: game.variant.puzzle.rules?.filter(rule => rule.type !== 'aqre') }
+      assertVariantCompletion(digitPuzzle, game.variant.solution)
+      assert.equal((await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle: digitPuzzle } })).status,
+        'multiple', `#${issue} digit completions are not unique before solving the Aqre shading layer`)
       const aqre = game.variant.puzzle.rules?.find(rule => rule.type === 'aqre')
       assert.ok(aqre?.type === 'aqre' && aqre.kind === kind)
       assert.equal(aqre?.type === 'aqre' ? aqre.givenShades.length : -1, issue === 543 ? 16 : 0)
+      const shades = variantPosition(game.variant, game.position).shades
+      if (aqre?.type === 'aqre') for (const given of aqre.givenShades) {
+        assert.equal(shades?.[given.cell], given.shade === 'shaded' ? '2' : '1')
+        assert.equal(setAqreShade(game, given.cell, given.shade === 'shaded' ? 'unshaded' : 'shaded'), game)
+      }
       if (issue === 546) assert.equal(game.variant.puzzle.rules?.filter(rule => rule.type === 'renban').length, 6)
 
       const saved = readGame(game.id, JSON.stringify(game))

@@ -82,6 +82,15 @@ export const StagedHint: Story = {
     action: { label: 'Apply hint', onClick: fn() },
   },
 }
+export const TerrainSandwichValueMap: Story = {
+  args: {
+    hint: {
+      title: 'Terrain Sandwich',
+      text: 'The maximum is 8 from R1C1 to R1C9. Double the digit in R1C2; add 3 to the digit in R1C4; subtract 3 from the digit in R1C7. Other cells keep their digit values. Add transformed values strictly between transformed 1 and transformed 9; if several pairs qualify, use the greatest total.',
+    },
+  },
+  parameters: { layout: 'padded', controls: { disable: true } },
+}
 export const InteractiveCellReferences: Story = {
   args: {
     hint: { title: 'ALS-XZ', text: 'Set 1 (blue) is at r2c6. Set 2 (purple) is at r2c1, r2c3, and r2c5. Compare 3r2c6 with 3r2c5. Check r2c9.' },

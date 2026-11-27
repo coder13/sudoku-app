@@ -4,7 +4,7 @@ import lzString from 'lz-string'
 import { runEngine, type SizedConstraintPosition } from '../src/sudoku/engine.ts'
 import { readSizedRuleSudokuPad } from '../src/sudoku/sized-rule-sudoku-pad.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
-import { sizedRulePosition } from '../src/sudoku/sized-rule-game.ts'
+import { isSizedRuleList, restoreSizedRuleGame, sizedRulePosition } from '../src/sudoku/sized-rule-game.ts'
 import { verifySizedRulePuzzle } from '../src/sudoku/sized-rule-game.ts'
 import { conflictsOf, enter, makeGame, valuesOf } from '../src/sudoku/game.ts'
 import { sizedRegionSumState } from '../src/sudoku/region-sum.ts'
@@ -206,4 +206,60 @@ test('zero-based Region Sum accepts filled zero and unequal segment lengths', as
   palindromeValues[10] = '2'
   assert.deepEqual(conflictsOf(palindromeValues.join(''), undefined, grid,
     [{ type: 'palindrome', cells: [0, 1, 2, 6, 10] }]), new Set([0, 10]))
+})
+
+test('zero-based Sandwich uses displayed totals and the zero/highest endpoint symbols', async () => {
+  const grid = { size: 6, boxRows: 2, boxColumns: 3 }
+  const appGrid = { ...grid, notation: 'zero-based' as const }
+  const solution = Array.from('123456456123234561561234345612612345', Number)
+  const position: SizedConstraintPosition = {
+    version: 2,
+    grid,
+    zeroBased: true,
+    digits: solution,
+    rules: [{ type: 'sandwich', direction: 'south', cells: [0, 6, 12, 18, 24, 30], sum: 10 }],
+  }
+  assert.equal(isSizedRuleList(position.rules, appGrid), true)
+  assert.equal(isSizedRuleList([{ type: 'sandwich', direction: 'south', cells: [0, 6, 12, 18, 24, 30], sum: 11 }], appGrid), false)
+  assert.deepEqual(restoreSizedRuleGame({ rules: position.rules, solution: solution.join('') }, appGrid, solution.join('')),
+    { rules: position.rules, solution: solution.join('') })
+  const { zeroBased: _zeroBased, ...oneBasedPosition } = position
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...oneBasedPosition, rules: [{ type: 'sandwich', direction: 'south', cells: [0, 6, 12, 18, 24, 30], sum: 14 }],
+  } }), 'unique')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+  await assert.rejects(runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position, rules: [{ type: 'sandwich', direction: 'south', cells: [0, 6, 12, 18, 24, 30], sum: 11 }],
+  } }))
+})
+
+test('zero-based X-Sums count displayed values and expose displayed totals to linked clues', async () => {
+  const grid = { size: 6, boxRows: 2, boxColumns: 3 }
+  const appGrid = { ...grid, notation: 'zero-based' as const }
+  const solution = Array.from('123456456123234561561234345612612345', Number)
+  const rules: SizedConstraintPosition['rules'] = [
+    { type: 'x-sum' as const, direction: 'east' as const, cells: [0, 1, 2, 3, 4, 5], sum: 0 },
+    { type: 'x-sum' as const, direction: 'east' as const, cells: [12, 13, 14, 15, 16, 17], sum: 1 },
+    { type: 'x-sum' as const, direction: 'east' as const, cells: [24, 25, 26, 27, 28, 29], sum: 5 },
+    { type: 'x-sum' as const, direction: 'east' as const, cells: [30, 31, 32, 33, 34, 35], sum: 11 },
+    { type: 'x-sum' as const, direction: 'west' as const, cells: [23, 22, 21, 20, 19, 18], sum: 6 },
+    { type: 'x-sum-dot' as const, ends: [{ direction: 'east' as const, index: 0 }, { direction: 'west' as const, index: 4 }], relation: 'consecutive' as const },
+    { type: 'x-sum-dot' as const, ends: [{ direction: 'west' as const, index: 3 }, 23], relation: 'ratio' as const },
+  ]
+  const position: SizedConstraintPosition = { version: 2, grid, zeroBased: true, digits: solution, rules }
+  assert.equal(isSizedRuleList(rules, appGrid), true)
+  assert.equal(isSizedRuleList(rules.map((rule, index) => index === 0
+    ? { type: 'x-sum', direction: 'east', cells: [0, 1, 2, 3, 4, 5], sum: 16 }
+    : rule), appGrid), false)
+  const solutionText = solution.join('')
+  assert.ok(restoreSizedRuleGame({ rules, solution: solutionText }, appGrid, '0'.repeat(solution.length)))
+  const changedRules = rules.map((rule, index) => index === 1
+    ? { type: 'x-sum' as const, direction: 'east' as const, cells: [12, 13, 14, 15, 16, 17], sum: 2 }
+    : rule)
+  assert.equal(restoreSizedRuleGame({ rules: changedRules, solution: solutionText }, appGrid, '0'.repeat(solution.length)), undefined)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: { ...position, rules: rules.slice(0, 4) } }), 'unique')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position, rules: changedRules,
+  } }), 'conflict')
 })

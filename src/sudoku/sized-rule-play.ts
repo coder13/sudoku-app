@@ -1,13 +1,13 @@
 import { quadrupleCells } from './variants.ts'
 import { linkedDoubleArrowCells, sizedSumEndCells } from './sized-linked-double-arrow.ts'
-import { EngineError, runEngine, type HintChoice, type House, type SizedConstraintStep, type SizedKropkiPair } from './engine.ts'
+import { EngineError, runEngine, type EngineRunner, type HintChoice, type House, type SizedConstraintStep, type SizedKropkiPair } from './engine.ts'
 import { hintEliminations } from './game.ts'
 import { MINI_TECHNIQUES, miniHintChoice, type MiniSolutionTrace } from './mini-play.ts'
-import { gridDiagonalCells, rowColumnSumTotal, type SizedGrid } from './grid.ts'
-import { sizedRulePosition, type SizedRuleGame } from './sized-rule-game.ts'
+import { gridDiagonalCells, gridValueOffset, rowColumnSumTotal, type SizedGrid } from './grid.ts'
+import { expandSizedRuleAlternativeBranches, expandSizedRuleAlternatives, runSizedRuleAlternatives, sizedRulePosition, sizedRuleSourceIndex, type SizedRuleGame } from './sized-rule-game.ts'
 import { positionDigit, positionText } from './digit-symbols.ts'
 
-export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-slow-thermometer', 'sized-whispers', 'sized-xv', 'sized-sandwich', 'sized-extra-house', 'sized-killer-cages', 'sized-quadruple', 'sized-renban', 'sized-kropki', 'sized-labeled-dots', 'sized-difference', 'sized-anti-sum', 'sized-row-column-sum', 'sized-arrow', 'sized-double-arrow', 'sized-region-sum', 'sized-minimum', 'sized-maximum', 'sized-contradiction'] as const
+export const SIZED_RULE_TECHNIQUES = [...MINI_TECHNIQUES, 'sized-diagonal', 'sized-parity', 'sized-thermometer', 'sized-slow-thermometer', 'sized-whispers', 'sized-xv', 'sized-sandwich', 'sized-extra-house', 'sized-killer-cages', 'sized-quadruple', 'sized-renban', 'sized-kropki', 'sized-labeled-dots', 'sized-difference', 'sized-anti-sum', 'sized-row-column-sum', 'sized-arrow', 'sized-double-arrow', 'sized-region-sum', 'sized-minimum', 'sized-maximum', 'sized-clue-interpretation', 'sized-contradiction'] as const
 
 function kropkiPairRule({ relation, negative, value }: SizedKropkiPair) {
   const white = relation === 'consecutive'
@@ -19,7 +19,7 @@ function kropkiPairRule({ relation, negative, value }: SizedKropkiPair) {
     : 'Across a black dot, one digit is double the other.'
 }
 
-function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep, grid: SizedGrid): HintChoice {
+export function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep, grid: SizedGrid): HintChoice {
   const { size } = grid
   if (step.type === 'house') return miniHintChoice(step.proof)
   if (step.type === 'contradiction') return contradictionHint(rules, step, size)
@@ -31,7 +31,7 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
       candidates: step.actions.map(action => 'eliminate' in action ? action.eliminate : action.place) },
   }
   if (step.type === 'quadruple-overlap') {
-    const [first, second] = step.rules.map(index => rules[index])
+    const [first, second] = step.rules.map(index => rules[sizedRuleSourceIndex(rules, index)])
     if (first?.type !== 'quadruple' || (second?.type !== 'quadruple' && second?.type !== 'region-sum')) {
       throw new Error('Invalid overlapping Quadruple hint.')
     }
@@ -63,7 +63,7 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
     }
   }
   if (step.type === 'coupled-sums') {
-    const [first, second] = step.rules.map(index => rules[index])
+    const [first, second] = step.rules.map(index => rules[sizedRuleSourceIndex(rules, index)])
     if (!first || !second || !('cells' in first) || !('cells' in second)) throw new Error('Invalid shared path totals hint.')
     const describe = (rule: typeof first) => rule.type === 'zipper' ? 'the Zipper line'
       : rule.type === 'region-sum' ? 'the Region Sum line' : 'the equal-total line'
@@ -84,7 +84,7 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
     }
   }
   const { actions, rule: index } = step
-  const rule = rules[index]
+  const rule = rules[sizedRuleSourceIndex(rules, index)]
   const cage = rule.type === 'killer-cages' ? rule.cages.find(({ cells }) => actions.every(action =>
     cells.includes(('eliminate' in action ? action.eliminate : action.place).cell))) : undefined
   const cells = step.type === 'anti-sum' || step.type === 'row-column-sum' ? step.cells : cage ? [...cage.cells] : rule.type === 'diagonal' ? gridDiagonalCells(size, rule.diagonal)
@@ -120,6 +120,18 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
   } else if (rule.type === 'digit-restriction') {
     description = `A ${rule.shape} mark allows only ${new Intl.ListFormat('en').format(rule.digits.map(String))} in each marked cell.`
     reason = 'Remove the candidates that are not allowed by the marked digit set.'
+  } else if (rule.type === 'product-cage') {
+    description = `The displayed digits in this shaded product cage multiply to ${rule.product}.`
+    reason = `For each candidate, check whether the other cells can complete the product ${rule.product}. Remove it if no assignment of the other cells reaches that product. Repeats are allowed unless another rule forbids them.`
+  } else if (rule.type === 'digit-count') {
+    const digit = rule.digit - gridValueOffset(grid)
+    const maximum = rule.maximum ?? rule.cells.length
+    description = rule.minimum === maximum
+      ? `Exactly ${rule.minimum} of the marked cells must contain ${digit}.`
+      : maximum === rule.cells.length
+        ? `At least ${rule.minimum} of the marked cells must contain ${digit}.`
+        : `Between ${rule.minimum} and ${maximum} of the marked cells must contain ${digit}.`
+    reason = `The count must stay between ${rule.minimum} and ${maximum}. Keep a candidate only if the remaining marked cells can still meet that count.`
   } else if (rule.type === 'renban') {
     description = `The ${rule.cells.length} cells on this line contain different consecutive digits in any order.`
     reason = 'Remove each candidate that cannot be used in its cell in any consecutive set that fits the line.'
@@ -172,7 +184,8 @@ function sizedRuleHintChoice({ rules }: SizedRuleGame, step: SizedConstraintStep
     description = 'Digits joined by V add to 5. Digits joined by X add to 10.'
     reason = 'Remove each candidate that cannot fit the total shown by the marker.'
   } else if (rule.type === 'sandwich') {
-    description = `The digits between 1 and ${size} in this ${rule.direction === 'north' || rule.direction === 'south' ? 'column' : 'row'} add to ${rule.sum}.`
+    const valueOffset = gridValueOffset(grid)
+    description = `The digits between ${1 - valueOffset} and ${size - valueOffset} in this ${rule.direction === 'north' || rule.direction === 'south' ? 'column' : 'row'} add to ${rule.sum}.`
     reason = 'Remove each candidate that cannot fit a row or column arrangement with the printed sandwich total.'
   } else if (rule.type === 'minimum' || rule.type === 'maximum') {
     const lower = rule.type === 'minimum'
@@ -202,7 +215,7 @@ function contradictionHint(rules: SizedRuleGame['rules'], { assumption, placemen
     locations.push(failure.cell)
     conflict = `${reference(failure.cell)} has no candidate left.`
   } else if (failure.type === 'rule') {
-    const rule = rules[failure.rule]
+    const rule = rules[sizedRuleSourceIndex(rules, failure.rule)]
     if (rule.type === 'diagonal') {
       locations.push(...gridDiagonalCells(size, rule.diagonal))
       conflict = `The ${rule.diagonal === 'main' ? 'top-left to bottom-right' : 'top-right to bottom-left'} diagonal cannot contain every digit once.`
@@ -236,7 +249,7 @@ function contradictionHint(rules: SizedRuleGame['rules'], { assumption, placemen
                     : 'The thermometer has no strictly increasing sequence from bulb to tip.'
     } else conflict = 'A Kropki clue has no valid pair of digits.'
   } else if (failure.type === 'killer-cage') {
-    const rule = rules[failure.rule]
+    const rule = rules[sizedRuleSourceIndex(rules, failure.rule)]
     const cage = rule.type === 'killer-cages' ? rule.cages[failure.cage] : undefined
     if (cage) locations.push(...cage.cells)
     conflict = cage ? `The cage at ${reference(Math.min(...cage.cells))} cannot reach ${cage.sum} with different digits.`
@@ -250,11 +263,11 @@ function contradictionHint(rules: SizedRuleGame['rules'], { assumption, placemen
       conflict = 'No unmarked edge can reach its row or column sum.'
     }
   } else if (failure.type === 'coupled-sums') {
-    const [first, second] = failure.rules.map(index => rules[index])
+    const [first, second] = failure.rules.map(index => rules[sizedRuleSourceIndex(rules, index)])
     for (const rule of [first, second]) if (rule && 'cells' in rule) locations.push(...rule.cells)
     conflict = 'The equal-total rules on these shared cells cannot use compatible totals.'
   } else if (failure.type === 'anti-sum') {
-    const rule = rules[failure.rule]
+    const rule = rules[sizedRuleSourceIndex(rules, failure.rule)]
     locations.push(...failure.cells)
     conflict = rule.type === 'anti-sum'
       ? `No pair of different digits in ${reference(failure.cells[0])} and ${reference(failure.cells[1])} can avoid a sum of ${rule.sum}.`
@@ -291,22 +304,93 @@ function checkSizedRuleHintPosition({ solution }: SizedRuleGame, values: string,
 }
 
 export async function sizedRuleCandidates(game: SizedRuleGame, grid: SizedGrid, values: string, eliminations?: readonly number[], run = runEngine) {
-  const candidates = await run({ type: 'sized-variant', position: sizedRulePosition(grid, game, values), operation: 'candidates' })
-  return candidates?.map((mask, cell) => mask & ~(eliminations?.[cell] ?? 0)) ?? null
+  const candidates = await runSizedRuleAlternatives({ type: 'sized-variant', position: sizedRulePosition(grid, game, values), operation: 'candidates' }, run)
+  const supported = candidates.filter((branch): branch is number[] => branch !== null)
+  if (!supported.length) return null
+  return supported[0].map((mask, cell) => supported.reduce((combined, branch) => combined | branch[cell], 0) & ~(eliminations?.[cell] ?? 0))
 }
 
 export async function sizedRuleHintChoices(game: SizedRuleGame, grid: SizedGrid, values: string, eliminations?: readonly number[], run = runEngine) {
   checkSizedRuleHintPosition(game, values, eliminations)
-  const result = await run({ type: 'sized-variant', position: sizedRulePosition(grid, game, values), operation: 'hints', eliminations, limit: 1024 })
-  return result && { choices: result.choices.map(step => sizedRuleHintChoice(game, step, grid)), candidates: result.candidates }
+  const results = await runSizedRuleAlternatives({ type: 'sized-variant', position: sizedRulePosition(grid, game, values), operation: 'hints' as const, eliminations, limit: 1024 }, run)
+  const supported = results.filter((result): result is NonNullable<typeof result> => result !== null)
+  if (!supported.length) return null
+  const branches = expandSizedRuleAlternativeBranches(game.rules)
+  if (!branches || branches.length !== results.length) throw new Error('This puzzle has too many clue interpretations to check safely.')
+  const branchChoices = results.flatMap((result, index) => result
+    ? [result.choices.map(step => sizedRuleHintChoice({ ...game, rules: branches[index].rules }, step, grid))]
+    : [])
+  if (!game.rules.some(rule => rule.type === 'constraint-alternatives')) {
+    return { choices: branchChoices[0] ?? [], candidates: supported[0].candidates }
+  }
+  const common = branchChoices.map(choices => new Map(choices.flatMap(choice => choice.actions.map(action => {
+    const candidate = 'place' in action ? action.place : action.eliminate
+    return [`${'place' in action ? 'p' : 'e'}:${candidate.cell}:${candidate.digit}`, action] as const
+  }))))
+  const shared = [...common[0]].filter(([key]) => common.every(branch => branch.has(key)))
+  const actions = shared.map(([, action]) => action)
+  const candidates = supported[0].candidates.map((_, cell) => supported.reduce((mask, result) => mask | result.candidates[cell], 0))
+  const activeBranches = branches.filter((_, index) => results[index] !== null)
+  const forcedInterpretations: string[] = []
+  let alternativeIndex = 0
+  for (const rule of game.rules) {
+    if (rule.type !== 'constraint-alternatives') continue
+    const remaining = new Set(activeBranches.map(branch => branch.choices[alternativeIndex]))
+    if (remaining.size === 1 && remaining.size < rule.choices.length) {
+      const selected = [...remaining][0]
+      const label = (index: number) => rule.choiceLabels?.[index] ?? `${rule.family} clue ${index + 1}`
+      const clueName = (index: number) => label(index).replace(/^Double the /, '').replace(/^Double /, '')
+      const excluded = rule.choices.map((_, index) => index).filter(index => index !== selected)
+      forcedInterpretations.push(
+        `For the ${rule.family.split('-').map(part => part[0].toUpperCase() + part.slice(1)).join(' ')} clues, ` +
+        `the digits placed rule out doubling ${new Intl.ListFormat('en').format(excluded.map(index => `the ${clueName(index)}`))}. ` +
+        `The only remaining option is to double the ${clueName(selected)}.`,
+      )
+    }
+    alternativeIndex++
+  }
+  const interpretationDescription = forcedInterpretations.length
+    ? forcedInterpretations.join(' ')
+    : 'This move holds under every doubled-clue interpretation that remains possible.'
+  const interpretationReason = forcedInterpretations.length
+    ? `${forcedInterpretations.join(' ')} Keep the move because it follows under each remaining interpretation.`
+    : 'Keep the move because no remaining clue interpretation rules it out.'
+  const choices: HintChoice[] = actions.length ? [{
+    technique: 'sized-clue-interpretation',
+    evidence: { variant: {
+      description: interpretationDescription,
+      reason: interpretationReason,
+    } },
+    actions,
+    pattern: { houses: [], cells: [...new Set(actions.map(action => ('place' in action ? action.place : action.eliminate).cell))],
+      candidates: actions.map(action => 'place' in action ? action.place : action.eliminate) },
+  }] : []
+  return { choices, candidates }
+}
+
+async function rulesForSolvedInterpretation(game: SizedRuleGame, grid: SizedGrid, run: EngineRunner) {
+  const branches = expandSizedRuleAlternatives(game.rules)
+  if (!branches) throw new Error('This puzzle has too many clue interpretations to check safely.')
+  const results = await Promise.all(branches.map(rules => run({
+    type: 'sized-variant', operation: 'analyze',
+    position: sizedRulePosition(grid, { rules }, game.solution),
+  })))
+  const viable = branches.filter((_, index) => results[index] === 'unique')
+  if (!viable.length) throw new EngineError('The puzzle contains conflicting givens or rules.', 'conflict')
+  return viable
 }
 
 export async function sizedRuleSolutionTrace(game: SizedRuleGame, grid: SizedGrid, givens: string, run = runEngine): Promise<MiniSolutionTrace> {
-  const trace = await run({ type: 'sized-variant', position: sizedRulePosition(grid, game, givens), operation: 'trace' })
+  const viableRules = await rulesForSolvedInterpretation(game, grid, run)
+  const traces = await Promise.all(viableRules.map(rules => run({
+    type: 'sized-variant', position: sizedRulePosition(grid, { rules }, givens), operation: 'trace',
+  })))
+  const trace = traces.find(result => result?.length)
   if (!trace?.length) throw new EngineError('The puzzle contains conflicting givens or rules.', 'conflict')
+  const traceRules = viableRules[traces.indexOf(trace)]
   const steps: HintChoice[] = []
   const positions = trace.map(({ digits, eliminations, candidates, deduction }) => {
-    const choice = deduction && sizedRuleHintChoice(game, deduction, grid)
+    const choice = deduction && sizedRuleHintChoice({ ...game, rules: traceRules }, deduction, grid)
     if (choice) steps.push(choice)
     return {
       givens, entries: positionText(digits.map((digit, cell) => givens[cell] === '0' ? digit : 0)),
@@ -320,8 +404,10 @@ export async function sizedRuleSolutionTrace(game: SizedRuleGame, grid: SizedGri
 export async function sizedRuleSingles(game: SizedRuleGame, grid: SizedGrid, values: string, eliminations?: readonly number[], displayedCandidates?: readonly number[], run = runEngine) {
   const removed = hintEliminations(values, displayedCandidates ?? null, eliminations, grid.size)
   checkSizedRuleHintPosition(game, values, removed)
-  const trace = await run({
-    type: 'sized-variant', position: sizedRulePosition(grid, game, values), operation: 'trace', eliminations: removed, singlesOnly: true,
-  })
+  const viableRules = await rulesForSolvedInterpretation(game, grid, run)
+  const traces = await Promise.all(viableRules.map(rules => run({
+    type: 'sized-variant', position: sizedRulePosition(grid, { rules }, values), operation: 'trace', eliminations: removed, singlesOnly: true,
+  })))
+  const trace = traces.find(result => result?.length)
   return trace?.at(-1) ? positionText(trace.at(-1)!.digits) : values
 }

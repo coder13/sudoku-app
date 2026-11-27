@@ -6,6 +6,7 @@ pub(super) struct Sandwich {
     cells: Vec<usize>,
     size: usize,
     sum: usize,
+    value_offset: u8,
 }
 
 impl Sandwich {
@@ -14,6 +15,7 @@ impl Sandwich {
         cells: &[usize],
         direction: ClueDirection,
         sum: u16,
+        value_offset: u8,
     ) -> Option<Self> {
         if size > 8 || cells.len() != size || cells.iter().any(|&cell| cell >= size * size) {
             return None;
@@ -43,7 +45,7 @@ impl Sandwich {
             }
             _ => false,
         };
-        let max_sum = size * (size + 1) / 2 - size - 1;
+        let max_sum = (size - 2) * (size + 1 - 2 * usize::from(value_offset)) / 2;
         if !valid || usize::from(sum) > max_sum {
             return None;
         }
@@ -51,6 +53,7 @@ impl Sandwich {
             cells: cells.to_vec(),
             size,
             sum: usize::from(sum),
+            value_offset,
         })
     }
 
@@ -74,11 +77,12 @@ impl Sandwich {
             .iter()
             .fold((0, 0), |(sum, empty), &cell| {
                 (
-                    sum + usize::from(digits[cell]),
+                    sum + usize::from(digits[cell].saturating_sub(self.value_offset)),
                     empty + usize::from(digits[cell] == 0),
                 )
             });
-        sum <= self.sum && sum + empty * (self.size - 1) >= self.sum
+        let max_value = self.size - usize::from(self.value_offset);
+        sum <= self.sum && sum + empty * max_value >= self.sum
     }
 
     pub fn support(&self, domains: &[u16], supported: &mut [u16; MAX_SIZE * MAX_SIZE]) -> bool {
@@ -100,6 +104,7 @@ impl Sandwich {
                 let start = one_cell.min(high_cell);
                 let end = one_cell.max(high_cell);
                 let middle: Vec<_> = (start + 1..end).map(|index| self.cells[index]).collect();
+                let target_sum = self.sum + middle.len() * usize::from(self.value_offset);
                 let outside: Vec<_> = (0..size)
                     .filter(|&index| {
                         index != one_cell && index != high_cell && !(start < index && index < end)
@@ -108,7 +113,8 @@ impl Sandwich {
                     .collect();
                 let mut subset = middle_digits;
                 loop {
-                    if subset.count_ones() as usize == middle.len() && digit_sum(subset) == self.sum
+                    if subset.count_ones() as usize == middle.len()
+                        && digit_sum(subset) == target_sum
                     {
                         let mut middle_support = [0; MAX_SIZE * MAX_SIZE];
                         let mut outside_support = [0; MAX_SIZE * MAX_SIZE];
@@ -232,7 +238,7 @@ mod tests {
     fn supports_only_assignments_with_the_required_sandwich_sum() {
         let size = 6;
         let cells: Vec<_> = (0..size).map(|column| column).collect();
-        let clue = Sandwich::compile(size, &cells, ClueDirection::East, 7).unwrap();
+        let clue = Sandwich::compile(size, &cells, ClueDirection::East, 7, 0).unwrap();
         let domains = [0b111111; 36];
         let mut supported = [0; MAX_SIZE * MAX_SIZE];
         assert!(clue.support(&domains, &mut supported));
@@ -240,7 +246,7 @@ mod tests {
         assert_eq!(supported[0] & (1 << 5), 1 << 5);
         assert!(supported[..6].iter().all(|&mask| mask != 0));
 
-        let impossible = Sandwich::compile(size, &cells, ClueDirection::East, 0).unwrap();
+        let impossible = Sandwich::compile(size, &cells, ClueDirection::East, 0, 0).unwrap();
         let mut impossible_domains = [0; 36];
         impossible_domains[..size].fill(0b011110);
         impossible_domains[0] = 0b000001;
@@ -253,7 +259,7 @@ mod tests {
         let size = 4;
         let cells: Vec<_> = (0..size).collect();
         let clues: Vec<_> = (0..=5)
-            .map(|sum| Sandwich::compile(size, &cells, ClueDirection::East, sum).unwrap())
+            .map(|sum| Sandwich::compile(size, &cells, ClueDirection::East, sum, 0).unwrap())
             .collect();
         let rows: Vec<[u8; 4]> = (1..=4)
             .flat_map(|a| (1..=4).filter(move |&b| b != a).map(move |b| (a, b)))

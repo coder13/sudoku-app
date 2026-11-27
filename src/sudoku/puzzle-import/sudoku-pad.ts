@@ -29,7 +29,9 @@ export function fromSudokuPad(code: string): ImportResult {
     }
     if (record(data) && Array.isArray(data.cells) &&
       (!(Array.isArray(data.cages) && data.cages.some(cage => record(cage) && typeof cage.value === 'string')) ||
-        record(data.metadata) && hasSudokuPadSolutionAnnotation(data.cages, data.metadata.solution)) &&
+        data.cells.length >= 6 || record(data.metadata) && (
+          hasSudokuPadSolutionAnnotation(data.cages, data.metadata.solution) ||
+          typeof data.metadata.rules === 'string' && /The product of the digits inside the cage is equal to \d+\./i.test(data.metadata.rules))) &&
       (isRectangularSize(data.cells.length) || isJigsawSize(data.cells.length) ||
       data.cells.length === 4 && (hasDeclaredSudokuPadJigsaw(record(data.metadata) ? data.metadata.rules : undefined) ||
         ['lines', 'underlays', 'overlays', 'arrows'].some(field => Object.hasOwn(data, field))))) {

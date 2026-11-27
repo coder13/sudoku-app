@@ -41,6 +41,16 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
         assert.equal(row.slice(Math.min(one, nine) + 1, Math.max(one, nine)).reduce((sum, digit) => sum + digit, 0), rule.sum)
         break
       }
+      case 'terrain-sandwich': {
+        const values = rule.cells.map((cell, index) => digits[cell] * rule.transforms[index].multiplier + rule.transforms[index].offset)
+        const possible = values.flatMap((first, start) => values.flatMap((last, end) =>
+          first === 1 && last === 9 && start !== end
+            ? [values.slice(Math.min(start, end) + 1, Math.max(start, end)).reduce((sum, value) => sum + value, 0)]
+            : []))
+        assert.ok(possible.length)
+        assert.equal(Math.max(...possible), rule.maximum)
+        break
+      }
       case 'clone':
         for (const group of rule.groups) for (const cell of group) assert.equal(digits[cell], digits[group[0]])
         break
@@ -198,6 +208,63 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
           assert.ok(neighbors.some(neighbor => digits[neighbor] === digit), `Clue ${digit} at ${cell} needs a matching orthogonal neighbor`)
         }
         break
+      case 'magic-square': {
+        const lines = [
+          [0, 1, 2], [3, 4, 5], [6, 7, 8],
+          [0, 3, 6], [1, 4, 7], [2, 5, 8],
+          [0, 4, 8], [2, 4, 6],
+        ]
+        for (const line of lines) assert.equal(line.reduce((sum, index) => sum + digits[rule.cells[index]], 0), 15)
+        break
+      }
+      case 'unknown-cage-sums': {
+        const totals = rule.cages.map(cage => {
+          assert.ok(distinct(cage), 'Digits cannot repeat inside an unknown-sum cage')
+          return cage.reduce((sum, cell) => sum + digits[cell], 0)
+        })
+        assert.equal(new Set(totals).size, rule.cages.length, 'Unknown cage totals must not repeat')
+        const ordered = [...totals].sort((a, b) => a - b)
+        ordered.forEach((total, index) => assert.equal(total, ordered[0] + index, 'Unknown cage totals must be consecutive'))
+        for (const [first, second] of rule.consecutivePairs) {
+          assert.equal(Math.abs(totals[first] - totals[second]), 1, 'A C-linked pair of cage totals must differ by one')
+        }
+        break
+      }
+      case 'distant-neighbors': {
+        const box = (cell: number) => Math.floor(Math.floor(cell / 9) / 3) * 3 + Math.floor((cell % 9) / 3)
+        const markedCell = Array.from({ length: 9 }, (_, index) => rule.markedCells.find(cell => box(cell) === index)!)
+        for (let index = 0; index < markedCell.length; index++) {
+          const cell = markedCell[index], row = Math.floor(cell / 9), column = cell % 9
+          for (const neighbor of [row > 0 ? cell - 9 : -1, row < 8 ? cell + 9 : -1,
+            column > 0 ? cell - 1 : -1, column < 8 ? cell + 1 : -1].filter(neighbor => neighbor >= 0)) {
+            assert.notEqual(Math.abs(digits[cell] - digits[neighbor]), 1, 'A marked cell and its orthogonal neighbors cannot be consecutive')
+          }
+        }
+        for (let boxRow = 0; boxRow < 3; boxRow++) for (let boxColumn = 0; boxColumn < 3; boxColumn++) {
+          const index = boxRow * 3 + boxColumn
+          if (boxColumn < 2) {
+            const next = index + 1
+            assert.notEqual(Math.abs(digits[markedCell[index]] - digits[markedCell[next]]), 1, 'Edge-sharing box identities cannot be consecutive')
+            for (let offset = 0; offset < 3; offset++) {
+              const left = boxRow * 27 + boxColumn * 3 + offset * 9 + 2
+              const right = left + 1
+              assert.ok(Math.abs(digits[left] - digits[markedCell[next]]) > 1, 'The left facing border cannot neighbor its identity or a consecutive digit')
+              assert.ok(Math.abs(digits[right] - digits[markedCell[index]]) > 1, 'The right facing border cannot neighbor its identity or a consecutive digit')
+            }
+          }
+          if (boxRow < 2) {
+            const next = index + 3
+            assert.notEqual(Math.abs(digits[markedCell[index]] - digits[markedCell[next]]), 1, 'Edge-sharing box identities cannot be consecutive')
+            for (let offset = 0; offset < 3; offset++) {
+              const top = boxRow * 27 + boxColumn * 3 + 18 + offset
+              const bottom = top + 9
+              assert.ok(Math.abs(digits[top] - digits[markedCell[next]]) > 1, 'The upper facing border cannot neighbor its identity or a consecutive digit')
+              assert.ok(Math.abs(digits[bottom] - digits[markedCell[index]]) > 1, 'The lower facing border cannot neighbor its identity or a consecutive digit')
+            }
+          }
+        }
+        break
+      }
       case 'labeled-dots': {
         const matches = (a: number, b: number, value: number) => {
           const x = digits[a], y = digits[b]

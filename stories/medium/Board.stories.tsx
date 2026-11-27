@@ -1,7 +1,9 @@
 import { useEffect, useState, type ComponentProps } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import { expect } from 'storybook/test'
 import { Board, type BoardAppearance, type BoardContent, type BoardInteraction, type BoardLayout, type BoardProps } from '../../src/components/Board'
 import type { SizedConstraintRule, VariantPuzzle } from '../../src/sudoku/engine'
+import type { ImportedCellColors } from '../../src/sudoku/imported-colors'
 import { projectFogPuzzle } from '../../src/sudoku/fog'
 import { conflictsOf, enter, paintCandidates, valuesOf } from '../../src/sudoku/game'
 import { fiveJigsawForSeed, MINI_GRID, NINE_BOXLESS_GRID, SEVEN_BOXLESS_GRID, SIX_BOXLESS_GRID, type SizedGrid } from '../../src/sudoku/grid'
@@ -13,16 +15,20 @@ import { variantRuleDescriptions } from '../../src/sudoku/variants'
 import { decodeCoachSix, detectPuzzle } from '../../src/sudoku/puzzle-import.ts'
 import authoredLayers from '../../tests/fixtures/sudoku-coach-authored-layers.json'
 import coachNonogram from '../../tests/fixtures/sized-coach-nonogram.json'
-import coachSkyscrapers from '../../tests/fixtures/skyscrapers-unsupported-9W3o.json'
+import coachSkyscrapers from '../../tests/fixtures/skyscrapers-coach-9W3o.json'
 import coachCrust from '../../tests/fixtures/sudoku-coach-crust.json'
+import coachTerrain from '../../tests/fixtures/sandwich-terrain-unsupported.json'
 import coachRowEquations from '../../tests/fixtures/coach-row-equations.json'
 import coachFractionalRegions from '../../tests/fixtures/coach-fractional-regions.json'
 import coachUnknownCageSums from '../../tests/fixtures/sudoku-coach-unknown-cage-totals.json'
+import irregularFortress from '../../tests/fixtures/aspartagcus-irregular-fortress.json'
 import coachDistantNeighbors from '../../tests/fixtures/sudoku-coach-distant-neighbors.json'
+import coachInsideDigitGroups from '../../tests/fixtures/little-killer-unsupported-DLeM.json'
 import coachWrappedJigsaw from '../../tests/fixtures/coach-mini-wrapped-jigsaw.json'
 import coachEntropy from '../../tests/fixtures/entropic-coach.json'
 import coachLittleKillerBetween from '../../tests/fixtures/little-killer-between-GJBz.json'
 import zipperRegionSum from '../../tests/fixtures/zipper-region-sum.json'
+import doubledCluesCode from '../../tests/fixtures/sudokupad-double-clues.ctc?raw'
 import { lessonDiagram, lessonValues } from '../../src/sudoku/lesson-diagram'
 import { inProgress, lessonExamples, starter } from '../support/fixtures'
 import { LessonFrame, Width } from '../support/frames'
@@ -70,6 +76,53 @@ function BoardExample({
 
 export const ReadOnly: Story = {}
 
+function DoubledCluesBoard({ finished = false }: { finished?: boolean }) {
+  const [puzzle, setPuzzle] = useState<{ givens: string; solution: string; grid: SizedGrid; rules: readonly SizedConstraintRule[] }>()
+  useEffect(() => {
+    void detectPuzzle(doubledCluesCode.trim()).then(imported => {
+      if (imported.grid && imported.sizedRules && imported.authoredSolution) setPuzzle({
+        givens: imported.givens, solution: imported.authoredSolution, grid: imported.grid, rules: imported.sizedRules,
+      })
+    })
+  }, [])
+  if (!puzzle) return null
+  return <BoardExample grid={puzzle.grid} givens={puzzle.givens} values={finished ? puzzle.solution : puzzle.givens}
+    sizedRules={puzzle.rules} showGuides={false} />
+}
+
+export const DoubleTheCluesUnfinished: Story = {
+  render: () => <DoubledCluesBoard />,
+  play: async ({ canvas }) => {
+    const cageTotal = await canvas.findByRole('cell', { name: /Row 2, column 2, empty, cage total 6/ })
+    await expect(cageTotal).toBeInTheDocument()
+  },
+}
+export const DoubleTheCluesFinished: Story = { render: () => <DoubledCluesBoard finished /> }
+
+function CoachInsideDigitGroupsBoard({ finished = false }: { finished?: boolean }) {
+  const [puzzle, setPuzzle] = useState<{ givens: string; solution: string; grid: SizedGrid; rules: readonly SizedConstraintRule[] }>()
+  useEffect(() => {
+    void detectPuzzle(coachInsideDigitGroups.metadata.sudoku).then(imported => {
+      if (imported.grid && imported.sizedRules && imported.authoredSolution) setPuzzle({
+        givens: imported.givens, solution: imported.authoredSolution, grid: imported.grid, rules: imported.sizedRules,
+      })
+    })
+  }, [])
+  if (!puzzle) return <p>Loading the published Sudoku Coach puzzle…</p>
+  return <div>
+    <p>Each printed digit must appear in the first three cells of its diagonal. The arrows are visual markers.</p>
+    <BoardExample grid={puzzle.grid} givens={puzzle.givens} values={finished ? puzzle.solution : puzzle.givens}
+      sizedRules={puzzle.rules} showGuides={false} />
+  </div>
+}
+
+export const CoachInsideDigitGroupsUnfinished: Story = {
+  render: () => <CoachInsideDigitGroupsBoard />,
+  play: async ({ canvas }) => {
+    await canvas.findByRole('img', { name: /each listed digit.*first three cells/i })
+  },
+}
+export const CoachInsideDigitGroupsFinished: Story = { render: () => <CoachInsideDigitGroupsBoard finished /> }
 
 function CoachNonogramBoard({ finished = false }: { finished?: boolean }) {
   const [puzzle, setPuzzle] = useState<{ givens: string; solution: string; rules: ReturnType<typeof coachNonogramRules> }>()
@@ -227,6 +280,29 @@ function CoachWrappedJigsawBoard({ finished = false }: { finished?: boolean }) {
   </div>
 }
 
+function FortressBoard({ finished = false }: { finished?: boolean }) {
+  const [puzzle, setPuzzle] = useState<{ givens: string; solution: string; grid: SizedGrid; rules: readonly SizedConstraintRule[] }>()
+  useEffect(() => {
+    const example = irregularFortress.puzzles.find(puzzle => puzzle.size === 4)
+    if (!example) return
+    const code = decodeURIComponent(new URL(example.url).pathname.slice(1))
+    void detectPuzzle(code).then(imported => {
+      if (imported.grid && 'regions' in imported.grid && imported.sizedRules) setPuzzle({
+        givens: imported.givens, solution: example.solution, grid: imported.grid, rules: imported.sizedRules,
+      })
+    })
+  }, [])
+  if (!puzzle) return <p>Loading the published 4 × 4 Fortress puzzle…</p>
+  return <Width width={350}>
+    <p>{sizedRuleDescriptions(puzzle.grid, puzzle.rules).join(' ')}</p>
+    <BoardExample grid={puzzle.grid} givens={puzzle.givens} values={finished ? puzzle.solution : puzzle.givens}
+      sizedRules={puzzle.rules} showGuides selected={finished ? [] : [2]} />
+  </Width>
+}
+
+export const FortressUnfinished: Story = { render: () => <FortressBoard /> }
+export const FortressFinished: Story = { render: () => <FortressBoard finished /> }
+
 export const CoachWrappedJigsawUnfinished: Story = { render: () => <CoachWrappedJigsawBoard /> }
 export const CoachWrappedJigsawFinished: Story = { render: () => <CoachWrappedJigsawBoard finished /> }
 
@@ -266,6 +342,29 @@ function CoachCrustBoard({ finished = false }: { finished?: boolean }) {
 
 export const CoachCrustEdgeCountUnfinished: Story = { render: () => <CoachCrustBoard /> }
 export const CoachCrustEdgeCountFinished: Story = { render: () => <CoachCrustBoard finished /> }
+
+function CoachTerrainBoard({ finished = false }: { finished?: boolean }) {
+  const [puzzle, setPuzzle] = useState<{ givens: string; solution: string; variantPuzzle: VariantPuzzle; givenCellColors: ImportedCellColors }>()
+  useEffect(() => {
+    void detectPuzzle(coachTerrain.source.sudoku).then(imported => {
+      if (imported.variant && imported.givenCellColors) setPuzzle({
+        givens: imported.givens,
+        solution: coachTerrain.source.solution,
+        variantPuzzle: imported.variant.puzzle,
+        givenCellColors: imported.givenCellColors,
+      })
+    })
+  }, [])
+  if (!puzzle) return <p>Loading the published Sudoku Coach Terrain puzzle…</p>
+  return <div>
+    <p>Yellow cells count double, green cells add 3, and purple cells subtract 3. Add transformed values between transformed 1 and 9; when several pairs qualify, use the largest total.</p>
+    <BoardExample givens={puzzle.givens} values={finished ? puzzle.solution : puzzle.givens}
+      variantPuzzle={puzzle.variantPuzzle} givenCellColors={puzzle.givenCellColors} showGuides />
+  </div>
+}
+
+export const CoachTerrainUnfinished: Story = { render: () => <CoachTerrainBoard /> }
+export const CoachTerrainFinished: Story = { render: () => <CoachTerrainBoard finished /> }
 
 const coachEntropyExamples = coachEntropy.examples as { url: string; title: string; code: string; solution: string }[]
 const coachEntropySpiral = coachEntropyExamples.find(example => example.url.endsWith('/LEjN'))!

@@ -269,6 +269,20 @@ pub struct NeighborMatchClue {
     pub digit: u8,
 }
 
+/// An affine value change applied before a Terrain arithmetic rule is checked.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(rename_all = "camelCase", deny_unknown_fields)
+)]
+pub struct TerrainValueTransform {
+    /// Multiply the base digit by this factor before adding `offset`.
+    pub multiplier: i8,
+    /// Add this signed amount after multiplication.
+    pub offset: i8,
+}
+
 // One list supplies the wire identifiers and the protocol's supported-rule check.
 macro_rules! rules {
     ($(
@@ -598,6 +612,17 @@ rules! {
         direction: ClueDirection,
         /// Sum of digits strictly between 1 and 9.
         sum: u16,
+    }
+    /// Require the maximum transformed value sum between any transformed 1/9 pair.
+    TerrainSandwich => "terrain-sandwich" {
+        /// The complete row or column, ordered from the clue into the grid.
+        cells: Vec<usize>,
+        /// Direction from the clue.
+        direction: ClueDirection,
+        /// Maximum transformed sum between any transformed 1 and transformed 9.
+        maximum: i16,
+        /// Per-cell transforms in the same order as `cells`.
+        transforms: Vec<TerrainValueTransform>,
     }
     /// Require the sum of an entire diagonal. Other rules determine whether digits can repeat.
     LittleKiller => "little-killer" {

@@ -1,4 +1,4 @@
-import { record } from './shared.ts'
+import { record, sourceHash } from './shared.ts'
 
 export type CoachCrustBoundaryClue = {
   side: 'top' | 'right' | 'bottom' | 'left'
@@ -83,9 +83,8 @@ function textClues(layer: Record<string, unknown>, expectedSettings: Record<stri
 
 /** Parse the reviewed Crust exports whose outside sums are stored as cosmetic text. */
 export async function readReviewedCoachCrust(code: string, data: Record<string, unknown>): Promise<CoachCrustDefinition | undefined> {
-  if (!globalThis.crypto?.subtle) return
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(code))
-  const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('')
+  const hash = await sourceHash(code, data)
+  if (!hash) return
   const source = reviewedCrustExports.get(hash)
   if (!source) return
   const size = source === 'BKR7' || source === '9Z8C' ? 9 : 7

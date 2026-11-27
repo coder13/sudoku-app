@@ -209,6 +209,20 @@ test('algebraic cages retain labels and cell descriptions on the 4×4 grid', () 
   assert.deepEqual(labels.map(({ props }) => props.children), ['n+2', 'n-1'])
 })
 
+test('exact-one sized clue groups keep their Killer cage totals on the board', () => {
+  const cage = { type: 'killer-cages', cages: [{ cells: [7, 13], sum: 6 }] }
+  const tree = boardTree({
+    grid: { size: 6, boxRows: 2, boxColumns: 3 }, givens: '0'.repeat(36), values: '0'.repeat(36),
+    sizedRules: [{
+      type: 'constraint-alternatives', family: 'killer-cages', choices: [[cage], [{ type: 'killer-cages', cages: [{ cells: [7, 13], sum: 12 }] }]],
+      displayRules: [cage],
+    }],
+  })
+  const cell = tree.find(({ props }) => props.role === 'gridcell' && props['data-cell'] === 7)
+  assert.ok(cell)
+  assert.match(String(cell.props['aria-label']), /cage total 6/)
+})
+
 test('mobile mode outline and badge attach to the Sudoku grid, not the card', () => {
   const boundary = { current: null }
   const badge = createElement('button', { className: 'puzzle-mode-tab', type: 'button' }, 'Drawing mode')

@@ -358,18 +358,25 @@ function fields(value, required, optional = {}) {
 
 const integer = (min, max) => value => Number.isInteger(value) && value >= min && value <= max
 const list = (valid, min, max = Infinity) => value => Array.isArray(value) && value.length >= min && value.length <= max && value.every(valid)
+const digitRank = digit => {
+  const code = digit.toUpperCase().charCodeAt(0)
+  return code >= 48 && code <= 57 ? code - 48 : code >= 65 && code <= 71 ? code - 55 : -1
+}
 const givens = (value, size = 9) => typeof value === 'string' && value.length === size ** 2 &&
-  [...value].every(digit => digit >= '0' && digit <= String(size))
+  [...value].every(digit => digitRank(digit) >= 0 && digitRank(digit) <= size)
 const boolean = value => typeof value === 'boolean'
 const oneOf = (...choices) => value => choices.includes(value)
 const miniGrid = value => fields(value, { size: oneOf(4), boxRows: oneOf(2), boxColumns: oneOf(2) })
 const rectangularGrid = value => fields(value, { size: oneOf(6, 8), boxRows: oneOf(2, 3, 4), boxColumns: oneOf(2, 3, 4) }) &&
   value.boxRows * value.boxColumns === value.size
+const classicGrid = value => fields(value, { size: oneOf(9), boxRows: oneOf(3), boxColumns: oneOf(3) })
+const zeroBasedGrid = value => fields(value, { size: oneOf(10), boxRows: oneOf(2, 5), boxColumns: oneOf(2, 5), notation: oneOf('zero-based') }) &&
+  value.boxRows * value.boxColumns === value.size
 const sharesGridEdge = (a, b, size) =>
   Math.abs(Math.floor(a / size) - Math.floor(b / size)) + Math.abs(a % size - b % size) === 1
 function jigsawGrid(value) {
   const size = value?.size
-  if (size !== 4 && size !== 5 && size !== 7) return false
+  if (![3, 4, 5, 6, 7].includes(size)) return false
   if (!fields(value, { size: oneOf(size), regions: list(list(integer(0, size ** 2 - 1), size, size), size, size) },
     { wrapAround: oneOf(true) }) ||
     new Set(value.regions.flat()).size !== size ** 2) return false
@@ -398,7 +405,7 @@ function connectedCells(cells, size) {
   return connected.size === cells.length
 }
 const boxlessGrid = value => fields(value, { size: oneOf(5, 6, 7, 9), noRegions: oneOf(true) })
-const sizedGrid = value => miniGrid(value) || rectangularGrid(value) || jigsawGrid(value) || boxlessGrid(value)
+const sizedGrid = value => miniGrid(value) || rectangularGrid(value) || classicGrid(value) || zeroBasedGrid(value) || jigsawGrid(value) || boxlessGrid(value)
 function numberedDotRule(rule, size) {
   const pair = value => list(integer(0, size ** 2 - 1), 2, 2)(value) && sharesGridEdge(value[0], value[1], size)
   const mark = value => fields(value, { cells: pair, value: rule.relation === 'ratio' ? integer(2, size) : integer(1, size - 1) })
@@ -406,9 +413,17 @@ function numberedDotRule(rule, size) {
     marks: list(mark, 0, 2 * size * (size - 1)) }, { negative: boolean }) && (rule.marks.length > 0 || rule.negative === true)
 }
 
-function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
+function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions, notation }) {
   const cell = integer(0, size * size - 1)
   const pair = value => list(cell, 2, 2)(value) && sharesGridEdge(value[0], value[1], size)
+  const occupiedCages = new Set()
+  const isolatedRuleList = rules => {
+    const previous = [...occupiedCages]
+    occupiedCages.clear()
+    try { return list(valid, 1, 128)(rules) }
+    finally { occupiedCages.clear(); previous.forEach(cell => occupiedCages.add(cell)) }
+  }
+  const maxArrowCells = notation === 'zero-based' ? 2 * size - 1 : size
   const marks = value => fields(value, {}, { pairs: list(pair, 0, 2 * size * (size - 1)), negative: boolean })
   const outsideHouse = (cells, direction) => {
     if (!list(cell, size, size)(cells) || new Set(cells).size !== size) return false
@@ -427,6 +442,35 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
     return isOutside(row - dr, column - dc) && cells.every((index, offset) => index === (row + dr * offset) * size + column + dc * offset) &&
       isOutside(row + dr * cells.length, column + dc * cells.length)
   }
+  const outsideText = rule => fields(rule, { type: oneOf('outside-text'), direction: diagonalDirection,
+    cells: value => littleKillerRay(value, rule.direction), label: value => typeof value === 'string' && value.trim().length > 0 && value.length <= 16 }, {
+    firstThreeDigits: value => list(integer(1, size), 1, 3)(value) && new Set(value).size === value.length &&
+      /^[1-9]{1,3}$/.test(rule.label) &&
+      JSON.stringify([...new Set(Array.from(rule.label, Number))]) === JSON.stringify(value),
+  })
+  const sumModulo = rule => {
+    if (!fields(rule, { type: oneOf('sum-modulo'), cells: list(cell, 1, size),
+      modulus: integer(2, 16), remainder: value => Number.isInteger(value) && value >= 0 && value < rule.modulus }) ||
+      new Set(rule.cells).size !== rule.cells.length) return false
+    if (rule.cells.length === 1) return true
+    const first = rule.cells[0], row = Math.floor(first / size), column = first % size
+    const dr = Math.sign(Math.floor(rule.cells[1] / size) - row), dc = Math.sign(rule.cells[1] % size - column)
+    return Math.abs(Math.floor(rule.cells[1] / size) - row) === 1 && Math.abs(rule.cells[1] % size - column) === 1 &&
+      rule.cells.every((index, offset) => index === (row + dr * offset) * size + column + dc * offset) &&
+      (row + dr * rule.cells.length < 0 || row + dr * rule.cells.length >= size ||
+        column + dc * rule.cells.length < 0 || column + dc * rule.cells.length >= size)
+  }
+  let valid
+  const alternatives = rule => fields(rule, { type: oneOf('constraint-alternatives'),
+    family: value => typeof value === 'string' && /^[a-z][a-z0-9-]{0,31}$/i.test(value),
+    choices: list(choice => Array.isArray(choice) && choice.length <= 128 &&
+      choice.every(item => item && typeof item === 'object' && !Array.isArray(item) && item.type !== 'constraint-alternatives') &&
+      isolatedRuleList(choice), 2, 16) }, {
+    choiceLabels: value => list(label => typeof label === 'string' && label.trim().length > 0 && label.length <= 96, 2, 16)(value) &&
+      value.length === rule.choices.length,
+    displayRules: rules => Array.isArray(rules) && rules.every(item => item && typeof item === 'object' &&
+      !Array.isArray(item) && item.type !== 'constraint-alternatives') && isolatedRuleList(rules),
+  })
   const drawing = list(list(cell, 1, 128), 1, 128)
   const coversCells = ({ cells, segments }) => new Set(cells).size === cells.length &&
     (segments === undefined || new Set(segments.flat()).size === cells.length &&
@@ -510,7 +554,6 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
     return rule.paths.every((path, index) => rule.paths.slice(0, index).every(previous =>
       !samePath(path, previous) && !samePath(path, [...previous].reverse())))
   }
-  const occupiedCages = new Set()
   const validCage = cage => {
     if (!fields(cage, { cells: list(cell, 1, size), sum: integer(1, size * (size + 1) / 2) })) return false
     const count = cage.cells.length
@@ -521,7 +564,8 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
     }
     return true
   }
-  const valid = rule => fields(rule, { type: oneOf('diagonal'), diagonal: oneOf('main', 'anti') }) ||
+  valid = rule => fields(rule, { type: oneOf('diagonal'), diagonal: oneOf('main', 'anti') }) ||
+    outsideText(rule) || sumModulo(rule) || alternatives(rule) ||
     fields(rule, { type: oneOf('anti-king', 'anti-knight') }) ||
     (fields(rule, { type: oneOf('inequality'), less: cell, greater: cell }) && rule.less !== rule.greater && sharesGridEdge(rule.less, rule.greater, size)) ||
     (fields(rule, { type: oneOf('minimum', 'maximum'), cells: list(cell, 1, size * size) },
@@ -530,6 +574,13 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
     (fields(rule, { type: oneOf('digit-restriction'), cells: list(cell, 1, size * size),
       digits: list(integer(1, size), 1, size), shape: oneOf('circle', 'cross', 'square') }) &&
       new Set(rule.cells).size === rule.cells.length && new Set(rule.digits).size === rule.digits.length) ||
+    (fields(rule, { type: oneOf('product-cage'), cells: list(cell, 1, size * size),
+      product: value => Number.isSafeInteger(value) && value >= (notation === 'zero-based' ? 0 : 1) },
+      { color: clueColor }) && new Set(rule.cells).size === rule.cells.length) ||
+    (fields(rule, { type: oneOf('digit-count'), cells: list(cell, 1, size * size), digit: integer(1, size),
+      minimum: value => Number.isInteger(value) && value >= 1 && value <= rule.cells.length },
+      { maximum: value => Number.isInteger(value) && value >= rule.minimum && value <= rule.cells.length }) &&
+      new Set(rule.cells).size === rule.cells.length) ||
     (fields(rule, { type: oneOf('zipper'), cells: list(cell, 3, size * size) }) && new Set(rule.cells).size === rule.cells.length) ||
     (fields(rule, { type: oneOf('entropic'), cells: list(cell, 3, size * size + 1), groups: entropyGroups }) && new Set(rule.groups.flat()).size === size) ||
     (fields(rule, { type: oneOf('parity-line'), cells: list(cell, 2, size * size) }) && new Set(rule.cells).size === rule.cells.length &&
@@ -570,14 +621,15 @@ function sizedRules(value, { size, boxRows, boxColumns, regions, noRegions }) {
       rule.topLeft % size < size - 1) ||
     numberedDotRule(rule, size) ||
     fields(rule, { type: oneOf('anti-sum'), sum: integer(2, 2 * size) }) ||
+    fields(rule, { type: oneOf('adjacent-total'), cells: pair, sum: integer(3, 2 * size - 1) }) ||
     (fields(rule, { type: oneOf('row-column-sum'), pairs: list(pair, 0, 2 * size * (size - 1)) }, { requireUnmarked: boolean }) &&
       (rule.pairs.length > 0 || rule.requireUnmarked === true) &&
       new Set(rule.pairs.map(([a, b]) => Math.min(a, b) * size ** 2 + Math.max(a, b))).size === rule.pairs.length) ||
     fields(rule, { type: oneOf('difference'), cells: pair, difference: integer(1, size - 1) }) ||
-    (fields(rule, { type: oneOf('arrow'), circle: cell, cells: list(cell, 1, size) }) &&
+    (fields(rule, { type: oneOf('arrow'), circle: cell, cells: list(cell, 1, maxArrowCells) }) &&
       !rule.cells.includes(rule.circle) && new Set(rule.cells).size === rule.cells.length) ||
     (fields(rule, { type: oneOf('whispers'), cells: list(cell, 2, size * size), minDifference: integer(1, size - 1) }) &&
-      new Set(rule.cells).size === rule.cells.length) ||
+      rule.cells.every((cell, index) => index === 0 || cell !== rule.cells[index - 1])) ||
     (fields(rule, { type: oneOf('linked-double-arrow'), ends: list(sumEnd, 2, 2), cells: list(cell, 1, size * size) }) &&
       new Set(rule.cells).size === rule.cells.length && rule.ends.some(end => !cell(end)) &&
       rule.ends.every(end => !cell(end) || !rule.cells.includes(end)) &&
@@ -678,6 +730,18 @@ const authoredArtwork = list(mark => fields(mark, { type: oneOf('outline'), poin
 const pairs = list(list(cell, 2, 2), 0)
 const house = list(cell, 9, 9)
 const direction = oneOf('north', 'east', 'south', 'west')
+const terrainTransform = value => fields(value, { multiplier: oneOf(1, 2), offset: oneOf(-3, 0, 3) }) &&
+  (value.multiplier === 1 || value.offset === 0)
+const outsideNineRay = (cells, direction) => {
+  if (!house(cells) || new Set(cells).size !== 9) return false
+  const [dr, dc] = direction === 'north' ? [-1, 0] : direction === 'east' ? [0, 1]
+    : direction === 'south' ? [1, 0] : [0, -1]
+  const first = cells[0], row = Math.floor(first / 9), column = first % 9
+  const outside = (r, c) => r < 0 || r >= 9 || c < 0 || c >= 9
+  return outside(row - dr, column - dc) && cells.every((cell, offset) =>
+    cell === (row + dr * offset) * 9 + column + dc * offset) &&
+    outside(row + dr * cells.length, column + dc * cells.length)
+}
 const marks = value => fields(value, {}, { pairs, negative: boolean })
 const regions = value => fields(value, { type: oneOf('boxes') }) ||
   (fields(value, { type: oneOf('jigsaw'), regions: list(house, 9, 9) }) && new Set(value.regions.flat()).size === 81) ||
@@ -727,10 +791,15 @@ const ruleFields = {
   between: [{ cells: list(cell, 3, 81) }],
   lockout: [{ cells: uniqueCells(2, 81) }],
   clone: [{ groups: list(list(cell, 2, 81), 1) }],
+  'digit-order': [{ cells: house, digits: list(integer(1, 9), 3, 3) }],
+  'digit-restriction': [{ cells: uniqueCells(1, 81), digits: list(integer(1, 9), 1, 9), shape: oneOf('circle', 'cross', 'square') }],
+  'distant-neighbors': [{ markedCells: house }],
   entropic: [{ cells: list(cell, 1) }],
   'entropy-window-group': [{ cells: list(cell, 4, 4), group: oneOf('low', 'middle', 'high') }],
+  'forbidden-entropic-connection': [{ cells: list(cell, 4, 4) }],
   'global-entropy': [{}],
   inequality: [{ less: cell, greater: cell }],
+  'magic-square': [{ cells: list(cell, 9, 9) }],
   minimum: [{ cells: uniqueCells(1, 81) }, { ignoreMarkedNeighbors: boolean }],
   maximum: [{ cells: uniqueCells(1, 81) }, { ignoreMarkedNeighbors: boolean }],
   'little-killer': [{ direction: diagonalDirection, cells: list(cell, 1, 9), sum: integer(1, 81) }],
@@ -740,6 +809,9 @@ const ruleFields = {
   renban: [{ cells: list(cell, 1, 9) }, { segments }],
   whispers: [{ cells: list(cell, 2, 82), minDifference: integer(1, 8) }],
   'x-sum': [{ direction, cells: house, sum: integer(1, 45) }],
+  'terrain-sandwich': [{ direction, cells: house, maximum: integer(-14, 126), transforms: list(terrainTransform, 9, 9) }],
+  'unknown-cage-sums': [{ cages: list(cage => list(cell, 1, 9)(cage), 15, 15),
+    consecutivePairs: list(pair => list(integer(0, 14), 2, 2)(pair), 0, 105) }],
   xv: [{}, { five: marks, ten: marks }],
   'anti-king': [{}],
   'anti-knight': [{}],
@@ -750,7 +822,7 @@ const ruleFields = {
   'distinct-cells': [{ cells: uniqueCells(2, 8) }, { color: clueColor }],
   'consecutive-run': [{ cells: uniqueCells(2, 9) }, { color: clueColor, fromBulb: boolean }],
   'inside-grid': [{ rows: insideGridRows }],
-  'killer-cages': [{ cages: list(value => fields(value, { cells, sum: integer(1, 45) }), 1) }, { coverGrid: boolean }],
+  'killer-cages': [{ cages: list(value => fields(value, { cells, sum: integer(1, 45) }, { showSum: boolean }), 1) }, { coverGrid: boolean }],
   kropki: [{}, { consecutive: marks, ratioTwo: marks }],
   'non-consecutive': [{}, { except: pairs }],
   parity: [{ cells, parity: oneOf('odd', 'even') }],
@@ -768,6 +840,41 @@ const rule = value => {
   if (typeof value?.type !== 'string' || !Object.hasOwn(ruleFields, value.type)) return false
   const [required, optional] = ruleFields[value.type]
   if (!fields(value, { type: oneOf(value.type), ...required }, optional)) return false
+  if (value.type === 'terrain-sandwich') return outsideNineRay(value.cells, value.direction)
+  if (value.type === 'digit-order') {
+    if (new Set(value.cells).size !== 9 || ![[1, 2, 3], [4, 5, 6], [7, 8, 9]].some(group =>
+      group.every((digit, index) => value.digits[index] === digit))) return false
+    const row = Math.floor(value.cells[0] / 9), column = value.cells[0] % 9
+    return value.cells.every((cell, index) => cell === row * 9 + index) ||
+      value.cells.every((cell, index) => cell === row * 9 + 8 - index) ||
+      value.cells.every((cell, index) => cell === index * 9 + column) ||
+      value.cells.every((cell, index) => cell === (8 - index) * 9 + column)
+  }
+  if (value.type === 'digit-restriction') return new Set(value.digits).size === value.digits.length
+  if (value.type === 'distant-neighbors') {
+    const boxes = Array.from({ length: 9 }, () => 0)
+    return new Set(value.markedCells).size === 9 && value.markedCells.every(cell =>
+      boxes[Math.floor(cell / 27) * 3 + Math.floor(cell % 9 / 3)]++ === 0)
+  }
+  if (value.type === 'forbidden-entropic-connection') return new Set(value.cells).size === 4 &&
+    value.cells.slice(1).every((cell, index) =>
+      Math.abs(Math.floor(cell / 9) - Math.floor(value.cells[index] / 9)) +
+      Math.abs(cell % 9 - value.cells[index] % 9) === 1)
+  if (value.type === 'magic-square') {
+    if (new Set(value.cells).size !== 9) return false
+    const rows = value.cells.map(cell => Math.floor(cell / 9)), columns = value.cells.map(cell => cell % 9)
+    const top = Math.min(...rows), left = Math.min(...columns)
+    return Math.max(...rows) - top === 2 && Math.max(...columns) - left === 2 &&
+      Array.from({ length: 3 }, (_, row) => Array.from({ length: 3 }, (_, column) =>
+        (top + row) * 9 + left + column)).flat().every(cell => value.cells.includes(cell))
+  }
+  if (value.type === 'unknown-cage-sums') {
+    const cells = value.cages.flat()
+    return cells.length === 81 && new Set(cells).size === 81 &&
+      value.consecutivePairs.every(([first, second]) => first !== second) &&
+      new Set(value.consecutivePairs.map(([first, second]) => [first, second].sort((a, b) => a - b).join(':'))).size ===
+        value.consecutivePairs.length
+  }
   if (value.type === 'entropy-window-group') {
     const [topLeft, topRight, bottomLeft, bottomRight] = value.cells
     return topLeft < 72 && topLeft % 9 < 8 && topRight === topLeft + 1 &&

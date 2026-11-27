@@ -2,9 +2,9 @@ use std::{hint::black_box, time::Instant};
 
 use serde::Deserialize;
 use sudoku_app_engine::{
-    Analysis, GenerationStep, Technique, VariantClueLayout, VariantGenerationOptions,
-    VariantPosition, VariantPuzzle, VariantTechnique, ranked_hints, rate_puzzle,
-    start_variant_generation, variant_practice_examples,
+    Analysis, ClueDirection, GenerationStep, PuzzleRule, Technique, VariantClueLayout,
+    VariantGenerationOptions, VariantPosition, VariantPuzzle, VariantTechnique, ranked_hints,
+    rate_puzzle, start_variant_generation, variant_practice_examples,
 };
 
 const SAMPLES: usize = 40;
@@ -79,6 +79,10 @@ fn main() {
     }
     if std::env::args().any(|arg| arg == "--pattern-overlay") {
         overlay_benchmark();
+        return;
+    }
+    if std::env::args().any(|arg| arg == "--terrain-sandwich") {
+        terrain_sandwich_benchmark();
         return;
     }
     let fixtures: Vec<Fixture> =
@@ -194,5 +198,98 @@ fn exact_search_benchmark() {
     println!(
         "exact solve {}",
         sample(|| compiled.solve(&empty, &removed, budget).unwrap())
+    );
+}
+
+fn terrain_sandwich_benchmark() {
+    let source: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../tests/fixtures/sandwich-terrain-unsupported.json"
+    ))
+    .unwrap();
+    let payload = &source["payload"];
+    assert_eq!(
+        payload["colours"],
+        serde_json::json!(["green", "purple", "yellow"])
+    );
+    let transforms: Vec<_> = payload["givenColours"]
+        .as_str()
+        .unwrap()
+        .split(',')
+        .map(|color| match color {
+            "0" => serde_json::json!({ "multiplier": 1, "offset": 3 }),
+            "1" => serde_json::json!({ "multiplier": 1, "offset": -3 }),
+            "2" => serde_json::json!({ "multiplier": 2, "offset": 0 }),
+            "" => serde_json::json!({ "multiplier": 1, "offset": 0 }),
+            _ => panic!("unexpected D8HP cell color id: {color}"),
+        })
+        .collect();
+    assert_eq!(transforms.len(), 81);
+    let segments = payload["givenConstraints"][0]["segments"]
+        .as_array()
+        .unwrap();
+    assert_eq!(segments.len(), 15);
+    let mut puzzle = VariantPuzzle::classic([0; 81]);
+    puzzle.rules = segments
+        .iter()
+        .map(|segment| {
+            let coordinates = &segment["cells"][0];
+            let x = coordinates[0].as_f64().unwrap();
+            let y = coordinates[1].as_f64().unwrap();
+            let (direction, index) = if y == -0.5 {
+                (ClueDirection::South, (x - 0.5) as usize)
+            } else {
+                (ClueDirection::East, (y - 0.5) as usize)
+            };
+            let cells: Vec<usize> = match direction {
+                ClueDirection::East => (0..9).map(|column| index * 9 + column).collect(),
+                ClueDirection::South => (0..9).map(|row| row * 9 + index).collect(),
+                _ => unreachable!(),
+            };
+            let maximum: i16 = segment["parameters"]["text"]
+                .as_str()
+                .unwrap()
+                .parse()
+                .unwrap();
+            let line_transforms: Vec<_> =
+                cells.iter().map(|&cell| transforms[cell].clone()).collect();
+            serde_json::from_value::<PuzzleRule>(serde_json::json!({
+                "type": "terrain-sandwich",
+                "cells": cells,
+                "direction": direction,
+                "maximum": maximum,
+                "transforms": line_transforms,
+            }))
+            .unwrap()
+        })
+        .collect();
+    assert_eq!(puzzle.rules.len(), 15);
+    let solution: [u8; 81] = source["source"]["solution"]
+        .as_str()
+        .unwrap()
+        .bytes()
+        .map(|digit| digit - b'0')
+        .collect::<Vec<_>>()
+        .try_into()
+        .unwrap();
+    let compiled = puzzle.compile().unwrap();
+    let empty_entries = [0_u8; 81];
+    let empty_eliminations = [0_u16; 81];
+    assert!(compiled.candidates(&solution, &empty_eliminations).is_ok());
+    println!(
+        "D8HP Terrain Sandwich, {} {}, 5 warmups / {SAMPLES} samples; median/p95 ms.",
+        std::env::consts::OS,
+        std::env::consts::ARCH
+    );
+    println!(
+        "compile all 15 clues {}",
+        sample(|| puzzle.compile().unwrap())
+    );
+    println!(
+        "blank-board candidate propagation {}",
+        sample(|| {
+            compiled
+                .candidates(&empty_entries, &empty_eliminations)
+                .unwrap()
+        })
     );
 }

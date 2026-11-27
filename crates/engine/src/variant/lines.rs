@@ -12,13 +12,16 @@ pub(super) use group_sums::{
 use std::{collections::HashMap, ops::Range};
 
 use super::{
-    ClueDirection, CompiledVariant, PuzzleRule, VariantDefinitionError, VariantHouseKind,
-    VariantTechnique, cell_mask,
+    ClueDirection, CompiledVariant, PuzzleRule, TerrainValueTransform, VariantDefinitionError,
+    VariantHouseKind, VariantTechnique, cell_mask,
 };
 use crate::{
     CELLS, DIGITS,
     hints::{digit_bit, digits},
 };
+
+const TERRAIN_SANDWICH_MAX_ROWS: usize = 362_880;
+const TERRAIN_SANDWICH_MAX_WORDS: usize = TERRAIN_SANDWICH_MAX_ROWS.div_ceil(u64::BITS as usize);
 
 #[derive(Clone, Debug)]
 pub(super) struct LineConstraint {
@@ -50,6 +53,26 @@ enum LineKind {
     Between,
     Lockout,
     Outside(OutsideClue),
+    TerrainSandwich {
+        satisfying_rows: TerrainSandwichRows,
+    },
+}
+
+/// Bit-sliced set of satisfying digit permutations for one transformed clue.
+#[derive(Clone, Debug, Default)]
+struct TerrainSandwichRows {
+    row_count: usize,
+    words_per_set: usize,
+    /// One bit set for each cell and each of the nine underlying digits.
+    by_cell_digit: Vec<u64>,
+    full_support: [u16; 9],
+}
+
+impl TerrainSandwichRows {
+    fn digit_set(&self, cell: usize, digit: u8) -> &[u64] {
+        let start = (cell * 9 + usize::from(digit - 1)) * self.words_per_set;
+        &self.by_cell_digit[start..start + self.words_per_set]
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -303,6 +326,32 @@ impl LineConstraint {
                     VariantTechnique::Sandwich,
                 )
             }
+            PuzzleRule::TerrainSandwich {
+                cells,
+                direction,
+                maximum,
+                transforms,
+            } => {
+                let Ok(transforms) = <[TerrainValueTransform; 9]>::try_from(transforms.as_slice())
+                else {
+                    return Err(invalid);
+                };
+                if !valid_ray(cells, *direction, false)
+                    || !(-14..=126).contains(maximum)
+                    || transforms.iter().any(|transform| {
+                        !((transform.multiplier == 1 && matches!(transform.offset, -3 | 0 | 3))
+                            || (transform.multiplier == 2 && transform.offset == 0))
+                    })
+                {
+                    return Err(invalid);
+                }
+                let satisfying_rows = terrain_sandwich_rows(*maximum, &transforms);
+                (
+                    cells.clone(),
+                    LineKind::TerrainSandwich { satisfying_rows },
+                    VariantTechnique::Sandwich,
+                )
+            }
             PuzzleRule::XSum {
                 cells,
                 direction,
@@ -531,6 +580,177 @@ impl LineConstraint {
                 } else {
                     clue.record_support(DIGITS, [0, 0], domains, support, &mut HashMap::new());
                 }
+            }
+            LineKind::TerrainSandwich { satisfying_rows } => {
+                terrain_sandwich_support(satisfying_rows, domains, support)
+            }
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct TerrainSandwichState {
+    prefix: i16,
+    min_prefix_after_one: i16,
+    min_prefix_after_nine: i16,
+    maximum: i16,
+}
+
+impl TerrainSandwichState {
+    const INITIAL: Self = Self {
+        prefix: 0,
+        min_prefix_after_one: i16::MAX,
+        min_prefix_after_nine: i16::MAX,
+        maximum: i16::MIN,
+    };
+
+    fn advance(self, digit: u8, transform: TerrainValueTransform, target: i16) -> Option<Self> {
+        let value =
+            i16::from(digit) * i16::from(transform.multiplier) + i16::from(transform.offset);
+        let mut maximum = self.maximum;
+        if value == 9 && self.min_prefix_after_one != i16::MAX {
+            maximum = maximum.max(self.prefix - self.min_prefix_after_one);
+        }
+        if value == 1 && self.min_prefix_after_nine != i16::MAX {
+            maximum = maximum.max(self.prefix - self.min_prefix_after_nine);
+        }
+        if maximum > target {
+            return None;
+        }
+
+        let prefix = self.prefix + value;
+        Some(Self {
+            prefix,
+            min_prefix_after_one: if value == 1 {
+                self.min_prefix_after_one.min(prefix)
+            } else {
+                self.min_prefix_after_one
+            },
+            min_prefix_after_nine: if value == 9 {
+                self.min_prefix_after_nine.min(prefix)
+            } else {
+                self.min_prefix_after_nine
+            },
+            maximum,
+        })
+    }
+}
+
+fn terrain_sandwich_rows(
+    target: i16,
+    transforms: &[TerrainValueTransform; 9],
+) -> TerrainSandwichRows {
+    let mut rows = Vec::with_capacity(4096);
+    terrain_sandwich_collect_rows(
+        target,
+        transforms,
+        DIGITS,
+        TerrainSandwichState::INITIAL,
+        &mut [0; 9],
+        &mut rows,
+    );
+    let words_per_set = rows.len().div_ceil(u64::BITS as usize);
+    let mut by_cell_digit = vec![0; 81 * words_per_set];
+    let mut full_support = [0; 9];
+    for (row_index, &row) in rows.iter().enumerate() {
+        let word = row_index / u64::BITS as usize;
+        let bit = 1_u64 << (row_index % u64::BITS as usize);
+        for (cell, supported) in full_support.iter_mut().enumerate() {
+            let digit = ((row >> (cell * 4)) & 0xf) as u8;
+            *supported |= digit_bit(digit);
+            let set = (cell * 9 + usize::from(digit - 1)) * words_per_set + word;
+            by_cell_digit[set] |= bit;
+        }
+    }
+    TerrainSandwichRows {
+        row_count: rows.len(),
+        words_per_set,
+        by_cell_digit,
+        full_support,
+    }
+}
+
+fn terrain_sandwich_collect_rows(
+    target: i16,
+    transforms: &[TerrainValueTransform; 9],
+    remaining: u16,
+    state: TerrainSandwichState,
+    assignment: &mut [u8; 9],
+    rows: &mut Vec<u64>,
+) {
+    if remaining == 0 {
+        if state.maximum == target {
+            rows.push(
+                assignment
+                    .iter()
+                    .enumerate()
+                    .fold(0, |packed, (index, digit)| {
+                        packed | (u64::from(*digit) << (index * 4))
+                    }),
+            );
+        }
+        return;
+    }
+    let index = 9 - remaining.count_ones() as usize;
+    for digit in digits(remaining) {
+        let bit = digit_bit(digit);
+        let Some(next) = state.advance(digit, transforms[index], target) else {
+            continue;
+        };
+        assignment[index] = digit;
+        terrain_sandwich_collect_rows(target, transforms, remaining ^ bit, next, assignment, rows);
+    }
+}
+
+fn terrain_sandwich_support(rows: &TerrainSandwichRows, domains: &[u16], support: &mut [u16]) {
+    debug_assert_eq!(domains.len(), 9);
+    if rows
+        .full_support
+        .iter()
+        .zip(domains)
+        .all(|(&possible, &domain)| possible & !domain == 0)
+    {
+        for (supported, &possible) in support.iter_mut().zip(&rows.full_support) {
+            *supported |= possible;
+        }
+        return;
+    }
+
+    let words = rows.words_per_set;
+    debug_assert!(words <= TERRAIN_SANDWICH_MAX_WORDS);
+    let mut matching_rows = [u64::MAX; TERRAIN_SANDWICH_MAX_WORDS];
+    let last_word_mask = if rows.row_count % u64::BITS as usize == 0 {
+        u64::MAX
+    } else {
+        (1_u64 << (rows.row_count % u64::BITS as usize)) - 1
+    };
+    matching_rows[words - 1] = last_word_mask;
+    let mut filtered = false;
+    for (cell, &domain) in domains.iter().enumerate() {
+        let excluded = rows.full_support[cell] & !domain;
+        if excluded == 0 {
+            continue;
+        }
+        filtered = true;
+        for digit in digits(excluded) {
+            for (word_index, matching) in matching_rows[..words].iter_mut().enumerate() {
+                *matching &= !rows.digit_set(cell, digit)[word_index];
+            }
+        }
+        if matching_rows[..words].iter().all(|&word| word == 0) {
+            return;
+        }
+    }
+    debug_assert!(filtered);
+
+    for cell in 0..9 {
+        for digit in digits(domains[cell] & rows.full_support[cell]) {
+            if matching_rows[..words]
+                .iter()
+                .zip(rows.digit_set(cell, digit))
+                .any(|(&matching, &digit_rows)| matching & digit_rows != 0)
+            {
+                support[cell] |= digit_bit(digit);
             }
         }
     }
@@ -1333,5 +1553,540 @@ mod fixed_outside_tests {
                 assert_eq!(support, [0; 9]);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod terrain_sandwich_tests {
+    use super::*;
+
+    fn transformed_sandwich_maximum(
+        digits: &[u8; 9],
+        transforms: &[TerrainValueTransform; 9],
+    ) -> Option<i16> {
+        let values: [i16; 9] = std::array::from_fn(|index| {
+            i16::from(digits[index]) * i16::from(transforms[index].multiplier)
+                + i16::from(transforms[index].offset)
+        });
+        let mut maximum = None;
+        for one in 0..9 {
+            if values[one] != 1 {
+                continue;
+            }
+            for nine in 0..9 {
+                if values[nine] != 9 || one == nine {
+                    continue;
+                }
+                let low = one.min(nine);
+                let high = one.max(nine);
+                let sum = values[low + 1..high].iter().sum();
+                maximum = Some(maximum.map_or(sum, |current: i16| current.max(sum)));
+            }
+        }
+        maximum
+    }
+
+    fn brute_support(
+        target: i16,
+        transforms: &[TerrainValueTransform; 9],
+        domains: &[u16; 9],
+    ) -> [u16; 9] {
+        fn visit(
+            index: usize,
+            used: u16,
+            target: i16,
+            transforms: &[TerrainValueTransform; 9],
+            domains: &[u16; 9],
+            digits: &mut [u8; 9],
+            support: &mut [u16; 9],
+        ) {
+            if index == 9 {
+                if transformed_sandwich_maximum(digits, transforms) == Some(target) {
+                    for (cell, &digit) in digits.iter().enumerate() {
+                        support[cell] |= digit_bit(digit);
+                    }
+                }
+                return;
+            }
+            for digit in 1..=9 {
+                let bit = digit_bit(digit);
+                if domains[index] & bit != 0 && used & bit == 0 {
+                    digits[index] = digit;
+                    visit(
+                        index + 1,
+                        used | bit,
+                        target,
+                        transforms,
+                        domains,
+                        digits,
+                        support,
+                    );
+                }
+            }
+        }
+
+        let mut support = [0; 9];
+        visit(0, 0, target, transforms, domains, &mut [0; 9], &mut support);
+        support
+    }
+
+    #[test]
+    fn terrain_sandwich_support_matches_permutation_oracle_with_multiple_breads_and_negative_values()
+     {
+        let identity = TerrainValueTransform {
+            multiplier: 1,
+            offset: 0,
+        };
+        let transforms = [
+            TerrainValueTransform {
+                multiplier: 1,
+                offset: 3,
+            },
+            TerrainValueTransform {
+                multiplier: 1,
+                offset: -3,
+            },
+            TerrainValueTransform {
+                multiplier: 2,
+                offset: 0,
+            },
+            identity,
+            TerrainValueTransform {
+                multiplier: 1,
+                offset: 3,
+            },
+            identity,
+            TerrainValueTransform {
+                multiplier: 1,
+                offset: -3,
+            },
+            TerrainValueTransform {
+                multiplier: 2,
+                offset: 0,
+            },
+            identity,
+        ];
+        let authored = [6, 4, 2, 3, 7, 5, 1, 8, 9];
+        let target = transformed_sandwich_maximum(&authored, &transforms).unwrap();
+        assert!(target > 0);
+
+        let domains = [DIGITS; 9];
+        let expected = brute_support(target, &transforms, &domains);
+        let mut actual = [0; 9];
+        let satisfying_rows = terrain_sandwich_rows(target, &transforms);
+        terrain_sandwich_support(&satisfying_rows, &domains, &mut actual);
+        assert_eq!(actual, expected);
+        for salt in 0..6 {
+            let narrowed: [u16; 9] = std::array::from_fn(|index| {
+                digit_bit(authored[index])
+                    | digit_bit(((authored[index] + salt + index as u8) % 9) + 1)
+                    | digit_bit(((authored[index] + salt + index as u8 + 4) % 9) + 1)
+            });
+            let expected = brute_support(target, &transforms, &narrowed);
+            let mut actual = [0; 9];
+            terrain_sandwich_support(&satisfying_rows, &narrowed, &mut actual);
+            assert_eq!(actual, expected, "salt {salt}");
+        }
+
+        let mut wrong = [0; 9];
+        let wrong_rows = terrain_sandwich_rows(target + 1, &transforms);
+        terrain_sandwich_support(&wrong_rows, &domains, &mut wrong);
+        assert_eq!(wrong, brute_support(target + 1, &transforms, &domains));
+    }
+
+    #[test]
+    fn terrain_sandwich_fixed_rows_require_the_maximum_not_any_matching_pair() {
+        let transforms = [
+            TerrainValueTransform {
+                multiplier: 1,
+                offset: 3,
+            },
+            TerrainValueTransform {
+                multiplier: 1,
+                offset: -3,
+            },
+            TerrainValueTransform {
+                multiplier: 2,
+                offset: 0,
+            },
+            TerrainValueTransform {
+                multiplier: 1,
+                offset: 0,
+            },
+            TerrainValueTransform {
+                multiplier: 1,
+                offset: 3,
+            },
+            TerrainValueTransform {
+                multiplier: 1,
+                offset: 0,
+            },
+            TerrainValueTransform {
+                multiplier: 1,
+                offset: -3,
+            },
+            TerrainValueTransform {
+                multiplier: 2,
+                offset: 0,
+            },
+            TerrainValueTransform {
+                multiplier: 1,
+                offset: 0,
+            },
+        ];
+        let digits = [6, 4, 2, 3, 7, 5, 1, 8, 9];
+        let maximum = transformed_sandwich_maximum(&digits, &transforms).unwrap();
+        let domains = digits.map(digit_bit);
+        let mut support = [0; 9];
+        let satisfying_rows = terrain_sandwich_rows(maximum, &transforms);
+        terrain_sandwich_support(&satisfying_rows, &domains, &mut support);
+        assert_eq!(support, domains);
+        support.fill(0);
+        let other_rows = terrain_sandwich_rows(maximum - 1, &transforms);
+        terrain_sandwich_support(&other_rows, &domains, &mut support);
+        assert_eq!(support, [0; 9]);
+    }
+
+    #[test]
+    fn terrain_sandwich_rule_compiles_and_checks_a_fixed_row() {
+        let transforms = vec![
+            TerrainValueTransform {
+                multiplier: 1,
+                offset: 3,
+            },
+            TerrainValueTransform {
+                multiplier: 1,
+                offset: -3,
+            },
+            TerrainValueTransform {
+                multiplier: 2,
+                offset: 0,
+            },
+            TerrainValueTransform {
+                multiplier: 1,
+                offset: 0,
+            },
+            TerrainValueTransform {
+                multiplier: 1,
+                offset: 3,
+            },
+            TerrainValueTransform {
+                multiplier: 1,
+                offset: 0,
+            },
+            TerrainValueTransform {
+                multiplier: 1,
+                offset: -3,
+            },
+            TerrainValueTransform {
+                multiplier: 2,
+                offset: 0,
+            },
+            TerrainValueTransform {
+                multiplier: 1,
+                offset: 0,
+            },
+        ];
+        let row = [6, 4, 2, 3, 7, 5, 1, 8, 9];
+        let maximum =
+            transformed_sandwich_maximum(&row, transforms.as_slice().try_into().unwrap()).unwrap();
+        let mut entries = [0; 81];
+        entries[..9].copy_from_slice(&row);
+        let mut puzzle = super::super::VariantPuzzle::classic([0; 81]);
+        puzzle.rules.push(PuzzleRule::TerrainSandwich {
+            cells: (0..9).collect(),
+            direction: ClueDirection::East,
+            maximum,
+            transforms: transforms.clone(),
+        });
+        let compiled = puzzle.compile().unwrap();
+        assert!(compiled.candidates(&entries, &[0; 81]).is_ok());
+        let deductions = compiled
+            .deductions(&[0; 81], &[0; 81], VariantTechnique::Sandwich)
+            .unwrap();
+        assert!(!deductions.is_empty());
+        for deduction in deductions {
+            assert_eq!(deduction.technique, VariantTechnique::Sandwich);
+            let crate::VariantEvidence::Constraint {
+                rules,
+                cells,
+                domains,
+            } = deduction.evidence
+            else {
+                panic!("Terrain Sandwich deductions must include constraint evidence");
+            };
+            assert_eq!(rules, [0]);
+            assert_eq!(cells, (0..9).collect::<Vec<_>>());
+            assert_eq!(domains.len(), 9);
+            for action in deduction.actions {
+                let candidate = action.candidate();
+                assert_ne!(row[candidate.cell], candidate.digit);
+            }
+        }
+        puzzle.rules[0] = PuzzleRule::TerrainSandwich {
+            cells: (0..9).collect(),
+            direction: ClueDirection::East,
+            maximum: maximum - 1,
+            transforms,
+        };
+        assert!(
+            puzzle
+                .compile()
+                .unwrap()
+                .candidates(&entries, &[0; 81])
+                .is_err()
+        );
+    }
+
+    #[cfg(feature = "wasm-api")]
+    #[test]
+    fn terrain_sandwich_accepts_the_published_d8hp_solution_and_rejects_a_changed_clue() {
+        let source: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../../tests/fixtures/sandwich-terrain-unsupported.json"
+        ))
+        .unwrap();
+        let solution: [u8; 81] = source["source"]["solution"]
+            .as_str()
+            .unwrap()
+            .bytes()
+            .map(|digit| digit - b'0')
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+        let colors: Vec<_> = source["payload"]["givenColours"]
+            .as_str()
+            .unwrap()
+            .split(',')
+            .collect();
+        assert_eq!(colors.len(), 81);
+
+        let transform_for = |color: &str| match color {
+            "0" => TerrainValueTransform {
+                multiplier: 1,
+                offset: 3,
+            },
+            "1" => TerrainValueTransform {
+                multiplier: 1,
+                offset: -3,
+            },
+            "2" => TerrainValueTransform {
+                multiplier: 2,
+                offset: 0,
+            },
+            "" => TerrainValueTransform {
+                multiplier: 1,
+                offset: 0,
+            },
+            color => panic!("unexpected Terrain color {color:?}"),
+        };
+        let clues = source["payload"]["givenConstraints"][0]["segments"]
+            .as_array()
+            .unwrap();
+        assert_eq!(clues.len(), 15);
+        let rules: Vec<_> = clues
+            .iter()
+            .map(|clue| {
+                let [x, y]: [f64; 2] = clue["cells"][0]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|coordinate| coordinate.as_f64().unwrap())
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap();
+                let maximum: i16 = clue["parameters"]["text"]
+                    .as_str()
+                    .unwrap()
+                    .parse()
+                    .unwrap();
+                let (cells, direction) = if x == -0.5 {
+                    let row = (y - 0.5) as usize;
+                    (
+                        (row * 9..row * 9 + 9).collect::<Vec<_>>(),
+                        ClueDirection::East,
+                    )
+                } else {
+                    let column = (x - 0.5) as usize;
+                    (
+                        (0..9).map(|row| row * 9 + column).collect::<Vec<_>>(),
+                        ClueDirection::South,
+                    )
+                };
+                let transforms: Vec<_> = cells
+                    .iter()
+                    .map(|&cell| transform_for(colors[cell]))
+                    .collect();
+                let row: [u8; 9] = cells
+                    .iter()
+                    .map(|&cell| solution[cell])
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap();
+                assert_eq!(
+                    transformed_sandwich_maximum(&row, transforms.as_slice().try_into().unwrap()),
+                    Some(maximum)
+                );
+                PuzzleRule::TerrainSandwich {
+                    cells,
+                    direction,
+                    maximum,
+                    transforms,
+                }
+            })
+            .collect();
+
+        let mut puzzle = super::super::VariantPuzzle::classic([0; 81]);
+        puzzle.rules = rules;
+        let ratio_pair = (0..81)
+            .find_map(|cell| {
+                let row = cell / 9;
+                let column = cell % 9;
+                let neighbors = [
+                    (column < 8).then_some(cell + 1),
+                    (row < 8).then_some(cell + 9),
+                ];
+                neighbors.into_iter().flatten().find_map(|other| {
+                    let left = solution[cell];
+                    let right = solution[other];
+                    (left.max(right) == 2 * left.min(right)).then_some([cell, other])
+                })
+            })
+            .expect("the published solution has an orthogonal 1:2 pair");
+        puzzle.rules.push(PuzzleRule::Kropki {
+            consecutive: Default::default(),
+            ratio_two: super::super::MarkedPairs {
+                pairs: vec![ratio_pair],
+                negative: false,
+            },
+        });
+        let compiled = puzzle.compile().unwrap();
+        assert!(compiled.candidates(&solution, &[0; 81]).is_ok());
+        let candidates = compiled.candidates(&[0; 81], &[0; 81]).unwrap();
+        assert!(
+            solution
+                .iter()
+                .enumerate()
+                .all(|(cell, digit)| { candidates[cell] & (1 << (digit - 1)) != 0 })
+        );
+
+        let incompatible_pair = (0..81)
+            .find_map(|cell| {
+                let row = cell / 9;
+                let column = cell % 9;
+                let neighbors = [
+                    (column < 8).then_some(cell + 1),
+                    (row < 8).then_some(cell + 9),
+                ];
+                neighbors.into_iter().flatten().find_map(|other| {
+                    let left = solution[cell];
+                    let right = solution[other];
+                    (left.max(right) != 2 * left.min(right)).then_some([cell, other])
+                })
+            })
+            .expect("the published solution has an orthogonal non-ratio-two pair");
+        let mut terrain_only = puzzle.clone();
+        terrain_only.rules.pop();
+        assert!(
+            terrain_only
+                .compile()
+                .unwrap()
+                .candidates(&solution, &[0; 81])
+                .is_ok()
+        );
+        let mut contradictory = puzzle.clone();
+        let Some(PuzzleRule::Kropki { ratio_two, .. }) = contradictory.rules.last_mut() else {
+            unreachable!();
+        };
+        ratio_two.pairs = vec![incompatible_pair];
+        assert!(
+            contradictory
+                .compile()
+                .unwrap()
+                .candidates(&solution, &[0; 81])
+                .is_err()
+        );
+
+        let PuzzleRule::TerrainSandwich { maximum, .. } = &mut puzzle.rules[0] else {
+            unreachable!();
+        };
+        *maximum += 1;
+        assert!(
+            puzzle
+                .compile()
+                .unwrap()
+                .candidates(&solution, &[0; 81])
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn terrain_sandwich_rejects_invalid_geometry_transforms_and_bounds() {
+        let identity = TerrainValueTransform {
+            multiplier: 1,
+            offset: 0,
+        };
+        let transforms = vec![identity; 9];
+        let rule = |cells: Vec<usize>, maximum, transforms: Vec<TerrainValueTransform>| {
+            PuzzleRule::TerrainSandwich {
+                cells,
+                direction: ClueDirection::East,
+                maximum,
+                transforms,
+            }
+        };
+        for invalid in [
+            rule((0..8).collect(), 0, transforms.clone()),
+            rule((0..9).rev().collect(), 0, transforms.clone()),
+            rule((0..9).collect(), -15, transforms.clone()),
+            rule((0..9).collect(), 127, transforms.clone()),
+            rule(
+                (0..9).collect(),
+                0,
+                vec![
+                    TerrainValueTransform {
+                        multiplier: 3,
+                        offset: 0,
+                    };
+                    9
+                ],
+            ),
+            rule(
+                (0..9).collect(),
+                0,
+                vec![
+                    TerrainValueTransform {
+                        multiplier: 2,
+                        offset: 3,
+                    };
+                    9
+                ],
+            ),
+        ] {
+            let mut puzzle = super::super::VariantPuzzle::classic([0; 81]);
+            puzzle.rules.push(invalid);
+            assert!(puzzle.compile().is_err());
+        }
+    }
+
+    #[cfg(feature = "wasm-api")]
+    #[test]
+    fn terrain_sandwich_wire_round_trip_preserves_signed_transforms() {
+        let rule = PuzzleRule::TerrainSandwich {
+            cells: (0..9).collect(),
+            direction: ClueDirection::East,
+            maximum: -1,
+            transforms: vec![
+                TerrainValueTransform {
+                    multiplier: 1,
+                    offset: -3,
+                };
+                9
+            ],
+        };
+        let wire = serde_json::to_value(&rule).unwrap();
+        assert_eq!(wire["type"], "terrain-sandwich");
+        assert_eq!(wire["maximum"], -1);
+        assert_eq!(wire["transforms"][0]["offset"], -3);
+        assert_eq!(serde_json::from_value::<PuzzleRule>(wire).unwrap(), rule);
     }
 }

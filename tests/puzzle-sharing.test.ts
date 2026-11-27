@@ -5,10 +5,11 @@ import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { STARTER } from '../src/sudoku/formats.ts'
 import { createGameId, enter, makeGame, restartGame, type Game } from '../src/sudoku/game.ts'
 import { findSharedAttempt, isSharedPuzzleId, puzzleDefinitionForSharing, puzzleExportText, sharedPuzzleLink } from '../src/sudoku/puzzle-sharing.ts'
-import { MINI_GRID } from '../src/sudoku/grid.ts'
+import { CLASSIC_GRID, MINI_GRID } from '../src/sudoku/grid.ts'
 import { GAME_PREFIX, readGame } from '../src/sudoku/storage.ts'
 import { createSyncEngine, syncRequest, type Credentials } from '../src/sudoku/sync-engine.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
+import { coachCode } from './helpers/coach-code.ts'
 import { mixedFixtures } from './helpers/mixed-fixtures.ts'
 import { syncDatabase } from './helpers/sync-database.ts'
 
@@ -75,6 +76,22 @@ test('Mini Sudoku shares keep the four-by-four grid specification', async () => 
     })
     await assert.rejects(api('shares', 'POST', { ...definition, grid: undefined }), { status: 400 })
     await assert.rejects(api('shares', 'POST', { ...definition, givens: STARTER }), { status: 400 })
+  } finally { sqlite.close() }
+})
+
+test('the share worker preserves closed Whispers paths and rejects adjacent repeated cells', async () => {
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    const api = syncRequest(undefined, fetcher)
+    const rule = { type: 'whispers' as const, cells: [0, 10, 20, 0], minDifference: 3 }
+    const game = { ...makeGame('closed-whispers-share', 'Closed Whispers', '0'.repeat(81), 'imported', 0, CLASSIC_GRID),
+      sized: { rules: [rule] } }
+    const definition = puzzleDefinitionForSharing(game)
+    const { id } = await api<{ id: string }>('shares', 'POST', definition)
+    assert.deepEqual(await api(`shares/${id}`), JSON.parse(JSON.stringify(definition)))
+    await assert.rejects(api('shares', 'POST', {
+      ...definition, sizedRules: [{ ...rule, cells: [0, 10, 10, 0] }],
+    }), { status: 400 })
   } finally { sqlite.close() }
 })
 
@@ -208,6 +225,100 @@ test('shared 9 × 9 puzzles retain published Minimum, Maximum and numbered-dot r
     ]) {
       const variant = { id: 'mixed', puzzle: { version: 1, givens: STARTER, rules: [rule] } }
       await assert.rejects(api('shares', 'POST', { ...definition, variant }), { status: 400 })
+    }
+  } finally { sqlite.close() }
+})
+
+test('published Coach rule additions round-trip through the public share API', async () => {
+  const magicSquare = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-magic-square.json', import.meta.url), 'utf8')) as { code: string }
+  const unknownCages = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-unknown-cage-totals.json', import.meta.url), 'utf8')) as { code: string }
+  const distantNeighbors = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-distant-neighbors.json', import.meta.url), 'utf8')) as { code: string }
+  const entropySources = JSON.parse(readFileSync(new URL('./fixtures/entropic-coach.json', import.meta.url), 'utf8')).examples as
+    { url: string; code: string }[]
+  const examples = [
+    { title: 'Magic Square', code: magicSquare.code, type: 'magic-square' },
+    { title: 'Unknown cage sums', code: unknownCages.code, type: 'unknown-cage-sums' },
+    { title: 'Distant Neighbors', code: distantNeighbors.code, type: 'distant-neighbors' },
+    { title: 'Entropic Spiral', code: entropySources.find(({ url }) => url.endsWith('/LEjN'))!.code, type: 'forbidden-entropic-connection' },
+    { title: 'Entropic Order', code: entropySources.find(({ url }) => url.endsWith('/7nms'))!.code, type: 'digit-order' },
+  ]
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    const api = syncRequest(undefined, fetcher)
+    for (const example of examples) {
+      const imported = await detectPuzzle(example.code)
+      assert.ok(imported.variant, example.title)
+      assert.ok(imported.variant.puzzle.rules?.some(rule => rule.type === example.type), example.title)
+      const game = { ...makeGame(createGameId(), example.title, imported.givens, 'imported'), variant: imported.variant,
+        ...(imported.givenCellColors && { givenCellColors: imported.givenCellColors }) }
+      const definition = puzzleDefinitionForSharing(game)
+      let id: string
+      try { ({ id } = await api<{ id: string }>('shares', 'POST', definition)) }
+      catch (error) { assert.fail(`${example.title} share failed: ${String(error)}`) }
+      assert.deepEqual(await api(`shares/${id}`), JSON.parse(JSON.stringify(definition)), example.title)
+
+      const malformed = JSON.parse(JSON.stringify(definition))
+      const rules = malformed.variant.puzzle.rules
+      if (example.type === 'magic-square') {
+        rules.find((rule: { type: string }) => rule.type === example.type).cells = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+        await assert.rejects(api('shares', 'POST', malformed), { status: 400 }, 'Magic Square must be one 3×3 block')
+
+        const invalidShowSum = JSON.parse(JSON.stringify(definition))
+        const cages = invalidShowSum.variant.puzzle.rules.find((rule: { type: string }) => rule.type === 'killer-cages')
+        cages.cages[0].showSum = 'hidden'
+        await assert.rejects(api('shares', 'POST', invalidShowSum), { status: 400 }, 'Killer cage showSum must be boolean')
+      } else if (example.type === 'unknown-cage-sums') {
+        const rule = rules.find((rule: { type: string }) => rule.type === example.type)
+        rule.cages[0][0] = rule.cages[1][0]
+        await assert.rejects(api('shares', 'POST', malformed), { status: 400 }, 'Unknown cages must cover each cell once')
+      } else if (example.type === 'distant-neighbors') {
+        const rule = rules.find((rule: { type: string }) => rule.type === example.type)
+        rule.markedCells[8] = 77
+        await assert.rejects(api('shares', 'POST', malformed), { status: 400 }, 'Distant Neighbors needs one marker per box')
+      } else if (example.type === 'forbidden-entropic-connection') {
+        const rule = rules.find((rule: { type: string }) => rule.type === example.type)
+        rule.cells[1] = rule.cells[0] + 2
+        await assert.rejects(api('shares', 'POST', malformed), { status: 400 }, 'Entropic breaks must stay orthogonally adjacent')
+      } else if (example.type === 'digit-order') {
+        const rule = rules.find((rule: { type: string }) => rule.type === example.type)
+        rule.digits = [1, 2, 4]
+        await assert.rejects(api('shares', 'POST', malformed), { status: 400 }, 'Digit Order needs a full entropy group')
+      }
+    }
+  } finally { sqlite.close() }
+})
+
+test('Coach digit-restriction shapes survive public sharing and malformed restrictions are rejected', async () => {
+  const shapeLayer = {
+    type: 'cosmeticShape', settings: { gridSnapToCentres: true }, segments: [
+      { cells: [[0.5, 0.5]], parameters: { shape: 'circle' } },
+      { cells: [[1.5, 0.5]], parameters: { shape: 'cross' } },
+      { cells: [[2.5, 0.5]], parameters: { shape: 'square' } },
+    ],
+  }
+  const imported = await detectPuzzle(coachCode({ gridSize: 9, givenDigits: '0'.repeat(81), givenConstraints: [shapeLayer] }))
+  assert.deepEqual(imported.variant?.puzzle.rules, [
+    { type: 'digit-restriction', shape: 'circle', cells: [0], digits: [1, 2, 3] },
+    { type: 'digit-restriction', shape: 'cross', cells: [1], digits: [4, 5, 6, 7] },
+    { type: 'digit-restriction', shape: 'square', cells: [2], digits: [8, 9] },
+  ])
+  const game = { ...makeGame(createGameId(), 'Coach digit restrictions', imported.givens, 'imported'), variant: imported.variant }
+  const definition = puzzleDefinitionForSharing(game)
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    const api = syncRequest(undefined, fetcher)
+    const { id } = await api<{ id: string }>('shares', 'POST', definition)
+    assert.deepEqual(await api(`shares/${id}`), JSON.parse(JSON.stringify(definition)))
+
+    for (const edit of [
+      (rule: { digits: number[] }) => { rule.digits[0] = 10 },
+      (rule: { digits: number[] }) => { rule.digits[1] = rule.digits[0] },
+      (rule: { shape: string }) => { rule.shape = 'triangle' },
+      (rule: { cells: number[] }) => { rule.cells.push(81) },
+    ]) {
+      const malformed = JSON.parse(JSON.stringify(definition))
+      edit(malformed.variant.puzzle.rules[0])
+      await assert.rejects(api('shares', 'POST', malformed), { status: 400 })
     }
   } finally { sqlite.close() }
 })

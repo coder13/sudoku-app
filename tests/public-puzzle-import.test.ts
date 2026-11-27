@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import worker from '../cloudflare/pages/_worker.js'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
 import { coachCode } from './helpers/coach-code.ts'
 
 const request = (path: string, options?: RequestInit) =>
@@ -118,7 +119,7 @@ test('plain published Coach grids are read only from the matching publication an
   }
 })
 
-test('#381 imports the published 6×6 Coach Nonogram and keeps its full rule set', async ({ mock }) => {
+test('#381 imports the published 6×6 Coach Nonogram from code and short link', async ({ mock }) => {
   const source = JSON.parse(readFileSync(new URL('./fixtures/sized-coach-nonogram.json', import.meta.url), 'utf8')) as {
     sudoku_id: string; sudoku: string; name: string; description: string; solution: string; givenDigits?: string
   }
@@ -149,7 +150,14 @@ test('#381 imports the published 6×6 Coach Nonogram and keeps its full rule set
   assert.ok(imported.sizedRules?.some(rule => rule.type === 'xv'))
   assert.ok(!imported.sizedRules?.some(rule => rule.type === 'little-killer'))
   assert.ok(imported.grid && imported.sizedRules)
-  await assert.rejects(detectPuzzle(source.sudoku), /6 × 6 Jigsaw grid/)
+  const copiedCode = await detectPuzzle(source.sudoku)
+  assert.deepEqual(copiedCode.grid, imported.grid)
+  assert.deepEqual(copiedCode.sizedRules, imported.sizedRules)
+  const altered = structuredClone(await decodeSudokuCoachPayload(source.sudoku)) as {
+    givenConstraints: { type: string; segments: { parameters: Record<string, unknown> }[] }[]
+  }
+  altered.givenConstraints.find(layer => layer.type === 'cosmeticText')!.segments[0]!.parameters.text = '1'
+  await assert.rejects(detectPuzzle(coachCode({ gridSize: 6, ...altered })))
   description += '\nThe rows also obey another rule.'
   await assert.rejects(detectPuzzle(url), /author instructions/)
 })
@@ -195,8 +203,8 @@ test('GEnq imports its encoded 6×6 rules when the exact note only sets a solve-
   await assert.rejects(detectPuzzle(url), /author instructions/)
 })
 
-test('#382 imports the published 7×7 Coach Skyscrapers clues only with their authored rules', async ({ mock }) => {
-  const source = JSON.parse(readFileSync(new URL('./fixtures/skyscrapers-unsupported-9W3o.json', import.meta.url), 'utf8')) as {
+test('#382 imports the published 7×7 Coach Skyscrapers clues from code and short link', async ({ mock }) => {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/skyscrapers-coach-9W3o.json', import.meta.url), 'utf8')) as {
     metadata: { sudoku_id: string; sudoku: string; name: string; description: string; solution: string }
   }
   const url = `https://sudoku.coach/en/s/${source.metadata.sudoku_id}`
@@ -228,7 +236,9 @@ test('#382 imports the published 7×7 Coach Skyscrapers clues only with their au
     ['east', 1, 3], ['east', 2, 3], ['east', 6, 5], ['south', 5, 4], ['south', 0, 4],
     ['west', 5, 5], ['west', 0, 3],
   ])
-  await assert.rejects(detectPuzzle(source.metadata.sudoku), /unsupported active rule/)
+  const copiedCode = await detectPuzzle(source.metadata.sudoku)
+  assert.deepEqual(copiedCode.grid, imported.grid)
+  assert.deepEqual(copiedCode.sizedRules, imported.sizedRules)
   description += '\nA decorative label was changed.'
   await assert.rejects(detectPuzzle(url), /author instructions/)
 })
@@ -654,6 +664,43 @@ test('the published X-Sums declaration must describe the complete rules', async 
   assert.deepEqual(await (await request('sudoku-coach/AsnF')).json(),
     { ...expected, coach: { ...expected.coach, authoredRule: 'x-sum' } })
   while (codes.length) assert.deepEqual(await (await request('sudoku-coach/AsnF')).json(), expected)
+})
+
+test('#404 the public Coach import worker connects a sized X-Sums declaration to its structured clues', async ({ mock }) => {
+  const solution = '123456456123234561561234345612612345'
+  const regions = Array.from({ length: 36 }, (_, cell) =>
+    Math.floor(Math.floor(cell / 6) / 2) * 2 + Math.floor((cell % 6) / 3) + 1)
+  const code = coachCode({ gridSize: 6, givenDigits: solution, regions, givenConstraints: [
+    { type: 'cosmeticText', settings: {}, segments: [
+      { cells: [[-0.5, 2.5]], parameters: { text: '5' } },
+    ] },
+    { type: 'thermometer', settings: {}, segments: [{ cells: [0, 1, 2], parameters: {} }] },
+  ] })
+  const description = [
+    'Variant Rules (X-Sums):',
+    '- Clues outside the grid indicate the sum of the first X digits in the corresponding direction.',
+    '- X is the first digit in the corresponding direction.',
+  ].join('\n')
+  const publication = {
+    sudoku_id: 'Ab12', sudoku: code, name: 'Six by six X-Sums', description,
+    blocked: false, custom_constraints: true,
+  }
+  const page = '<script>let mainInitData = ' + JSON.stringify({ specificSudoku: publication }) + '</script>'
+  mock.method(globalThis, 'fetch', async (url: string | URL, options?: RequestInit) => {
+    if (String(url) === 'https://sudoku.coach/en/s/Ab12') return new Response(page)
+    if (String(url) === '/api/v1/import/sudoku-coach/Ab12') {
+      return worker.fetch(new Request(new URL(String(url), 'https://sudoku.example'), options), {}, {})
+    }
+    assert.fail(`Unexpected fetch ${String(url)}`)
+  })
+
+  const imported = await detectPuzzle('https://sudoku.coach/en/s/Ab12')
+  assert.equal(imported.format, 'Sudoku Coach')
+  assert.equal(imported.title, publication.name)
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'x-sum', direction: 'east', cells: [12, 13, 14, 15, 16, 17], sum: 5 },
+    { type: 'thermometer', cells: [0, 1, 2] },
+  ])
 })
 
 

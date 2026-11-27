@@ -1,3 +1,5 @@
+import { sourceHash } from './shared.ts'
+
 type Point = readonly [number, number]
 
 export type CoachAqreSource = {
@@ -202,9 +204,8 @@ function countRegions(kind: Spec['kind'], regions: readonly (readonly number[])[
 export async function readReviewedCoachAqre(code: string, data: Record<string, unknown>): Promise<{
   source: CoachAqreSource
 } | undefined> {
-  if (!globalThis.crypto?.subtle) return
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(code))
-  const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('')
+  const hash = await sourceHash(code, data)
+  if (!hash) return
   const spec = SOURCES.get(hash)
   if (!spec) return
   if (data.gridSize !== 9 || typeof data.givenDigits !== 'string' || !/^[0-9]{81}$/.test(data.givenDigits) ||

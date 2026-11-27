@@ -12,12 +12,13 @@ import { coachSkyscrapersRules } from '../coach-skyscrapers.ts'
 import { parseCoachEntropyWindowGroups } from '../entropy-window-groups.ts'
 import { coachConnectedLines, coachConsecutiveRuns } from '../coach-lines.ts'
 import { readCoachColouredLines } from '../coach-coloured-lines.ts'
+import { readReviewedCoachTerrain } from './coach-terrain.ts'
 import { isCoachWhispersGuide } from '../coach-whispers-guide.ts'
 import type { SizedConstraintRule, SizedDifferenceRule, SizedLabeledDotsRule, VariantPuzzle, VariantRule } from '../engine.ts'
 import { isFogDefinition, type FogDefinition } from '../fog.ts'
 import { normalizeGivens } from '../formats.ts'
 import { EMPTY } from '../game.ts'
-import { connectedGridCells, FIVE_BOXLESS_GRID, gridCellsShareEdge, gridRegionIndex, isGridText, isJigsawGrid, isJigsawSize, isRectangularSize, MINI_GRID, NINE_BOXLESS_GRID, rectangularGridFromRegions, regionsFromMembership, SEVEN_BOXLESS_GRID, SIX_BOXLESS_GRID, type JigsawGrid, type SizedGrid } from '../grid.ts'
+import { CLASSIC_GRID, connectedGridCells, FIVE_BOXLESS_GRID, gridCellsShareEdge, gridRegionIndex, isGridText, isJigsawGrid, isJigsawSize, isRectangularSize, MINI_GRID, NINE_BOXLESS_GRID, rectangularGridFromRegions, regionsFromMembership, SEVEN_BOXLESS_GRID, SIX_BOXLESS_GRID, type JigsawGrid, type SizedGrid } from '../grid.ts'
 import { isHexColor, isImportedColor, validGivenCellColors, validImportedCellColors, type CandidateColors, type ImportedCellColors } from '../imported-colors.ts'
 import { readCoachQuickDraw } from '../imported-drawings.ts'
 import { createImportedFutoshiki } from '../../futoshiki/imported.ts'
@@ -37,7 +38,7 @@ import { closedRegionSumCells, regionIndex } from '../region-sum.ts'
 import { isSizedRuleList } from '../sized-rule-game.ts'
 import { cellsShareEdge } from '../variants.ts'
 import { fetchPublishedExport } from './published-link.ts'
-import { MAX_DECODED_LENGTH, MAX_IMPORT_LENGTH, hasData, hasMiniBoxes, jigsawLayoutError, makeImportedPuzzle, parseJSON, readRegions, record } from './shared.ts'
+import { MAX_DECODED_LENGTH, MAX_IMPORT_LENGTH, hasData, hasMiniBoxes, jigsawLayoutError, makeImportedPuzzle, parseJSON, readRegions, record, sourceHash } from './shared.ts'
 import type { ImportResult, PuzzleImporter } from './types.ts'
 
 const BASE32HEX = '0123456789abcdefghijklmnopqrstuv'
@@ -52,6 +53,17 @@ const coachRomeoAndJulietExport = 'a00378f1b8e4943815a5987cacaeeec0669db58163a9c
 // The reviewed Mini Jigsaw source describes regions that wrap over both board axes.
 // Region geometry alone cannot distinguish this topology from ordinary authored regions.
 const coachWrappedJigsawExport = '501832fec680e8fa268be297919615522b2a9150da212cde066797ec6e6828dc'
+// The original 7×7 Skyscrapers puzzle stores its outside clues as cosmetic text.
+// Its exact export is enough to establish the meaning when users paste the code
+// directly, without the author description supplied by the short-link resolver.
+const coachSkyscrapersExport = 'd9726081ddf9b97737fdb72ffd1391fab8fc204edd73f7e99613f57e06f03121'
+// The original 6×6 Nonogram also states the rule in its published description.
+// Recognize only that exact export when users paste its puzzle code directly.
+const coachNonogramExport = 'f9f86aa7cfcc1e3fab882cb9c5a033128e28e6a172a1828163c1be028176b932'
+// DLeM's author description defines its outside digits as first-three-cell
+// membership clues. Its zero-valued Little Killer layers only draw arrows.
+const coachInsideDigitGroupsExport = '4df8f288447a88911a27cf695858ece85958b940e94afc536271946594ca3a8e'
+const coachInsideDigitGroupsSolution = '678243195953718624142965738487531962365492871291876453826157349534689217719324586'
 const COACH_FIELDS = new Set([
   'gridSize', 'givenDigits', 'regions', 'givenConstraints', 'meta', 'metaSolver', 'colours',
   'constructorPreviewDigits', 'constructorConstructionParameters', 'quickDrawLineSegments', 'quickDrawSymbols', 'cells', 'acid', 'givenColours', 'user_like',
@@ -217,9 +229,89 @@ const distantNeighborsCoachExport = 'd8fb932a0c4941b1f7732f0ea32a6d50fc4adf72c5b
 // The published AsnF instructions name these authored cosmetic labels as X-Sums.
 // Restrict that interpretation to the exact reviewed export, since raw text is otherwise ambiguous.
 const authoredAsnFXSumsCoachExport = '3392bb1a0488e8778d630b4b058e1a55ee04baefa0f199b5a29ba8382c499e53'
+// K95q's description supplies the complete-black-dot rule, which is absent
+// from the copied SCv7 payload. Recognize only this reviewed source on raw-code imports.
+const allBlackDotsCoachExport = 'e03c0d40bdb9a3ab13512250b4920bd6d6f554da83d136d3e8105f29e713aa6e'
+
+async function readCoachInsideDigitGroups(code: string, data: Record<string, unknown>) {
+  if (await sourceHash(code, data) !== coachInsideDigitGroupsExport) return
+  const invalid = () => new Error('The Symmetrical Inside export does not match its reviewed outside-digit clues.')
+  if (data.gridSize !== 9 || !Array.isArray(data.givenConstraints) || data.givenConstraints.length !== 3) throw invalid()
+  const [arrows, labels, renbans] = data.givenConstraints
+  if (!record(arrows) || arrows.type !== 'littleKiller' || Object.keys(arrows).sort().join(',') !== 'id,segments,settings,type' ||
+    !record(arrows.settings) || Object.keys(arrows.settings).length !== 0 || !Array.isArray(arrows.segments) ||
+    !record(labels) || labels.type !== 'cosmeticText' || Object.keys(labels).sort().join(',') !== 'id,segments,settings,type' ||
+    !record(labels.settings) || Object.keys(labels.settings).sort().join(',') !== 'textSize' || labels.settings.textSize !== 55 ||
+    !Array.isArray(labels.segments) || !record(renbans) || renbans.type !== 'renban' ||
+    Object.keys(renbans).sort().join(',') !== 'id,segments,settings,type' ||
+    !record(renbans.settings) || Object.keys(renbans.settings).length !== 0 ||
+    !Array.isArray(arrows.segments) || arrows.segments.length !== 10 || labels.segments.length !== arrows.segments.length ||
+    data.regions !== undefined && (!Array.isArray(data.regions) || data.regions.length !== 0)) throw invalid()
+
+  const arrowAt = new Map<string, number[]>()
+  for (const segment of arrows.segments) {
+    if (!record(segment) || Object.keys(segment).sort().join(',') !== 'cells,parameters' ||
+      !Array.isArray(segment.cells) || segment.cells.length !== 1 || !Array.isArray(segment.cells[0]) ||
+      segment.cells[0].length !== 2 || !segment.cells[0].every(value => Number.isInteger(value) && value >= -1 && value <= 9) ||
+      !record(segment.parameters) || Object.keys(segment.parameters).sort().join(',') !== 'positive,value' ||
+      typeof segment.parameters.positive !== 'boolean' || segment.parameters.value !== 0) throw invalid()
+    const [x, y] = segment.cells[0] as number[]
+    if (x >= 0 && x < 9 && y >= 0 && y < 9) throw invalid()
+    const inside = (row: number, column: number) => row >= 0 && row < 9 && column >= 0 && column < 9
+    let dr = segment.parameters.positive ? -1 : 1, dc = 1
+    if (!inside(y + dr, x + dc)) { dr = -dr; dc = -dc }
+    if (!inside(y + dr, x + dc)) throw invalid()
+    const cells: number[] = []
+    for (let offset = 0; offset < 3; offset++) {
+      const row = y + dr * (offset + 1), column = x + dc * (offset + 1)
+      if (!inside(row, column)) throw invalid()
+      cells.push(row * 9 + column)
+    }
+    arrowAt.set(`${x},${y}`, cells)
+  }
+  if (arrowAt.size !== arrows.segments.length) throw invalid()
+
+  const outsideRules: SizedConstraintRule[] = []
+  for (const segment of labels.segments) {
+    if (!record(segment) || Object.keys(segment).sort().join(',') !== 'cells,parameters' ||
+      !Array.isArray(segment.cells) || segment.cells.length !== 1 || !Array.isArray(segment.cells[0]) ||
+      segment.cells[0].length !== 2 || !record(segment.parameters) ||
+      Object.keys(segment.parameters).sort().join(',') !== 'text' ||
+      typeof segment.parameters.text !== 'string' || !/^[1-9]{1,3}$/.test(segment.parameters.text)) throw invalid()
+    const [x, y] = segment.cells[0] as number[]
+    if (typeof x !== 'number' || typeof y !== 'number' || !Number.isInteger(x - .5) || !Number.isInteger(y - .5)) throw invalid()
+    const cells = arrowAt.get(`${x - .5},${y - .5}`)
+    if (!cells) throw invalid()
+    const inwardRow = Math.floor(cells[1] / 9) - Math.floor(cells[0] / 9)
+    const inwardColumn = cells[1] % 9 - cells[0] % 9
+    const direction = inwardRow < 0
+      ? inwardColumn < 0 ? 'north-west' : 'north-east'
+      : inwardColumn < 0 ? 'south-west' : 'south-east'
+    const clue = segment.parameters.text
+    const [dr, dc] = direction === 'north-east' ? [-1, 1] : direction === 'south-east' ? [1, 1]
+      : direction === 'south-west' ? [1, -1] : [-1, -1]
+    const rayCells: number[] = []
+    for (let row = Math.floor(cells[0] / 9), column = cells[0] % 9;
+      row >= 0 && row < 9 && column >= 0 && column < 9; row += dr, column += dc) rayCells.push(row * 9 + column)
+    const firstThreeDigits = [...new Set(Array.from(clue, Number))]
+    outsideRules.push({ type: 'outside-text', direction, cells: rayCells, label: clue, firstThreeDigits })
+    for (const digit of firstThreeDigits) {
+      outsideRules.push({ type: 'digit-count', cells, digit, minimum: 1 })
+    }
+    arrowAt.delete(`${x - .5},${y - .5}`)
+  }
+  if ([...arrowAt.keys()].length !== 0) throw invalid()
+  const renbanRules = readCoachRules([renbans], { grid: CLASSIC_GRID })
+  if (renbanRules.length !== 7 || renbanRules.some(rule => rule.type !== 'renban')) throw invalid()
+  const rules = [...renbanRules, ...outsideRules]
+  if (!isSizedRuleList(rules, CLASSIC_GRID)) throw invalid()
+  const givens = data.givenDigits === undefined ? '0'.repeat(81) : data.givenDigits
+  if (typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens)) throw invalid()
+  return { givens, grid: CLASSIC_GRID, sizedRules: rules, authoredSolution: coachInsideDigitGroupsSolution, authoredSolutionOnly: true as const }
+}
 
 async function readCoachMagicSquare(code: string, data: Record<string, unknown>) {
-  if (await coachExportHash(code) !== magicSquareCoachExport || data.gridSize !== 9 ||
+  if (await sourceHash(code, data) !== magicSquareCoachExport || data.gridSize !== 9 ||
     !Array.isArray(data.givenConstraints) || data.givenConstraints.length !== 1) return
   const [layer] = data.givenConstraints
   if (!record(layer) || layer.type !== 'cage' || !Array.isArray(layer.segments) || layer.segments.length !== 13) return
@@ -230,7 +322,7 @@ async function readCoachMagicSquare(code: string, data: Record<string, unknown>)
 }
 
 async function readCoachUnknownCageSums(code: string, data: Record<string, unknown>) {
-  if (await coachExportHash(code) !== unknownCageSumsCoachExport || data.gridSize !== 9 ||
+  if (await sourceHash(code, data) !== unknownCageSumsCoachExport || data.gridSize !== 9 ||
     !Array.isArray(data.givenConstraints)) return
   const layers = data.givenConstraints.filter(record)
   if (layers.length !== data.givenConstraints.length || layers.length !== 4) return
@@ -299,7 +391,7 @@ async function readCoachUnknownCageSums(code: string, data: Record<string, unkno
 }
 
 async function readCoachDistantNeighbors(code: string, data: Record<string, unknown>) {
-  if (await coachExportHash(code) !== distantNeighborsCoachExport || data.gridSize !== 9 ||
+  if (await sourceHash(code, data) !== distantNeighborsCoachExport || data.gridSize !== 9 ||
     !Array.isArray(data.givenConstraints) || data.givenConstraints.length !== 2) return
   const layers = data.givenConstraints.filter(record)
   if (layers.length !== data.givenConstraints.length) return
@@ -552,11 +644,8 @@ function readCoachStandalone(data: Record<string, unknown>): ImportResult | unde
   const diagonals = readCoachDiagonals(rawLayers)
   const standaloneRules = readCoachStandaloneRules(rawLayers, Number(size))
   if (isFutoshiki) {
-    if (givenCellColors && Object.keys(givenCellColors).length) {
-      throw new Error('This boxless Sudoku Coach puzzle uses cell colors that the Latin-square import cannot preserve.')
-    }
     const futoshiki = createImportedFutoshiki(Number(size), givens, readCoachInequalities(rawLayers), parity, position,
-      { diagonals, ...standaloneRules })
+      { diagonals, ...standaloneRules, ...(givenCellColors && { givenCellColors }) })
     return { givens, futoshiki }
   }
   const cages = readCoachCalcudokuCages(rawLayers, Number(size))
@@ -665,12 +754,6 @@ function readCoachFogCellColors(fog: FogDefinition, cellColours: readonly string
   return validImportedCellColors(colors) ? colors : undefined
 }
 
-async function coachExportHash(code: string) {
-  if (!globalThis.crypto?.subtle) return
-  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(code))
-  return Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, '0')).join('')
-}
-
 // Coach leaves this rule out of a pasted Quad-Arrows export.
 const quadArrowsExport = '081de6e0d36d53b949aa2fcb8c18ab5cc7a89acab4729d3ba41baddefdd2dd43'
 const codeCrackerExport = 'a297ab70f94568f356c282821f9566ad8ac1e2ba287781737615518c306bab3c'
@@ -763,6 +846,25 @@ function readCoachLetteredQuadruples(constraints: readonly unknown[]): VariantRu
 
 async function fromCoach(code: string, publication?: CoachPublication | null, fromCollection = false): Promise<ImportResult> {
   const data: Record<string, unknown> = /^[0-9]{81}$/.test(code) ? { gridSize: 9, givenDigits: code } : await decodeCoach(code)
+  const insideDigitGroups = await readCoachInsideDigitGroups(code, data)
+  if (insideDigitGroups) return { ...insideDigitGroups, title: publication?.title ?? 'Symmetrical Inside' }
+  const terrain = await readReviewedCoachTerrain(code, data)
+  if (terrain) {
+    const givens = data.givenDigits === undefined ? EMPTY : data.givenDigits
+    if (typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens)) throw new Error('This Sudoku Coach puzzle has invalid givens.')
+    const transforms = terrain.cellColors.map(color => color === 'yellow'
+      ? { multiplier: 2, offset: 0 }
+      : color === 'green' ? { multiplier: 1, offset: 3 }
+        : color === 'purple' ? { multiplier: 1, offset: -3 }
+          : { multiplier: 1, offset: 0 })
+    const rules: VariantRule[] = terrain.clues.map(({ direction, index, maximum }) => {
+      const cells = Array.from({ length: 9 }, (_, offset) => direction === 'south' ? offset * 9 + index : index * 9 + offset)
+      return { type: 'terrain-sandwich', direction, cells, maximum, transforms: cells.map(cell => transforms[cell]) }
+    })
+    const imported = makeImportedPuzzle(givens, rules, undefined)
+    const givenCellColors = Object.fromEntries(terrain.cellColors.flatMap((color, cell) => color ? [[cell, [color]]] : []))
+    return { ...imported, givenCellColors, title: publication?.title ?? 'Terrain Variants I: Diamond Sandwich' }
+  }
   const crust = await readReviewedCoachCrust(code, data)
   if (crust) {
     const grid = crust.size === 7 ? SEVEN_BOXLESS_GRID : NINE_BOXLESS_GRID
@@ -788,14 +890,18 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   if (standalone) return { ...standalone, ...(publication?.title && { title: publication.title }) }
   if (data.gridSize === 4 || isRectangularSize(data.gridSize) || isJigsawSize(data.gridSize)) {
     const reviewedEntropicRunaround = publication?.authoredRule === 'sized-entropic-runaround' && data.gridSize === 6 &&
-      await coachExportHash(code) === 'eaa3711145076e992c920d15677b5f02651e829cbec2b1ba95a0d37c7f93162f'
+      await sourceHash(code, data) === 'eaa3711145076e992c920d15677b5f02651e829cbec2b1ba95a0d37c7f93162f'
+    const reviewedSkyscrapers = publication?.authoredRule === 'sized-skyscrapers' ||
+      await sourceHash(code, data) === coachSkyscrapersExport
+    const reviewedNonogram = publication?.authoredRule === 'sized-nonogram' ||
+      await sourceHash(code, data) === coachNonogramExport
     if (fromCollection && (!publication || publication.hasAuthorInstructions) ||
       publication?.hasAuthorInstructions && publication.authoredRule !== 'wrapped-regions' && publication.authoredRule !== 'sized-nonogram' &&
       publication.authoredRule !== 'sized-skyscrapers' && publication.authoredRule !== 'x-sum' && !reviewedEntropicRunaround) {
       throw new Error('This puzzle has author instructions. Open it in Sudoku Coach to play with all its rules.')
     }
     const { givens, grid, rules, progress, givenCellColors, reviewedTitle } = await readCoachSized(data, code,
-      publication?.authoredRule === 'sized-nonogram', publication?.authoredRule === 'sized-skyscrapers',
+      reviewedNonogram, reviewedSkyscrapers,
       publication?.authoredRule === 'x-sum')
     if (publication?.hasAuthorInstructions && rules.some(rule => rule.type === 'quadruple')) {
       throw new Error('This puzzle has author instructions. Open it in Sudoku Coach to play with all its rules.')
@@ -843,7 +949,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     throw new Error('The Aqre export does not match its published shading rules.')
   }
   if (publication?.authoredRule === 'xv-empty-cosmetic-cage' &&
-    await coachExportHash(code) !== 'c7c2be5873de87e5168278e3f135cb5e5c1d5c470f87757076d54b64693c9806') {
+    await sourceHash(code, data) !== 'c7c2be5873de87e5168278e3f135cb5e5c1d5c470f87757076d54b64693c9806') {
     throw new Error('The XV Entropy export does not match its reviewed empty cage layer.')
   }
   if (aqre) {
@@ -871,7 +977,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   const entropyGroupOrder = await readReviewedCoachEntropyGroupOrder(code, data)
   const entropyBreaks = await readReviewedCoachEntropyBreaks(code, data)
   if (publication?.authoredRule === 'entropy-window-groups' &&
-    await coachExportHash(code) !== sunnyEntropyExport) {
+    await sourceHash(code, data) !== sunnyEntropyExport) {
     throw new Error('The Global Entropy export does not match its reviewed shape clues.')
   }
   if (publication?.authoredRule === 'entropic-breaks' && !entropyBreaks) {
@@ -885,9 +991,11 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   const unknownCageSums = await readCoachUnknownCageSums(code, data)
   const distantNeighbors = await readCoachDistantNeighbors(code, data)
   const authoredAsnFXSums = !publication && constraints.some(layer => record(layer) && layer.type === 'cosmeticText') &&
-    await coachExportHash(code) === authoredAsnFXSumsCoachExport
+    await sourceHash(code, data) === authoredAsnFXSumsCoachExport
+  const authoredAllBlackDots = !publication && constraints.some(layer => record(layer) && layer.type === 'ratio') &&
+    await sourceHash(code, data) === allBlackDotsCoachExport
   const reviewed220VLineLegend = !publication && constraints.some(layer => record(layer) && layer.type === 'cosmeticLine') &&
-    await coachExportHash(code) === coach220VLineColoursExport
+    await sourceHash(code, data) === coach220VLineColoursExport
   if (publication?.authoredRule === 'unknown-cage-sums' && !unknownCageSums) {
     throw new Error('The Sudoku Coach export does not match its published unknown cage totals.')
   }
@@ -914,7 +1022,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   const declaredInsideGrid = publication?.authoredRule === 'inside-grid'
   const declaredLettered = publication?.authoredRule === 'lettered-quadruples'
   const exportHash = (!publication && hasQuadruples || declaredInsideGrid || declaredLettered || hasShapeLayer || !fog && cellColours?.some(Boolean))
-    ? await coachExportHash(code) : undefined
+    ? await sourceHash(code, data) : undefined
   const entropyLayers = exportHash === sunnyEntropyExport
     ? constraints.filter(layer => record(layer) && layer.type === 'cosmeticShape') : []
   const entropyGroups = entropyLayers.length ? parseCoachEntropyWindowGroups(entropyLayers) : undefined
@@ -938,7 +1046,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     ? reviewedCoachColorExports.get(exportHash) : undefined
   const authoredRule = rawQuadArrows ? 'quad-arrows' : magicSquare ? 'magic-square' : unknownCageSums ? 'unknown-cage-sums' :
     distantNeighbors ? 'distant-neighbors' : authoredAsnFXSums ? 'x-sum' :
-      reviewed220VLineLegend ? 'line-colours' : publication?.authoredRule
+      reviewed220VLineLegend ? 'line-colours' : authoredAllBlackDots ? 'all-black-dots' : publication?.authoredRule
   const sourceRules = distantNeighbors ? encodedRules.filter(layer => !record(layer) || layer.type !== 'cosmeticLine') : encodedRules
   let rules = lettered ? readCoachLetteredQuadruples(encodedRules)
     : insideGrid ? readCoachInsideGrid(encodedRules) : readCoachRules(sourceRules, { regions, authoredRule })
@@ -1003,7 +1111,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
       }
     }
   }
-  if (publication?.authoredRule === 'all-black-dots') {
+  if (authoredRule === 'all-black-dots') {
     const black = rules.find(rule => rule.type === 'kropki' && rule.ratioTwo !== undefined)
     if (black?.type !== 'kropki' || !black.ratioTwo) {
       throw new Error('The Sudoku Coach export is missing the black Kropki dot layer from the published rules.')
@@ -1081,6 +1189,7 @@ function readCoachXSums(constraint: Record<string, unknown>, segments: readonly 
     throw new Error('This Sudoku Coach X-Sums layer uses unsupported settings.')
   }
   const clues: Extract<VariantRule, { type: 'x-sum' }>[] = []
+  const outsideLines = new Set<string>()
   const cellCenter = (coordinate: number) => coordinate >= 0.5 && coordinate <= size - 0.5 && Number.isInteger(coordinate - 0.5)
   for (const segment of segments) {
     if (!record(segment) || Object.keys(segment).some(key => key !== 'cells' && key !== 'parameters') ||
@@ -1100,7 +1209,11 @@ function readCoachXSums(constraint: Record<string, unknown>, segments: readonly 
     if (!side || !/^[1-9][0-9]?$/.test(text) || sum > maximum) {
       throw new Error(`This Sudoku Coach X-Sum needs a total from 1 through ${maximum} beside a row or column.`)
     }
-    clues.push({ type: 'x-sum', ...coachOutsideRay(side, (side === 'top' || side === 'bottom' ? x : y) - 0.5, size), sum })
+    const index = (side === 'top' || side === 'bottom' ? x : y) - 0.5
+    const line = `${side}:${index}`
+    if (outsideLines.has(line)) throw new Error('This Sudoku Coach X-Sums puzzle has multiple totals for the same outside line.')
+    outsideLines.add(line)
+    clues.push({ type: 'x-sum', ...coachOutsideRay(side, index, size), sum })
   }
   return clues
 }
@@ -1501,7 +1614,7 @@ async function readCoachSized(data: Record<string, unknown>, code?: string, publ
   const distinct = isJigsawSize(size) && labels ? [...new Set<number>(labels)] : []
   const explicit = isJigsawSize(size) && labels?.length === size ** 2 && distinct.length === size
     ? { size, regions: regionsFromMembership(labels.map(label => distinct.indexOf(label)), size) } : undefined
-  const wrappedExplicit = code && await coachExportHash(code) === coachWrappedJigsawExport && explicit &&
+  const wrappedExplicit = code && await sourceHash(code, data) === coachWrappedJigsawExport && explicit &&
     explicit.regions.some(region => !connectedGridCells(region, Number(size))) &&
     explicit.regions.every(region => connectedGridCells(region, Number(size), true))
     ? { ...explicit, wrapAround: true as const } satisfies JigsawGrid
@@ -1626,6 +1739,15 @@ async function readCoachSized(data: Record<string, unknown>, code?: string, publ
   if (rowEquations) rules.push(...rowEquations)
   rules.push(...nonogramRules, ...skyscrapersRules)
   if (fractionalRegions) rules.push(fractionalRegions.rule)
+  const xSumLines = new Set<string>()
+  for (const rule of rules) {
+    if (rule.type !== 'x-sum') continue
+    const line = rule.direction === 'north' || rule.direction === 'south'
+      ? `${rule.direction}:${rule.cells[0] % grid.size}`
+      : `${rule.direction}:${Math.floor(rule.cells[0] / grid.size)}`
+    if (xSumLines.has(line)) throw new Error('This Sudoku Coach X-Sums puzzle has multiple totals for the same outside line.')
+    xSumLines.add(line)
+  }
   if (publishedXSums && !rules.some(rule => rule.type === 'x-sum')) {
     throw new Error('This Sudoku Coach X-Sums puzzle has no outside totals.')
   }

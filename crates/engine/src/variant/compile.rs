@@ -254,6 +254,7 @@ impl VariantPuzzle {
                 | PuzzleRule::Lockout { .. }
                 | PuzzleRule::RegionSum { .. }
                 | PuzzleRule::Sandwich { .. }
+                | PuzzleRule::TerrainSandwich { .. }
                 | PuzzleRule::LittleKiller { .. }
                 | PuzzleRule::XSum { .. }
                 | PuzzleRule::Skyscrapers { .. } => {
@@ -283,6 +284,9 @@ impl VariantPuzzle {
             }
         }
         pairs.finish(&mut compiled);
+        for square in &mut compiled.magic_squares {
+            square.use_normal_patterns_when_all_distinct(&compiled.peers);
+        }
         // Region geometry can remain available for sum lines after a generation
         // dependency check removes its distinctness rule. Propagate only houses
         // whose cells are actually pairwise excluded by the compiled topology.

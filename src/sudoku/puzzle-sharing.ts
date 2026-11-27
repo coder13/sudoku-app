@@ -56,7 +56,7 @@ export function puzzleDefinitionForSharing(game: Game): SharedPuzzlePayload {
     ...(game.givenCellColors && { givenCellColors: game.givenCellColors }),
     ...(game.authoredArtwork && { authoredArtwork: game.authoredArtwork }),
     ...(algebraic && { algebraic }),
-    ...(game.sized && (game.grid?.size === 6
+    ...(game.sized && (game.grid?.size === 6 && 'boxRows' in game.grid
       ? { sixRules: game.sized.rules, ...(game.sized.author && { sixAuthor: game.sized.author }) }
       : { sizedRules: game.sized.rules, ...(game.sized.author && { sizedAuthor: game.sized.author }) })),
   }

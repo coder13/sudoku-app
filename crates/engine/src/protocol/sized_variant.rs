@@ -47,6 +47,11 @@ enum SizedRule {
         cells: Vec<usize>,
         groups: Vec<Vec<u8>>,
     },
+    SumModulo {
+        cells: Vec<usize>,
+        modulus: u8,
+        remainder: u8,
+    },
     LineAssignments {
         paths: Vec<Vec<usize>>,
         types: Vec<SizedLineType>,
@@ -106,6 +111,19 @@ enum SizedRule {
         direction: crate::ClueDirection,
         index: usize,
         count: u8,
+    },
+    ProductCage {
+        cells: Vec<usize>,
+        product: u64,
+        #[serde(default)]
+        color: Option<String>,
+    },
+    DigitCount {
+        cells: Vec<usize>,
+        digit: u8,
+        minimum: u8,
+        #[serde(default)]
+        maximum: Option<u8>,
     },
     AntiSum {
         sum: u8,
@@ -191,6 +209,15 @@ impl TryFrom<Rule> for SizedConstraint {
             Rule::Variant(PuzzleRule::Clone { groups }) => Self::Clone { groups },
             Rule::Sized(SizedRule::Zipper { cells }) => Self::Zipper { cells },
             Rule::Sized(SizedRule::Entropic { cells, groups }) => Self::Entropic { cells, groups },
+            Rule::Sized(SizedRule::SumModulo {
+                cells,
+                modulus,
+                remainder,
+            }) => Self::SumModulo {
+                cells,
+                modulus,
+                remainder,
+            },
             Rule::Sized(SizedRule::LineAssignments { paths, types }) => {
                 Self::LineAssignments { paths, types }
             }
@@ -350,6 +377,25 @@ impl TryFrom<Rule> for SizedConstraint {
                 index,
                 count,
             },
+            Rule::Sized(SizedRule::ProductCage {
+                cells,
+                product,
+                color: _,
+            }) => Self::ProductCage { cells, product },
+            Rule::Sized(SizedRule::DigitCount {
+                cells,
+                digit,
+                minimum,
+                maximum,
+            }) => {
+                let maximum = maximum.unwrap_or(cells.len() as u8);
+                Self::DigitCount {
+                    cells,
+                    digit,
+                    minimum,
+                    maximum,
+                }
+            }
             Rule::Sized(SizedRule::CornerKropki {
                 consecutive,
                 ratio_two,

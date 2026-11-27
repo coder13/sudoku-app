@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use super::{MAX_SIZE, SizedConstraint, SizedDotRelation, SizedKropkiPair, SizedKropkiRelation};
 use crate::variant::PairConstraint;
@@ -213,10 +213,11 @@ pub(super) fn compile_pairs(
     }
     let mut groups: Vec<Vec<SizedPairLink>> = (0..rules.len()).map(|_| Vec::new()).collect();
     let mut marked = BTreeSet::new();
+    let mut labeled_marked: BTreeMap<(SizedDotRelation, u8), BTreeSet<[usize; 2]>> =
+        BTreeMap::new();
+    let mut labeled_negative: BTreeMap<(SizedDotRelation, u8), usize> = BTreeMap::new();
     let mut positive: [Option<PairConstraint<MAX_SIZE>>; 2] = [None, None];
     let mut negative = [None; 2];
-    let mut labeled_marked = [BTreeSet::new(), BTreeSet::new()];
-    let mut labeled_negative = [None; 2];
     let mut xv_marked = [BTreeSet::new(), BTreeSet::new()];
     let mut xv_negative = [None; 2];
     let mut differences: [Option<PairConstraint<MAX_SIZE>>; MAX_SIZE] =
@@ -393,11 +394,13 @@ pub(super) fn compile_pairs(
             continue;
         }
         if let SizedConstraint::AntiSum { sum } = *rule {
-            if !(2..=2 * size as u8).contains(&sum) {
+            let displayed_total = sum + 2 * value_offset;
+            if !(2..=2 * size as u8).contains(&displayed_total) {
                 return None;
             }
-            let constraint =
-                PairConstraint::from_relation([0, 1], size, |x, y| x != y && x + y != sum);
+            let constraint = PairConstraint::from_relation([0, 1], size, |x, y| {
+                x != y && x + y != displayed_total
+            });
             groups[index].extend(orthogonal_edges(size).map(|cells| {
                 let mut constraint = constraint.clone();
                 constraint.cells = cells;
@@ -412,6 +415,12 @@ pub(super) fn compile_pairs(
             let cells = adjacent_edge(cells, size)?;
             if !(1..size as u8).contains(&difference) {
                 return None;
+            }
+            if difference == 1 {
+                labeled_marked
+                    .entry((SizedDotRelation::Difference, difference))
+                    .or_default()
+                    .insert(cells);
             }
             let mut constraint = differences[usize::from(difference)]
                 .get_or_insert_with(|| {
@@ -436,9 +445,7 @@ pub(super) fn compile_pairs(
             if marks.len() > 2 * size * (size - 1) || marks.is_empty() && !negative {
                 return None;
             }
-            if *negative {
-                labeled_negative[kind].get_or_insert(index);
-            }
+            let mut layer_values = BTreeSet::new();
             for mark in marks {
                 let cells = adjacent_edge(mark.cells, size)?;
                 let value = usize::from(mark.value);
@@ -446,7 +453,11 @@ pub(super) fn compile_pairs(
                 if !(if ratio { 2..=max_value } else { 1..=max_value }).contains(&value) {
                     return None;
                 }
-                labeled_marked[kind].insert(cells);
+                labeled_marked
+                    .entry((*relation, mark.value))
+                    .or_default()
+                    .insert(cells);
+                layer_values.insert(mark.value);
                 let constraint = PairConstraint::from_relation(cells, size, |x, y| {
                     let [left, right] =
                         [x, y].map(|digit| usize::from(digit.saturating_sub(value_offset)));
@@ -460,6 +471,14 @@ pub(super) fn compile_pairs(
                     constraint,
                     kropki: Some((RELATIONS[kind], false, Some(mark.value))),
                 });
+            }
+            if *negative {
+                if layer_values.is_empty() {
+                    layer_values.insert(if ratio { 2 } else { 1 });
+                }
+                for value in layer_values {
+                    labeled_negative.entry((*relation, value)).or_insert(index);
+                }
             }
             continue;
         }
@@ -536,6 +555,11 @@ pub(super) fn compile_pairs(
                 return None;
             }
             let cells = adjacent_edge(*cells, size)?;
+            if *sum == 5 {
+                xv_marked[0].insert(cells);
+            } else if *sum == 10 {
+                xv_marked[1].insert(cells);
+            }
             let displayed_total = *sum + 2 * value_offset;
             groups[index].push(SizedPairLink {
                 constraint: PairConstraint::from_relation(cells, size, |x, y| {
@@ -615,20 +639,32 @@ pub(super) fn compile_pairs(
     }
     for (kind, index) in negative.into_iter().enumerate() {
         if let Some(index) = index {
-            add_unmarked_links(size, kind, &marked, &mut groups[index], None, value_offset);
+            let default_value = if kind == 0 { 1 } else { 2 };
+            let relation = if kind == 0 {
+                SizedDotRelation::Difference
+            } else {
+                SizedDotRelation::Ratio
+            };
+            let mut exempt = marked.clone();
+            if let Some(labeled) = labeled_marked.get(&(relation, default_value)) {
+                exempt.extend(labeled.iter().copied());
+            }
+            add_unmarked_links(size, kind, &exempt, &mut groups[index], None, value_offset);
         }
     }
-    for (kind, index) in labeled_negative.into_iter().enumerate() {
-        if let Some(index) = index {
-            add_unmarked_links(
-                size,
-                kind,
-                &labeled_marked[kind],
-                &mut groups[index],
-                Some(kind as u8 + 1),
-                value_offset,
-            );
-        }
+    for ((relation, value), index) in labeled_negative {
+        let labeled_marked = labeled_marked
+            .get(&(relation, value))
+            .cloned()
+            .unwrap_or_default();
+        add_unmarked_labeled_links(
+            size,
+            relation,
+            value,
+            &labeled_marked,
+            &mut groups[index],
+            value_offset,
+        );
     }
     for (kind, index) in xv_negative.into_iter().enumerate() {
         if let Some(index) = index {
@@ -637,6 +673,36 @@ pub(super) fn compile_pairs(
         }
     }
     Some(groups)
+}
+
+fn add_unmarked_labeled_links(
+    size: usize,
+    relation: SizedDotRelation,
+    value: u8,
+    marked: &BTreeSet<[usize; 2]>,
+    links: &mut Vec<SizedPairLink>,
+    value_offset: u8,
+) {
+    let ratio = relation == SizedDotRelation::Ratio;
+    let kind = usize::from(ratio);
+    let forbidden = PairConstraint::from_relation([0, 1], size, |x, y| {
+        let [left, right] = [x, y].map(|digit| digit.saturating_sub(value_offset));
+        let matches = if ratio {
+            left.min(right) > 0
+                && u16::from(left.max(right)) == u16::from(value) * u16::from(left.min(right))
+        } else {
+            x.abs_diff(y) == value
+        };
+        x != y && !matches
+    });
+    for cells in orthogonal_edges(size).filter(|edge| !marked.contains(edge)) {
+        let mut constraint = forbidden.clone();
+        constraint.cells = cells;
+        links.push(SizedPairLink {
+            constraint,
+            kropki: Some((RELATIONS[kind], true, Some(value))),
+        });
+    }
 }
 
 fn add_unmarked_sum_links(

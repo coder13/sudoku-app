@@ -84,6 +84,7 @@ export type VariantRule =
   | { type: 'pill-arrow'; pill: readonly [number, number]; cells: readonly number[]; fromTens?: boolean }
   | { type: 'region-sum'; cells: readonly number[]; groupByRegion?: boolean; segments?: readonly (readonly number[])[] }
   | { type: 'sandwich'; direction: ClueDirection; cells: readonly number[]; sum: number }
+  | { type: 'terrain-sandwich'; direction: ClueDirection; cells: readonly number[]; maximum: number; transforms: readonly { multiplier: number; offset: number }[] }
   | { type: 'x-sum'; direction: ClueDirection; cells: readonly number[]; sum: number }
   | { type: 'little-killer'; direction: DiagonalDirection; cells: readonly number[]; sum: number }
   | { type: 'skyscrapers'; direction: ClueDirection; cells: readonly number[]; count: number }
@@ -206,6 +207,20 @@ export type SizedXSumDot = { type: 'x-sum-dot'; ends: readonly [SizedSumEnd, Siz
 export type SizedNonogramRule = { type: 'nonogram'; axis: 'row' | 'column'; index: number; digits: readonly number[]; runs: readonly number[] }
 export type SizedSkyscrapersRule = { type: 'skyscrapers'; direction: ClueDirection; index: number; count: number }
 export type SizedCornerKropkiRule = { type: 'corner-kropki'; consecutive?: readonly number[]; ratioTwo?: readonly number[] }
+export type SizedProductCageRule = { type: 'product-cage'; cells: readonly number[]; product: number; color?: string }
+export type SizedDigitCountRule = { type: 'digit-count'; cells: readonly number[]; digit: number; minimum: number; maximum?: number }
+export type SizedConstraintAlternativesRule = {
+  type: 'constraint-alternatives'
+  family: string
+  choices: readonly (readonly SizedConstraintRule[])[]
+  choiceLabels?: readonly string[]
+  displayRules?: readonly SizedConstraintRule[]
+}
+export type SizedSumModuloRule = { type: 'sum-modulo'; cells: readonly number[]; modulus: number; remainder: number }
+export type SizedOutsideTextRule = {
+  type: 'outside-text'; direction: 'north-east' | 'south-east' | 'south-west' | 'north-west'; cells: readonly number[]; label: string
+  firstThreeDigits?: readonly number[]
+}
 export type EquationOperator = 'join' | 'add' | 'subtract' | 'multiply' | 'divide' | 'equals'
 export type SizedLineType =
   | { type: 'entropic'; groups: readonly (readonly number[])[] }
@@ -223,6 +238,7 @@ export type SizedConstraintRule = Extract<VariantRule, { type: 'diagonal' | 'par
   | { type: 'entropic'; cells: readonly number[]; groups: readonly (readonly number[])[] }
   | { type: 'slow-thermometer'; cells: readonly number[] }
   | SizedDifferenceRule | SizedLabeledDotsRule | SizedLinkedDoubleArrow | SizedXSumDot | SizedCornerKropkiRule | SizedNonogramRule | SizedSkyscrapersRule
+  | SizedProductCageRule | SizedDigitCountRule | SizedConstraintAlternativesRule | SizedSumModuloRule | SizedOutsideTextRule
   | { type: 'anti-sum'; sum: number }
   | { type: 'row-column-sum'; pairs: readonly (readonly [number, number])[]; requireUnmarked?: boolean }
   | { type: 'row-equation'; cells: readonly number[]; operators: readonly EquationOperator[] }

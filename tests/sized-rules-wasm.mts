@@ -9,10 +9,43 @@ import { sizedRulePosition } from '../src/sudoku/sized-rule-game.ts'
 import { puzzleDefinitionForSharing } from '../src/sudoku/puzzle-sharing.ts'
 import worker from '../cloudflare/pages/_worker.js'
 import { EngineError, runEngine, type EngineRequest, type SizedConstraintPosition } from '../src/sudoku/engine.ts'
+import { conflictsOf } from '../src/sudoku/game.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 import { coachCode } from './helpers/coach-code.ts'
 
 useWasmWorker(process.env.SIZED_RULES_WASM)
+
+const coachInsideDigitGroups = JSON.parse(readFileSync(new URL('./fixtures/little-killer-unsupported-DLeM.json', import.meta.url), 'utf8')) as {
+  metadata: { sudoku: string; solution: string }
+}
+
+test('DLeM uses its outside labels as first-three-cell digit rules, not Little Killer sums', async () => {
+  const imported = await detectPuzzle(coachInsideDigitGroups.metadata.sudoku)
+  assert.deepEqual(imported.sizedRules?.filter(rule => rule.type === 'outside-text').map(rule => rule.firstThreeDigits), [
+    [2, 5, 7], [1, 6, 8], [6, 7, 8], [2, 5, 6], [1, 5, 8], [5, 8, 9], [3, 6, 7], [3], [2], [1],
+  ])
+  const prepared = await prepareImportedPuzzle(coachInsideDigitGroups.metadata.sudoku)
+  assert.equal(prepared.game.sized?.solution, coachInsideDigitGroups.metadata.solution)
+  assert.deepEqual(conflictsOf(coachInsideDigitGroups.metadata.solution, undefined, imported.grid, imported.sizedRules), new Set())
+  const partial = Array(81).fill('0')
+  partial[8] = '5'
+  partial[16] = '2'
+  const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates',
+    position: sizedRulePosition(imported.grid!, { rules: imported.sizedRules! }, partial.join('')) })
+  assert.deepEqual([...Array(9).keys()].filter(digit => candidates[24] & (1 << digit)), [6],
+    'after 5 and 2 are placed, the first outside clue forces 7 into its third cell')
+})
+
+test('sized Anti-Knight and Anti-King rules report equal-digit Play conflicts', () => {
+  const grid = { size: 4, noRegions: true } as const
+  const knightValues = Array(16).fill('0')
+  knightValues[0] = knightValues[9] = '1'
+  assert.deepEqual(conflictsOf(knightValues.join(''), undefined, grid, [{ type: 'anti-knight' }]), new Set([0, 9]))
+
+  const kingValues = Array(16).fill('0')
+  kingValues[0] = kingValues[5] = '1'
+  assert.deepEqual(conflictsOf(kingValues.join(''), undefined, grid, [{ type: 'anti-king' }]), new Set([0, 5]))
+})
 
 test('#393 sized Clone groups constrain corresponding cells in the sized engine', async () => {
   const position: SizedConstraintPosition = {
@@ -186,12 +219,16 @@ test('#404 Coach X-Sums and Thermometers compose on a valid sized puzzle', async
     hasAuthorInstructions: true, authoredRule: 'x-sum', title: 'Six by six X-Sum and Thermometer',
   } }), { headers: { 'content-type': 'application/json' } }))
 
-  const imported = await detectPuzzle('https://sudoku.coach/en/s/Ab12')
-  assert.deepEqual(imported.sizedRules, [
+  const preview = await prepareImportedPuzzle('https://sudoku.coach/en/s/Ab12')
+  assert.equal(preview.format, 'Sudoku Coach')
+  const { game } = preview
+  assert.equal(game.grid?.size, 6)
+  assert.deepEqual(game.sized?.rules, [
     { type: 'x-sum', direction: 'east', cells: [12, 13, 14, 15, 16, 17], sum: 5 },
     { type: 'thermometer', cells: [0, 1, 2] },
   ])
-  const position = sizedRulePosition(imported.grid!, { rules: imported.sizedRules! }, imported.givens!)
+  assert.equal(game.sized?.solution, solution)
+  const position = sizedRulePosition(game.grid!, { rules: game.sized!.rules }, game.givens)
   assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
   const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: {
     ...position, digits: Array(36).fill(0),
@@ -446,7 +483,7 @@ test('#382 solves the published boxless Skyscrapers puzzle with clues from every
 })
 
 test('#382 the complete published Skyscrapers import solves with its parsed clue set', async ({ mock }) => {
-  const source = JSON.parse(readFileSync(new URL('./fixtures/skyscrapers-unsupported-9W3o.json', import.meta.url), 'utf8')) as {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/skyscrapers-coach-9W3o.json', import.meta.url), 'utf8')) as {
     metadata: { sudoku_id: string; sudoku: string; name: string; description: string; solution: string }
   }
   const url = `https://sudoku.coach/en/s/${source.metadata.sudoku_id}`
@@ -466,11 +503,17 @@ test('#382 the complete published Skyscrapers import solves with its parsed clue
   const game = preview.game
   assert.ok(game.grid?.size === 7 && game.sized)
   assert.equal(game.sized.rules.filter(rule => rule.type === 'skyscrapers').length, 12)
+  const copiedCode = await prepareImportedPuzzle(source.metadata.sudoku)
+  assert.deepEqual(copiedCode.game.sized?.rules, game.sized.rules)
   const result = await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
     version: 2, grid: game.grid, rules: game.sized.rules,
     digits: Array.from(source.metadata.solution, Number),
   } })
   assert.equal(result, 'unique')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    version: 2, grid: copiedCode.game.grid!, rules: copiedCode.game.sized!.rules,
+    digits: Array.from(source.metadata.solution, Number),
+  } }), 'unique')
   const definition = puzzleDefinitionForSharing(game)
   assert.deepEqual(definition.sizedRules, game.sized.rules)
   const reopened = await prepareImportedPuzzle(JSON.stringify({ ...definition, format: 'sudoku-app-puzzle' }))
@@ -626,6 +669,39 @@ test('Kropki negative rules exempt any marked edge across authored rule records'
   assert.equal((masks?.[6] ?? 0) & (1 << 1), 0)
 })
 
+test('sized AdjacentTotal 5 and 10 edges are exempt from matching negative XV layers', async () => {
+  const cases: SizedConstraintPosition[] = [
+    {
+      version: 2,
+      grid: { size: 4, boxRows: 2, boxColumns: 2 },
+      digits: [1, ...Array(15).fill(0)],
+      rules: [
+        { type: 'xv', five: { pairs: [], negative: true } },
+        { type: 'adjacent-total', cells: [0, 1], sum: 5 },
+      ],
+    },
+    {
+      version: 2,
+      grid: { size: 6, boxRows: 2, boxColumns: 3 },
+      digits: [4, ...Array(35).fill(0)],
+      rules: [
+        { type: 'xv', ten: { pairs: [], negative: true } },
+        { type: 'adjacent-total', cells: [0, 1], sum: 10 },
+      ],
+    },
+  ]
+  for (const [index, position] of cases.entries()) {
+    const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position })
+    assert.ok(candidates)
+    const sum = index === 0 ? 5 : 10
+    const firstDigit = position.digits[0]
+    const matching = sum - firstDigit
+    assert.equal(candidates[1], 1 << (matching - 1), `marked total-${sum} edge stays allowed`)
+    assert.equal(candidates[position.grid.size] & (1 << (matching - 1)), 0,
+      `unmarked total-${sum} edge remains forbidden`)
+  }
+})
+
 test('Difference markers can use the largest valid gap at each supplied size', async () => {
   for (const [size, boxRows, boxColumns] of [[4, 2, 2], [8, 2, 4], [16, 4, 4]]) {
     const digits = Array<number>(size * size).fill(0)
@@ -732,10 +808,230 @@ test('labeled ratios use the digit range and report precise positive and negativ
   }
   const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position })
   assert.equal(candidates?.[1], 1 << 15)
-  assert.equal((candidates?.[16] ?? 0) & (1 << 1), 0)
+  assert.equal((candidates?.[16] ?? 0) & (1 << 15), 0, 'an unmarked 1:16 edge is forbidden')
+  assert.notEqual((candidates?.[16] ?? 0) & (1 << 1), 0, 'an unmarked 1:2 edge remains allowed')
   const hints = await runEngine({ type: 'sized-variant', operation: 'hints', position, limit: 16 })
   assert.ok(hints?.choices.some(step => step.type === 'kropki' && step.pair.cells[1] === 1 && step.pair.value === 16))
-  assert.ok(hints?.choices.some(step => step.type === 'kropki' && step.pair.cells[1] === 16 && step.pair.value === 2 && step.pair.negative))
+  assert.ok(hints?.choices.some(step => step.type === 'kropki' && step.pair.cells[1] === 16 && step.pair.value === 16 && step.pair.negative))
+})
+
+test('every sized Ratio and Difference label has exact positive and negative edge support', async () => {
+  const size = 16
+  const fullMask = (1 << size) - 1
+  const makePosition = (relation: 'ratio' | 'difference', value: number): SizedConstraintPosition => ({
+    version: 2, grid: { size, boxRows: 4, boxColumns: 4 },
+    digits: [1, ...Array(size * size - 1).fill(0)],
+    rules: [{ type: 'labeled-dots', relation, marks: [{ cells: [0, 1], value }], negative: true }],
+  })
+
+  for (let value = 2; value <= size; value++) {
+    const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: makePosition('ratio', value) })
+    assert.ok(candidates)
+    assert.equal(candidates[1], 1 << (value - 1), `marked 1:${value} edge`)
+    assert.equal(candidates[16] & (1 << (value - 1)), 0, `unmarked 1:${value} edge`)
+    assert.equal(candidates[16], fullMask & ~(1 | 1 << (value - 1)), `unmarked Ratio ${value} keeps every other peer-legal digit`)
+  }
+  for (let value = 1; value < size; value++) {
+    const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: makePosition('difference', value) })
+    assert.ok(candidates)
+    assert.equal(candidates[1], 1 << value, `marked Difference ${value} edge`)
+    assert.equal(candidates[16] & (1 << value), 0, `unmarked Difference ${value} edge`)
+    assert.equal(candidates[16], fullMask & ~(1 | 1 << value), `unmarked Difference ${value} keeps every other peer-legal digit`)
+  }
+})
+
+test('Coach Ratio layers with different labels keep their negative settings independent in Play', async () => {
+  const code = coachCode({ gridSize: 4, givenDigits: '1' + '0'.repeat(15), givenConstraints: [
+    { type: 'ratio', settings: { negativeConstraint: false }, segments: [
+      { cells: [0, 1], parameters: { ratio: 2 } },
+    ] },
+    { type: 'ratio', settings: { negativeConstraint: true }, segments: [
+      ...[[0, 4], [2, 6], [9, 13], [11, 15]].map(cells => ({ cells, parameters: { ratio: 3 } })),
+    ] },
+  ] })
+  const imported = await detectPuzzle(code)
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'kropki', ratioTwo: { pairs: [[0, 1]], negative: false } },
+    { type: 'labeled-dots', relation: 'ratio', marks: [
+      { cells: [0, 4], value: 3 }, { cells: [2, 6], value: 3 },
+      { cells: [9, 13], value: 3 }, { cells: [11, 15], value: 3 },
+    ], negative: true },
+  ])
+
+  const position = sizedRulePosition(imported.grid!, { rules: imported.sizedRules! }, imported.givens!)
+  const solution = '1234341221434321'
+  const withBlack = await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position, rules: position.rules.slice(0, 1), digits: [...solution].map(Number),
+  } })
+  const withRatio3 = await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position, rules: position.rules.slice(1), digits: [...solution].map(Number),
+  } })
+  assert.equal(withBlack, 'unique')
+  assert.equal(withRatio3, 'unique')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position, digits: [...solution].map(Number),
+  } }), 'unique', 'the complete control satisfies both ratio layers')
+  const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position })
+  assert.ok(Array.isArray(candidates))
+  assert.equal(candidates[1], 1 << 1, 'the marked 1:2 edge stays valid under the separate negative 1:3 layer')
+  assert.equal(candidates[4], 1 << 2, 'the marked 1:3 edge remains active')
+})
+
+test('Coach Difference layers with different labels keep their negative settings independent', async () => {
+  const solution = '1234341221434321'
+  const digits = [...solution].map(Number)
+  const edges = Array.from({ length: 16 }, (_, cell) => [
+    ...(cell % 4 < 3 ? [[cell, cell + 1] as const] : []),
+    ...(cell < 12 ? [[cell, cell + 4] as const] : []),
+  ]).flat()
+  const differenceOnePair = edges.find(([a, b]) => Math.abs(digits[a] - digits[b]) === 1)
+  const differenceTwoPairs = edges.filter(([a, b]) => Math.abs(digits[a] - digits[b]) === 2)
+  assert.ok(differenceOnePair && differenceTwoPairs.length > 0)
+  const imported = await detectPuzzle(coachCode({ gridSize: 4, givenDigits: solution, givenConstraints: [
+    { type: 'difference', settings: { negativeConstraint: false }, segments: [
+      { cells: differenceOnePair, parameters: { difference: 1 } },
+    ] },
+    { type: 'difference', settings: { negativeConstraint: true }, segments: differenceTwoPairs.map(cells => ({
+      cells, parameters: { difference: 2 },
+    })) },
+  ] }))
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'kropki', consecutive: { pairs: [differenceOnePair], negative: false } },
+    { type: 'labeled-dots', relation: 'difference', marks: differenceTwoPairs.map(cells => ({ cells, value: 2 })), negative: true },
+  ])
+  const position = sizedRulePosition(imported.grid!, { rules: imported.sizedRules! }, imported.givens!)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+})
+
+test('Coach negative mixed Ratio labels reject each unmarked value in the same layer', async () => {
+  const solution = '1234341221434321'
+  const digits = [...solution].map(Number)
+  const marks = Array.from({ length: 16 }, (_, cell) => [
+    ...(cell % 4 < 3 ? [[cell, cell + 1] as const] : []),
+    ...(cell < 12 ? [[cell, cell + 4] as const] : []),
+  ]).flat().flatMap(([a, b]) => {
+    const small = Math.min(digits[a], digits[b])
+    const large = Math.max(digits[a], digits[b])
+    return large % small === 0 && [2, 3].includes(large / small)
+      ? [{ cells: [a, b], value: large / small }]
+      : []
+  })
+  assert.ok(marks.some(mark => mark.value === 2) && marks.some(mark => mark.value === 3))
+  const imported = await detectPuzzle(coachCode({ gridSize: 4, givenDigits: solution, givenConstraints: [
+    { type: 'ratio', settings: { negativeConstraint: true }, segments: marks.map(mark => ({
+      cells: mark.cells, parameters: { ratio: mark.value },
+    })) },
+  ] }))
+  assert.deepEqual(imported.sizedRules, [{
+    type: 'labeled-dots', relation: 'ratio', marks, negative: true,
+  }])
+  const position = sizedRulePosition(imported.grid!, { rules: imported.sizedRules! }, imported.givens!)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+})
+
+test('Coach negative Ratio markers join same-value clues split across layers', async () => {
+  const solution = '1234341221434321'
+  const digits = [...solution].map(Number)
+  const ratioThreePairs = Array.from({ length: 16 }, (_, cell) => [
+    ...(cell % 4 < 3 ? [[cell, cell + 1] as const] : []),
+    ...(cell < 12 ? [[cell, cell + 4] as const] : []),
+  ]).flat().flatMap(([a, b]) => Math.max(digits[a], digits[b]) === 3 * Math.min(digits[a], digits[b])
+    ? [[a, b] as const] : [])
+  assert.ok(ratioThreePairs.length > 1)
+  const imported = await detectPuzzle(coachCode({ gridSize: 4, givenDigits: solution, givenConstraints: [
+    { type: 'ratio', settings: { negativeConstraint: true }, segments: ratioThreePairs.slice(0, -1).map(cells => ({
+      cells, parameters: { ratio: 3 },
+    })) },
+    { type: 'ratio', settings: { negativeConstraint: false }, segments: [{
+      cells: ratioThreePairs.at(-1)!, parameters: { ratio: 3 },
+    }] },
+  ] }))
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'labeled-dots', relation: 'ratio', marks: ratioThreePairs.slice(0, -1).map(cells => ({ cells, value: 3 })), negative: true },
+    { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: ratioThreePairs.at(-1)!, value: 3 }], negative: false },
+  ])
+  const position = sizedRulePosition(imported.grid!, { rules: imported.sizedRules! }, imported.givens!)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'unique')
+})
+
+test('an empty negative default Ratio layer remains active beside sized custom Ratio labels', async () => {
+  const solution = '1234341221434321'
+  const imported = await detectPuzzle(coachCode({ gridSize: 4, givenDigits: solution, givenConstraints: [
+    { type: 'ratio', settings: { negativeConstraint: true }, segments: [] },
+    { type: 'ratio', settings: { negativeConstraint: false }, segments: [
+      { cells: [2, 6], parameters: { ratio: 3 } },
+    ] },
+  ] }))
+  assert.deepEqual(imported.sizedRules, [
+    { type: 'kropki', ratioTwo: { pairs: [], negative: true } },
+    { type: 'labeled-dots', relation: 'ratio', marks: [{ cells: [2, 6], value: 3 }], negative: false },
+  ])
+  const position = sizedRulePosition(imported.grid!, { rules: imported.sizedRules! }, imported.givens!)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position }), 'conflict')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position,
+    rules: [{ type: 'labeled-dots', relation: 'ratio', marks: [], negative: true }],
+  } }), 'conflict', 'an empty labeled Ratio layer uses the default 1:2 relation')
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...position,
+    rules: [
+      { type: 'labeled-dots', relation: 'difference', marks: [], negative: true },
+      { type: 'labeled-dots', relation: 'difference', marks: [{ cells: [0, 4], value: 2 }] },
+    ],
+  } }), 'conflict', 'an empty labeled Difference layer uses the default difference 1')
+})
+
+test('empty sized Coach negative defaults exempt matching custom-labeled marks across layers', async () => {
+  const solution = '1234341221434321'
+  const edges = Array.from({ length: 16 }, (_, cell) => [
+    ...(cell % 4 < 3 ? [[cell, cell + 1] as const] : []),
+    ...(cell < 12 ? [[cell, cell + 4] as const] : []),
+  ]).flat()
+  const ratioTwo = edges.filter(([a, b]) => Math.max(Number(solution[a]), Number(solution[b])) === 2 * Math.min(Number(solution[a]), Number(solution[b])))
+  const ratioThree = edges.find(([a, b]) => Math.max(Number(solution[a]), Number(solution[b])) === 3 * Math.min(Number(solution[a]), Number(solution[b])))
+  const differenceOne = edges.filter(([a, b]) => Math.abs(Number(solution[a]) - Number(solution[b])) === 1)
+  const differenceTwo = edges.find(([a, b]) => Math.abs(Number(solution[a]) - Number(solution[b])) === 2)
+  assert.ok(ratioTwo.length && ratioThree && differenceOne.length && differenceTwo)
+  const givens = [...solution].map((digit, cell) => cell === 1 ? '0' : digit).join('')
+
+  const ratio = await detectPuzzle(coachCode({ gridSize: 4, givenDigits: givens, givenConstraints: [
+    { type: 'ratio', settings: { negativeConstraint: true }, segments: [] },
+    { type: 'ratio', settings: { negativeConstraint: false }, segments: [
+      ...ratioTwo.map(cells => ({ cells, parameters: { ratio: 2 } })),
+      { cells: ratioThree, parameters: { ratio: 3 } },
+    ] },
+  ] }))
+  const ratioPosition = sizedRulePosition(ratio.grid!, { rules: ratio.sizedRules! }, ratio.givens!)
+  const ratioCandidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: ratioPosition })
+  assert.ok(ratioCandidates)
+  assert.equal(ratioCandidates[1], 1 << 1, 'the labeled 1:2 edge is exempt from default negative Ratio')
+  const ratioEdgeToRemove = ratioTwo.find(([a, b]) => a !== 0 || b !== 1)!
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...ratioPosition,
+    digits: [...solution].map(Number),
+    rules: ratioPosition.rules.map(rule => rule.type === 'labeled-dots' && rule.relation === 'ratio'
+      ? { ...rule, marks: rule.marks.filter(mark => mark.cells[0] !== ratioEdgeToRemove[0] || mark.cells[1] !== ratioEdgeToRemove[1]) }
+      : rule),
+  } }), 'conflict', 'removing one 1:2 mark leaves that edge forbidden')
+
+  const difference = await detectPuzzle(coachCode({ gridSize: 4, givenDigits: givens, givenConstraints: [
+    { type: 'difference', settings: { negativeConstraint: true }, segments: [] },
+    { type: 'difference', settings: { negativeConstraint: false }, segments: [
+      ...differenceOne.map(cells => ({ cells, parameters: { difference: 1 } })),
+      { cells: differenceTwo, parameters: { difference: 2 } },
+    ] },
+  ] }))
+  const differencePosition = sizedRulePosition(difference.grid!, { rules: difference.sizedRules! }, difference.givens!)
+  const differenceCandidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: differencePosition })
+  assert.ok(differenceCandidates)
+  assert.equal(differenceCandidates[1], 1 << 1, 'the marked difference-1 edge is exempt from default negative Difference')
+  const differenceEdgeToRemove = differenceOne.find(([a, b]) => a !== 0 || b !== 1)!
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    ...differencePosition,
+    digits: [...solution].map(Number),
+    rules: differencePosition.rules.filter(rule => rule.type !== 'difference' || rule.difference !== 1 ||
+      rule.cells[0] !== differenceEdgeToRemove[0] || rule.cells[1] !== differenceEdgeToRemove[1]),
+  } }), 'conflict', 'removing one difference-1 mark leaves that edge forbidden')
 })
 
 const coachSumQuadruples = JSON.parse(readFileSync(new URL('./fixtures/sum-quadruple-coach.json', import.meta.url), 'utf8')) as {

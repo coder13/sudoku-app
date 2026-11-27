@@ -96,7 +96,7 @@ test('Little Killer accepts complete rays of one through nine cells and rejects 
     }
 })
 
-test('Coach diagonal parameters map every direction and corner and never reinterpret cosmetic zero arrows', async () => {
+test('Coach diagonal parameters map every direction and corner; generic cosmetic zero arrows stay unsupported', async () => {
   const data = (parameters: unknown, cells: unknown = [[0, -1]], settings: unknown = {}) =>
     coachCode({ givenConstraints: [{ type: 'littleKiller', segments: [{ cells, parameters }], settings }] })
   const imported = await detectPuzzle(data({ positive: false, value: 8 }))
@@ -128,15 +128,6 @@ test('Coach diagonal parameters map every direction and corner and never reinter
     detectPuzzle(data({ positive: false, value: 8 }, [[0, -1]], { distinct: true })),
     /unsupported settings/,
   )
-  for (const code of ['DLeM']) {
-    const fixture = JSON.parse(
-      readFileSync(new URL('./fixtures/little-killer-unsupported-' + code + '.json', import.meta.url), 'utf8'),
-    )
-    await assert.rejects(
-      detectPuzzle(fixture.metadata.sudoku),
-      /cosmetic Little Killer|not supported|unsupported/,
-    )
-  }
 })
 
 test('6 × 6 Coach Little Killer keeps its companion Between Lines', async () => {

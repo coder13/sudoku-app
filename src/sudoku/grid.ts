@@ -43,7 +43,7 @@ export const SEVEN_BOXLESS_GRID = { size: 7, noRegions: true } as const
 export const NINE_BOXLESS_GRID = { size: 9, noRegions: true } as const
 export const SIX_BOXLESS_GRID = { size: 6, noRegions: true } as const
 export type BoxlessGrid = typeof FIVE_BOXLESS_GRID | typeof SIX_BOXLESS_GRID | typeof SEVEN_BOXLESS_GRID | typeof NINE_BOXLESS_GRID
-export type SizedGrid = MiniGrid | RectangularGrid | JigsawGrid | BoxlessGrid
+export type SizedGrid = typeof CLASSIC_GRID | MiniGrid | RectangularGrid | JigsawGrid | BoxlessGrid
 const sevenJigsawLayouts: readonly JigsawGrid<7>[] = [
   ['0111122', '0012223', '0113223', '0003333', '4555556', '4445656', '4446666'],
   ['0001112', '0311112', '0333332', '0444432', '0444522', '6655552', '6666655'],
@@ -87,8 +87,11 @@ export function isMiniGrid(value: unknown): value is MiniGrid {
 }
 
 export function isSizedGrid(value: unknown): value is SizedGrid {
-  if (isMiniGrid(value) || isJigsawGrid(value, true)) return true
   if (value === null || typeof value !== 'object') return false
+  if (Object.keys(value).length === 3 && 'size' in value && value.size === CLASSIC_GRID.size &&
+    'boxRows' in value && value.boxRows === CLASSIC_GRID.boxRows && 'boxColumns' in value &&
+    value.boxColumns === CLASSIC_GRID.boxColumns) return true
+  if (isMiniGrid(value) || isJigsawGrid(value, true)) return true
   if ('noRegions' in value) return Object.keys(value).length === 2 && 'size' in value && (value.size === 5 || value.size === 6 || value.size === 7 || value.size === 9) && value.noRegions === true
   const grid = value as Partial<RectangularGrid> & { notation?: unknown }
   const layout = isRectangularSize(grid.size) && rectangularLayouts(grid.size).some(item =>
@@ -287,7 +290,15 @@ export function kropkiDigitExclusions(rules: readonly (SizedConstraintRule | Var
 export function sizedDigitExclusions(rules: readonly SizedConstraintRule[] | undefined, cell: number, other: number, digit: number, size: number, valueOffset = 0) {
   if (!rules) return 0
   let excluded = kropkiDigitExclusions(rules, cell, other, digit, size, valueOffset)
+  const rowDistance = Math.abs(Math.floor(cell / size) - Math.floor(other / size))
+  const columnDistance = Math.abs(cell % size - other % size)
   for (const rule of rules) {
+    if (
+      (rule.type === 'anti-knight' && rowDistance * columnDistance === 2) ||
+      (rule.type === 'anti-king' && rowDistance === 1 && columnDistance === 1)
+    ) {
+      excluded |= 1 << (digit - 1)
+    }
     if (rule.type === 'adjacent-total' &&
       (rule.cells[0] === cell && rule.cells[1] === other || rule.cells[1] === cell && rule.cells[0] === other)) {
       const partner = rule.sum + 2 * valueOffset - digit
@@ -333,21 +344,22 @@ export function sizedDigitExclusions(rules: readonly SizedConstraintRule[] | und
   return excluded
 }
 
-export function sizedArrowState(rules: readonly (SizedConstraintRule | VariantRule)[] | undefined, values: string, size: number) {
+export function sizedArrowState(rules: readonly (SizedConstraintRule | VariantRule)[] | undefined, values: string, size: number, valueOffset = 0) {
   const arrows = rules?.filter(rule => rule.type === 'arrow' || rule.type === 'double-arrow')
   if (!arrows?.length) return
   const allowed = Array<number>(values.length).fill((1 << size) - 1)
   const conflicts = new Set<number>()
   const interval = (low: number, high: number) => {
-    const first = Math.max(1, low), last = Math.min(size, high)
+    const first = Math.max(1, low + valueOffset), last = Math.min(size, high + valueOffset)
     return first <= last ? (1 << last) - (1 << (first - 1)) : 0
   }
+  const minValue = 1 - valueOffset, maxValue = size - valueOffset
   const bounds = (cells: readonly number[]) => {
     let low = 0, high = 0
     for (const cell of cells) {
       const digit = Number(values[cell])
-      low += digit || 1
-      high += digit || size
+      low += digit ? digit - valueOffset : minValue
+      high += digit ? digit - valueOffset : maxValue
     }
     return [low, high] as const
   }
@@ -363,8 +375,8 @@ export function sizedArrowState(rules: readonly (SizedConstraintRule | VariantRu
       for (const cell of [...ends, ...rule.cells]) if (values[cell] !== '0') conflicts.add(cell)
       continue
     }
-    restrict(ends, lineLow - (endHigh - size), lineHigh - (endLow - 1))
-    restrict(rule.cells, endLow - (lineHigh - size), endHigh - (lineLow - 1))
+    restrict(ends, lineLow - (endHigh - maxValue), lineHigh - (endLow - minValue))
+    restrict(rule.cells, endLow - (lineHigh - maxValue), endHigh - (lineLow - minValue))
   }
   return { allowed, conflicts }
 }

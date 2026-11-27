@@ -225,6 +225,7 @@ function toolForRule(rule: VariantRule): VariantToolId | null {
   if (rule.type === 'inside-grid') return 'inside-grid'
   if (rule.type === 'minimum' || rule.type === 'maximum') return 'minimum-maximum'
   if (rule.type === 'labeled-dots') return 'numbered-dots'
+  if (rule.type === 'terrain-sandwich') return 'sandwich'
   return variantToolIds.has(rule.type) ? rule.type as VariantToolId : null
 }
 
@@ -579,6 +580,13 @@ function isPlayableRule(rule: VariantRule): boolean {
       Number.isInteger(rule.sum) && validOutsideRay(rule.cells, rule.direction, true) && rule.sum >= rule.cells.length && rule.sum <= rule.cells.length * 9
     case 'sandwich': return Object.keys(rule).every(key => ['type', 'cells', 'direction', 'sum'].includes(key)) &&
       Number.isInteger(rule.sum) && rule.sum >= 0 && rule.sum <= 35 && validOutsideRay(rule.cells, rule.direction)
+    case 'terrain-sandwich': return Object.keys(rule).every(key => ['type', 'cells', 'direction', 'maximum', 'transforms'].includes(key)) &&
+      Number.isInteger(rule.maximum) && rule.maximum >= -14 && rule.maximum <= 126 &&
+      validOutsideRay(rule.cells, rule.direction) && Array.isArray(rule.transforms) && rule.transforms.length === 9 &&
+      rule.transforms.every(transform => transform && typeof transform === 'object' &&
+        Object.keys(transform).every(key => key === 'multiplier' || key === 'offset') &&
+        Number.isInteger(transform.multiplier) && Number.isInteger(transform.offset) &&
+        (transform.multiplier === 1 && [-3, 0, 3].includes(transform.offset) || transform.multiplier === 2 && transform.offset === 0))
     case 'x-sum': return Object.keys(rule).every(key => ['type', 'cells', 'direction', 'sum'].includes(key)) &&
       Number.isInteger(rule.sum) && rule.sum >= 1 && rule.sum <= 45 && validOutsideRay(rule.cells, rule.direction)
     case 'skyscrapers': return Object.keys(rule).every(key => ['type', 'cells', 'direction', 'count'].includes(key)) &&
@@ -776,6 +784,7 @@ const RULE_NAMES: Record<VariantRule['type'], string> = {
   modular: PUZZLE_VARIANTS.modular.name,
   'little-killer': VARIANTS['little-killer'].name,
   sandwich: VARIANTS.sandwich.name,
+  'terrain-sandwich': 'Terrain Sandwich',
   'x-sum': VARIANTS['x-sum'].name,
   skyscrapers: VARIANTS.skyscrapers.name,
   'global-entropy': PUZZLE_VARIANTS['global-entropy'].name,
@@ -861,6 +870,9 @@ function describedVariantRules(puzzle: VariantPuzzle) {
         break
       case 'sandwich':
         descriptions.push(VARIANTS.sandwich.rule, outsideClueLabel(rule))
+        break
+      case 'terrain-sandwich':
+        descriptions.push('Each cell has a transformed value: yellow doubles its digit, green adds 3, purple subtracts 3, and uncolored cells keep their digit. For each outside clue, use transformed 1 and 9 endpoints and add the transformed values between them. If several endpoint pairs qualify, use the largest sum.', outsideClueLabel(rule))
         break
       case 'x-sum':
         descriptions.push(VARIANTS['x-sum'].rule, outsideClueLabel(rule))

@@ -2,14 +2,14 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import lzString from 'lz-string'
-import { runEngine } from '../src/sudoku/engine.ts'
+import { runEngine, type SizedConstraintPosition } from '../src/sudoku/engine.ts'
 import { applyDeduction, conflictsOf, enter, undo } from '../src/sudoku/game.ts'
 import { gridCellsShareEdge, MINI_GRID, sixGridForBoxRows } from '../src/sudoku/grid.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { publishSharedPuzzle, puzzleDefinitionForSharing } from '../src/sudoku/puzzle-sharing.ts'
-import { restoreSizedRuleGame, sizedRuleDescriptions, sizedRulePosition } from '../src/sudoku/sized-rule-game.ts'
+import { isSizedRuleList, restoreSizedRuleGame, sizedRuleDescriptions, sizedRulePosition } from '../src/sudoku/sized-rule-game.ts'
 import { readGame } from '../src/sudoku/storage.ts'
 import { playCandidates } from '../src/sudoku/variant-play.ts'
 import { syncDatabase } from './helpers/sync-database.ts'
@@ -114,6 +114,26 @@ test('Anti-Sum uses the configured sum and grid size across boxed layouts', asyn
     digits[size] = size - 1
     assert.equal(await runEngine({ ...request, operation: 'analyze' }), 'conflict')
   }
+})
+
+test('zero-based Anti-Sum uses displayed values in candidate propagation and validation', async () => {
+  const position: SizedConstraintPosition = {
+    version: 2,
+    grid: { size: 4, boxRows: 2, boxColumns: 2 },
+    zeroBased: true,
+    digits: [1, ...Array(15).fill(0)],
+    rules: [{ type: 'anti-sum', sum: 3 }],
+  }
+  const grid = { size: 4, boxRows: 2, boxColumns: 2, notation: 'zero-based' as const }
+  assert.equal(isSizedRuleList(position.rules, grid), true)
+  const masks = await runEngine({ type: 'sized-variant', operation: 'candidates', position })
+  assert.ok(masks)
+  assert.equal(masks[1] & (1 << 3), 0, 'displayed 0 + 3 must be forbidden')
+  assert.equal(masks[1] & (1 << 2), 1 << 2, 'displayed 0 + 2 remains allowed')
+
+  const completed = { ...position, digits: [1, 4, ...Array(14).fill(0)] }
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: completed }), 'conflict')
+  assert.equal(isSizedRuleList([{ type: 'anti-sum', sum: 9 }], grid), false)
 })
 
 test('the Anti-Sum adapter rejects active XV marks and unrecognized cages', async () => {

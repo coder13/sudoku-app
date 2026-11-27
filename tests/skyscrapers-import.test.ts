@@ -11,6 +11,8 @@ import { isPlayablePuzzle, variantIdForPuzzle, variantRuleDescriptions } from '.
 import { countLineSolutions } from './helpers/line-oracle.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { transformedBoard } from './helpers/transformed-board.ts'
+import { coachCode } from './helpers/coach-code.ts'
+import { coachSkyscrapersRules } from '../src/sudoku/coach-skyscrapers.ts'
 
 const empty = '0'.repeat(81),
   row = Array.from({ length: 9 }, (_, i) => i)
@@ -68,15 +70,22 @@ test('Skyscrapers accepts exact full rays and counts 1–9 while rejecting chang
     )
 })
 
-test('the original seven-by-seven Coach visibility source remains an intact unsupported control', async () => {
+test('the original seven-by-seven Coach visibility source imports from its copied puzzle code', async () => {
   const source = JSON.parse(
-    readFileSync(new URL('./fixtures/skyscrapers-unsupported-9W3o.json', import.meta.url), 'utf8'),
+    readFileSync(new URL('./fixtures/skyscrapers-coach-9W3o.json', import.meta.url), 'utf8'),
   )
   assert.equal(source.decoded.gridSize, 7)
   assert.equal(source.metadata.solution.length, 49)
   assert.match(source.metadata.description, /Clues outside the grid indicate the number/)
   assert.ok(source.decoded.givenConstraints.some((rule: { type: string }) => rule.type === 'cosmeticText'))
-  await assert.rejects(detectPuzzle(source.metadata.sudoku), /grid|supported|9/)
+  const imported = await detectPuzzle(source.metadata.sudoku)
+  assert.deepEqual(imported.grid, { size: 7, noRegions: true })
+  assert.deepEqual(imported.sizedRules, coachSkyscrapersRules(source.decoded.givenConstraints, 7, source.metadata.description))
+  assert.equal(imported.sizedRules?.filter(rule => rule.type === 'skyscrapers').length, 12)
+
+  const altered = structuredClone(source.decoded)
+  altered.givenConstraints[0].segments[0].parameters.text = '1'
+  await assert.rejects(detectPuzzle(coachCode(altered)), /unsupported active rule/)
 })
 
 test('bounded visibility support matches direct nine-digit permutations for every count and varied partial rows', () => {

@@ -31,6 +31,15 @@ test('the published Mini Jigsaw wraparound export imports both companion rules i
     assert.equal(game.title, 'Imported 4 × 4 Jigsaw')
     assert.equal([...game.sized.solution].join(''), wrappedMiniJigsaw.solution)
     assert.deepEqual(game.sized.rules.map(rule => rule.type), ['whispers', 'region-sum'])
+    const sizedPosition = { version: 2 as const, grid: game.grid, rules: game.sized.rules, digits: [...game.givens].map(Number) }
+    const complete = await runEngine({ type: 'sized-variant', operation: 'solve-unique', position: sizedPosition })
+    assert.equal(complete.status, 'unique', 'the published wraparound Jigsaw and both line families must compose')
+    assert.equal(complete.status === 'unique' ? complete.solution.digits.join('') : '', wrappedMiniJigsaw.solution)
+    for (const family of ['whispers', 'region-sum']) {
+      const rules = game.sized.rules.filter(rule => rule.type !== family)
+      assert.equal((await runEngine({ type: 'sized-variant', operation: 'solve-unique', position: { ...sizedPosition, rules } })).status,
+        'multiple', `removing the ${family} family must leave multiple completions`)
+    }
     const replay = await puzzleSolution(game)
     assert.equal(replay.status, 'solved')
     assert.equal(replay.board, wrappedMiniJigsaw.solution)

@@ -7,7 +7,7 @@ import { skyscrapersCount, validSizedSkyscrapersRule } from '../src/sudoku/sized
 import { isSizedRuleList } from '../src/sudoku/sized-rule-game.ts'
 import { SEVEN_BOXLESS_GRID } from '../src/sudoku/grid.ts'
 
-const source = JSON.parse(readFileSync(new URL('./fixtures/skyscrapers-unsupported-9W3o.json', import.meta.url), 'utf8')) as {
+const source = JSON.parse(readFileSync(new URL('./fixtures/skyscrapers-coach-9W3o.json', import.meta.url), 'utf8')) as {
   metadata: { sudoku: string; description: string; solution: string }
   decoded: { givenConstraints: unknown[]; gridSize: number }
 }

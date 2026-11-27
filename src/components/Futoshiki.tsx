@@ -9,7 +9,8 @@ const futoshiki: NumberGameConfig<FutoshikiEntry> = {
   rules: 'Use every number from 1 to the grid size once in each row and column. Each arrow points to the smaller number.',
   techniques: ['Row and column', 'Inequality', 'Odd/Even'],
   entries: futoshikiCatalog,
-  board: ({ puzzle }) => {
+  board: entry => {
+    const { puzzle } = entry
     const { size, givens, inequalities, parity } = puzzle
     const parityAt = new Map(parity.map(clue => [clue.cell, clue.parity]))
     return {
@@ -34,6 +35,7 @@ const futoshiki: NumberGameConfig<FutoshikiEntry> = {
         </svg>] : [])]
         return {
           given,
+          authoredColors: entry.givenCellColors?.[cell],
           label: [...adjacent.map(({ less, greater }) => `${cellLabel(less, size)} is less than ${cellLabel(greater, size)}`),
             ...(mark ? [`${mark === 'odd' ? 'Odd circle' : 'Even square'} requires an ${mark} digit`] : [])].join(', '),
           decoration: decorations.length ? decorations : undefined,

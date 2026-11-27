@@ -47,6 +47,12 @@ test('the published 6×6 Coach Nonogram completion satisfies its parsed clues in
     version: 2, grid: { size: 6, noRegions: true }, rules: sourceRules,
     digits: Array.from(source.solution, Number),
   } }), 'unique')
+  const copiedCode = await detectPuzzle(source.sudoku)
+  assert.deepEqual(copiedCode.sizedRules?.filter(rule => rule.type === 'nonogram'), sourceRules)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    version: 2, grid: copiedCode.grid!, rules: copiedCode.sizedRules!,
+    digits: Array.from(source.solution, Number),
+  } }), 'unique')
 })
 
 test('#381 the complete published Nonogram import satisfies all companion rules in Wasm', async ({ mock }) => {
@@ -66,6 +72,7 @@ test('#381 the complete published Nonogram import satisfies all companion rules 
   assert.ok(imported.grid && imported.sizedRules)
   assert.equal(imported.sizedRules.filter(rule => rule.type === 'nonogram').length, 12)
   assert.equal(imported.sizedRules.filter(rule => rule.type === 'renban').length, 7)
+  assert.deepEqual((await detectPuzzle(source.sudoku)).sizedRules, imported.sizedRules)
   const result = await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
     version: 2, grid: imported.grid, rules: imported.sizedRules,
     digits: Array.from(source.solution, Number),

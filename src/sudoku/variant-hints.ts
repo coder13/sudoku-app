@@ -259,6 +259,23 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
     case 'sandwich':
       return { description: `The Sandwich clue of ${rule.sum} covers ${at(a)} to ${at(cells[cells.length - 1])}. Only the digits strictly between 1 and 9 count; exclude both endpoints.${rule.sum === 0 ? ' A zero total means 1 and 9 are next to each other.' : ''}`,
         reason: 'No pair of endpoint positions allows that sum with a crossed-out candidate in its cell.' }
+    case 'terrain-sandwich':
+      const transformedCells = new Map<string, number[]>()
+      rule.transforms.forEach((transform, index) => {
+        const operation = transform.multiplier === 2 ? 'double' : transform.offset > 0 ? 'add 3' : transform.offset < 0 ? 'subtract 3' : 'unchanged'
+        const group = transformedCells.get(operation) ?? []
+        group.push(cells[index])
+        transformedCells.set(operation, group)
+      })
+      const operations = [
+        ...(transformedCells.has('double') ? [`double the digits in ${conjunction.format(transformedCells.get('double')!.map(at))}`] : []),
+        ...(transformedCells.has('add 3') ? [`add 3 to the digits in ${conjunction.format(transformedCells.get('add 3')!.map(at))}`] : []),
+        ...(transformedCells.has('subtract 3') ? [`subtract 3 from the digits in ${conjunction.format(transformedCells.get('subtract 3')!.map(at))}`] : []),
+      ]
+      return { description: `The Terrain Sandwich maximum is ${rule.maximum} from ${at(a)} to ${at(cells[cells.length - 1])}. ${operations.length
+        ? `Apply the value changes: ${operations.join('; ')}. Other cells keep their digit values.`
+        : 'Every cell keeps its digit value.'} Add transformed values strictly between transformed 1 and transformed 9; if several pairs qualify, use the greatest total.`,
+        reason: 'No qualifying pair of transformed endpoints reaches this maximum with a crossed-out candidate in its cell.' }
     case 'x-sum':
       return { description: `The digit in ${at(a)} tells how many cells to add, including itself. The sum must be ${rule.sum}.`,
         reason: 'No possible starting length and set of digits gives that sum with a crossed-out candidate in its cell.' }

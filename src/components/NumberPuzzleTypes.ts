@@ -6,6 +6,7 @@ export type NumberGame = GeneratedNumberGame | 'futoshiki' | 'hidato' | 'rullo'
 
 export type NumberBoardCell = {
   label?: string
+  authoredColors?: readonly string[]
   given?: number
   printed?: number
   decoration?: ReactNode
