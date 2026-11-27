@@ -127,6 +127,12 @@ test('published Jigsaw Coach combination needs both Killer and Little Killer rul
     puzzle: imported.variant.puzzle,
     entries: imported.givens,
   } }), 'unique', 'the original Jigsaw, Killer cages and Little Killer combination is unique')
+  for (let symmetry = 0; symmetry < 8; symmetry++) {
+    assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: {
+      puzzle: reflectVariant(imported.variant.puzzle, symmetry),
+      entries: transformedBoard(imported.givens, symmetry),
+    } }), 'unique', `the mixed Jigsaw combination stays unique under symmetry ${symmetry}`)
+  }
 
   for (const ruleType of ['killer-cages', 'little-killer'] as const) {
     const withoutRule = {
