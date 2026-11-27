@@ -23,11 +23,13 @@ mod tests;
 /// Version of the rating behavior for structured puzzles.
 pub const VARIANT_SCORING_VERSION: u32 = 24;
 const GROUP_ORDER_ELIMINATION_SCORING_VERSION: u32 = 25;
+const CONDITIONAL_NEIGHBOR_SCORING_VERSION: u32 = 26;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
 
 mod cages;
+mod conditional_neighbors;
 mod quadruples;
 mod rule_proofs;
 pub(super) use rule_proofs::RuleProofIndex;
@@ -121,6 +123,8 @@ catalog! {
     Parity: "parity", 6, Easy;
     /// Apply an authored set of allowed digits to marked cells.
     DigitRestriction: "digit-restriction", 6, Easy;
+    /// Apply a trigger digit's required alternatives among neighboring cells.
+    ConditionalNeighbor: "conditional-neighbor", 10, Easy;
     /// Apply the restriction between cells a king's move apart.
     AntiKing: "anti-king", 8, Easy;
     /// Apply the restriction between cells a knight's move apart.
@@ -1387,7 +1391,13 @@ impl VariantPosition {
             };
             let technique = step.technique;
             if technique == VariantTechnique::GroupOrderElimination {
-                rating.scoring_version = GROUP_ORDER_ELIMINATION_SCORING_VERSION;
+                rating.scoring_version = rating
+                    .scoring_version
+                    .max(GROUP_ORDER_ELIMINATION_SCORING_VERSION);
+            } else if technique == VariantTechnique::ConditionalNeighbor {
+                rating.scoring_version = rating
+                    .scoring_version
+                    .max(CONDITIONAL_NEIGHBOR_SCORING_VERSION);
             }
             *rating.counts.entry(technique).or_default() += 1;
             rating.points += u32::from(scoring::deduction_cost(&step, &self.puzzle));
@@ -2054,6 +2064,9 @@ impl CompiledVariant {
                         std::iter::once(position.domain(clue.cell) & clue.allowed),
                     )
                 }));
+            }
+            ConditionalNeighbor => {
+                self.conditional_neighbor_proofs(position, technique, &mut proofs);
             }
             DigitRestriction => {
                 proofs.extend(self.digit_restriction_clues.iter().filter_map(|clue| {

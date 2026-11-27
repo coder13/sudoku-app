@@ -52,6 +52,11 @@ export const ANALYSIS_GROUPS = [
   ] },
 ] as const
 
+const VARIANT_ANALYSIS_GROUP = {
+  title: 'Variant techniques',
+  techniques: ['locked-candidates', 'anti-knight', 'anti-king', 'conditional-neighbor'],
+} as const
+
 export const ANALYSIS_TECHNIQUES = ANALYSIS_GROUPS.flatMap(({ techniques }) => [...techniques])
 
 export type AnalysisGroup = { title: string; techniques: string[] }
@@ -200,7 +205,7 @@ export function analysisGroupsForCatalog(catalog: readonly { id: string }[]): An
   const available = new Set(catalog.map(({ id }) => id))
   const used = new Set<string>()
   const groups: AnalysisGroup[] = []
-  for (const group of ANALYSIS_GROUPS) {
+  for (const group of [...ANALYSIS_GROUPS, VARIANT_ANALYSIS_GROUP]) {
     const techniques = group.techniques.filter((id) => available.has(id) && !used.has(id))
     for (const id of techniques) used.add(id)
     if (techniques.length) groups.push({ title: group.title, techniques })

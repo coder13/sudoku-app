@@ -178,7 +178,9 @@ pub(super) fn deduction_cost(deduction: &VariantDeduction, puzzle: &VariantPuzzl
     let choices = binary_choices(domains);
     match deduction.technique {
         Parity | DigitRestriction | AntiKing | AntiKnight | NonConsecutive | Inequality => 4 + span,
-        Clone | Palindrome | ConsecutiveRun | DistinctCells => 8 + span + choices,
+        Clone | Palindrome | ConsecutiveRun | DistinctCells | ConditionalNeighbor => {
+            8 + span + choices
+        }
         InsideGrid => 20 + 4 * (cells.len() as u16).isqrt(),
         Kropki | Xv | AdjacentTotal | Thermometer | Between | Lockout | Whispers | Entropic
         | Modular | DigitOrder | GlobalEntropy | Quadruple => 14 + span + choices,

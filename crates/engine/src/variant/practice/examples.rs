@@ -1,7 +1,8 @@
 use super::{ExampleSeed, seed};
 use crate::{
-    ClueDirection, Diagonal, KillerCage, LetteredQuadruple, MarkedPairs, Parity as CellParity,
-    PuzzleRule, VariantPosition, VariantPuzzle, VariantTechnique, parse_givens,
+    ClueDirection, ConditionalNeighborAlternative, Diagonal, KillerCage, LetteredQuadruple,
+    MarkedPairs, Parity as CellParity, PuzzleRule, VariantPosition, VariantPuzzle,
+    VariantTechnique, parse_givens,
 };
 
 // Published SudokuWiki Pattern Overlay Jigsaw example, shape 14. The packed
@@ -1190,6 +1191,68 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                         parity: CellParity::Even,
                     },
                 ],
+            ),
+        ],
+        ConditionalNeighbor => [
+            seed(
+                "234715689158639247697248351376124895489356172512007463943561728861972534725403916",
+                49,
+                8,
+                [PuzzleRule::ConditionalNeighbor {
+                    trigger_digit: 5,
+                    alternatives: vec![
+                        ConditionalNeighborAlternative {
+                            row_offset: -1,
+                            column_offset: 0,
+                            digit: 1,
+                        },
+                        ConditionalNeighborAlternative {
+                            row_offset: 1,
+                            column_offset: 0,
+                            digit: 9,
+                        },
+                    ],
+                }],
+            ),
+            seed(
+                "234715689158639247697248351376124895489356172512897463043561720061972534725483916",
+                54,
+                8,
+                [PuzzleRule::ConditionalNeighbor {
+                    trigger_digit: 5,
+                    alternatives: vec![
+                        ConditionalNeighborAlternative {
+                            row_offset: -1,
+                            column_offset: 0,
+                            digit: 1,
+                        },
+                        ConditionalNeighborAlternative {
+                            row_offset: 1,
+                            column_offset: 0,
+                            digit: 9,
+                        },
+                    ],
+                }],
+            ),
+            seed(
+                "234715689158639247697248351376124895489356172512097463943561728061072534725403916",
+                66,
+                8,
+                [PuzzleRule::ConditionalNeighbor {
+                    trigger_digit: 5,
+                    alternatives: vec![
+                        ConditionalNeighborAlternative {
+                            row_offset: -1,
+                            column_offset: 0,
+                            digit: 1,
+                        },
+                        ConditionalNeighborAlternative {
+                            row_offset: 1,
+                            column_offset: 0,
+                            digit: 9,
+                        },
+                    ],
+                }],
             ),
         ],
         AntiKing => [

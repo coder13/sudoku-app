@@ -61,6 +61,7 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'sized-diagonal': 'Diagonal',
   'sized-parity': 'Odd and even',
   'digit-restriction': 'Digit Restrictions',
+  'conditional-neighbor': 'Conditional Neighbors',
   'sized-thermometer': 'Thermometer',
   'sized-slow-thermometer': 'Slow Thermometer',
   'sized-whispers': 'Whispers',

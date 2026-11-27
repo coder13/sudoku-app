@@ -7112,6 +7112,56 @@
       ]
     },
     {
+      "title": "Conditional rules",
+      "overview": "A trigger digit can require one of several matching digits in neighboring cells.",
+      "variant": true,
+      "lessons": [
+        {
+          "id": "conditional-neighbor",
+          "title": "Conditional Neighbors",
+          "summary": "A conditional neighbor rule links a trigger digit to required digits in nearby cells. It shows which neighbor must contain its digit when every other listed option is impossible.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Follow the required neighbors from a trigger digit"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "When a cell contains the trigger digit, the rule requires at least one listed neighboring cell to contain its matching digit. In Dutch Flatmates, every 5 needs a 1 directly above or a 9 directly below. Both can appear, but only one is required.",
+                "Use this rule when a trigger digit is placed or is the only candidate in its cell. If every required neighbor digit except one is impossible, place the remaining digit in its cell. If none of the required neighbor digits can go in its cell, remove the trigger digit from its cell."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "conditional-neighbor",
+              "copy": {
+                "description": "If R5C5 is 5 and R4C5 is 2, R6C5 must be 9.",
+                "reason": "Place 9 in R6C5; the 1 above the 5 is impossible."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "conditional-neighbor",
+                  "title": "Conditional Neighbors"
+                }
+              ],
+              "guide": {
+                "start": "Look for a placed trigger digit and inspect each required neighboring cell.",
+                "check": "If all but one listed neighbor digit is impossible, focus on the remaining option. If all are impossible, the trigger digit cannot go in its cell.",
+                "reason": "If R5C5 is 5 and R4C5 is 2, place 9 in R6C5. If neither R4C5 can be 1 nor R6C5 can be 9, remove 5 from R5C5."
+              }
+            }
+          ],
+          "references": [],
+          "difficulty": "easy"
+        }
+      ]
+    },
+    {
       "title": "Thermometer",
       "overview": "The digits increase from the bulb toward the tip.",
       "variant": true,
