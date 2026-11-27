@@ -10,7 +10,6 @@ import { SketchActionsMenu } from './SketchActionsMenu'
 import { ToolItemCard } from './ToolItemCard'
 import { branchColor, type usePlayBranches } from './play/usePlayBranches'
 
-const digits = Array.from({ length: 9 }, (_, index) => index + 1)
 const condition = ({ cell, digit, truth }: BranchMove) => `If ${cellName(cell)} is ${truth ? '' : 'not '}${digit}`
 const action = ({ cell, digit, truth }: BranchMove) => truth ? `Place ${digit} in ${cellName(cell)}` : `Remove ${digit} from ${cellName(cell)}`
 
@@ -45,8 +44,8 @@ function traceCase(branch: SavedBranch, analysis: BranchAnalysis, roots: readonl
 }
 
 /** Start a trial using Play's Digits panel, or review saved branches and compare their outcomes. */
-export function BranchesPanel({ model, disabled, retryCandidates }: {
-  model: ReturnType<typeof usePlayBranches>; disabled: boolean; retryCandidates?: () => void;
+export function BranchesPanel({ model, disabled, applyKey, onApply, retryCandidates }: {
+  model: ReturnType<typeof usePlayBranches>; disabled: boolean; applyKey: string; onApply: () => void; retryCandidates?: () => void;
 }) {
   const { view, editing, selected, entries, differences, checked, shown } = model
   const compare = view.kind === 'compare' && view.all
@@ -60,6 +59,8 @@ export function BranchesPanel({ model, disabled, retryCandidates }: {
       <Button variant="primary" aria-pressed={editing && !selected} disabled={disabled || !model.canCreate} onClick={model.begin}>New branch</Button>
       <Button variant="quiet" aria-pressed={compare} disabled={disabled || !compare && !model.sameOrigin.some(({ branch }) => !branch.hidden)}
         onClick={model.compare}>Compare branches</Button>
+      <Button variant="primary" className="apply-branch-edits" disabled={disabled || !model.applyEdits}
+        title={`Apply proved branch deductions (${applyKey})`} aria-keyshortcuts={applyKey} onClick={onApply}>Apply edits</Button>
       <div className="branch-panel-display-actions">
         <SketchActionsMenu label="Branch display options" actions={[
           { label: 'Show eliminations', icon: Eye, disabled, toggle: true, checked: shown, run: model.toggleEliminations },
@@ -69,15 +70,9 @@ export function BranchesPanel({ model, disabled, retryCandidates }: {
     {!editing && model.unavailable && <div><p role="status">{model.unavailable}</p>
       {retryCandidates && <Button variant="quiet" onClick={retryCandidates}>Retry candidates</Button>}
     </div>}
-    {(traceBranch || view.kind === 'compare') && <div className="tool-toolbar branch-toolbar">
-      {traceBranch && <Button variant="quiet" aria-pressed={Boolean(traceBranch.trace)}
-        onClick={() => model.toggleTrace(traceBranch)}>Trace consequences</Button>}
-      {view.kind === 'compare' && <label className="branch-digit-filter">Compare digit
-        <select value={model.digit ?? ''} onChange={event => model.setDigit(Number(event.target.value) || undefined)}>
-          <option value="">All digits</option>
-          {digits.map(digit => <option key={digit} value={digit}>{digit}</option>)}
-        </select>
-      </label>}
+    {traceBranch && <div className="tool-toolbar branch-toolbar">
+      <Button variant="quiet" aria-pressed={Boolean(traceBranch.trace)}
+        onClick={() => model.toggleTrace(traceBranch)}>Trace consequences</Button>
     </div>}
     {entries.length > 0 && <ul className="tool-item-list" aria-label="Saved branches">
       {entries.map(({ branch, analysis }) => {

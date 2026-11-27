@@ -3,7 +3,7 @@ import { recordAction, type ActionKind } from '../../sudoku/action-history'
 import type { CandidateRecovery } from '../../sudoku/candidate-recovery'
 import { applyChainDeduction } from '../../sudoku/chain-sketch'
 import type { Deduction, DeductionAction } from '../../sudoku/engine'
-import { applyDeduction, completeCandidateMasks, hintEliminations, valuesOf, type Game } from '../../sudoku/game'
+import { applyDeduction, applyDeductionBatch, completeCandidateMasks, hintEliminations, valuesOf, type Game } from '../../sudoku/game'
 import { hintKey } from '../../sudoku/player-rating'
 import { matchesHintPosition, type HintPosition } from '../../sudoku/puzzle-help'
 import { observeTechniqueActions } from '../../sudoku/technique-history'
@@ -23,6 +23,7 @@ type Options = {
     currentPosition: HintPosition
     savedChainSketch: Game['chainSketch']
     savedSubsets: Game['subsetWorkspace']
+    savedBranches: Game['branchWorkspace']
     completed: boolean
   }
   state: {
@@ -36,6 +37,7 @@ type Options = {
     chainIds: readonly number[]
     subsetActions?: readonly DeductionAction[]
     subsetMasks: readonly number[] | null
+    branchEdits?: { actions: readonly DeductionAction[]; candidates: readonly number[] }
   }
   modes: Pick<AdvancedModes, 'autoRemoveCandidates' | 'autoRemoveCandidateVariants'>
   actions: {
@@ -48,27 +50,29 @@ type Options = {
   }
 }
 
-/** Apply hint, recovery, and chain deductions against the position they were derived from. */
+/** Apply puzzle deductions against the position they were derived from. */
 export function usePlayHintMutations({ puzzle, state, modes, actions }: Options) {
-  const { currentPosition, savedChainSketch, savedSubsets, completed } = puzzle
-  const { recovery, visibleHint, deduction, hintCandidates, canApplyChainEdits, chainMasks, chainActions, chainIds, subsetActions, subsetMasks } = state
+  const { currentPosition, savedChainSketch, savedSubsets, savedBranches, completed } = puzzle
+  const { recovery, visibleHint, deduction, hintCandidates, canApplyChainEdits, chainMasks, chainActions, chainIds, subsetActions, subsetMasks, branchEdits } = state
   const { edit, setHint, setHintRevealed, setFailedChainActions, suspendChain, focusPuzzleActions } = actions
 
   function applyToCurrentPosition(
     deductionActions: readonly DeductionAction[],
     candidates: readonly number[],
-    { hintSnapshot, technique, chainIds, usesSubsets }: {
-      hintSnapshot?: HintPosition; technique?: string; chainIds?: readonly number[]; usesSubsets?: boolean
+    { hintSnapshot, technique, chainIds, usesSubsets, usesBranches }: {
+      hintSnapshot?: HintPosition; technique?: string; chainIds?: readonly number[]; usesSubsets?: boolean; usesBranches?: boolean
     } = {},
   ) {
     let applied = false
     edit(current => {
       if (!matchesHintPosition(current, hintSnapshot ?? currentPosition) ||
         (chainIds && current.chainSketch !== savedChainSketch) ||
-        ((chainIds || usesSubsets) && current.subsetWorkspace !== savedSubsets)) return current
+        ((chainIds || usesSubsets) && current.subsetWorkspace !== savedSubsets) ||
+        (usesBranches && current.branchWorkspace !== savedBranches)) return current
+      const apply = usesBranches ? applyDeductionBatch : applyDeduction
       const next = chainIds
         ? applyChainDeduction(current, chainIds, deductionActions, candidates, modes.autoRemoveCandidates, modes.autoRemoveCandidateVariants)
-        : applyDeduction(current, deductionActions, candidates, modes.autoRemoveCandidates, modes.autoRemoveCandidateVariants)
+        : apply(current, deductionActions, candidates, modes.autoRemoveCandidates, modes.autoRemoveCandidateVariants)
       applied = next !== current
       if (applied && !hintSnapshot && !completed)
         void observeTechniqueActions(current, deductionActions, 'independent', hintEliminations(
@@ -111,5 +115,9 @@ export function usePlayHintMutations({ puzzle, state, modes, actions }: Options)
     if (subsetActions?.length && subsetMasks) applyToCurrentPosition(subsetActions, subsetMasks, { usesSubsets: true })
   }
 
-  return { applyCandidateRecovery, applyHint, applyChainEdits, applySubsetEdits }
+  function applyBranchEdits() {
+    if (branchEdits) applyToCurrentPosition(branchEdits.actions, branchEdits.candidates, { usesBranches: true })
+  }
+
+  return { applyCandidateRecovery, applyHint, applyChainEdits, applySubsetEdits, applyBranchEdits }
 }

@@ -728,8 +728,6 @@ svg { flex-shrink: 0; }
   border-color: currentColor;
   color: var(--ink);
 }
-.branch-digit-filter { display: flex; align-items: center; gap: var(--space-6); }
-.branch-digit-filter select { max-inline-size: 100%; }
 .branch-conflict-status { color: var(--danger-ink); font-size: .75rem; font-weight: 650; }
 .branch-results summary, .proof-trace-case > summary { cursor: pointer; }
 .branch-results ul, .branch-proven-results ul, .branch-move-list { margin-block: var(--space-4); padding-inline-start: var(--space-18); }
@@ -742,7 +740,7 @@ svg { flex-shrink: 0; }
 :is(.chain-panel-display-actions, .subset-panel-display-actions, .branch-panel-display-actions) { display: flex; flex: 0 0 auto; align-items: center; gap: var(--space-4); margin-inline-start: auto; }
 :is(.chains-panel, .subsets-panel) :is(.chain-panel-tools, .subset-panel-tools) .button { padding-inline: var(--space-4); gap: var(--space-2); font-size: 0.6875rem; white-space: nowrap; }
 :is(.chain-panel-display-actions, .subset-panel-display-actions) > .icon-button { flex: 0 0 auto; }
-:is(.apply-chain-edits, .apply-subset-edits).button:disabled {
+:is(.apply-chain-edits, .apply-subset-edits, .apply-branch-edits).button:disabled {
   background: var(--surface-muted);
   border-color: var(--border);
   color: color-mix(in srgb, var(--muted) 80%, var(--surface-muted));

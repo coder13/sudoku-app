@@ -1,7 +1,7 @@
 import { playVariantPuzzle } from './fog.ts'
 import { analyzeChainPaths, analyzeMedusa, candidateId, chainCandidate, chainNodeCandidates, chainNodeDigit, makeChainGraph, sameEdge, validChainNode, type ChainEdge, type ChainNode } from './chains.ts'
 import type { DeductionAction } from './engine.ts'
-import { applyDeduction, conflictsOf, fillEntries, hasCandidate, hasUniquenessProof, move, valuesOf, type Game } from './game.ts'
+import { applyDeductionBatch, hasCandidate, hasUniquenessProof, type Game } from './game.ts'
 import { validSubsetProof, type SubsetProof } from './subsets.ts'
 import type { VariantToolId } from './variants.ts'
 
@@ -189,26 +189,12 @@ export function applyChainDeduction(game: Game, chainIds: readonly number[], act
   const before = game.chainSketch
   if (!before || !actions.length || !chainIds.some(id => before.sketches.some(sketch => sketch.id === id))) return game
 
-  const removals = actions.filter(action => 'eliminate' in action)
-  const eliminated = applyDeduction(game, removals, candidates, removeCandidates, variantRules)
-  if (removals.length && eliminated === game) return game
-  const placements = actions.filter(action => 'place' in action)
-  let position = eliminated.position
-  if (placements.length) {
-    const values = [...valuesOf(game)]
-    for (const { place: { cell, digit } } of placements) {
-      if (values[cell] !== '0' || !hasCandidate(candidates[cell] & ~(position.eliminations?.[cell] ?? 0), digit)) return game
-      values[cell] = String(digit)
-    }
-    const filled = values.join('')
-    if (conflictsOf(filled, playVariantPuzzle(game.variant, game.position.entries), game.grid, game.sized?.rules).size) return game
-    position = fillEntries(eliminated, filled, removeCandidates, variantRules).position
-  }
+  const applied = applyDeductionBatch(game, actions, candidates, removeCandidates, variantRules)
+  if (applied === game) return game
 
   const sketches = before.sketches.filter(({ id }) => !chainIds.includes(id))
   const activeIndex = before.sketches.findIndex(({ id }) => id === before.activeId)
   const activeId = sketches.find(({ id }) => id === before.activeId)?.id ?? sketches[Math.min(activeIndex, sketches.length - 1)]?.id
-  const applied = move(game, position)
   return {
     ...applied,
     past: [...applied.past.slice(0, -1), { ...game.position, chainSketch: before }],

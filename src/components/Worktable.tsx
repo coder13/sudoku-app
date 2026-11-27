@@ -705,6 +705,7 @@ export function Worktable({
     },
   })
   const branchEditing = branches.editing
+  const canApplyBranchEdits = branchesVisible && Boolean(branches.applyEdits)
   const inputGame = branches.scratch ?? game
   const inputValues = branches.scratch ? branches.board?.content.values ?? values : values
   const inputGivens = branches.scratch?.givens ?? visibleGivens
@@ -1149,8 +1150,9 @@ export function Worktable({
       updateWorkingGame,
     },
   })
-  const { applyCandidateRecovery, applyHint, applyChainEdits, applySubsetEdits } = usePlayHintMutations({
-    puzzle: { currentPosition: hintPosition, savedChainSketch: savedGame.chainSketch, savedSubsets: savedGame.subsetWorkspace, completed },
+  const { applyCandidateRecovery, applyHint, applyChainEdits, applySubsetEdits, applyBranchEdits } = usePlayHintMutations({
+    puzzle: { currentPosition: hintPosition, savedChainSketch: savedGame.chainSketch, savedSubsets: savedGame.subsetWorkspace,
+      savedBranches: savedGame.branchWorkspace, completed },
     state: {
       recovery,
       visibleHint,
@@ -1162,6 +1164,7 @@ export function Worktable({
       chainIds: sketch.appliedChainIds,
       subsetActions: subsets.actions,
       subsetMasks: toolMasks,
+      branchEdits: branches.applyEdits,
     },
     modes: advancedModes,
     actions: {
@@ -1815,10 +1818,11 @@ export function Worktable({
         return
       }
       if (!branchEditing && applyEditsShortcut && !variantRulesOpen && !draft && !disabled && !solved &&
-        (canApplyHintEdit || (subsetsPanelVisible ? subsets.actions?.length : canApplyChainEdits))) {
+        (canApplyHintEdit || canApplyBranchEdits || (subsetsPanelVisible ? subsets.actions?.length : canApplyChainEdits))) {
         event.preventDefault()
         if (event.repeat) return
         if (canApplyHintEdit) applyHint()
+        else if (canApplyBranchEdits) applyBranchEdits()
         else if (subsetsPanelVisible) applySubsetEdits()
         else applyChainEdits()
         return
@@ -2638,6 +2642,7 @@ export function Worktable({
   ) : branches.board ? (
     <Board content={{ ...boardContent, position: branches.scratch?.position, ...branches.board.content }}
       appearance={{ ...boardAppearance, authoredArtwork: game.authoredArtwork, annotations: branches.board.annotations,
+        showAnnotatedCandidates: true,
         candidateLayout: branchEditing ? inputCandidateLayout : 'center-corner', annotationsOnTop: true,
         highlightedDigit: branchEditing ? selectedDigit : undefined,
         highlightedDigitMask: branchEditing ? highlightedDigitMask : undefined,
@@ -3205,7 +3210,6 @@ export function Worktable({
             desktop && panelToggles.length > 0 ? (
               <InputToolsMenu
                 disabled={game.paused}
-                preferBelow
                 onShow={(opener) => {
                   desktopToolsOpener.current = opener
                   setPuzzleMenuOpen(false)
@@ -3413,6 +3417,7 @@ export function Worktable({
     />,
     chains: chainsPanel,
     branches: <BranchesPanel model={branches} disabled={disabled || previewing || solved}
+      applyKey={shortcutLabel(shortcuts.applyEdits)} onApply={applyBranchEdits}
       retryCandidates={variant && currentNotes?.failed ? retryCandidateNotes : undefined} />,
     bookmarks: bookmarksPanel,
     rules: rulesPanel,

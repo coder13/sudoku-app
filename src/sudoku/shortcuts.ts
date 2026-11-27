@@ -52,7 +52,7 @@ export const EDITABLE_SHORTCUTS: readonly EditableShortcutDefinition[] = [
   { id: 'switchColorShade', label: 'Switch color shade', description: 'Switch the active brush between light and dark shades of the same color.', category: 'Puzzle actions' },
   { id: 'eraseMode', label: 'Erase mode', description: 'Erase cells as you select them.', category: 'Input modes' },
   { id: 'chainDrawing', label: 'Toggle draw links', description: 'Start drawing links in Chains or return to your previous input mode.', category: 'Input modes' },
-  { id: 'applyEdits', label: 'Apply edits', description: 'Apply a fully revealed hint or available edits from Chains.', category: 'Puzzle actions' },
+  { id: 'applyEdits', label: 'Apply edits', description: 'Apply a fully revealed hint or available deductions from Chains, Subsets, or Branches.', category: 'Puzzle actions' },
   { id: 'actions', label: 'Open Actions', description: 'Open the menu for common solving actions.', category: 'Puzzle actions' },
   { id: 'generateCandidates', label: 'Generate candidates', description: 'Add every currently available candidate to empty cells.', category: 'Puzzle actions' },
   { id: 'solveSingles', label: 'Solve all singles', description: 'Place every currently available single.', category: 'Puzzle actions' },

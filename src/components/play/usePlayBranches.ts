@@ -88,9 +88,8 @@ function editorGame({ branch, analysis }: Entry) {
 export function usePlayBranches({ game, values, visible, open, editPanelActive, enabled, originConflict,
   candidateMasks, candidateLoadFailed, updateGame, onStartEditing }: Options) {
   const workspace = game.branchWorkspace ?? initialWorkspace
-  const [ui, setUi] = useState<{ gameId: string; view: View; eliminations: boolean; digit?: number }>({ gameId: game.id, view: idle, eliminations: false })
+  const [ui, setUi] = useState<{ gameId: string; view: View; eliminations: boolean }>({ gameId: game.id, view: idle, eliminations: false })
   const shown = ui.gameId === game.id && ui.eliminations
-  const digit = ui.gameId === game.id ? ui.digit : undefined
   const view = enabled && open && ui.gameId === game.id ? ui.view : idle
   const editing = view.kind === 'edit'
   useLayoutEffect(() => {
@@ -125,7 +124,7 @@ export function usePlayBranches({ game, values, visible, open, editPanelActive, 
   const compareAll = view.kind === 'compare' && view.all
   const displayed = useMemo(() => view.kind === 'compare' ? compareAll ? sameOrigin.filter(({ branch }) => !branch.hidden) : selected ? [selected] : noEntries : noEntries,
     [view.kind, compareAll, sameOrigin, selected])
-  const marks = useMemo(() => compareFacts(displayed).filter(mark => digit === undefined || mark.digit === digit), [displayed, digit])
+  const marks = useMemo(() => compareFacts(displayed), [displayed])
   const differences = useMemo(() => {
     if (displayed.length < 2) return []
     const placements = marks.filter(mark => mark.placed.length)
@@ -153,6 +152,10 @@ export function usePlayBranches({ game, values, visible, open, editPanelActive, 
     if (!shown || view.kind !== 'compare' || !displayed.length || !branchOriginUsable(comparisonOrigin, displayMasks, rules)) return []
     return branchResults(displayed, displayMasks, rules)
   }, [view.kind, comparisonOrigin, displayMasks, displayed, rules, shown])
+  const applyEdits = checked.length && !originConflict && sameBranchOrigin(comparisonOrigin, origin) ? {
+    actions: checked.map(({ move: { cell, digit, truth } }) => truth ? { place: { cell, digit } } : { eliminate: { cell, digit } }),
+    candidates: displayMasks,
+  } : undefined
 
   const overlay = useMemo(() => {
     const annotations = comparisonAnnotations(marks, shown)
@@ -162,17 +165,11 @@ export function usePlayBranches({ game, values, visible, open, editPanelActive, 
     if (!editor) return null
     const { branch, analysis } = editor
     const annotations = editorAnnotations(editor, shown)
-    const candidates = analysis.masks.map((mask, cell) => {
-      const marks = annotations.candidates?.get(cell)
-      if (marks) for (const digit of marks.keys()) mask |= 1 << (digit - 1)
-      return mask
-    })
-    return { content: { values: analysis.values, candidates }, annotations, label: `Sudoku grid for branch ${branchLetter(branch.number)}` }
+    return { content: { values: analysis.values, candidates: analysis.masks }, annotations, label: `Sudoku grid for branch ${branchLetter(branch.number)}` }
   }, [editor, shown])
 
   function changeView(next: View) {
-    setUi(current => ({ gameId: game.id, view: next, eliminations: current.gameId === game.id && current.eliminations,
-      digit: current.gameId === game.id ? current.digit : undefined }))
+    setUi(current => ({ gameId: game.id, view: next, eliminations: current.gameId === game.id && current.eliminations }))
   }
 
   function save(change: (working: BranchWorkspace) => BranchWorkspace) {
@@ -254,12 +251,10 @@ export function usePlayBranches({ game, values, visible, open, editPanelActive, 
     if (id === branch.id) changeView(view.kind === 'compare' && view.all ? { kind: 'compare', all: true } : idle)
   }
 
-  return { view, editing, scratch, board, overlay, entries, selected, sameOrigin, marks, differences,
-    checked: digit === undefined ? checked : checked.filter(result => result.move.digit === digit),
-    origin, canCreate, unavailable, shown, digit,
+  return { view, editing, scratch, board, overlay, entries, selected, sameOrigin, marks, differences, checked, applyEdits,
+    origin, canCreate, unavailable, shown,
     begin, toggleEdit, selectBranch, compare, stopEditing, edit, undo, remove,
-    toggleEliminations: () => setUi(current => ({ gameId: game.id, view, eliminations: !shown, digit: current.gameId === game.id ? current.digit : undefined })),
-    setDigit: (digit: number | undefined) => setUi({ gameId: game.id, view, eliminations: shown, digit }),
+    toggleEliminations: () => setUi({ gameId: game.id, view, eliminations: !shown }),
     toggleVisibility: (branch: SavedBranch) => updateBranch(branch.id, item => ({ ...item, hidden: item.hidden ? undefined : true })),
     toggleTrace: (branch: SavedBranch) => updateBranch(branch.id, item => ({ ...item, trace: item.trace ? undefined : true })),
   }

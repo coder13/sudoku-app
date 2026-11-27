@@ -984,6 +984,25 @@ export function applyDeduction(game: Game, actions: readonly DeductionAction[], 
   })
 }
 
+/** Apply a set of placements and removals as one undoable edit. */
+export function applyDeductionBatch(game: Game, actions: readonly DeductionAction[], candidates: readonly number[], removeCandidates: boolean,
+  variantRules?: readonly VariantToolId[]): Game {
+  const removals = actions.filter(action => 'eliminate' in action)
+  const eliminated = applyDeduction(game, removals, candidates, removeCandidates, variantRules)
+  if (removals.length && eliminated === game) return game
+  const placements = actions.filter(action => 'place' in action)
+  if (!placements.length) return eliminated
+
+  const values = [...valuesOf(game)]
+  for (const { place: { cell, digit } } of placements) {
+    if (values[cell] !== '0' || !hasCandidate(candidates[cell] & ~(eliminated.position.eliminations?.[cell] ?? 0), digit)) return game
+    values[cell] = String(digit)
+  }
+  const filled = values.join('')
+  if (conflictsOf(filled, playVariantPuzzle(game.variant, game.position.entries), game.grid, game.sized?.rules).size) return game
+  return move(game, fillEntries(eliminated, filled, removeCandidates, variantRules).position)
+}
+
 export function singleFromCandidates(values: string, masks: readonly number[], eliminations?: readonly number[], variant?: VariantPuzzle, grid?: SizedGrid, sizedRules?: SizedRuleGame['rules']): [number, number] | null {
   const size = (grid ?? CLASSIC_GRID).size
   if (values.length !== size ** 2 || masks.length !== values.length) return null
