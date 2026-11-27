@@ -8,6 +8,7 @@ import { parsePuzzleExport, puzzleExportText } from '../src/sudoku/puzzle-sharin
 import { readGame } from '../src/sudoku/storage.ts'
 import { decodeSizedSudokuPad, decodeSudokuPadEnvelope } from '../src/sudoku/sized-sudoku-pad.ts'
 import { readSizedRuleSudokuPad, readSudokuPadXSumDots } from '../src/sudoku/sized-rule-sudoku-pad.ts'
+import { MemoryStorage } from './helpers/memory-storage.ts'
 
 const metadata = {
   title: 'Shared totals',
@@ -171,14 +172,6 @@ test('#404 saves and shares both X-Sum Twins dot relations without losing outsid
 })
 
 test('#404 reloads both X-Sum Twins dot relations from the saved puzzle library', async () => {
-  class MemoryStorage {
-    get length() { return Object.keys(this).length }
-    key(index: number) { return Object.keys(this)[index] ?? null }
-    getItem(key: string) { return Object.hasOwn(this, key) ? String((this as unknown as Record<string, unknown>)[key]) : null }
-    setItem(key: string, value: string) { Object.defineProperty(this, key, { value: String(value), writable: true, enumerable: true, configurable: true }) }
-    removeItem(key: string) { delete (this as unknown as Record<string, unknown>)[key] }
-  }
-
   const local = new MemoryStorage()
   const keys = ['window', 'localStorage', 'sessionStorage'] as const
   const originals = keys.map(key => Object.getOwnPropertyDescriptor(globalThis, key))
