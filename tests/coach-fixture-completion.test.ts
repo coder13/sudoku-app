@@ -112,6 +112,13 @@ test('all published 9 × 9 Coach combinations survive actual library reload with
       assert.deepEqual(exported.variant?.puzzle, game.variant.puzzle, `${source.references[0]}: exported complete rules`)
       assert.deepEqual(exported.variant?.fog, game.variant.fog, `${source.references[0]}: exported fog state`)
 
+      const reimported = await detectPuzzle(puzzleExportText(game))
+      assert.equal(reimported.format, 'Puzzle export', `${source.references[0]}: imported export format`)
+      assert.equal(reimported.givens, imported.givens, `${source.references[0]}: reimported givens`)
+      assert.equal(reimported.variant?.id, game.variant.id, `${source.references[0]}: reimported variant family`)
+      assert.deepEqual(reimported.variant?.puzzle, exported.variant?.puzzle, `${source.references[0]}: reimported complete rules`)
+      assert.deepEqual(reimported.variant?.fog, exported.variant?.fog, `${source.references[0]}: reimported fog state`)
+
       roomStore.add(game)
       expectedGames.set(game.id, game)
       restoredCount++
