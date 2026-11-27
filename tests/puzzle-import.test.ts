@@ -39,11 +39,7 @@ test('imports SudokuPad Anti-Knight and conditional neighbor rules for Dutch Fla
   const data = {
     metadata: {
       title: 'Dutch Flatmates', author: 'aqjhs', antiknight: true,
-      rules: [
-        'Normal sudoku rules apply.',
-        "Cells one chess knight's move apart may not have the same digit.",
-        "Dutch Flatmates: Every 5 in the grid must have a '1' directly above it or a '9' directly below it. It may have both, but it doesn't need both.",
-      ],
+      rules: "Normal sudoku rules apply.\n\nCells one chess knight's move apart may not have the same digit. \n\nDutch Flatmates: Every 5 in the grid must have a '1' directly above it or a '9' directly below it. It may have both, but it doesn't need both.",
     },
     cells: Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => ({}))),
     regions: Array.from({ length: 9 }, (_, box) => Array.from({ length: 9 }, (_, offset) => [
