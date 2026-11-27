@@ -170,6 +170,60 @@ test('#404 saves and shares both X-Sum Twins dot relations without losing outsid
   }
 })
 
+test('#404 reloads both X-Sum Twins dot relations from the saved puzzle library', async () => {
+  class MemoryStorage {
+    get length() { return Object.keys(this).length }
+    key(index: number) { return Object.keys(this)[index] ?? null }
+    getItem(key: string) { return Object.hasOwn(this, key) ? String((this as unknown as Record<string, unknown>)[key]) : null }
+    setItem(key: string, value: string) { Object.defineProperty(this, key, { value: String(value), writable: true, enumerable: true, configurable: true }) }
+    removeItem(key: string) { delete (this as unknown as Record<string, unknown>)[key] }
+  }
+
+  const local = new MemoryStorage()
+  const keys = ['window', 'localStorage', 'sessionStorage'] as const
+  const originals = keys.map(key => Object.getOwnPropertyDescriptor(globalThis, key))
+  Object.defineProperties(globalThis, {
+    window: { value: {}, configurable: true },
+    localStorage: { value: local, configurable: true },
+    sessionStorage: { value: new MemoryStorage(), configurable: true },
+  })
+  try {
+    const { roomStore } = await import('../src/sudoku/storage.ts?xsum-twins-library-save')
+    for (const [id, code] of [['white-dots', xSumDotCode], ['black-dots', blackXSumDotCode]] as const) {
+      const imported = await detectPuzzle(code)
+      assert.ok(imported.grid && imported.sizedRules && imported.authoredSolution)
+      const game = makeGame(`x-sums-library-${id}`, imported.title!, imported.givens, 'imported', Date.now(), imported.grid)
+      game.sized = { rules: imported.sizedRules, solution: imported.authoredSolution, author: imported.sizedAuthor }
+      roomStore.add(game)
+      roomStore.update(game.id, saved => {
+        const cell = imported.givens.indexOf('0')
+        const entries = [...saved.position.entries]
+        entries[cell] = imported.authoredSolution![cell]
+        return {
+          ...saved,
+          started: true,
+          position: { ...saved.position, entries: entries.join('') },
+          past: [saved.position],
+        }
+      })
+
+      const before = roomStore.getSnapshot().games.find(saved => saved.id === game.id)!
+      const reloaded = (await import(`../src/sudoku/storage.ts?xsum-twins-library-reload-${id}`)).roomStore.getSnapshot()
+      const restored = reloaded.games.find(saved => saved.id === game.id)
+      assert.ok(restored, `${id}: imported game survives a library reload`)
+      assert.deepEqual(restored.sized, game.sized, `${id}: both outside ends and dot meaning survive reload`)
+      assert.deepEqual(restored.position, before.position, `${id}: player entry survives reload`)
+      assert.deepEqual(restored.past, before.past, `${id}: undo history survives reload`)
+    }
+  } finally {
+    keys.forEach((key, index) => {
+      const descriptor = originals[index]
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor)
+      else Reflect.deleteProperty(globalThis, key)
+    })
+  }
+})
+
 test('#404 resolves the published black-dot X-Sum Twins short link', async ({ mock }) => {
   const fetcher = mock.method(globalThis, 'fetch', async (url: string) => {
     assert.equal(url, '/api/v1/import/sudokupad/0n497kpnvt')
