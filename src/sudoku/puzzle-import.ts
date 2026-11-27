@@ -3,7 +3,7 @@ import { isGridText, MINI_GRID } from './grid.ts'
 import { fPuzzles } from './puzzle-import/f-puzzles.ts'
 import { hoDoKu } from './puzzle-import/hodoku.ts'
 import { readNativeLink, type NativeImport } from './puzzle-import/native-link.ts'
-import { MAX_IMPORT_LENGTH } from './puzzle-import/shared.ts'
+import { MAX_DECODED_LENGTH, MAX_IMPORT_LENGTH } from './puzzle-import/shared.ts'
 import { sudokuCoach } from './puzzle-import/sudoku-coach.ts'
 import { sudokuExchange } from './puzzle-import/sudoku-exchange.ts'
 import { sudokuPad } from './puzzle-import/sudoku-pad.ts'
@@ -45,8 +45,12 @@ function parseImportUrl(text: string, origin: string) {
 
 export async function detectPuzzle(input: string): Promise<ImportedPuzzle> {
   const text = input.trim().replace(/^```(?:text)?\s*([\s\S]*?)\s*```$/i, '$1')
-  if (text.length > MAX_IMPORT_LENGTH) throw new Error('Paste one puzzle at a time.')
-  if (isPuzzleExport(text)) {
+  // App exports may include authored artwork and exceed the provider-code paste limit.
+  // Keep them within the same hard bound as decoded source data.
+  if (text.length > MAX_DECODED_LENGTH) throw new Error('Paste one puzzle at a time.')
+  const largePuzzleExport = text.length > MAX_IMPORT_LENGTH && isPuzzleExport(text)
+  if (text.length > MAX_IMPORT_LENGTH && !largePuzzleExport) throw new Error('Paste one puzzle at a time.')
+  if (largePuzzleExport || isPuzzleExport(text)) {
     const { title, givens, variant, collection, grid, sizedRules, sizedAuthor, algebraic, whispersGuide, givenCellColors, authoredArtwork } = parsePuzzleExport(text)
     const sizing = algebraic && 'sudokuPad' in algebraic ? decodeSizedSudokuPad(algebraic.sudokuPad) : undefined
     if (sizing && sizing.givens !== givens) throw new Error('The SudokuPad definition does not match the exported givens.')

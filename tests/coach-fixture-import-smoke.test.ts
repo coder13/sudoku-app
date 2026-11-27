@@ -139,7 +139,23 @@ test('every preserved Coach Sudoku export survives public sharing and reopen', a
       const { id } = await created.json() as { id: string }
       const reopened = await fetcher(`/api/v1/shares/${id}`)
       assert.equal(reopened.status, 200, source)
-      assert.deepEqual(await reopened.json(), JSON.parse(JSON.stringify(definition)), source)
+      const reopenedDefinition = await reopened.json() as typeof definition
+      assert.deepEqual(reopenedDefinition, JSON.parse(JSON.stringify(definition)), source)
+
+      const sharedText = JSON.stringify({ ...reopenedDefinition, format: 'sudoku-app-puzzle' })
+      const sharedImport = await detectPuzzle(sharedText).catch((error: unknown) => {
+        throw new Error(`${source}: shared import failed at ${sharedText.length} characters`, { cause: error })
+      })
+      assert.equal(sharedImport.format, 'Puzzle export', `${source}: shared export format`)
+      assert.equal(sharedImport.givens, imported.givens, `${source}: shared givens`)
+      assert.deepEqual(sharedImport.grid, grid, `${source}: shared grid`)
+      assert.deepEqual(sharedImport.variant?.puzzle, variant?.puzzle, `${source}: shared variant rules`)
+      assert.deepEqual(sharedImport.variant?.fog, variant?.fog, `${source}: shared fog`)
+      assert.deepEqual(sharedImport.sizedRules, sizedRules, `${source}: shared sized rules`)
+      assert.deepEqual(sharedImport.algebraic, algebraic, `${source}: shared algebraic rules`)
+      assert.deepEqual(sharedImport.givenCellColors, givenCellColors, `${source}: shared cell colors`)
+      assert.deepEqual(sharedImport.authoredArtwork, authoredArtwork, `${source}: shared authored artwork`)
+      assert.equal(sharedImport.whispersGuide, whispersGuide, `${source}: shared guide state`)
     }
     assert.deepEqual([...standalonePuzzles].sort(), [
       'sudoku-coach-boxless-calcudoku.json:$.code',
