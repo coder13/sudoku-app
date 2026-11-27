@@ -228,6 +228,19 @@ test('#547 keeps reviewed artwork when the player adds Quick Draw annotations', 
   ])
 })
 
+test('#547 keeps its reviewed artwork when a supported rule is appended', async () => {
+  const source = fixture.examples.find(example => example.issue === 547)
+  assert.ok(source)
+  const data = await decodeSudokuCoachPayload(source.code)
+  const combined = await detectPuzzle(coachCode({ ...data, givenConstraints: [
+    ...(data.givenConstraints as unknown[]), { type: 'antiKnight', segments: [], settings: {} },
+  ] }))
+
+  assert.equal(combined.authoredArtwork?.length, 405)
+  assert.ok(combined.variant?.puzzle.rules?.some(rule => rule.type === 'palindrome'))
+  assert.ok(combined.variant?.puzzle.rules?.some(rule => rule.type === 'anti-knight'))
+})
+
 test('#543 and #546 import their Aqre shading, regions, and companion clues', async () => {
   const snake = fixture.examples.find(example => example.issue === 543)
   const aqrePlus = fixture.examples.find(example => example.issue === 546)

@@ -94,6 +94,7 @@ const reviewedDrawings = new Map<string, { layer: string; title: string; partial
 const reviewedShapeArtwork = new Map([
   ['b4d73c8354f88c8ea4e1ddf090847808510c1ed3e616bbf89bb115f2009e7abf', 'Thank RP you'],
 ])
+const reviewedShapeArtworkConstraintCount = 7
 
 const reviewedTextArtwork = new Map([
   ['babed6a85770d81c9be91fd70f6fa688eba31fc5361639579e82d8030f01cd44', 'Sunny with a chance of Entropy'],
@@ -134,7 +135,19 @@ export async function reviewedCoachFillTitle(data: Record<string, unknown>, fill
 }
 
 export async function readReviewedCoachArtwork(code: string, constraints: readonly unknown[], payload: Record<string, unknown>) {
-  const hash = await sourceHash(code, payload)
+  let hash = await sourceHash(code, payload)
+  // CS1G's three reviewed shape layers are followed by active rules. A new
+  // supported companion appended after those rules must not make the known
+  // drawing parse as an unsupported constraint.
+  if (!hash || !reviewedShapeArtwork.has(hash)) {
+    const layers = payload.givenConstraints
+    if (Array.isArray(layers) && layers.length > reviewedShapeArtworkConstraintCount) {
+      const prefixHash = await sourceHash(code, {
+        ...payload, givenConstraints: layers.slice(0, reviewedShapeArtworkConstraintCount),
+      })
+      if (prefixHash && reviewedShapeArtwork.has(prefixHash)) hash = prefixHash
+    }
+  }
   const textTitle = hash && reviewedTextArtwork.get(hash)
   if (textTitle) {
     const layers = constraints.filter(layer => record(layer) && layer.type === 'cosmeticText')

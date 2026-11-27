@@ -391,6 +391,18 @@ test('Coach 5 × 5 fractional regions keep their authored shading and Little Kil
   assert.equal(withProgress.sizedRules?.filter(rule => rule.type === 'fractional-regions').length, 1)
 })
 
+test('#453 fractional regions retain their authored drawing with an appended companion rule', async () => {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/coach-fractional-regions.json', import.meta.url), 'utf8'))
+  const data = await decodeSudokuCoachPayload(source.code)
+  const combined = await detectPuzzle(coachCode({ ...data, givenConstraints: [
+    ...(data.givenConstraints as unknown[]), { type: 'antiKnight', segments: [], settings: {} },
+  ] }))
+
+  assert.deepEqual(combined.grid, { size: 5, noRegions: true })
+  assert.ok(combined.sizedRules?.some(rule => rule.type === 'fractional-regions'))
+  assert.ok(combined.sizedRules?.some(rule => rule.type === 'anti-knight'))
+})
+
 test('sized Coach Little Killer import validates ray geometry and rejects unknown segment data', async () => {
   const layer = { type: 'littleKiller', settings: {}, segments: [{ cells: [[-1, 2]], parameters: { positive: true, value: 5 } }] }
   const code = () => coachCode({ gridSize: 6, regions: rectangularRegions(2, 3), givenConstraints: [layer] })
