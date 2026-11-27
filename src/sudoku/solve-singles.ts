@@ -35,7 +35,7 @@ export async function solveSingleValues(
     type: 'solve-singles',
     values,
     eliminations,
-    displayedCandidates: variant ? undefined : displayedCandidates,
+    displayedCandidates,
   })
   if (!variant || !variantRules?.length) return classicValues
 
@@ -46,6 +46,7 @@ export async function solveSingleValues(
   return run({
     type: 'variant',
     operation: 'solve-singles',
+    displayedCandidates,
     position: { puzzle: filteredPuzzle, entries, eliminations, ...(shades && { shades }) },
   })
 }
