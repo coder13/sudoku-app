@@ -594,6 +594,7 @@ const PLAYABLE_RULE_KEYS: Record<VariantRule['type'], readonly string[]> = {
   'forbidden-entropic-connection': ['type', 'cells'],
   aqre: ['type', 'kind', 'regions', 'givenShades'],
   'neighbor-match': ['type', 'clues'],
+  'conditional-neighbor': ['type', 'triggerDigit', 'alternatives'],
   'magic-square': ['type', 'cells'],
   'unknown-cage-sums': ['type', 'cages', 'consecutivePairs'],
   'distant-neighbors': ['type', 'markedCells'],
@@ -713,6 +714,13 @@ function isPlayableRule(rule: VariantRule): boolean {
         Object.keys(clue).every(key => key === 'cell' || key === 'digit') && Number.isInteger(clue.cell) &&
         clue.cell >= 0 && clue.cell < 81 && Number.isInteger(clue.digit) && clue.digit >= 1 && clue.digit <= 9) &&
       new Set(rule.clues.map(clue => clue.cell)).size === rule.clues.length
+    case 'conditional-neighbor': return Number.isInteger(rule.triggerDigit) && rule.triggerDigit >= 1 && rule.triggerDigit <= 9 &&
+      Array.isArray(rule.alternatives) && rule.alternatives.length > 0 && rule.alternatives.length <= 8 &&
+      rule.alternatives.every(alternative => alternative && Object.keys(alternative).every(key => ['rowOffset', 'columnOffset', 'digit'].includes(key)) &&
+        Number.isInteger(alternative.rowOffset) && Number.isInteger(alternative.columnOffset) &&
+        Math.abs(alternative.rowOffset) + Math.abs(alternative.columnOffset) === 1 &&
+        Number.isInteger(alternative.digit) && alternative.digit >= 1 && alternative.digit <= 9) &&
+      new Set(rule.alternatives.map(alternative => `${alternative.rowOffset}:${alternative.columnOffset}`)).size === rule.alternatives.length
     case 'magic-square': return Object.keys(rule).every(key => key === 'type' || key === 'cells') && validMagicSquareCells(rule.cells)
     case 'unknown-cage-sums': {
       if (Object.keys(rule).some(key => !['type', 'cages', 'consecutivePairs'].includes(key)) ||
@@ -853,6 +861,7 @@ const RULE_NAMES: Record<VariantRule['type'], string> = {
   'forbidden-entropic-connection': 'Broken Entropic connection',
   aqre: 'Aqre',
   'neighbor-match': 'Neighbor Match',
+  'conditional-neighbor': 'Conditional Neighbors',
   'magic-square': 'Magic Square',
   'unknown-cage-sums': 'Unique Cages',
   'distant-neighbors': 'Distant Neighbors',
@@ -1070,6 +1079,13 @@ function describedVariantRules(puzzle: VariantPuzzle) {
         descriptions.push(...rule.clues.map(({ cell, digit }) =>
           `Neighbor-match clue ${digit} in R${Math.floor(cell / 9) + 1}C${cell % 9 + 1}: at least one orthogonally adjacent cell contains ${digit}.`))
         break
+      case 'conditional-neighbor': {
+        const names = rule.alternatives.map(({ rowOffset, columnOffset, digit }) =>
+          `a ${digit} directly ${rowOffset < 0 ? 'above it' : rowOffset > 0 ? 'below it' : columnOffset < 0 ? 'to its left' : 'to its right'}`)
+        const choices = new Intl.ListFormat('en', { type: 'disjunction' }).format(names)
+        descriptions.push(`Every ${rule.triggerDigit} must have ${choices}. It may have both.`)
+        break
+      }
       case 'magic-square':
         descriptions.push('The three rows, three columns, and two diagonals in the marked 3 × 3 area each sum to 15.')
         break

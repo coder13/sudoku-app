@@ -3,7 +3,7 @@
 use std::sync::OnceLock;
 
 use super::{
-    AqreConstraint, CompiledMagicSquare, CompiledNeighborMatch, CompiledUnknownCageSums,
+    AqreConstraint, CompiledConditionalNeighbor, CompiledMagicSquare, CompiledNeighborMatch, CompiledUnknownCageSums,
     CompiledVariant, LetteredQuadruples, LineConstraint, PuzzleRule, Quadruple, RegionLayout,
     VARIANT_FORMAT_VERSION, VariantDefinitionError, VariantHouse, VariantHouseKind, VariantPuzzle,
     cell_mask, cells_in,
@@ -64,6 +64,7 @@ impl VariantPuzzle {
             quadruples: Vec::new(),
             lettered_quadruples: None,
             neighbor_matches: Vec::new(),
+            conditional_neighbors: Vec::new(),
             magic_squares: Vec::new(),
             unknown_cage_sums: Vec::new(),
             global_entropy: None,
@@ -225,6 +226,11 @@ impl VariantPuzzle {
                         .neighbor_matches
                         .extend(CompiledNeighborMatch::compile(index, clues)?);
                 }
+                PuzzleRule::ConditionalNeighbor { trigger_digit, alternatives } => {
+                    compiled.conditional_neighbors.extend(CompiledConditionalNeighbor::compile(
+                        index, *trigger_digit, alternatives,
+                    )?);
+                }
                 PuzzleRule::MagicSquare { cells } => {
                     compiled
                         .magic_squares
@@ -351,6 +357,11 @@ impl VariantPuzzle {
                     .iter()
                     .flat_map(|clue| clue.neighbors.iter().map(|&cell| 1u128 << cell)),
             )
+            .chain(compiled.conditional_neighbors.iter().flat_map(|clue| {
+                std::iter::once(clue.source)
+                    .chain(clue.alternatives.iter().map(|&(cell, _)| cell))
+                    .map(|cell| 1u128 << cell)
+            }))
             .fold(0, |cells, scope| cells | scope);
         if compiled.global_entropy.is_some()
             || compiled.lettered_quadruples.is_some()

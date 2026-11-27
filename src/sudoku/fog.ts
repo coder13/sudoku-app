@@ -193,6 +193,7 @@ export function projectFogPuzzle(puzzle: VariantPuzzle, visible: ReadonlySet<num
       case 'non-consecutive':
         return !rule.except || rule.except.every(allVisible) ? [rule] : []
       case 'anti-knight':
+      case 'conditional-neighbor':
       case 'anti-king':
       case 'global-entropy':
       case 'sandwich':

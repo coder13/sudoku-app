@@ -163,6 +163,13 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
         case 'forbidden-entropic-connection': return { ...rule, cells: rule.cells.map(cell) as [number, number, number, number] }
         case 'inside-grid': return { ...rule, rows: rule.rows.map(row => row.map(cell)) }
         case 'neighbor-match': return { ...rule, clues: rule.clues.map(clue => ({ ...clue, cell: cell(clue.cell) })) }
+        case 'conditional-neighbor': return { ...rule, alternatives: rule.alternatives.map(alternative => {
+          let rowOffset = alternative.rowOffset, columnOffset = alternative.columnOffset
+          if (symmetry & 1) [rowOffset, columnOffset] = [columnOffset, rowOffset]
+          if (symmetry & 2) rowOffset = -rowOffset
+          if (symmetry & 4) columnOffset = -columnOffset
+          return { ...alternative, rowOffset, columnOffset }
+        }).sort((a, b) => a.rowOffset - b.rowOffset || a.columnOffset - b.columnOffset || a.digit - b.digit) }
         // Global Entropy's optional groups partition digits, so the rule itself
         // has no geometry to transform.
         case 'global-entropy': return rule

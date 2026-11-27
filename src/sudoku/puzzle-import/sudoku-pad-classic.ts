@@ -160,6 +160,8 @@ function readQuadruples(overlays: unknown) {
 
 const BASE_RULE = /^(?:standard|normal)(?: 9\s*[x×]\s*9)? sudoku rules apply\.?$/i
 const NONCONSECUTIVE_RULE = /^Nonconsecutive: Any two orthogonally adjacent cells cannot contain consecutive digits\.?$/i
+const ANTI_KNIGHT_RULE = /^(?:Anti-Knight: ?)?Cells one chess knight['’]s move apart may not have the same digit\.?$/i
+const DUTCH_FLATMATES_RULE = /^Dutch Flatmates: Every 5 in the grid must have a ['’]?1['’]? directly above it or a ['’]?9['’]? directly below it\. It may have both, but it doesn['’]?t need both\.?$/i
 const QUADRUPLE_RULE = /^Quadruples: Digits in white circles must be present at least once in the cells the clue touches\. If a digit appears more than once in a circle, it must be present at least that many times in the cells the clue touches\.?$/i
 const KILLER_RULES = [
   /^Killer Cages: Digits in a cage may not repeat and must sum to the number in the top left corner of that cage\.?$/i,
@@ -231,7 +233,9 @@ export function readClassicSudokuPad(data: Record<string, unknown>) {
   let hasNonconsecutive = false
   let hasQuadruples = false
   let hasKillerCages = false
-  let hasChessRules = false
+  let hasAntiKing = false
+  let hasAntiKnight = false
+  let hasDutchFlatmates = false
   let hasKropki = false
   let hasThermometers = false
   let hasWindoku = false
@@ -240,8 +244,15 @@ export function readClassicSudokuPad(data: Record<string, unknown>) {
     if (NONCONSECUTIVE_RULE.test(clause) && !hasNonconsecutive) {
       hasNonconsecutive = true
       rules.push({ type: 'non-consecutive' })
-    } else if (/^Digits a knights move and kings move away from each other cannot be the same\.?$/i.test(clause) && !hasChessRules) {
-      hasChessRules = true
+    } else if (/^Digits a knights move and kings move away from each other cannot be the same\.?$/i.test(clause)) {
+      hasAntiKing = true
+      hasAntiKnight = true
+    } else if (ANTI_KNIGHT_RULE.test(clause)) {
+      hasAntiKnight = true
+    } else if (/^Anti[- ]King: Cells a chess king['’]s move apart may not have the same digit\.?$/i.test(clause)) {
+      hasAntiKing = true
+    } else if (DUTCH_FLATMATES_RULE.test(clause) && !hasDutchFlatmates) {
+      hasDutchFlatmates = true
     } else if (/^Digits separated by a white dot are consecutive\. All dots are given\.?$/i.test(clause) && !hasKropki) {
       hasKropki = true
     } else if (/^Digits on a thermometer must increase from the bulb to the end\.?$/i.test(clause) && !hasThermometers) {
@@ -260,11 +271,16 @@ export function readClassicSudokuPad(data: Record<string, unknown>) {
     (data['diagonal+'] === true) !== (data['diagonal-'] === true)) {
     return reject('This SudokuPad export has inconsistent Windoku or X-Sudoku rules.')
   }
-  if (hasChessRules !== (data.metadata.antiking === true && data.metadata.antiknight === true) ||
-    data.metadata.antiking === true && !hasChessRules || data.metadata.antiknight === true && !hasChessRules) {
+  if (data.metadata.antiking === false && hasAntiKing || data.metadata.antiknight === false && hasAntiKnight) {
     return reject('This SudokuPad puzzle has inconsistent Anti-King or Anti-Knight rules.')
   }
-  if (hasChessRules) rules.push({ type: 'anti-king' }, { type: 'anti-knight' })
+  hasAntiKing ||= data.metadata.antiking === true
+  hasAntiKnight ||= data.metadata.antiknight === true
+  if (hasAntiKing) rules.push({ type: 'anti-king' })
+  if (hasAntiKnight) rules.push({ type: 'anti-knight' })
+  if (hasDutchFlatmates) rules.push({ type: 'conditional-neighbor', triggerDigit: 5, alternatives: [
+    { rowOffset: -1, columnOffset: 0, digit: 1 }, { rowOffset: 1, columnOffset: 0, digit: 9 },
+  ] })
   if (hasWindoku) rules.push(...WINDOKU_REGIONS.map(cells => ({ type: 'extra-house' as const, cells })))
   if (data['diagonal+'] === true) rules.push({ type: 'diagonal', diagonal: 'anti' }, { type: 'diagonal', diagonal: 'main' })
   if (hasKropki) {
