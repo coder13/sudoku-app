@@ -91,10 +91,14 @@ test('every imported sized Coach rule rejects unknown engine fields', async () =
   assert.equal(mutations, 128)
 })
 
-test('preserved Coach exports reject unknown fields on every populated layer, setting, segment and parameter', async () => {
+test('preserved Coach exports reject unknown root, layer, setting, segment and parameter fields', async () => {
   let mutations = 0
   for (const [code, source] of [...codes].sort(([, left], [, right]) => left.localeCompare(right))) {
     const payload = await decodeSudokuCoachPayload(code)
+    await assert.rejects(detectPuzzle(coachCode({ ...payload, futurePuzzleSemantics: true })),
+      `${source}: unknown root data must reject the whole import`)
+    mutations++
+
     const constraints = payload.givenConstraints
     if (!Array.isArray(constraints)) continue
     for (let index = 0; index < constraints.length; index++) {
@@ -148,7 +152,7 @@ test('preserved Coach exports reject unknown fields on every populated layer, se
       }
     }
   }
-  assert.equal(mutations, 6610)
+  assert.equal(mutations, 6730)
 })
 
 test('every preserved Coach Sudoku export survives public sharing and reopen', async () => {
