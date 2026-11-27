@@ -894,11 +894,14 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
         : crust.source === '9Z8C' ? 'Crust of Edge-Count [9x9]' : 'Mini Random Crust #1'
     const givens = '0'.repeat(crust.size ** 2)
     const progress = readCoachProgress(data, givens, crust.size)
-    return { givens, grid, ...(progress && { progress }), sizedRules: [{
+    const rules = [{
       type: 'crust', clues,
       ...(crust.sharedRegion && { sharedRegion: crust.sharedRegion }),
       ...(crust.fixedEdges && { fixedEdges: crust.fixedEdges }),
-    }], title, ...(crust.authoredSolution && { authoredSolution: crust.authoredSolution, authoredSolutionOnly: true as const }) }
+    }, ...readCoachRules(crust.additionalConstraints, { grid })]
+    if (!isSizedRuleList(rules, grid)) throw new Error('This Sudoku Coach Crust export contains invalid rules.')
+    return { givens, grid, ...(progress && { progress }), sizedRules: rules, title,
+      ...(crust.authoredSolution && { authoredSolution: crust.authoredSolution, authoredSolutionOnly: true as const }) }
   }
   const standalone = publication !== null && !publication?.hasAuthorInstructions ? readCoachStandalone(data) : undefined
   if (standalone) return { ...standalone, ...(publication?.title && { title: publication.title }) }

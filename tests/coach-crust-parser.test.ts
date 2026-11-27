@@ -92,6 +92,20 @@ test('reviewed Crust exports become no-region sized engine imports', async () =>
   }
 })
 
+test('reviewed Crust imports retain additional supported rule families', async () => {
+  const fixture = fixtures.find(({ id }) => id === 'BKR7')!
+  const data = await decodeSudokuCoachPayload(fixture.code)
+  const ratio = { type: 'ratio', segments: [{ cells: [6, 7], parameters: {} }] }
+  const code = coachCode({ ...data, givenConstraints: [...data.givenConstraints, ratio] })
+  const imported = await detectPuzzle(code)
+  assert.ok(imported.grid)
+  assert.ok(isSizedRuleList(imported.sizedRules, imported.grid))
+  assert.ok(imported.sizedRules.some(rule => rule.type === 'crust'))
+  assert.ok(imported.sizedRules.some(rule => rule.type === 'kropki' && rule.ratioTwo?.pairs.some(([a, b]) => a === 6 && b === 7)))
+  assert.equal(imported.authoredSolution, fixture.solution)
+  assert.equal(await readReviewedCoachCrust(code, await decodeSudokuCoachPayload(code)).then(value => value?.additionalConstraints.length), 1)
+})
+
 test('published Crust short links import the same complete rules as their copied codes', async ({ mock }) => {
   mock.method(globalThis, 'fetch', (path: string, options?: RequestInit) => {
     const fixture = fixtures.find(item => path === item.url)

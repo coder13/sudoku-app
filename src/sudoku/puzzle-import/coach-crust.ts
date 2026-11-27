@@ -14,6 +14,7 @@ export type CoachCrustDefinition = {
   authoredSolution?: string
   sharedRegion?: [number, number]
   fixedEdges?: [number, number][]
+  additionalConstraints: readonly unknown[]
 }
 
 const publishedCrustSolutions: Partial<Record<CoachCrustDefinition['source'], string>> = {
@@ -83,15 +84,22 @@ function textClues(layer: Record<string, unknown>, expectedSettings: Record<stri
 
 /** Parse the reviewed Crust exports whose outside sums are stored as cosmetic text. */
 export async function readReviewedCoachCrust(code: string, data: Record<string, unknown>): Promise<CoachCrustDefinition | undefined> {
-  const hash = await sourceHash(code, data)
-  if (!hash) return
-  const source = reviewedCrustExports.get(hash)
+  if (!Array.isArray(data.givenConstraints)) return
+  let source: CoachCrustDefinition['source'] | undefined
+  let baseConstraintCount = 0
+  for (const count of [1, 2, 4]) {
+    if (data.givenConstraints.length < count) continue
+    const base = { ...data, givenConstraints: data.givenConstraints.slice(0, count) }
+    const hash = await sourceHash(code, base)
+    const match = hash && reviewedCrustExports.get(hash)
+    if (match) { source = match; baseConstraintCount = count; break }
+  }
   if (!source) return
   const size = source === 'BKR7' || source === '9Z8C' ? 9 : 7
   const isNineEdgeCount = source === '9Z8C'
   if (data.gridSize !== size || !Array.isArray(data.regions) || data.regions.length !== 0 ||
     data.givenDigits !== undefined && data.givenDigits !== '0'.repeat(size * size) ||
-    !Array.isArray(data.givenConstraints) || data.givenConstraints.length !== (source === 'ABjn' ? 2 : isNineEdgeCount ? 4 : 1)) return
+    data.givenConstraints.length < (source === 'ABjn' ? 2 : isNineEdgeCount ? 4 : 1)) return
 
   const expectedLayers = source === 'BKR7' ? [{ settings: { textSize: 60 }, count: 17 }]
     : source === 'ABjn' ? [{ settings: { textSize: 70 }, count: 15 }, { settings: { textSize: 45 }, count: 15 }]
@@ -116,7 +124,7 @@ export async function readReviewedCoachCrust(code: string, data: Record<string, 
       Object.keys(line.segments[0]).some(key => !['cells', 'parameters'].includes(key)) ||
       JSON.stringify(line.segments[0].cells) !== JSON.stringify([[1, 9], [1, 8]]) ||
       !record(line.segments[0].parameters) || Object.keys(line.segments[0].parameters).length !== 0) return
-  } else if (data.givenConstraints.some(layer => !record(layer) || layer.type !== 'cosmeticText')) return
+  } else if (data.givenConstraints.slice(0, expectedLayers.length).some(layer => !record(layer) || layer.type !== 'cosmeticText')) return
   if (layers.some(layer => !layer)) return
   const clues: CoachCrustBoundaryClue[] = []
   const seen = new Set<string>()
@@ -149,6 +157,7 @@ export async function readReviewedCoachCrust(code: string, data: Record<string, 
 
   return {
     source, size, clues,
+    additionalConstraints: data.givenConstraints.slice(baseConstraintCount),
     ...(publishedCrustSolutions[source] && { authoredSolution: publishedCrustSolutions[source] }),
     ...(isNineEdgeCount && { sharedRegion: [42, 72], fixedEdges: [[72, 73]] }),
   }
