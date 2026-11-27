@@ -51,6 +51,20 @@ test('#414 imports its Latin Square rules, distinct 3×3 groups, and authored di
   ])
 })
 
+test('#414 retains supported rules appended to its reviewed boxless combination', async () => {
+  const data = await decodeSudokuCoachPayload(source.code)
+  const thermometer = { type: 'thermometer', segments: [{ cells: [0, 1, 2], parameters: {} }] }
+  const imported = await detectPuzzle(coachCode({
+    ...data, givenConstraints: [...data.givenConstraints, thermometer],
+  }))
+  const rules = imported.variant?.puzzle.rules ?? []
+  assert.ok(rules.some(rule => rule.type === 'anti-knight'))
+  assert.ok(rules.some(rule => rule.type === 'kropki'))
+  assert.ok(rules.some(rule => rule.type === 'thermometer' &&
+    rule.cells.length === 3 && rule.cells[0] === 0 && rule.cells[1] === 1 && rule.cells[2] === 2))
+  assert.equal(imported.authoredArtwork?.length, 3)
+})
+
 test('#414 keeps its complete rule set and dividers after saving and reloading', async () => {
   const { game } = await prepareImportedPuzzle(source.code)
   const restored = readGame(game.id, JSON.stringify(game))
