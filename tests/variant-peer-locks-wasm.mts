@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { runEngine, type VariantPuzzle } from '../src/sudoku/engine.ts'
 import { hintEliminations, makeGame, replaceCandidates } from '../src/sudoku/game.ts'
 import { puzzleHints } from '../src/sudoku/puzzle-help.ts'
+import { applyPuzzleGrade, needsPuzzleGrade, ratePuzzle } from '../src/sudoku/puzzle-rating.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
 import { variantHintOrder } from '../src/sudoku/variant-play.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
@@ -61,4 +62,31 @@ test('the chess puzzle exposes its locked candidates in Techniques and Hint and 
   const chains = await puzzleHints(later, 'all', 'x-chain')
   assert.ok(chains.choices.some(({ evidence }) => 'inference' in evidence &&
     evidence.inference.links.some(({ source }) => 'variant-rule' in source && source['variant-rule'] === 'anti-knight')))
+})
+
+test('an older chess and Quadruple grade refreshes to Medium', async () => {
+  const givens = '0'.repeat(81)
+  const circles: [number, number[]][] = [
+    [39, [3, 8, 2, 6]], [60, [6, 8, 7, 1]], [69, [5, 2, 7]], [70, [1, 9, 2, 3]],
+    [61, [4, 1, 9]], [10, [4, 6, 9, 7]], [14, [2, 3]], [25, [2, 6]], [55, [2, 6, 8, 3]], [27, [2, 3]],
+  ]
+  const puzzle: VariantPuzzle = {
+    version: 1, givens,
+    rules: [{ type: 'anti-knight' }, { type: 'anti-king' },
+      ...circles.map(([topLeft, digits]) => ({ type: 'quadruple' as const, topLeft, digits }))],
+  }
+  const result = await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle } })
+  assert.equal(result.status, 'unique')
+  const game = {
+    ...makeGame('chess-quadruples', 'Chess and Quadruples', givens, 'imported'),
+    variant: { id: 'mixed' as const, puzzle, solution: result.solution },
+    difficulty: 'extreme' as const, score: 26_187, variantRatingVersion: 22,
+  }
+  assert.equal(needsPuzzleGrade(game), true)
+  const grade = await ratePuzzle(givens, game.variant)
+  assert.equal(grade?.difficulty, 'medium')
+  assert.equal(grade?.points, 4_403)
+  const refreshed = applyPuzzleGrade(game, grade)
+  assert.equal(refreshed.difficulty, 'medium')
+  assert.equal(needsPuzzleGrade(refreshed), false)
 })

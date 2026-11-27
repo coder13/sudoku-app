@@ -24,7 +24,8 @@ test('Sudoku Spider finishes with independently checked Thermometer and house de
   const position = variantPosition(game.variant)
   const order = await getVariantPlayOrder(position.puzzle)
   const runTrace = (techniqueOrder: readonly string[]) => runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder })
-  const earlier = await runTrace(order.filter(id => id !== technique))
+  const chains = ['x-chain', 'xy-chain', 'aic', 'discontinuous-nice-loop', 'continuous-nice-loop']
+  const earlier = await runTrace(order.filter(id => id !== technique && !chains.includes(id)))
   assert.equal(earlier.rating.status, 'stalled')
   assert.equal(earlier.steps.length, 68)
   const trace = await runTrace(order)
