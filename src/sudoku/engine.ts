@@ -1031,6 +1031,7 @@ export function createCountWorker(values: string, eliminations: readonly number[
   position?: VariantPosition, visibility?: VariantVisibility, techniqueOrder?: readonly string[],
 ) {
   let connection: EngineConnection | undefined
+  let variantCounts: Promise<Map<string, number>> | undefined
   return {
     count(technique: string) {
       if (!connection) {
@@ -1043,6 +1044,33 @@ export function createCountWorker(values: string, eliminations: readonly number[
       })
       const order = [...(techniqueOrder ?? [])]
       if (!order.includes(technique)) order.push(technique)
+      if (techniqueOrder?.length && techniqueOrder.includes(technique)) {
+        if (!variantCounts) variantCounts = sendRequest(connection, { type: 'variant', operation: 'hints',
+          position: { ...position, eliminations }, ...(visibility && { visibility }),
+          techniqueOrder: order, limit: 0xffff_ffff,
+        }).then((hints) => {
+          const counts = new Map<string, number>()
+          const covered = new Set<string>()
+          for (const id of order) {
+            const targets = new Set<string>()
+            for (const hint of hints) {
+              if (hint.technique !== id) continue
+              for (const action of hint.actions) {
+                const { cell, digit } = 'place' in action ? action.place : action.eliminate
+                const target = `${cell}:${digit}`
+                if (!covered.has(target)) targets.add(target)
+                covered.add(target)
+              }
+            }
+            counts.set(id, targets.size)
+          }
+          return counts
+        }).catch((reason: unknown) => {
+          variantCounts = undefined
+          throw reason
+        })
+        return variantCounts.then(counts => counts.get(technique) ?? 0)
+      }
       const end = order.indexOf(technique)
       const prefix = order.slice(0, end + 1)
       return sendRequest(connection, { type: 'variant', operation: 'hints',

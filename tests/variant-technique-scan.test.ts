@@ -59,6 +59,27 @@ test('variant scans count distinct targets, retain rules, and leave foreground a
   workers[0].reply([])
   assert.equal(await fresh, 0)
   freshView.close()
+  const order = ['locked-candidates', 'xy-wing', 'aic']
+  const batchPosition = { puzzle, entries }
+  const batchScan = watchTechniqueScan(entries, undefined, batchPosition, undefined, order)
+  const counts = order.map(technique => batchScan.count(technique))
+  assert.equal(workers[0].requests.length, 1)
+  assert.deepEqual(workers[0].requests[0].request, {
+    type: 'variant', operation: 'hints', position: { ...batchPosition, eliminations: undefined },
+    techniqueOrder: order, limit: 0xffff_ffff,
+  })
+  workers[0].reply([
+    { technique: 'locked-candidates', actions: [{ eliminate: { cell: 3, digit: 2 } }] },
+    { technique: 'xy-wing', actions: [
+      { eliminate: { cell: 3, digit: 2 } }, { eliminate: { cell: 4, digit: 2 } },
+    ] },
+    { technique: 'aic', actions: [
+      { eliminate: { cell: 4, digit: 2 } }, { place: { cell: 5, digit: 6 } },
+    ] },
+  ])
+  assert.deepEqual(await Promise.all(counts), [1, 1, 1])
+  assert.equal(workers[0].requests.length, 0)
+  batchScan.close()
   assert.deepEqual(cachedTechniqueCounts(techniqueScanKey(entries, removals, puzzle))['locked-candidates'], { count: 3 })
   assert.deepEqual(cachedTechniqueCounts(techniqueScanKey(entries, removals, other.puzzle))['locked-candidates'], { count: 0 })
   const cancelledPuzzle: VariantPuzzle = { ...puzzle, rules: [{ type: 'anti-knight' }] }
@@ -107,5 +128,16 @@ test('variant technique counts subtract candidate targets found by earlier techn
     ] },
   ])
   assert.equal(await count, 1)
+  const extra = scan.count('aic')
+  assert.deepEqual(workers[0].requests[0].request, {
+    type: 'variant', operation: 'hints', position: { puzzle, entries, eliminations: undefined },
+    techniqueOrder: [...order, 'aic'], limit: 0xffff_ffff,
+  })
+  workers[0].reply([
+    { technique: 'locked-candidates', actions: [{ eliminate: { cell: 3, digit: 2 } }] },
+    { technique: 'xy-wing', actions: [{ eliminate: { cell: 3, digit: 2 } }] },
+    { technique: 'aic', actions: [{ place: { cell: 5, digit: 6 } }] },
+  ])
+  assert.equal(await extra, 1)
   scan.close()
 })
