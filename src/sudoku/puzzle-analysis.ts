@@ -6,10 +6,30 @@ export const TECHNIQUE_FINDER_TITLE = 'Techniques'
 // in "Other techniques" until a more specific category is added.
 export const ANALYSIS_GROUPS = [
   { title: 'Singles', techniques: ['full-house', 'hidden-single-box', 'naked-single', 'hidden-single'] },
-  { title: 'Locked candidates', techniques: ['locked-candidates', 'pointing', 'claiming', 'direct-pointing', 'direct-claiming'] },
+  { title: 'Candidate restrictions', techniques: [
+    'parity', 'digit-restriction', 'anti-knight', 'anti-king', 'non-consecutive', 'inequality',
+    'conditional-neighbor', 'distinct-cells', 'kropki', 'non-consecutive-bivalue',
+    'non-consecutive-trivalue', 'global-entropy', 'quadruple',
+    'sized-parity', 'sized-diagonal', 'sized-extra-house', 'sized-minimum', 'sized-maximum',
+    'sized-kropki', 'sized-labeled-dots', 'sized-difference', 'sized-quadruple',
+  ] },
+  { title: 'Locked candidates', techniques: [
+    'pointing', 'claiming', 'non-consecutive-locked-candidates-2', 'non-consecutive-locked-candidates-3',
+    'locked-candidates', 'renban-locked-digit', 'direct-pointing', 'direct-claiming',
+  ] },
   { title: 'Subsets', techniques: [
     'locked-pair', 'locked-triple', 'naked-pair', 'hidden-pair', 'naked-triple',
     'hidden-triple', 'naked-quadruple', 'hidden-quadruple', 'direct-hidden-pair', 'direct-hidden-triple',
+  ] },
+  { title: 'Lines and matching digits', techniques: [
+    'consecutive-run', 'clone', 'palindrome', 'lockout', 'between', 'thermometer',
+    'whispers', 'entropic', 'modular', 'digit-order', 'renban',
+    'sized-thermometer', 'sized-slow-thermometer', 'sized-whispers', 'sized-renban',
+  ] },
+  { title: 'Cages and sums', techniques: [
+    'xv', 'adjacent-total', 'cage-combinations', 'pill-arrow', 'arrow', 'region-sum',
+    'cage-house-sum', 'algebraic-cage-bounds', 'sized-xv', 'sized-anti-sum', 'sized-killer-cages',
+    'sized-row-column-sum', 'sized-arrow', 'sized-double-arrow', 'sized-region-sum',
   ] },
   { title: 'Wings', techniques: [
     'w-wing', 'xy-wing', 'xyz-wing', 'wxyz-wing',
@@ -28,6 +48,14 @@ export const ANALYSIS_GROUPS = [
     'unique-rectangle-4', 'unique-rectangle-5', 'unique-rectangle-6',
     'hidden-rectangle', 'unique-loop',
   ] },
+  { title: 'Outside clues', techniques: ['little-killer', 'skyscrapers', 'sandwich', 'x-sum', 'sized-sandwich'] },
+  { title: 'Clue interactions', techniques: [
+    'whispers-house-support', 'inside-grid', 'kropki-house-support', 'lettered-quadruples',
+    'entropy-quadruple', 'renban-house-support', 'group-line-house-support',
+    'thermometer-house-support', 'little-killer-house-support', 'renban-sum',
+    'region-sum-distinct', 'renban-sum-ray-houses', 'renban-sum-house',
+    'renban-group-counts', 'region-sum-house',
+  ] },
   { title: 'Chains and coloring', techniques: [
     '3d-medusa', 'multi-coloring', 'x-chain', 'xy-chain', 'aic', 'discontinuous-nice-loop',
     'continuous-nice-loop', 'grouped-aic', 'grouped-discontinuous-nice-loop',
@@ -39,6 +67,12 @@ export const ANALYSIS_GROUPS = [
     'als-discontinuous-nice-loop', 'als-continuous-nice-loop', 'sue-de-coq',
     'death-blossom', 'multi-sector-locked-sets',
   ] },
+  { title: 'Forcing techniques', techniques: [
+    'group-order-elimination', 'linked-clue-contradiction', 'matching-digit-contradiction',
+    'group-order-contradiction', 'sized-clue-interpretation', 'sized-contradiction',
+    'tridagon-forcing-net', 'forcing-chain', 'forcing-net', 'matching-layout-forcing',
+    'dynamic-forcing-net', 'advanced-forcing-net', 'nested-forcing-net',
+  ] },
   { title: 'Advanced patterns', techniques: [
     'fireworks', 'aligned-pair-exclusion', 'aligned-triplet-exclusion',
     'tridagon', 'exocet', 'senior-exocet', 'double-exocet', 'sk-loop',
@@ -46,16 +80,7 @@ export const ANALYSIS_GROUPS = [
     'quadruple-pattern-overlay', 'quintuple-pattern-overlay',
     'sextuple-pattern-overlay', 'septuple-pattern-overlay',
   ] },
-  { title: 'Forcing techniques', techniques: [
-    'tridagon-forcing-net', 'forcing-chain', 'forcing-net',
-    'dynamic-forcing-net', 'advanced-forcing-net', 'nested-forcing-net',
-  ] },
 ] as const
-
-const VARIANT_ANALYSIS_GROUP = {
-  title: 'Variant techniques',
-  techniques: ['anti-knight', 'anti-king', 'conditional-neighbor'],
-} as const
 
 export const ANALYSIS_TECHNIQUES = ANALYSIS_GROUPS.flatMap(({ techniques }) => [...techniques])
 
@@ -201,23 +226,15 @@ export function filterAnalysisGroups(
 /** Use the engine catalog, not the display list, as the source of truth.
  * Any future detector without a hand-picked family is still included.
  */
-export function analysisGroupsForCatalog(catalog: readonly { id: string }[]): AnalysisGroup[] {
-  const available = new Set(catalog.map(({ id }) => id))
-  const used = new Set<string>()
-  const groups: AnalysisGroup[] = []
-  const advancedPatterns = ANALYSIS_GROUPS.find(({ title }) => title === 'Advanced patterns')
-  const advancedTechniqueIds = new Set<string>(advancedPatterns?.techniques ?? [])
-  for (const group of [...ANALYSIS_GROUPS.filter(({ title }) => title !== 'Advanced patterns'), VARIANT_ANALYSIS_GROUP]) {
-    const techniques = group.techniques.filter((id) => available.has(id) && !used.has(id))
-    for (const id of techniques) used.add(id)
-    if (techniques.length) groups.push({ title: group.title, techniques })
-  }
-  const unknown = catalog.map(({ id }) => id).filter((id) => !used.has(id) && !advancedTechniqueIds.has(id))
-  if (unknown.length) groups.push({ title: 'Other techniques', techniques: unknown })
-  if (advancedPatterns) {
-    const techniques = advancedPatterns.techniques.filter((id) => available.has(id) && !used.has(id))
-    if (techniques.length) groups.push({ title: advancedPatterns.title, techniques })
-  }
+export function analysisGroupsForCatalog(ids: readonly string[]): AnalysisGroup[] {
+  const unassigned = new Set(ids)
+  const groups: AnalysisGroup[] = ANALYSIS_GROUPS.flatMap(({ title, techniques }) => {
+    const available = techniques.filter(id => unassigned.delete(id))
+    return available.length ? [{ title, techniques: available }] : []
+  })
+  const advancedPatterns = groups.at(-1)?.title === 'Advanced patterns' ? groups.pop() : undefined
+  if (unassigned.size) groups.push({ title: 'Other techniques', techniques: [...unassigned] })
+  if (advancedPatterns) groups.push(advancedPatterns)
   return groups
 }
 
