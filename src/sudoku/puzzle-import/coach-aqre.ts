@@ -25,10 +25,10 @@ export type CoachAqreRegion = {
 type Spec = Pick<CoachAqreSource, 'kind'>
 
 const SOURCES: ReadonlyMap<string, Spec> = new Map([
-  ['1122b77d323927c3bebba4bf417adf32a2781b093d3c9d245de379d60c739175', {
+  ['71eb406c800fa88c0f23592774bcfe50af3c0d672912a89b421d5222c59d2de6', {
     kind: 'aqre-snake',
   }],
-  ['c3f966b0f62af5c3a15e4f69169b3fbb3ca038e0869e879f181183af48fda081', {
+  ['69876e36eb4888cbca2fc44d94d341ae83b3580edb792caba8117b144a00511f', {
     kind: 'aqre-plus',
   }],
 ])

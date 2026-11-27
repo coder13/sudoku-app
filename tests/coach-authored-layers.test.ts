@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
 import { parseCoachEntropyWindowGroups } from '../src/sudoku/entropy-window-groups.ts'
 import { validAuthoredArtwork } from '../src/sudoku/authored-artwork.ts'
@@ -14,6 +15,10 @@ import { readGame } from '../src/sudoku/storage.ts'
 import { syncRequest } from '../src/sudoku/sync-engine.ts'
 import { syncDatabase } from './helpers/sync-database.ts'
 import { isPlayablePuzzle } from '../src/sudoku/variants.ts'
+import { coachCode } from './helpers/coach-code.ts'
+import { useWasmWorker } from './helpers/wasm-worker.ts'
+
+useWasmWorker()
 
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-authored-layers.json', import.meta.url), 'utf8')) as {
   examples: { issue: number; id: string; code: string; sourceDescription?: string }[]
@@ -228,6 +233,16 @@ test('#543 and #546 import their Aqre shading, regions, and companion clues', as
   assert.equal(importedPlusRules.filter(rule => rule.type === 'renban').length, 6)
   const importedSnakeAqre = importedSnakeRules.find(rule => rule.type === 'aqre')
   assert.equal(importedSnakeAqre?.type === 'aqre' ? importedSnakeAqre.givenShades.length : -1, 16)
+
+  const progressCell = importedSnake.givens.indexOf('0')
+  const userDigits = Array.from({ length: 81 }, (_, cell) => cell === progressCell ? '1' : '0').join('')
+  const progressedCode = coachCode({ ...snakeData, userDigits })
+  const progressedImport = await detectPuzzle(progressedCode)
+  assert.equal(progressedImport.progress?.entries[progressCell], '1')
+  assert.equal(progressedImport.variant?.puzzle.rules?.some(rule => rule.type === 'aqre'), true)
+  const { game } = await prepareImportedPuzzle(progressedCode)
+  assert.equal(game.position.entries[progressCell], '1')
+  assert.equal(game.variant?.puzzle.rules?.some(rule => rule.type === 'aqre'), true)
 })
 
 test('Aqre import rejects off-grid artwork coordinates instead of changing its regions', async () => {

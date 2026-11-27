@@ -7,6 +7,7 @@ import { readReviewedCoachCrust } from '../src/sudoku/puzzle-import/coach-crust.
 import { isSizedGrid } from '../src/sudoku/grid.ts'
 import { isSizedRuleList } from '../src/sudoku/sized-rule-game.ts'
 import worker from '../cloudflare/pages/_worker.js'
+import { coachCode } from './helpers/coach-code.ts'
 
 const fixtures = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-crust.json', import.meta.url), 'utf8')) as {
   id: 'BKR7' | 'ABjn' | 'DZEy' | '9Z8C'; title: string; code: string; description: string; solution?: string
@@ -51,10 +52,11 @@ test('reviewed Crust exports parse outside totals and the Edge-Count companion l
   }
 })
 
-test('Crust parsing rejects changed exports, altered source geometry, and incomplete edge counts', async () => {
+test('Crust parsing hashes puzzle semantics, rejects altered geometry, and requires complete edge counts', async () => {
   const fixture = fixtures.find(({ id }) => id === 'ABjn')!
   const data = await decodeSudokuCoachPayload(fixture.code)
-  assert.equal(await readReviewedCoachCrust(`${fixture.code}0`, data), undefined)
+  assert.equal((await readReviewedCoachCrust(`${fixture.code}0`, data))?.source, 'ABjn',
+    'the reviewed puzzle fingerprint is independent of the source encoding suffix')
   const changedGeometry = structuredClone(data)
   const layer = changedGeometry.givenConstraints[0] as { segments: { cells: number[][] }[] }
   layer.segments[0].cells[0][0] += 1
@@ -63,6 +65,16 @@ test('Crust parsing rejects changed exports, altered source geometry, and incomp
   const countLayer = missingCount.givenConstraints[1] as { segments: unknown[] }
   countLayer.segments.pop()
   assert.equal(await readReviewedCoachCrust(fixture.code, missingCount), undefined)
+})
+
+test('reviewed 9 × 9 Crust imports preserve placed progress', async () => {
+  const fixture = fixtures.find(({ id }) => id === 'BKR7')!
+  const data = await decodeSudokuCoachPayload(fixture.code)
+  const withProgress = coachCode({ ...data, userDigits: `1${'0'.repeat(80)}` })
+  const imported = await detectPuzzle(withProgress)
+  assert.equal(imported.progress?.entries[0], '1')
+  assert.equal(imported.givens.length, 81)
+  assert.equal(imported.sizedRules?.[0].type, 'crust')
 })
 
 test('reviewed Crust exports become no-region sized engine imports', async () => {

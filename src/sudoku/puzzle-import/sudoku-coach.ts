@@ -38,7 +38,7 @@ import { closedRegionSumCells, regionIndex } from '../region-sum.ts'
 import { isSizedRuleList } from '../sized-rule-game.ts'
 import { cellsShareEdge } from '../variants.ts'
 import { fetchPublishedExport } from './published-link.ts'
-import { MAX_DECODED_LENGTH, MAX_IMPORT_LENGTH, hasData, hasMiniBoxes, jigsawLayoutError, makeImportedPuzzle, parseJSON, readRegions, record, sourceHash } from './shared.ts'
+import { MAX_DECODED_LENGTH, MAX_IMPORT_LENGTH, hasData, hasMiniBoxes, jigsawLayoutError, makeImportedPuzzle, parseJSON, rawSourceHash, readRegions, record, sourceHash } from './shared.ts'
 import type { ImportResult, PuzzleImporter } from './types.ts'
 
 const BASE32HEX = '0123456789abcdefghijklmnopqrstuv'
@@ -52,17 +52,17 @@ const COACH_COLLECTION_LINK = /^\/(?:[a-z]{2}\/)?collections\/((?:[a-z0-9-]{1,64
 const coachRomeoAndJulietExport = 'a00378f1b8e4943815a5987cacaeeec0669db58163a9cdca19675d3f36a678e3'
 // The reviewed Mini Jigsaw source describes regions that wrap over both board axes.
 // Region geometry alone cannot distinguish this topology from ordinary authored regions.
-const coachWrappedJigsawExport = '501832fec680e8fa268be297919615522b2a9150da212cde066797ec6e6828dc'
+const coachWrappedJigsawExport = '0b2943873942f7ae5b388d0acb2534a5d241a64fb039619115364e6d461ebed3'
 // The original 7×7 Skyscrapers puzzle stores its outside clues as cosmetic text.
 // Its exact export is enough to establish the meaning when users paste the code
 // directly, without the author description supplied by the short-link resolver.
-const coachSkyscrapersExport = 'd9726081ddf9b97737fdb72ffd1391fab8fc204edd73f7e99613f57e06f03121'
+const coachSkyscrapersExport = '77df0b423fed7df15eebccd55543055af4d3b648d5cfaad950098cdaa16879d2'
 // The original 6×6 Nonogram also states the rule in its published description.
 // Recognize only that exact export when users paste its puzzle code directly.
-const coachNonogramExport = 'f9f86aa7cfcc1e3fab882cb9c5a033128e28e6a172a1828163c1be028176b932'
+const coachNonogramExport = 'a93ddbfd210363b5c78ca7ed2fec53a12eaa5d79a99c17a49ce2c534bb3ffb3c'
 // DLeM's author description defines its outside digits as first-three-cell
 // membership clues. Its zero-valued Little Killer layers only draw arrows.
-const coachInsideDigitGroupsExport = '4df8f288447a88911a27cf695858ece85958b940e94afc536271946594ca3a8e'
+const coachInsideDigitGroupsExport = '3b05826519fdda35c4c377ed03d4b3ed946cd7c3a63ef64ec46c31caf04d5675'
 const coachInsideDigitGroupsSolution = '678243195953718624142965738487531962365492871291876453826157349534689217719324586'
 const COACH_FIELDS = new Set([
   'gridSize', 'givenDigits', 'regions', 'givenConstraints', 'meta', 'metaSolver', 'colours',
@@ -229,16 +229,16 @@ function isCoachTypedDeclaration(value: unknown): value is CoachTypedDeclaration
     value.adjacentTotals[0] === 7 && value.adjacentTotals[1] === 13
 }
 
-const magicSquareCoachExport = '8c4aceec22d1628faeb544944dfa6664913a08e1aaf468b4bcd5514fb7b844b1'
-const unknownCageSumsCoachExport = 'a96fdbd3eb78af79cf63b1ce787f1d3a3e4a1d70b249f23a7dedb11e2667a88f'
+const magicSquareCoachExport = '4de7af4ee0071d371302535620f15328e3ca59ca121e142e71e53bf025951f07'
+const unknownCageSumsCoachExport = 'c9b4e2692c037851140027b3f59b7c5ed6706dadfbcf049d01a9973bf74dcb8b'
 const unknownCageSumsPublishedSolution = '513879462296154378748623591635291784127348659489567123851936247972415836364782915'
-const distantNeighborsCoachExport = 'd8fb932a0c4941b1f7732f0ea32a6d50fc4adf72c5b6c0f28621e30405be9b0f'
+const distantNeighborsCoachExport = '218c74ffea2442270e3873b0e44919ba2be1da43eed50bb104095491508349c1'
 // The published AsnF instructions name these authored cosmetic labels as X-Sums.
 // Restrict that interpretation to the exact reviewed export, since raw text is otherwise ambiguous.
-const authoredAsnFXSumsCoachExport = '3392bb1a0488e8778d630b4b058e1a55ee04baefa0f199b5a29ba8382c499e53'
+const authoredAsnFXSumsCoachExport = '40049b467057c5860aea9fd909abd6eba8f1ea3694287117fec71a35041fe259'
 // K95q's description supplies the complete-black-dot rule, which is absent
-// from the copied SCv7 payload. Recognize only this reviewed source on raw-code imports.
-const allBlackDotsCoachExport = 'e03c0d40bdb9a3ab13512250b4920bd6d6f554da83d136d3e8105f29e713aa6e'
+// from the copied SCv7 payload. Recognize only this reviewed source fingerprint.
+const allBlackDotsCoachExport = 'd23c1148acfca2fe7c543a29fc3c4b52bd1aa70d9287fab8088333239d54d4e0'
 
 async function readCoachInsideDigitGroups(code: string, data: Record<string, unknown>) {
   if (await sourceHash(code, data) !== coachInsideDigitGroupsExport) return
@@ -762,19 +762,19 @@ function readCoachFogCellColors(fog: FogDefinition, cellColours: readonly string
 }
 
 // Coach leaves this rule out of a pasted Quad-Arrows export.
-const quadArrowsExport = '081de6e0d36d53b949aa2fcb8c18ab5cc7a89acab4729d3ba41baddefdd2dd43'
-const codeCrackerExport = 'a297ab70f94568f356c282821f9566ad8ac1e2ba287781737615518c306bab3c'
-const sandwichRollExport = 'a5222a3faefbf42cdaab3c8b81958d14e5a709e89d28e45d8611fbf64a325653'
-const sunnyEntropyExport = '1c8d349fc96821784cbda4323a1bc9f85d6245d7610cb2a04317c3b4815c32c6'
+const quadArrowsExport = '79e91e3f2437d79f1f711dfdef45d0c0d1b4c9218b84a2d539cbb7797d145764'
+const codeCrackerExport = 'f3e4547984dce224f6194295e4bf116d924557ba6e80e914aff73e91b443a7ff'
+const sandwichRollExport = '11c07dda397cac7f667a2a6b2a721eab3513d8598df0926b80acf6329280c80b'
+const sunnyEntropyExport = 'babed6a85770d81c9be91fd70f6fa688eba31fc5361639579e82d8030f01cd44'
 // The published 220V legend assigns its cosmetic orange and blue paths to
 // Entropic and Region Sum rules. The raw SCv7 payload does not carry that text.
-const coach220VLineColoursExport = 'a454bc2435d4d69950db865205e3cd117bd3ab325bd6c528a8d6944007f357d4'
+const coach220VLineColoursExport = '7cf6d6e8cb55e93db7199f2d9c6c90e64f60dde46df8c1faeca2663316e8f4c5'
 
 // The Rainbow colors repeat the region map. Revival's yellow pattern adds no
 // rule. Match the reviewed exports in full because other colors can encode clues.
 const reviewedCoachColorExports = new Map([
-  ['1be837174e67a43133a677d6f504da74724c35ece725b203f822d299954a91c1', 'Entro Quad Rainbow Jigsaw'],
-  ['2ec5b5abab8e4c9e045a35d0d3a4244213e47e37462c9b598798ee53ba07f28d', 'Revival'],
+  ['3c5e14b3fada38879b5f42667ad02820548f06ea6282db2b98d07edc8cfe3d17', 'Entro Quad Rainbow Jigsaw'],
+  ['b255fa64004bfdd04e71a07ac68863131e8906d992bf77af35af53296d812228', 'Revival'],
 ])
 
 function readCoachInsideGrid(constraints: readonly unknown[]): VariantRule[] {
@@ -854,7 +854,10 @@ function readCoachLetteredQuadruples(constraints: readonly unknown[]): VariantRu
 async function fromCoach(code: string, publication?: CoachPublication | null, fromCollection = false): Promise<ImportResult> {
   const data: Record<string, unknown> = /^[0-9]{81}$/.test(code) ? { gridSize: 9, givenDigits: code } : await decodeCoach(code)
   const insideDigitGroups = await readCoachInsideDigitGroups(code, data)
-  if (insideDigitGroups) return { ...insideDigitGroups, title: publication?.title ?? 'Symmetrical Inside' }
+  if (insideDigitGroups) {
+    const progress = readCoachProgress(data, insideDigitGroups.givens)
+    return { ...insideDigitGroups, ...(progress && { progress }), title: publication?.title ?? 'Symmetrical Inside' }
+  }
   const terrain = await readReviewedCoachTerrain(data)
   if (terrain) {
     const givens = data.givenDigits === undefined ? EMPTY : data.givenDigits
@@ -888,7 +891,9 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     const title = crust.source === 'BKR7' ? 'Crust of Void'
       : crust.source === 'ABjn' ? 'Crust of Edge-Count [7x7]'
         : crust.source === '9Z8C' ? 'Crust of Edge-Count [9x9]' : 'Mini Random Crust #1'
-    return { givens: '0'.repeat(crust.size ** 2), grid, sizedRules: [{
+    const givens = '0'.repeat(crust.size ** 2)
+    const progress = readCoachProgress(data, givens, crust.size)
+    return { givens, grid, ...(progress && { progress }), sizedRules: [{
       type: 'crust', clues,
       ...(crust.sharedRegion && { sharedRegion: crust.sharedRegion }),
       ...(crust.fixedEdges && { fixedEdges: crust.fixedEdges }),
@@ -898,7 +903,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   if (standalone) return { ...standalone, ...(publication?.title && { title: publication.title }) }
   if (data.gridSize === 4 || isRectangularSize(data.gridSize) || isJigsawSize(data.gridSize)) {
     const reviewedEntropicRunaround = publication?.authoredRule === 'sized-entropic-runaround' && data.gridSize === 6 &&
-      await sourceHash(code, data) === 'eaa3711145076e992c920d15677b5f02651e829cbec2b1ba95a0d37c7f93162f'
+      await sourceHash(code, data) === '80e6ee3c1b96047b9e28201a75d19e68c6886f4bf61e3a01932b9bf4ec274cca'
     const reviewedSkyscrapers = publication?.authoredRule === 'sized-skyscrapers' ||
       await sourceHash(code, data) === coachSkyscrapersExport
     const reviewedNonogram = publication?.authoredRule === 'sized-nonogram' ||
@@ -948,7 +953,8 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     })
     const rules = readCoachRules(ruleLayers, { regions })
     const imported = makeImportedPuzzle('0'.repeat(81), rules, regions)
-    return { ...imported, authoredArtwork: boxlessNine.artwork }
+    const progress = readCoachProgress(data, '0'.repeat(81))
+    return { ...imported, ...(progress && { progress }), authoredArtwork: boxlessNine.artwork }
   }
   const aqre = await readReviewedCoachAqre(code, data)
   const expectedAqreKind = publication?.authoredRule === 'aqre-snake' ? 'aqre-snake'
@@ -957,7 +963,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     throw new Error('The Aqre export does not match its published shading rules.')
   }
   if (publication?.authoredRule === 'xv-empty-cosmetic-cage' &&
-    await sourceHash(code, data) !== 'c7c2be5873de87e5168278e3f135cb5e5c1d5c470f87757076d54b64693c9806') {
+    await sourceHash(code, data) !== '8518f3fb3c90f87ce51db6de41e48f5b84310d2a1277d33dce5d76dab836691c') {
     throw new Error('The XV Entropy export does not match its reviewed empty cage layer.')
   }
   if (aqre) {
@@ -980,7 +986,8 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
       })),
     })
     const imported = makeImportedPuzzle(givens, rules, regions)
-    return { ...imported, ...(publication?.title && { title: publication.title }) }
+    const progress = readCoachProgress(data, source.givens)
+    return { ...imported, ...(progress && { progress }), ...(publication?.title && { title: publication.title }) }
   }
   const entropyGroupOrder = await readReviewedCoachEntropyGroupOrder(code, data)
   const entropyBreaks = await readReviewedCoachEntropyBreaks(code, data)
@@ -1067,7 +1074,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   if (unknownCageSums) rules.push(unknownCageSums.rule)
   if (distantNeighbors) rules.push(distantNeighbors)
   if (entropyGroups) rules.push(...entropyGroups.map(group => ({ type: 'entropy-window-group' as const, ...group })))
-  const reviewedRomeoAndJuliet = exportHash === coachRomeoAndJulietExport && !publication?.hasAuthorInstructions
+  const reviewedRomeoAndJuliet = await rawSourceHash(code) === coachRomeoAndJulietExport && !publication?.hasAuthorInstructions
   if (artwork?.partialRegions) {
     const marked = rules.filter(rule => rule.type === 'extra-house')
     if (regions?.type !== 'partial' || !marked.length) throw new Error('The Bento puzzle is missing its marked regions.')

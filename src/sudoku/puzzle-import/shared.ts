@@ -7,24 +7,46 @@ import type { ImportResult } from './types.ts'
 export const MAX_IMPORT_LENGTH = 20_000
 export const MAX_DECODED_LENGTH = 128_000
 
-const sourceHashes = new WeakMap<object, { code: string; hash: Promise<string> }>()
+const sourceHashes = new WeakMap<object, { fingerprint: string; hash: Promise<string> }>()
+const coachProgressFields = new Set([
+  'userDigits', 'userCellCandidates', 'userBoxCandidates', 'userColours', 'userCellCandidatesColours',
+])
 
-/** Hash a decoded source once across the reviewed-import checks for that payload. */
+function stableCoachSource(value: unknown, topLevel = false): string {
+  if (Array.isArray(value)) return `[${value.map(item => stableCoachSource(item)).join(',')}]`
+  if (record(value)) {
+    const keys = Object.keys(value).filter(key => !(topLevel && coachProgressFields.has(key))).sort()
+    return `{${keys.map(key => `${JSON.stringify(key)}:${stableCoachSource(value[key])}`).join(',')}}`
+  }
+  return JSON.stringify(value) ?? 'null'
+}
+
+/** Hash puzzle semantics once across reviewed-import checks, ignoring supported player progress. */
 export function sourceHash(code: string, payload: object): Promise<string | undefined> {
   if (!globalThis.crypto?.subtle) return Promise.resolve(undefined)
-  // Base32hex payloads are case-insensitive, while the SCv/version header is
-  // canonical in reviewed digests. Preserve that header when normalizing.
-  const canonicalCode = canonicalCoachCode(code)
+  // Keep the Coach format version in the digest, but hash decoded puzzle data
+  // so adding player progress does not disable source-specific import rules.
+  const header = /^SCv([0-9]+)_([0-9]+)_/i.exec(code)
+  const fingerprint = header
+    ? `SCv${header[1]}_${header[2]}_${stableCoachSource(payload, true)}`
+    : canonicalCoachCode(code)
   const cached = sourceHashes.get(payload)
-  if (cached?.code === canonicalCode) return cached.hash
-  const digest = crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonicalCode)).then(bytes =>
+  if (cached?.fingerprint === fingerprint) return cached.hash
+  const digest = crypto.subtle.digest('SHA-256', new TextEncoder().encode(fingerprint)).then(bytes =>
     Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, '0')).join(''))
   const hash = digest.catch(error => {
     if (sourceHashes.get(payload)?.hash === hash) sourceHashes.delete(payload)
     throw error
   })
-  sourceHashes.set(payload, { code: canonicalCode, hash })
+  sourceHashes.set(payload, { fingerprint, hash })
   return hash
+}
+
+/** Preserve the original export digest for one-off source reviews that have not migrated to semantic hashing. */
+export async function rawSourceHash(code: string): Promise<string | undefined> {
+  if (!globalThis.crypto?.subtle) return
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonicalCoachCode(code)))
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('')
 }
 
 export function record(value: unknown): value is Record<string, unknown> {

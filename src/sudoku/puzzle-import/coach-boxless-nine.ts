@@ -1,7 +1,7 @@
 import type { AuthoredMark } from '../authored-artwork.ts'
 import { record, sourceHash } from './shared.ts'
 
-const reviewedExport = '421cc5cddbddfac039e2c1761f09a71af89f5837c8512653091639712a579070'
+const reviewedExport = 'aca968ce1ec9789e736c9a944b02bb5ed2743354399f78039a01a44d896eb2d0'
 
 export type ReviewedCoachBoxlessNine = {
   unnumberedCages: readonly (readonly number[])[]

@@ -38,7 +38,7 @@ export async function readReviewedCoachTextClues(code: string, data: Record<stri
 } | undefined> {
   const hash = await sourceHash(code, data)
   if (!hash) return
-  if (hash !== '03e7bc424d19df4aef06c805c6b97c6a75b7f3cd9e46f22470cd5a9acd198d31') return
+  if (hash !== '2ee02d4f7c79da6f4a4497472c22e7bfde6b0064f7f8103728a0d6517b0e2cf5') return
   if (!Array.isArray(data.givenConstraints) || !data.givenConstraints.every(record)) return
   const constraints = data.givenConstraints
   const layers = constraints.filter(layer => layer.type === 'cosmeticText')

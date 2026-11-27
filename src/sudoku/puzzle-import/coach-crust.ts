@@ -21,10 +21,10 @@ const publishedCrustSolutions: Partial<Record<CoachCrustDefinition['source'], st
 }
 
 const reviewedCrustExports = new Map<string, CoachCrustDefinition['source']>([
-  ['63b7809ce52086b7e819ec86a4183850a633388ba8bd1f0e7b3d8866aa70d748', 'BKR7'],
-  ['b2f3fc7ac221a182de4380bf0e399765d05d8354eb4c6c1365f714185132fa42', 'ABjn'],
-  ['ea50117b4d5025e6b5ad8c571c9242a9dbf980ed3e717be4e15001376e0ef32d', 'DZEy'],
-  ['23472f9fd5295f336a878aeca325ab33a7727338801e8d1a15f15e27972a83e6', '9Z8C'],
+  ['de637fce7d10366d180d4ee6eea7456d8173b9b74de5a6fbbe33f2d4f8324b63', 'BKR7'],
+  ['3a29ef6e95b1ed3c2adb86ff7f93242599576825158053581cb5fc2e73cd966b', 'ABjn'],
+  ['376114ca23e4f6337af419d2aba6ade8d68da829f2aa89e66baa328fa541316e', 'DZEy'],
+  ['2eb387c8fe073e88a2e1a1fb53dc148642f61ad4cd006be6cc4a4980a907f8a0', '9Z8C'],
 ])
 
 type TextClue = { x: number; y: number; text: string }
