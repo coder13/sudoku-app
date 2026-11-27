@@ -41,7 +41,22 @@ async function measure(label, operation, entries) {
 }
 
 console.log(`Coach Terrain Wasm ${process.platform} ${process.arch}, Node ${process.version}; ${wasmBytes.length} raw/${gzipSync(wasmBytes).length} gzip bytes.`)
-console.log('Five warmups and 40 measured calls; each request includes protocol encoding/decoding and engine rule compilation.')
+console.log('Five warmups and 40 measured calls; each engine request includes protocol encoding/decoding and rule compilation.')
+async function measureImport() {
+  for (let index = 0; index < 5; index++) await detectPuzzle(source.sudoku)
+  const timings = []
+  for (let index = 0; index < 40; index++) {
+    const start = performance.now()
+    const result = await detectPuzzle(source.sudoku)
+    timings.push(performance.now() - start)
+    assert.equal(result.variant?.puzzle.rules?.filter(rule => rule.type === 'terrain-sandwich').length, 15)
+  }
+  timings.sort((left, right) => left - right)
+  const median = timings[Math.ceil(timings.length * 0.5) - 1]
+  const p95 = timings[Math.ceil(timings.length * 0.95) - 1]
+  console.log(`Local raw-code import setup: ${median.toFixed(3)}/${p95.toFixed(3)} ms median/p95`)
+}
+await measureImport()
 const candidates = await request('candidates')
 assert.ok(Array.isArray(candidates) && candidates.length === 81)
 for (let cell = 0; cell < 81; cell++) {
