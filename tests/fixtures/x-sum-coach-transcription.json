@@ -2,7 +2,7 @@
   "title": "X sums #3",
   "author": "GenevieveArchbaker",
   "source": "https://sudoku.coach/en/s/AsnF",
-  "provenance": "Manually verified native transcription of all sixteen printed outside totals under the author\u2019s explicit X-Sums rules. Original Coach data contains cosmetic text, not typed X-Sums constraints, and remains rejected by automatic import.",
+  "provenance": "Manually verified native transcription of all sixteen printed outside totals under the author\u2019s explicit X-Sums rules. Original Coach data contains cosmetic text rather than typed X-Sums constraints; automatic import recognizes only the exact reviewed source under its published rules.",
   "puzzle": {
     "version": 1,
     "givens": "000000000000000000000000000000000000000000000000000000000000000000000000000000000",
