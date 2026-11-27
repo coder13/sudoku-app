@@ -23,6 +23,7 @@ type CoachTerrainPayload = Record<string, unknown>
 const allowedFields = new Set([
   'gridSize', 'givenDigits', 'colours', 'givenColours', 'givenConstraints',
   'userDigits', 'userCellCandidates', 'userBoxCandidates', 'userColours', 'userCellCandidatesColours',
+  'quickDrawLineSegments', 'quickDrawSymbols', 'cells',
 ])
 
 const changes: readonly CoachTerrainValueChange[] = [

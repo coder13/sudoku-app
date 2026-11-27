@@ -75,3 +75,21 @@ test('Coach Terrain imports retain player progress added to the reviewed puzzle'
   assert.equal(game.position.entries[0], source.source.solution[0])
   assert.equal(game.variant?.puzzle.rules?.filter(rule => rule.type === 'terrain-sandwich').length, 15)
 })
+
+test('Coach Terrain keeps its reviewed rules when player Quick Draw annotations are present', async () => {
+  const code = coachCode({ ...source.payload,
+    quickDrawLineSegments: { '0/0=>1/1': { colour: 'blue' } },
+    quickDrawSymbols: { '1/0.5': { shape: 'cross', colour: 'red' } },
+    cells: { 0: { quickSymbol: { shape: 'circle', colour: 'green' } } },
+  })
+  const imported = await detectPuzzle(code)
+  assert.equal(imported.variant?.puzzle.rules?.filter(rule => rule.type === 'terrain-sandwich').length, 15)
+  assert.deepEqual(imported.progress?.importedDrawings, [
+    { shape: 'line', from: [0, 0], to: [1, 1], color: 'blue' },
+    { shape: 'cross', at: [1, .5], color: 'red' },
+    { shape: 'circle', at: [.5, .5], color: 'green' },
+  ])
+  const { game } = await prepareImportedPuzzle(code)
+  assert.equal(game.variant?.puzzle.rules?.filter(rule => rule.type === 'terrain-sandwich').length, 15)
+  assert.deepEqual(game.position.importedDrawings, imported.progress?.importedDrawings)
+})
