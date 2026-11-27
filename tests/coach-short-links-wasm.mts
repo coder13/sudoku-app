@@ -313,7 +313,7 @@ test('an X-Sums declaration rejects ambiguous totals, markings and unsupported c
       ['Empty', /has no outside totals/], ['Corner', /beside a row or column/], ['Interior', /beside a row or column/],
       ['Fraction', /beside a row or column/], ['BadTotal', /1 through 45/], ['Duplicate', /multiple X-Sums/],
       ['Graphic', /layer uses unsupported settings/], ['Color', /unsupported authored markings|invalid authored colors/],
-      ['Unknown', /not supported yet.*globalModularity/],
+      ['Unknown', /unsupported rule type \(globalModularity\)/],
     ] as const) {
       await assert.rejects(detectPuzzle('sudoku.coach/s/' + id), error, id)
     }
@@ -875,6 +875,6 @@ test('short links reject unknown and authored rules even when the numeric grid w
     for (const id of ['Blank', 'Wrong']) await assert.rejects(detectPuzzle('sudoku.coach/s/' + id), /use Copy → Puzzle/)
     for (const id of ['Custom', 'Text']) await assert.rejects(detectPuzzle('sudoku.coach/s/' + id), /has author instructions/)
     for (const id of ['Markings', 'Drawing']) await assert.rejects(detectPuzzle('sudoku.coach/s/' + id), /unsupported authored markings|invalid authored colors/)
-    await assert.rejects(detectPuzzle('sudoku.coach/s/Unknown'), /not supported yet.*globalModularity/)
+    await assert.rejects(detectPuzzle('sudoku.coach/s/Unknown'), /unsupported rule type \(globalModularity\)/)
   } finally { sqlite.close() }
 })

@@ -181,7 +181,7 @@ test('projected layers hide givens, cut paths at hidden cells, and delay negativ
     await assert.rejects(importFog(layer), /invalid or unsupported reveal settings/)
   }
   assert.deepEqual((await importFog(mask([80, 0]), mask([10, 80]))).variant?.fog, { initialCells: [0, 10, 80] })
-  await assert.rejects(importFog(mask([0]), { type: 'terrain', segments: [{ cells: [0] }] }), /not supported yet \(terrain\)/)
+  await assert.rejects(importFog(mask([0]), { type: 'terrain', segments: [{ cells: [0] }] }), /unsupported rule type \(terrain\)/)
 
   const puzzle = { version: 1, givens: '1' + '0'.repeat(79) + '2', rules: [
     { type: 'parity', cells: [0, 80], parity: 'odd' },
