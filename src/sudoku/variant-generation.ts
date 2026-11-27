@@ -153,6 +153,9 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
           const start = cell(rule.diagonal === 'main' ? 0 : 8)
           return { ...rule, diagonal: start === 0 || start === 80 ? 'main' : 'anti' }
         }
+        case 'magic-square': return { ...rule, cells: rule.cells.map(cell) }
+        case 'unknown-cage-sums': return { ...rule, cages: rule.cages.map(cage => cage.map(cell)) }
+        case 'anti-knight': case 'anti-king': return rule
         case 'killer-cages':
           return { ...rule, cages: rule.cages.map((cage) => ({ ...cage, cells: cage.cells.map(cell) })) }
         case 'parity': case 'digit-restriction': case 'extra-house': case 'distinct-cells': case 'consecutive-run': return { ...rule, cells: rule.cells.map(cell) }
@@ -160,6 +163,10 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
         case 'forbidden-entropic-connection': return { ...rule, cells: rule.cells.map(cell) as [number, number, number, number] }
         case 'inside-grid': return { ...rule, rows: rule.rows.map(row => row.map(cell)) }
         case 'neighbor-match': return { ...rule, clues: rule.clues.map(clue => ({ ...clue, cell: cell(clue.cell) })) }
+        // Global Entropy's optional groups partition digits, so the rule itself
+        // has no geometry to transform.
+        case 'global-entropy': return rule
+        case 'digit-order': return { ...rule, cells: rule.cells.map(cell) }
         case 'distant-neighbors': return { ...rule, markedCells: rule.markedCells.map(cell) }
         case 'lettered-quadruples': return { ...rule, clues: rule.clues.map(clue => ({
           ...clue, topLeft: Math.min(...quadrupleCells(clue.topLeft).map(cell)),
@@ -208,7 +215,10 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
             marks && { ...marks, pairs: marks.pairs?.map(([a, b]) => [cell(a), cell(b)] as const) }
           return { ...rule, ...(rule.five && { five: reflectMarks(rule.five) }), ...(rule.ten && { ten: reflectMarks(rule.ten) }) }
         }
-        default: return rule
+        default: {
+          const exhaustive: never = rule
+          return exhaustive
+        }
       }
     }),
   }

@@ -6,6 +6,7 @@ import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { transformedBoard } from './helpers/transformed-board.ts'
+import { readCoachSolutionSources } from './helpers/coach-fixture-sources.ts'
 
 test('Quadruple anchors follow all four corners, preserving repeated printed digits under every symmetry', () => {
   const puzzle: VariantPuzzle = { version: 1, givens: '0'.repeat(81), rules: [
@@ -51,4 +52,21 @@ test('all eight transformations preserve published Quadruple and Odd/Even comple
     }
     assert.deepEqual(puzzle, original)
   }
+})
+
+test('all eight transformations preserve Coach Magic Square, Unique Cages and Entropic Order rules', async () => {
+  const expected = new Set(['magic-square', 'unknown-cage-sums', 'digit-order'])
+  const seen = new Set<string>()
+  for (const source of readCoachSolutionSources().values()) {
+    const imported = await detectPuzzle(source.code)
+    if (!imported.variant) continue
+    const relevant = imported.variant.puzzle.rules?.filter(rule => expected.has(rule.type)) ?? []
+    for (const rule of relevant) seen.add(rule.type)
+    if (!relevant.length) continue
+    for (let symmetry = 0; symmetry < 8; symmetry++) {
+      const transformed = reflectVariant(imported.variant.puzzle, symmetry)
+      assertVariantCompletion(transformed, transformedBoard(source.solution, symmetry))
+    }
+  }
+  assert.deepEqual([...seen].sort(), [...expected].sort())
 })

@@ -3,7 +3,10 @@ import { test } from 'node:test'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { runEngine } from '../src/sudoku/engine.ts'
 import { sizedRulePosition } from '../src/sudoku/sized-rule-game.ts'
+import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { readCoachSolutionSources, standaloneCoachSolutionSources } from './helpers/coach-fixture-sources.ts'
+import { assertVariantCompletion } from './helpers/variant-truth.ts'
+import { transformedBoard } from './helpers/transformed-board.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 
 useWasmWorker()
@@ -54,6 +57,16 @@ test('published Sudoku Coach completions pass the Rust engine with every importe
         puzzle: imported.variant.puzzle,
         entries: source.solution,
       } }), 'unique', sourceName)
+      const transformSensitive = imported.variant.puzzle.rules?.some(rule =>
+        ['magic-square', 'unknown-cage-sums', 'digit-order'].includes(rule.type))
+      if (transformSensitive) for (let symmetry = 0; symmetry < 8; symmetry++) {
+        const puzzle = reflectVariant(imported.variant.puzzle, symmetry)
+        const solution = transformedBoard(source.solution, symmetry)
+        assertVariantCompletion(puzzle, solution)
+        assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: {
+          puzzle, entries: solution,
+        } }), 'unique', `${sourceName}, symmetry ${symmetry}`)
+      }
       const candidates = await runEngine({ type: 'variant', operation: 'candidates', position: { puzzle: imported.variant.puzzle } })
       assertSolutionCandidates(candidates, imported.givens, source.solution, sourceName)
       const progressed = await runEngine({ type: 'variant', operation: 'candidates', position: {
