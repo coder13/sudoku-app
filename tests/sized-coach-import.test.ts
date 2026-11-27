@@ -59,6 +59,17 @@ test('published Symmetrical Inside imports outside-digit rules with its Renban p
   }
 })
 
+test('Symmetrical Inside retains player progress without losing its authored outside clues', async () => {
+  const data = coachInsideDigitGroups.decoded
+  const emptyCell = String(data.givenDigits).indexOf('0')
+  const userDigits = Array.from({ length: 81 }, (_, cell) => cell === emptyCell
+    ? coachInsideDigitGroups.metadata.solution[cell] : '0').join('')
+  const imported = await detectPuzzle(coachCode({ ...data, userDigits }))
+  assert.equal(imported.progress?.entries[emptyCell], coachInsideDigitGroups.metadata.solution[emptyCell])
+  assert.equal(imported.sizedRules?.filter(rule => rule.type === 'outside-text').length, 10)
+  assert.equal(imported.sizedRules?.filter(rule => rule.type === 'renban').length, 7)
+})
+
 test('Symmetrical Inside raw-code and short-link imports keep the same authored rules', async ({ mock }) => {
   mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify({
     code: coachInsideDigitGroups.metadata.sudoku,

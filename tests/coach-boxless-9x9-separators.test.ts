@@ -5,6 +5,7 @@ import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coa
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { readGame } from '../src/sudoku/storage.ts'
+import { coachCode } from './helpers/coach-code.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 
 useWasmWorker()
@@ -56,4 +57,16 @@ test('#414 keeps its complete rule set and dividers after saving and reloading',
   assert.ok(restored?.variant)
   assert.deepEqual(restored.variant.puzzle, game.variant?.puzzle)
   assert.deepEqual(restored.authoredArtwork, game.authoredArtwork)
+})
+
+test('#414 preserves player progress alongside the reviewed boxless rules', async () => {
+  const data = await decodeSudokuCoachPayload(source.code)
+  const code = coachCode({ ...data, userDigits: `1${'0'.repeat(80)}` })
+  const imported = await detectPuzzle(code)
+  assert.equal(imported.progress?.entries[0], '1')
+  assert.equal(imported.variant?.puzzle.rules?.some(rule => rule.type === 'anti-knight'), true)
+  assert.equal(imported.authoredArtwork?.length, 3)
+  const { game } = await prepareImportedPuzzle(code)
+  assert.equal(game.position.entries[0], '1')
+  assert.equal(game.variant?.puzzle.rules?.some(rule => rule.type === 'anti-knight'), true)
 })

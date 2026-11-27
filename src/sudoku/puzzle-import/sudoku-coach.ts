@@ -1017,7 +1017,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   if (publication?.authoredRule === 'distant-neighbors' && !distantNeighbors) {
     throw new Error('The Sudoku Coach export does not match its published box identity clues.')
   }
-  const artwork = await readReviewedCoachArtwork(code, constraints)
+  const artwork = await readReviewedCoachArtwork(code, constraints, data)
   if (publication?.authoredRule === 'reviewed-artwork' && !artwork?.layers) {
     throw new Error('The CS1G export does not match its reviewed authored artwork.')
   }

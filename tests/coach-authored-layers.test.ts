@@ -112,6 +112,12 @@ test('#542 imports the shape groups, active rules, and authored RP label', async
   assert.deepEqual(imported.authoredArtwork, [{ type: 'text', text: 'RP', center: [4.5, 4.5], size: .455,
     color: '#ffa852', opacity: 188, outlineColor: '#f77c00', outlineThickness: .01, offsetY: .07 }])
 
+  const emptyCell = imported.givens.indexOf('0')
+  const userDigits = Array.from({ length: 81 }, (_, cell) => cell === emptyCell ? '1' : '0').join('')
+  const withProgress = await detectPuzzle(coachCode({ ...(await decodeSudokuCoachPayload(source.code)), userDigits }))
+  assert.equal(withProgress.progress?.entries[emptyCell], '1')
+  assert.equal(withProgress.title, imported.title)
+  assert.deepEqual(withProgress.authoredArtwork, imported.authoredArtwork)
 })
 
 test('#547 preserves CS1G authored shape artwork without dropping its active rules', async () => {

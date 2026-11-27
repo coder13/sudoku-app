@@ -1,5 +1,5 @@
 import type { ImportedCellColors } from './imported-colors.ts'
-import { canonicalCoachCode } from './puzzle-import/coach-code.ts'
+import { sourceHash } from './puzzle-import/shared.ts'
 
 type Point = readonly [x: number, y: number]
 
@@ -79,24 +79,24 @@ export function sameAuthoredArtwork(a?: readonly AuthoredMark[], b?: readonly Au
   })
 }
 
-// A drawing or fill may carry a rule. Bind each review to the whole original export.
+// A drawing may carry a rule. Bind each review to the complete puzzle, independent of player progress.
 // Windoku I outlines four of its typed regions, and Khachkar's discs are artwork.
 const reviewedDrawings = new Map<string, { layer: string; title: string; partialRegions?: true }>([
-  ['6d6a3b498a48ea8bd5cd78a41495fca7c9fb0bbd8f5573a25e07b0115504d0c2', { layer: 'cosmeticLine', title: 'AJT’s Bento 🍱 flavoured with Entropy', partialRegions: true }],
-  ['644e296695e5e5993472985da14111a57d7f8760bcc579ea1743103d8d6cf35a', { layer: 'cosmeticLine', title: 'Non-con 🍱', partialRegions: true }],
-  ['349d55e182fa4f177aff2a5653d875fea8fe775f51f0dabe06a0f9c5c308fa7a', { layer: 'cosmeticLine', title: 'FUN-ky Bento II 🍱', partialRegions: true }],
-  ['12f8cfe5848c2ae3d1ebb478a484d05ff6311c689d10c3d6a585bcde0e828f7f', { layer: 'cosmeticLine', title: 'Windoku I' }],
-  ['df51c464f943b9c2436f9897ce4d5cbaaaaf3309da5c2eef68bc93ed1e8ab095', { layer: 'cosmeticShape', title: 'Khachkar' }],
+  ['92fb9f50af4684ebef1af0c900d104784c2b9265e9fb48b960f2511cce963804', { layer: 'cosmeticLine', title: 'AJT’s Bento 🍱 flavoured with Entropy', partialRegions: true }],
+  ['925fb0996956769908a041dd7cf20450b1f4d5bbbd873a9dfce8010b256561a1', { layer: 'cosmeticLine', title: 'Non-con 🍱', partialRegions: true }],
+  ['88426e68300e971314123430cdee9a623df296fed7c39fce9635571994d40c96', { layer: 'cosmeticLine', title: 'FUN-ky Bento II 🍱', partialRegions: true }],
+  ['fb7f80c65aca408b1967c405a14b046925ceb62519f474e222d2091d69b495ba', { layer: 'cosmeticLine', title: 'Windoku I' }],
+  ['683b64457ad9033e09bc3165664a7fa94564086649a3165fa3ee7a2e1cbd79ce', { layer: 'cosmeticShape', title: 'Khachkar' }],
 ])
 
 // CS1G uses dense, rotated rectangle layers to spell the author's thank-you.
 // Its visible rule list contains the puzzle's active rules; these shapes are art.
 const reviewedShapeArtwork = new Map([
-  ['512f5f0ace1feb1cae309b457724cfe8a9e36a91207358d9f9bdf4d0067a1e16', 'Thank RP you'],
+  ['b4d73c8354f88c8ea4e1ddf090847808510c1ed3e616bbf89bb115f2009e7abf', 'Thank RP you'],
 ])
 
 const reviewedTextArtwork = new Map([
-  ['1c8d349fc96821784cbda4323a1bc9f85d6245d7610cb2a04317c3b4815c32c6', 'Sunny with a chance of Entropy'],
+  ['babed6a85770d81c9be91fd70f6fa688eba31fc5361639579e82d8030f01cd44', 'Sunny with a chance of Entropy'],
 ])
 
 // These reviews cover the complete authoring data and ordered cell shades.
@@ -132,8 +132,8 @@ export async function reviewedCoachFillTitle(data: Record<string, unknown>, fill
   return key ? reviewedFills.get(key) : undefined
 }
 
-export async function readReviewedCoachArtwork(code: string, constraints: readonly unknown[]) {
-  const hash = await reviewKey(canonicalCoachCode(code))
+export async function readReviewedCoachArtwork(code: string, constraints: readonly unknown[], payload: Record<string, unknown>) {
+  const hash = await sourceHash(code, payload)
   const textTitle = hash && reviewedTextArtwork.get(hash)
   if (textTitle) {
     const layers = constraints.filter(layer => record(layer) && layer.type === 'cosmeticText')
