@@ -44,8 +44,11 @@ test('#404 measures the published 4×4 X-Sum Twins imports and Play callers', as
     assert.ok(game.sized && game.grid)
     assert.equal(game.sized.solution, source.solution)
     const position = sizedRulePosition(game.grid, game.sized, game.givens)
-    const exactPosition = { ...position, digits: Array.from(source.solution, Number) }
-    assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: exactPosition }), 'unique')
+    function assertUnique(value: Awaited<ReturnType<typeof runEngine>>) {
+      assert.equal(value?.status, 'unique')
+      if (value?.status === 'unique') assert.equal(value.solution.digits.map(String).join(''), source.solution)
+    }
+    assertUnique(await runEngine({ type: 'sized-variant', operation: 'solve-unique', position }))
     const solved = await runEngine({ type: 'sized-variant', operation: 'solve', position })
     assert.equal(solved?.digits.map(String).join(''), source.solution)
     const candidates = await sizedRuleCandidates(game.sized, game.grid, game.givens)
@@ -63,9 +66,9 @@ test('#404 measures the published 4×4 X-Sum Twins imports and Play callers', as
     await sample(`${source.name} Play hints`, () => sizedRuleHintChoices(game.sized!, game.grid!, game.givens), value => {
       assert.ok(value?.choices.length)
     })
-    await sample(`${source.name} exact uniqueness`, () => runEngine({
-      type: 'sized-variant', operation: 'analyze', position: exactPosition,
-    }), value => assert.equal(value, 'unique'))
+    await sample(`${source.name} exact uniqueness from givens`, () => runEngine({
+      type: 'sized-variant', operation: 'solve-unique', position,
+    }), assertUnique)
     await sample(`${source.name} exact solve`, () => runEngine({ type: 'sized-variant', operation: 'solve', position }), value => {
       assert.equal(value?.digits.map(String).join(''), source.solution)
     })
