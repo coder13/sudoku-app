@@ -20,7 +20,7 @@ const jankoChaos = JSON.parse(readFileSync(new URL('./fixtures/janko-chaos-sudok
 const coachBoxlessCalcudoku = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-boxless-calcudoku.json', import.meta.url), 'utf8')) as {
   code: string
 }
-const coachInsideDigitGroups = JSON.parse(readFileSync(new URL('./fixtures/little-killer-unsupported-DLeM.json', import.meta.url), 'utf8')) as {
+const coachInsideDigitGroups = JSON.parse(readFileSync(new URL('./fixtures/little-killer-symmetrical-inside.json', import.meta.url), 'utf8')) as {
   metadata: { sudoku: string; solution: string }
   decoded: Record<string, unknown>
 }

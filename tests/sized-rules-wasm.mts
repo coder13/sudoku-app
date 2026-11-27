@@ -16,7 +16,7 @@ import { coachCode } from './helpers/coach-code.ts'
 
 useWasmWorker(process.env.SIZED_RULES_WASM)
 
-const coachInsideDigitGroups = JSON.parse(readFileSync(new URL('./fixtures/little-killer-unsupported-DLeM.json', import.meta.url), 'utf8')) as {
+const coachInsideDigitGroups = JSON.parse(readFileSync(new URL('./fixtures/little-killer-symmetrical-inside.json', import.meta.url), 'utf8')) as {
   metadata: { sudoku: string; solution: string }
 }
 

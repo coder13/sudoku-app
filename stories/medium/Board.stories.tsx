@@ -23,7 +23,7 @@ import coachFractionalRegions from '../../tests/fixtures/coach-fractional-region
 import coachUnknownCageSums from '../../tests/fixtures/sudoku-coach-unknown-cage-totals.json'
 import irregularFortress from '../../tests/fixtures/aspartagcus-irregular-fortress.json'
 import coachDistantNeighbors from '../../tests/fixtures/sudoku-coach-distant-neighbors.json'
-import coachInsideDigitGroups from '../../tests/fixtures/little-killer-unsupported-DLeM.json'
+import coachInsideDigitGroups from '../../tests/fixtures/little-killer-symmetrical-inside.json'
 import coachWrappedJigsaw from '../../tests/fixtures/coach-mini-wrapped-jigsaw.json'
 import coachEntropy from '../../tests/fixtures/entropic-coach.json'
 import coachLittleKillerBetween from '../../tests/fixtures/little-killer-between-GJBz.json'
