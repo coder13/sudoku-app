@@ -9,6 +9,7 @@ import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { readCoachSolutionSources, standaloneCoachSolutionSources } from './helpers/coach-fixture-sources.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { transformedBoard } from './helpers/transformed-board.ts'
+import { MemoryStorage } from './helpers/memory-storage.ts'
 
 const sources = readCoachSolutionSources()
 
@@ -67,38 +68,70 @@ test('every published 9 × 9 Coach combination preserves its completion under al
   assert.equal(transformed, 464)
 })
 
-test('all published 9 × 9 Coach combinations survive saved-game validation with progress and undo history', async () => {
-  let restoredCount = 0
-  for (const source of sources.values()) {
-    const imported = await detectPuzzle(source.code)
-    if (!imported.variant) continue
-    const game = makeGame(`coach-combination-${restoredCount}`, `Coach combination ${restoredCount + 1}`,
-      imported.givens, 'imported')
-    game.variant = { ...imported.variant, solution: source.solution }
+test('all published 9 × 9 Coach combinations survive actual library reload with progress and undo history', async () => {
+  const local = new MemoryStorage()
+  const keys = ['window', 'localStorage', 'sessionStorage'] as const
+  const originals = keys.map(key => Object.getOwnPropertyDescriptor(globalThis, key))
+  Object.defineProperties(globalThis, {
+    window: { value: {}, configurable: true },
+    localStorage: { value: local, configurable: true },
+    sessionStorage: { value: new MemoryStorage(), configurable: true },
+  })
 
-    const originalPosition = game.position
-    const entries = [...originalPosition.entries]
-    let placed = 0
-    for (let cell = 0; cell < imported.givens.length && placed < 3; cell++) {
-      if (imported.givens[cell] !== '0') continue
-      entries[cell] = source.solution[cell]
-      placed++
+  try {
+    const { roomStore } = await import('../src/sudoku/storage.ts?coach-combinations-library-save')
+    const expectedGames = new Map<string, ReturnType<typeof makeGame>>()
+    let restoredCount = 0
+    for (const source of sources.values()) {
+      const imported = await detectPuzzle(source.code)
+      if (!imported.variant) continue
+      const game = makeGame(`coach-combination-${restoredCount}`, `Coach combination ${restoredCount + 1}`,
+        imported.givens, 'imported')
+      game.variant = { ...imported.variant, solution: source.solution }
+
+      const originalPosition = game.position
+      const entries = [...originalPosition.entries]
+      let placed = 0
+      for (let cell = 0; cell < imported.givens.length && placed < 3; cell++) {
+        if (imported.givens[cell] !== '0') continue
+        entries[cell] = source.solution[cell]
+        placed++
+      }
+      game.position = { ...originalPosition, entries: entries.join('') }
+      game.past = [originalPosition]
+
+      const restored = readGame(game.id, JSON.stringify(game))
+      assert.ok(restored, source.references[0])
+      assert.deepEqual(restored.variant, game.variant, `${source.references[0]}: complete rule definition`)
+      assert.deepEqual(restored.position, game.position, `${source.references[0]}: current player entries`)
+      assert.deepEqual(restored.past, game.past, `${source.references[0]}: undo history`)
+
+      const exported = parsePuzzleExport(puzzleExportText(game))
+      assert.equal(exported.givens, imported.givens, `${source.references[0]}: exported givens`)
+      assert.equal(exported.variant?.id, game.variant.id, `${source.references[0]}: exported variant family`)
+      assert.deepEqual(exported.variant?.puzzle, game.variant.puzzle, `${source.references[0]}: exported complete rules`)
+      assert.deepEqual(exported.variant?.fog, game.variant.fog, `${source.references[0]}: exported fog state`)
+
+      roomStore.add(game)
+      expectedGames.set(game.id, game)
+      restoredCount++
     }
-    game.position = { ...originalPosition, entries: entries.join('') }
-    game.past = [originalPosition]
+    assert.equal(restoredCount, 58)
 
-    const restored = readGame(game.id, JSON.stringify(game))
-    assert.ok(restored, source.references[0])
-    assert.deepEqual(restored.variant, game.variant, `${source.references[0]}: complete rule definition`)
-    assert.deepEqual(restored.position, game.position, `${source.references[0]}: current player entries`)
-    assert.deepEqual(restored.past, game.past, `${source.references[0]}: undo history`)
-
-    const exported = parsePuzzleExport(puzzleExportText(game))
-    assert.equal(exported.givens, imported.givens, `${source.references[0]}: exported givens`)
-    assert.equal(exported.variant?.id, game.variant.id, `${source.references[0]}: exported variant family`)
-    assert.deepEqual(exported.variant?.puzzle, game.variant.puzzle, `${source.references[0]}: exported complete rules`)
-    assert.deepEqual(exported.variant?.fog, game.variant.fog, `${source.references[0]}: exported fog state`)
-    restoredCount++
+    const reloaded = (await import('../src/sudoku/storage.ts?coach-combinations-library-reload')).roomStore.getSnapshot()
+    assert.equal(reloaded.games.length, expectedGames.size, 'every imported Coach combination remains in the library')
+    for (const [id, expected] of expectedGames) {
+      const restored = reloaded.games.find(game => game.id === id)
+      assert.ok(restored, `${id}: imported puzzle survives a library reload`)
+      assert.deepEqual(restored.variant, expected.variant, `${id}: complete rule definition`)
+      assert.deepEqual(restored.position, expected.position, `${id}: current player entries`)
+      assert.deepEqual(restored.past, expected.past, `${id}: undo history`)
+    }
+  } finally {
+    keys.forEach((key, index) => {
+      const descriptor = originals[index]
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor)
+      else Reflect.deleteProperty(globalThis, key)
+    })
   }
-  assert.equal(restoredCount, 58)
 })
