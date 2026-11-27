@@ -15,7 +15,7 @@ import { coachCode } from './helpers/coach-code.ts'
 const fixtureRoot = new URL('./fixtures/', import.meta.url)
 const fixturePath = new URL(fixtureRoot).pathname
 const codes = new Map<string, string>()
-const publicCoachLinks = new Map<string, { code: string; source: string }>()
+const publicCoachLinks = new Map<string, { code: string; source: string; title?: string }>()
 
 function visit(value: unknown, file: string, keyPath = '$') {
   if (typeof value === 'string' && value.startsWith('SCv7_32_')) {
@@ -32,7 +32,7 @@ function visit(value: unknown, file: string, keyPath = '$') {
         const source = `${file}:${keyPath}`
         const previous = publicCoachLinks.get(entry.url)
         if (previous && previous.code !== code) throw new Error(`Conflicting Coach exports for ${entry.url}`)
-        publicCoachLinks.set(entry.url, { code, source })
+        publicCoachLinks.set(entry.url, { code, source, ...(typeof value.title === 'string' && { title: value.title }) })
       }
     }
     for (const [key, item] of Object.entries(value)) visit(item, file, `${keyPath}.${key}`)
@@ -80,11 +80,12 @@ test('all preserved published Coach links import the same rules as their raw exp
   const linksById = new Map([...publicCoachLinks].map(([url, value]) => [new URL(url).pathname.match(/\/s\/([^/]+)/i)![1], value]))
   mock.method(globalThis, 'fetch', async (path: string) => {
     const id = path.match(/^\/api\/v1\/import\/sudoku-coach\/([A-Za-z0-9]{1,16})$/)?.[1]
-    const source = id && linksById.get(id)
-    if (!id || !source) return Response.json({ error: 'Unknown fixture link' }, { status: 404 })
+    const publication = id && linksById.get(id)
+    if (!id || !publication) return Response.json({ error: 'Unknown fixture link' }, { status: 404 })
     const authoredRule = authoredRules[id]
-    return Response.json({ code: source.code, coach: {
+    return Response.json({ code: publication.code, coach: {
       hasAuthorInstructions: Boolean(authoredRule),
+      ...(publication.title && { title: publication.title }),
       ...(authoredRule && { authoredRule }),
     } })
   })
@@ -93,6 +94,9 @@ test('all preserved published Coach links import the same rules as their raw exp
     const linked = await detectPuzzle(url)
     const raw = await detectPuzzle(code)
     assert.equal(linked.format, 'Sudoku Coach', source)
+    const id = new URL(url).pathname.match(/\/s\/([^/]+)/i)![1]
+    const title = linksById.get(id)?.title
+    if (title) assert.equal(linked.title, title, `${source}: published title`)
     const linkedData = Object.fromEntries(Object.entries(linked).filter(([key]) => key !== 'title'))
     const rawData = Object.fromEntries(Object.entries(raw).filter(([key]) => key !== 'title'))
     assert.equal(JSON.stringify(linkedData), JSON.stringify(rawData), `${source}: complete linked import data`)
