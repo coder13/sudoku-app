@@ -10,6 +10,7 @@ import { coachCode as coach } from './helpers/coach-code.ts'
 import { jigsawMembership, MINI_GRID } from '../src/sudoku/grid.ts'
 import { conflictsOf, EMPTY, enter, makeGame } from '../src/sudoku/game.ts'
 import { detectPuzzle, MAX_IMPORT_LENGTH } from '../src/sudoku/puzzle-import.ts'
+import { MAX_DECODED_LENGTH } from '../src/sudoku/puzzle-import/shared.ts'
 import { jigsawLayout, variantSeeds } from '../src/sudoku/variant-generation.ts'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
 
@@ -463,6 +464,9 @@ test('reports unsupported or damaged codes without treating them as Classic', as
     { type: 'globalModularity', segments: [] },
   ] })), /not supported yet.*globalModularity/)
   await assert.rejects(detectPuzzle('x'.repeat(MAX_IMPORT_LENGTH + 1)), /one puzzle at a time/)
+  const oversizedExport = JSON.stringify({ format: 'sudoku-app-puzzle', version: 1, title: 'Large export',
+    givens: STARTER, padding: 'x'.repeat(MAX_DECODED_LENGTH) })
+  await assert.rejects(detectPuzzle(oversizedExport), /one puzzle at a time/)
 })
 
 test('authored mixed fixtures require their rules and have independently verified completions', () => {
@@ -652,6 +656,10 @@ test('internal sharing round-trips all eight playable variants and fragment-only
       assert.deepEqual(await detectPuzzle(input), { givens: EMPTY, format: 'Puzzle link', variant }, variant.id)
     }
   }
+  const jigsaw = variants.find(variant => variant.id === 'jigsaw')!
+  assert.equal(isPlayablePuzzle(jigsaw.id, { ...jigsaw.puzzle,
+    regions: { ...jigsaw.puzzle.regions!, futureRegionSemantics: true },
+  }), false)
   assert.equal((await detectPuzzle('#puzzle=' + STARTER)).givens, STARTER)
 })
 
@@ -675,6 +683,7 @@ test('malformed formats reject invalid dimensions, regions, rules, givens, and U
   const invalid = [
     '', '1'.repeat(80), '1'.repeat(82), '0'.repeat(MAX_IMPORT_LENGTH + 1),
     'https://example.org/#variant=%7B', 'https://example.org/#variant=' + encodeURIComponent(JSON.stringify({ id: 'classic', puzzle: { version: 1, givens: EMPTY } })),
+    'https://example.org/#variant=' + encodeURIComponent(JSON.stringify({ id: 'anti-knight', puzzle: { version: 1, givens: EMPTY, rules: [{ type: 'anti-knight' }] }, futureVariantSemantics: true })),
     'https://example.org/#puzzle=' + STARTER + '1',
     'https://sudokuexchange.com/play/?s=zzzz', 'https://sudokupad.app/sclunsupported',
     'https://f-puzzles.com/?load=not_a_compressed_puzzle',

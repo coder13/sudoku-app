@@ -64,6 +64,21 @@ test('exported puzzle copies round-trip through import without player progress',
   assert.equal(imported.progress, undefined)
 })
 
+test('puzzle exports reject unknown definition fields instead of silently dropping them', async () => {
+  const { puzzle } = mixedFixtures['x-killer']
+  const original = { ...makeGame('strict-export', 'X-Killer', puzzle.givens, 'imported'), variant: { id: 'mixed' as const, puzzle } }
+  const exported = JSON.parse(puzzleExportText(original)) as Record<string, unknown>
+  await assert.rejects(detectPuzzle(JSON.stringify({ ...exported, futureRuleSemantics: { enabled: true } })),
+    /unsupported definition/)
+  const variant = exported.variant as Record<string, unknown>
+  await assert.rejects(detectPuzzle(JSON.stringify({ ...exported, variant: { ...variant, futureVariantSemantics: true } })),
+    /unsupported definition/)
+  const variantPuzzle = variant.puzzle as Record<string, unknown>
+  await assert.rejects(detectPuzzle(JSON.stringify({ ...exported, variant: {
+    ...variant, puzzle: { ...variantPuzzle, futurePuzzleSemantics: true },
+  } })), /unsupported definition/)
+})
+
 test('Mini Sudoku shares keep the four-by-four grid specification', async () => {
   const { sqlite, fetcher } = syncDatabase()
   try {

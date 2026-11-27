@@ -132,44 +132,57 @@ test('sized Coach current-state progress reaches Preview, Play and saved reload'
 test('Cmki Entropic Runaround imports through raw code and short-link Preview and Play with all rules', async ({ mock }) => {
   const fixture = JSON.parse(readFileSync(new URL('./fixtures/modular-coach.json', import.meta.url), 'utf8')).examples
     .find((example: { url: string }) => example.url.endsWith('/Cmki'))
+  const { sqlite, fetcher } = syncDatabase()
   const page = () => '<script>let mainInitData = ' + JSON.stringify({ specificSudoku: {
     sudoku_id: 'Cmki', sudoku: fixture.code, name: fixture.title, blocked: false,
     custom_constraints: true, description: fixture.description,
   } }) + '</script>'
-  mock.method(globalThis, 'fetch', (path: string, options?: RequestInit) => path === fixture.url
-    ? Promise.resolve(new Response(page()))
-    : typeof path === 'string' && path.startsWith('/api/v1/import/')
-      ? worker.fetch(new Request(new URL(path, 'https://sudoku.example'), options), {}, {})
-      : Promise.resolve(new Response('Not found.', { status: 404 })))
+  mock.method(globalThis, 'fetch', (path: string | URL, options?: RequestInit) => path === fixture.url
+    ? Promise.resolve(new Response(page())) : fetcher(path, options))
 
-  const previews = [await prepareImportedPuzzle(fixture.code), await prepareImportedPuzzle(fixture.url)]
-  const [raw, linked] = previews
-  assert.equal(raw.format, 'Sudoku Coach')
-  assert.equal(linked.format, 'Sudoku Coach')
-  assert.equal(linked.game.title, fixture.title)
-  assert.deepEqual(linked.game.grid, raw.game.grid)
-  assert.deepEqual(linked.game.sized?.rules, raw.game.sized?.rules)
-  for (const { game } of previews) {
-    assert.deepEqual(game.grid, {
-      size: 6,
-      regions: [[0, 1, 2, 3, 6, 9], [4, 5, 11, 17, 22, 23], [7, 8, 10, 14, 15, 16],
-        [12, 13, 18, 24, 30, 31], [19, 20, 21, 25, 27, 28], [26, 29, 32, 33, 34, 35]],
-    })
-    assert.equal(game.sized?.rules.length, 7)
-    assert.equal(game.sized?.solution, fixture.solution)
+  try {
+    const previews = [await prepareImportedPuzzle(fixture.code), await prepareImportedPuzzle(fixture.url)]
+    const [raw, linked] = previews
+    assert.equal(raw.format, 'Sudoku Coach')
+    assert.equal(linked.format, 'Sudoku Coach')
+    assert.equal(linked.game.title, fixture.title)
+    assert.deepEqual(linked.game.grid, raw.game.grid)
+    assert.deepEqual(linked.game.sized?.rules, raw.game.sized?.rules)
+    for (const { game } of previews) {
+      assert.deepEqual(game.grid, {
+        size: 6,
+        regions: [[0, 1, 2, 3, 6, 9], [4, 5, 11, 17, 22, 23], [7, 8, 10, 14, 15, 16],
+          [12, 13, 18, 24, 30, 31], [19, 20, 21, 25, 27, 28], [26, 29, 32, 33, 34, 35]],
+      })
+      assert.equal(game.sized?.rules.length, 7)
+      assert.equal(game.sized?.solution, fixture.solution)
+    }
+    const game = linked.game
+    const position = { digits: Array.from(game.givens, Number), rules: game.sized!.rules, grid: game.grid!, version: 2 as const }
+    assert.equal(await runEngine({ type: 'sized-variant', position, operation: 'analyze' }), 'unique')
+    for (const [index, rule] of position.rules.entries()) {
+      assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+        ...position, rules: position.rules.filter((_, ruleIndex) => ruleIndex !== index),
+      } }), 'multiple', `removing ${rule.type} rule ${index + 1} leaves more than one completion`)
+    }
+    const solved = await runEngine({ type: 'sized-variant', position, operation: 'solve' })
+    assert.equal(solved?.digits.join(''), fixture.solution)
+    const finished = fillEntries(game, fixture.solution)
+    assert.equal(isSolved(finished), true)
+    const restored = readGame(game.id, JSON.stringify(finished))
+    assert.deepEqual(restored?.grid, game.grid)
+    assert.deepEqual(restored?.sized?.rules, game.sized?.rules)
+    assert.equal(restored?.sized?.solution, fixture.solution)
+    assert.equal(restored?.position.entries, fixture.solution)
+    const shareId = await publishSharedPuzzle(finished)
+    const shared = await prepareSharedPuzzle(shareId, [], new AbortController().signal)
+    assert.deepEqual(shared.game.grid, game.grid)
+    assert.deepEqual(shared.game.sized?.rules, game.sized?.rules)
+    assert.equal(shared.game.sized?.solution, fixture.solution)
+    assert.equal(shared.game.position.entries, '0'.repeat(36), 'sharing preserves the puzzle definition, not the played attempt')
+  } finally {
+    sqlite.close()
   }
-  const game = linked.game
-  const position = { digits: Array.from(game.givens, Number), rules: game.sized!.rules, grid: game.grid!, version: 2 as const }
-  assert.equal(await runEngine({ type: 'sized-variant', position, operation: 'analyze' }), 'unique')
-  const solved = await runEngine({ type: 'sized-variant', position, operation: 'solve' })
-  assert.equal(solved?.digits.join(''), fixture.solution)
-  const finished = fillEntries(game, fixture.solution)
-  assert.equal(isSolved(finished), true)
-  const restored = readGame(game.id, JSON.stringify(finished))
-  assert.deepEqual(restored?.grid, game.grid)
-  assert.deepEqual(restored?.sized?.rules, game.sized?.rules)
-  assert.equal(restored?.sized?.solution, fixture.solution)
-  assert.equal(restored?.position.entries, fixture.solution)
 })
 
 test('Coach 5 × 5 fractional regions and Little Killer clues reach the sized engine together', async () => {

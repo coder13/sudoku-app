@@ -46,7 +46,8 @@ export function readNativeLink(url: URL, ownOrigin: string | undefined): NativeI
   }
   if (url.hash.startsWith('#variant=')) {
     const shared = parseJSON(new URLSearchParams(url.hash.slice(1)).get('variant') ?? '', format)
-    if (!record(shared) || !isPuzzleVariantId(shared.id) || shared.id === 'classic' || !isPlayablePuzzle(shared.id, shared.puzzle, shared.fog)) {
+    if (!record(shared) || Object.keys(shared).some(key => !['id', 'puzzle', 'fog'].includes(key)) ||
+      !isPuzzleVariantId(shared.id) || shared.id === 'classic' || !isPlayablePuzzle(shared.id, shared.puzzle, shared.fog)) {
       throw new Error('This link is missing a valid Sudoku variant.')
     }
     const variant: NonNullable<ImportResult['variant']> = { id: shared.id, puzzle: shared.puzzle, ...(isFogDefinition(shared.fog) && { fog: shared.fog }) }

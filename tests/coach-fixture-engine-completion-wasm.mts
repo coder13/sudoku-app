@@ -3,7 +3,10 @@ import { test } from 'node:test'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { runEngine } from '../src/sudoku/engine.ts'
 import { sizedRulePosition } from '../src/sudoku/sized-rule-game.ts'
+import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { readCoachSolutionSources, standaloneCoachSolutionSources } from './helpers/coach-fixture-sources.ts'
+import { assertVariantCompletion } from './helpers/variant-truth.ts'
+import { transformedBoard } from './helpers/transformed-board.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 
 useWasmWorker()
@@ -36,7 +39,7 @@ function coachProgress(givens: string, solution: string) {
 test('published Sudoku Coach completions pass the Rust engine with every imported rule combination', async () => {
   assert.equal(sources.size, 80)
   const standaloneSeen = new Set<string>()
-  let checked = 0
+  let checked = 0, transformedChecks = 0
 
   for (const source of sources.values()) {
     const imported = await detectPuzzle(source.code)
@@ -54,6 +57,25 @@ test('published Sudoku Coach completions pass the Rust engine with every importe
         puzzle: imported.variant.puzzle,
         entries: source.solution,
       } }), 'unique', sourceName)
+      const repeatedDigitCells = Array.from(source.solution, (digit, cell) => digit === '1' ? cell : -1)
+        .filter(cell => cell >= 0)
+      assert.equal(repeatedDigitCells.length, 9, `${sourceName}: published solution contains nine ones`)
+      assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: {
+        puzzle: {
+          ...imported.variant.puzzle,
+          rules: [...(imported.variant.puzzle.rules ?? []), { type: 'extra-house', cells: repeatedDigitCells }],
+        },
+        entries: source.solution,
+      } }), 'conflict', `${sourceName}: the engine rejects an added rule that contradicts its completion`)
+      for (let symmetry = 0; symmetry < 8; symmetry++) {
+        const puzzle = reflectVariant(imported.variant.puzzle, symmetry)
+        const solution = transformedBoard(source.solution, symmetry)
+        assertVariantCompletion(puzzle, solution)
+        assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: {
+          puzzle, entries: solution,
+        } }), 'unique', `${sourceName}, symmetry ${symmetry}`)
+        transformedChecks++
+      }
       const candidates = await runEngine({ type: 'variant', operation: 'candidates', position: { puzzle: imported.variant.puzzle } })
       assertSolutionCandidates(candidates, imported.givens, source.solution, sourceName)
       const progressed = await runEngine({ type: 'variant', operation: 'candidates', position: {
@@ -89,5 +111,29 @@ test('published Sudoku Coach completions pass the Rust engine with every importe
   }
 
   assert.equal(checked, 77)
+  assert.equal(transformedChecks, 464)
   assert.deepEqual([...standaloneSeen].sort(), [...standaloneCoachSolutionSources].sort())
+})
+
+test('the zero-given Entropic Coach source has one exact solution from its encoded rules', async () => {
+  const source = [...sources.values()].find(({ references }) => references.includes('entropic-coach.json:$.examples[6]'))
+  assert.ok(source)
+  const imported = await detectPuzzle(source.code)
+  assert.ok(imported.variant)
+  assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: {
+    puzzle: imported.variant.puzzle,
+  } }), { status: 'unique', solution: source.solution })
+})
+
+test('the zero-given Entropic Coach source proves unique under all eight symmetries', async () => {
+  const source = [...sources.values()].find(({ references }) => references.includes('entropic-coach.json:$.examples[6]'))
+  assert.ok(source)
+  const imported = await detectPuzzle(source.code)
+  assert.ok(imported.variant)
+  for (let symmetry = 0; symmetry < 8; symmetry++) {
+    const puzzle = reflectVariant(imported.variant.puzzle, symmetry)
+    const solution = transformedBoard(source.solution, symmetry)
+    assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle } }),
+      { status: 'unique', solution }, `symmetry ${symmetry}`)
+  }
 })

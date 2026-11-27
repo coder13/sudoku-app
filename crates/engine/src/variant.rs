@@ -880,6 +880,7 @@ pub struct CompiledVariant {
     search_houses: Vec<usize>,
     memberships: [Vec<usize>; CELLS],
     peers: [u128; CELLS],
+    search_degree: [u16; CELLS],
     cages: Vec<CompiledCage>,
     cage_house_sums: OnceLock<Vec<CageHouseSum>>,
     rule_proofs: OnceLock<logical::RuleProofIndex>,

@@ -153,7 +153,7 @@ test('six-by-six Coach decoding imports Sandwich clues with other typed rules', 
     givenConstraints: [sandwich('top', 6, 0)] })), /invalid Sandwich clue/)
 })
 
-test('published sized Coach X-Sums parse outside labels against the grid size', async ({ mock }) => {
+test('synthetic sized Coach X-Sums parse outside labels against the grid size', async ({ mock }) => {
   const code = coachCode({ ...six, regions: rectangularRegions(2, 3), givenConstraints: [{
     type: 'cosmeticText', settings: {}, segments: [
       { cells: [[0.5, -0.5]], parameters: { text: '21' } },
@@ -595,7 +595,7 @@ test('sized Coach Non-Consecutive exempts only positive white-dot edges in mixed
 
 test('9uMo Race track round-trips its six-by-six Renban and exact Difference combination', async () => {
   const fixture = JSON.parse(readFileSync(new URL('./fixtures/sized-coach-race-track.json', import.meta.url), 'utf8')) as {
-    code: string; solution: string; title: string
+    code: string; solution: string; title: string; url: string
   }
   const imported = await decodeCoachSix(fixture.code)
   const game = { ...makeGame('coach-racetrack', fixture.title, imported.givens, 'imported', 0, imported.grid),
@@ -604,6 +604,31 @@ test('9uMo Race track round-trips its six-by-six Renban and exact Difference com
   const shared = await publishFixture(game)
   assert.deepEqual(shared.grid, imported.grid)
   assert.deepEqual(shared.sixRules, imported.rules)
+})
+
+test('9uMo Race track short link retains the published 6×6 Renban and Difference rules', async ({ mock }) => {
+  const fixture = JSON.parse(readFileSync(new URL('./fixtures/sized-coach-race-track.json', import.meta.url), 'utf8')) as {
+    code: string; solution: string; title: string; url: string
+  }
+  mock.method(globalThis, 'fetch', (path: string | URL) => {
+    assert.equal(String(path), '/api/v1/import/sudoku-coach/9uMo')
+    return Promise.resolve(Response.json({ code: fixture.code,
+      coach: { hasAuthorInstructions: false, title: fixture.title } }))
+  })
+
+  const linked = await detectPuzzle(fixture.url)
+  const pasted = await detectPuzzle(fixture.code)
+  assert.equal(linked.title, fixture.title)
+  assert.deepEqual(linked.grid, pasted.grid)
+  assert.deepEqual(linked.sizedRules, pasted.sizedRules)
+  assert.deepEqual(linked.sizedRules?.filter(rule => rule.type === 'renban'),
+    [{ type: 'renban', cells: [9, 8, 14, 20, 26, 27] }, { type: 'renban', cells: [8, 9, 15, 21, 27, 26] }])
+  assert.deepEqual(linked.sizedRules?.filter(rule => rule.type === 'difference'), [
+    { type: 'difference', cells: [26, 20], difference: 1 },
+    { type: 'difference', cells: [8, 9], difference: 3 },
+    { type: 'difference', cells: [20, 14], difference: 2 },
+  ])
+  assert.equal(conflictsOf(fixture.solution, undefined, linked.grid, linked.sizedRules).size, 0)
 })
 
 test('sized share worker accepts Coach-compatible Between, Clone, Modular and XV combinations', async () => {

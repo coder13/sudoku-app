@@ -494,6 +494,16 @@ test('published Jigsaw Fog hides authored colors alongside givens and cages unti
     const independent = countLineSolutions(variant.puzzle)
     assert.equal(independent.count, 1)
     assert.equal(independent.solution, published.solution)
+    assert.equal(countLineSolutions({ ...variant.puzzle, regions: undefined }).count, 2,
+      'the published Jigsaw regions are needed for uniqueness')
+    assert.equal(countLineSolutions({ ...variant.puzzle,
+      rules: variant.puzzle.rules?.filter(rule => rule.type !== 'killer-cages') }).count, 2,
+    'the published Killer cages are needed for uniqueness')
+    const alteredCages = variant.puzzle.rules?.map(rule => rule.type === 'killer-cages'
+      ? { ...rule, cages: rule.cages.map((cage, index) => index === 0 ? { ...cage, sum: cage.sum + 1 } : cage) }
+      : rule)
+    assert.equal(countLineSolutions({ ...variant.puzzle, rules: alteredCages }).count, 0,
+      'changing a cage total makes the combined source inconsistent')
 
     const initial = fogView(variant)!
     assert.equal(initial.cells.size, 31)

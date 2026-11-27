@@ -6,7 +6,9 @@ import { readGame } from '../src/sudoku/storage.ts'
 import { playCandidates, variantPosition } from '../src/sudoku/variant-play.ts'
 import { runEngine } from '../src/sudoku/engine.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { parsePuzzleExport, puzzleExportText } from '../src/sudoku/puzzle-sharing.ts'
 import { coachCode } from './helpers/coach-code.ts'
+import { publishFixture } from './helpers/shared-puzzle.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 
 useWasmWorker()
@@ -237,11 +239,43 @@ test('synthetic Coach Ratio 3 keeps its marked relation in Play and engine analy
     'a default 1:2 dot stays marked beside the custom 1:3 dot')
   assert.notEqual(candidates[9] & (1 << 1), 0, 'without negative markers, unmarked 1:2 edges remain allowed')
 
+  const restored = readGame(afterOne.id, JSON.stringify(afterOne))
+  assert.ok(restored)
+  assert.deepEqual(restored.variant, afterOne.variant, 'saved progress keeps both the 1:3 and 1:2 marks')
+  assert.deepEqual(undo(restored).position, game.position)
+  assert.deepEqual(redo(undo(restored)).position, afterOne.position)
+
+  const exported = parsePuzzleExport(puzzleExportText(afterOne))
+  assert.deepEqual(exported.variant?.puzzle, game.variant?.puzzle, 'portable sharing retains both labeled ratios')
+  assert.equal(exported.givens, game.givens)
+  const shared = await publishFixture(afterOne)
+  assert.deepEqual(shared.variant?.puzzle, game.variant?.puzzle, 'public sharing retains both labeled ratios')
+
   const impossible = await runEngine({
     type: 'variant', operation: 'analyze',
     position: { ...variantPosition(game.variant!, afterOne.position), entries: '12' + '0'.repeat(79) },
   })
   assert.equal(impossible, 'conflict')
+})
+
+test('synthetic Coach Ratio labels from 2:1 through 9:1 match exact candidate support', async () => {
+  for (let ratio = 2; ratio <= 9; ratio++) {
+    for (let fixedDigit = 1; fixedDigit <= 9; fixedDigit++) {
+      const imported = await detectPuzzle(coachCode({
+        givenDigits: String(fixedDigit) + '0'.repeat(80),
+        givenConstraints: [{ type: 'ratio', settings: { negativeConstraint: false }, segments: [
+          { cells: [0, 1], parameters: { ratio } },
+        ] }],
+      }))
+      assert.ok(imported.variant, `ratio ${ratio}:1 with ${fixedDigit} fixed at R1C1`)
+      const candidates = await runEngine({ type: 'variant', operation: 'candidates', position: variantPosition(imported.variant) })
+      assert.ok(candidates)
+      const expected = Array.from({ length: 9 }, (_, index) => index + 1).filter(digit =>
+        Math.max(digit, fixedDigit) / Math.min(digit, fixedDigit) === ratio)
+      const actual = Array.from({ length: 9 }, (_, index) => index + 1).filter(digit => candidates[1] & (1 << (digit - 1)))
+      assert.deepEqual(actual, expected, `ratio ${ratio}:1 with ${fixedDigit} fixed at R1C1`)
+    }
+  }
 })
 
 test('synthetic sized Coach Ratio 3 composes with a diagonal and constrains imported Play candidates', async () => {
