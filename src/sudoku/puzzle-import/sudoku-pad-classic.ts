@@ -1,187 +1,330 @@
-YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éíãM5N‹Z–‹­¦ëeŠw¬Õ¥µÁ½ÉÐÑåÁ”ìY…É¥…¹ÑIÕ±”ô™É½´€œ¸¸½•¹¥¹”¹ÑÌœ)¥µÁ½ÉÐì]%9=-U}I%=9Lô™É½´€œ¸¸½Ù…É¥…¹ÑÌ¹ÑÌœ)¥µÁ½ÉÐìÉ•…‘-É½Á­¥½ÑÌ°É•…‘A…Ñ ô™É½´€œ¸¸½Í¥é•µÉÕ±”µÍÕ‘½­ÔµÁ…¹ÑÌœ)¥µÁ½ÉÐìµ…­•%µÁ½ÉÑ•‘AÕéé±”°É•½Éô™É½´€œ¸½Í¡…É•¹ÑÌœ()½¹ÍÐ%1L€ô¹•ÜM•Ð¡l¥œ°€µ•Ñ…‘…Ñ„œ°€•±±Ìœ°€É•¥½¹Ìœ°€…•Ìœ°€½Ù•É±…åÌœ°€Õ¹‘•É±…åÌœ°€±¥¹•Ìœ°€…ÉÉ½ÝÌœ°(€€Ý¥¹‘½­Ôœ°€‘¥…½¹…°¬œ°€‘¥…½¹…°´t¤)½¹ÍÐ5QQ€ô¹•ÜM•Ð¡lÍ½ÕÉ”œ°€Ñ¥Ñ±”œ°€…ÕÑ¡½Èœ°€ÉÕ±•Ìœ°€Í½±ÕÑ¥½¸œ°€µÍ½ÉÉ•Ðœ°€…¹Ñ¥­¥¹œœ°€…¹Ñ¥­¹¥¡Ðœ°€¹•áÑÁÕéé±”œ°€Ðt¤()™Õ¹Ñ¥½¸É•©•Ð¡µ•ÍÍ…”èÍÑÉ¥¹œ¤è¹•Ù•Èì(€Ñ¡É½Ü¹•ÜÉÉ½È¡µ•ÍÍ…”¤)ô()™Õ¹Ñ¥½¸•±±%¹‘•à¡Ù…±Õ”èÕ¹­¹½Ý¸¤ì(€¥˜€ …ÉÉ…ä¹¥ÍÉÉ…ä¡Ù…±Õ”¤ñðÙ…±Õ”¹±•¹Ñ €„ôô€Èñð(€€€Ù…±Õ”¹Í½µ”¡½½É‘¥¹…Ñ”€ôø€…9Õµ‰•È¹¥Í%¹Ñ••È¡½½É‘¥¹…Ñ”¤ñð½½É‘¥¹…Ñ”€ð€Àñð½½É‘¥¹…Ñ”€ø€à¤¤ì(€€€É•ÑÕÉ¸É•©•Ð Q¡¥ÌMÕ‘½­ÕA…ÁÕéé±”¡…Ì…¸¥¹Ù…±¥•±°É•™•É•¹”¸œ¤(€ô(€É•ÑÕÉ¸9Õµ‰•È¡Ù…±Õ•lÁt¤€¨€ä€¬9Õµ‰•È¡Ù…±Õ•lÅt¤)ô()™Õ¹Ñ¥½¸É•…‘¥Ù•¹Ì¡•±±ÌèÕ¹­¹½Ý¸¤ì(€¥˜€ …ÉÉ…ä¹¥ÍÉÉ…ä¡•±±Ì¤ñð•±±Ì¹±•¹Ñ €„ôô€äñð•±±Ì¹Í½µ”¡É½Ü€ôø€…ÉÉ…ä¹¥ÍÉÉ…ä¡É½Ü¤ñðÉ½Ü¹±•¹Ñ €„ôô€ä¤¤ì(€€€É•ÑÕÉ¸É•©•Ð Q¡¥ÌMÕ‘½­ÕA…•áÁ½ÉÐÉ•ÅÕ¥É•Ì„€äƒ\€äÉ¥¸œ¤(€ô(€É•ÑÕÉ¸•±±Ì¹™±…Ð ¤¹µ…À¡•±°€ôøì(€€€¥˜€ …É•½É¡•±°¤ñð=‰©•Ð¹­•åÌ¡•±°¤¹Í½µ”¡­•ä€ôø­•ä€„ôô€Ù…±Õ”œ¤ñð(€€€€€•±°¹Ù…±Õ”€„ôôÕ¹‘•™¥¹•€˜˜€„¡9Õµ‰•È¹¥Í%¹Ñ••È¡•±°¹Ù…±Õ”¤€˜˜9Õµ‰•È¡•±°¹Ù…±Õ”¤€øô€Ä€˜˜9Õµ‰•È¡•±°¹Ù…±Õ”¤€ðô€ä¤¤ì(€€€€€É•ÑÕÉ¸É•©•Ð Q¡¥ÌMÕ‘½­ÕA…ÁÕéé±”½¹Ñ…¥¹Ì…¸Õ¹ÍÕÁÁ½ÉÑ••±°±Õ”¸œ¤(€€€ô(€€€É•ÑÕÉ¸MÑÉ¥¹œ¡•±°¹Ù…±Õ”€üü€À¤(€ô¤¹©½¥¸ œœ¤)ô()™Õ¹Ñ¥½¸É•…‘I•¥½¹Ì¡É•¥½¹ÌèÕ¹­¹½Ý¸¤ì(€¥˜€ …ÉÉ…ä¹¥ÍÉÉ…ä¡É•¥½¹Ì¤ñðÉ•¥½¹Ì¹±•¹Ñ €„ôô€ä¤É•ÑÕÉ¸É•©•Ð Q¡¥ÌMÕ‘½­ÕA…ÁÕéé±”É•ÅÕ¥É•Ì¹¥¹”€Ìƒ\€Ì‰½á•Ì¸œ¤(€½¹ÍÐÍ••¸€ô¹•ÜM•Ðñ¹Õµ‰•Èø ¤(€™½È€¡½¹ÍÐÉ•¥½¸½˜É•¥½¹Ì¤ì(€€€¥˜€ …ÉÉ…ä¹¥ÍÉÉ…ä¡É•¥½¸¤ñðÉ•¥½¸¹±•¹Ñ €„ôô€ä¤É•ÑÕÉ¸É•©•Ð Q¡¥ÌMÕ‘½­ÕA…ÁÕéé±”É•ÅÕ¥É•Ì¹¥¹”€Ìƒ\€Ì‰½á•Ì¸œ¤(€€€½¹ÍÐ•±±Ì€ôÉ•¥½¸¹µ…À¡•±±%¹‘•à¤(€€€½¹ÍÐ™¥ÉÍÐ€ô•±±ÍlÁt(€€€½¹ÍÐ‰½à€ô5…Ñ ¹™±½½È¡5…Ñ ¹™±½½È¡™¥ÉÍÐ€¼€ä¤€¼€Ì¤€¨€Ì€¬5…Ñ ¹™±½½È ¡™¥ÉÍÐ€”€ä¤€¼€Ì¤(€€€¥˜€¡•±±Ì¹Í½µ”¡•±°€ôø5…Ñ ¹™±½½È¡5…Ñ ¹™±½½È¡•±°€¼€ä¤€¼€Ì¤€¨€Ì€¬5…Ñ ¹™±½½È ¡•±°€”€ä¤€¼€Ì¤€„ôô‰½à¤ñð(€€€€€•±±Ì¹Í½µ”¡•±°€ôøÍ••¸¹¡…Ì¡•±°¤¤¤É•ÑÕÉ¸É•©•Ð Q¡¥ÌMÕ‘½­ÕA…ÁÕéé±”¡…Ì¥¹Ù…±¥€Ìƒ\€Ì‰½á•Ì¸œ¤(€€€•±±Ì¹™½É… ¡•±°€ôøÍ••¸¹…‘¡•±°¤¤(€ô(€¥˜€¡Í••¸¹Í¥é”€„ôô€àÄ¤É•ÑÕÉ¸É•©•Ð Q¡¥ÌMÕ‘½­ÕA…ÁÕéé±”¡…Ì¥¹Ù…±¥€Ìƒ\€Ì‰½á•Ì¸œ¤)ô()™Õ¹Ñ¥½¸É•…‘Q¡•Éµ½µ•Ñ•ÉÌ¡±¥¹•ÌèÕ¹­¹½Ý¸°Õ¹‘•É±…åÌèÕ¹­¹½Ý¸¤èY…É¥…¹ÑIÕ±•mtì(€¥˜€ …ÉÉ…ä¹¥ÍÉÉ…ä¡±¥¹•Ì¤ñð€…±¥¹•Ì¹±•¹Ñ ñð±¥¹•Ì¹±•¹Ñ €ø€ÄÈàñð€…ÉÉ…ä¹¥ÍÉÉ…ä¡Õ¹‘•É±…åÌ¤ñð(€€€€…Õ¹‘•É±…åÌ¹±•¹Ñ ñðÕ¹‘•É±…åÌ¹±•¹Ñ €ø€ÄÈà¤ì(€€€É•ÑÕÉ¸É•©•Ð Q¡¥ÌMÕ‘½­ÕA…Ñ¡•Éµ½µ•Ñ•È¥Ìµ¥ÍÍ¥¹œ¥ÑÌ±¥¹”½È‰Õ±ˆ¸œ¤(€ô(€½¹ÍÐ‰Õ±‰Ì€ôÕ¹‘•É±…åÌ¹µ…À¡µ…É¬€ôøì(€€€¥˜€ …É•½É¡µ…É¬¤ñð=‰©•Ð¹­•åÌ¡µ…É¬¤¹Í½µ”¡­•ä€ôø€…l•¹Ñ•Èœ°€Ý¥‘Ñ œ°€¡•¥¡Ðœ°€É½Õ¹‘•œ°€‰…­É½Õ¹‘½±½Èœ°€ÍÑÉ½­”t¹¥¹±Õ‘•Ì¡­•ä¤¤ñð(€€€€€€…ÉÉ…ä¹¥ÍÉÉ…ä¡µ…É¬¹•¹Ñ•È¤ñðµ…É¬¹•¹Ñ•È¹±•¹Ñ €„ôô€Èñð(€€€€€µ…É¬¹•¹Ñ•È¹Í½µ”¡½½É‘¥¹…Ñ”€ôøÑåÁ•½˜½½É‘¥¹…Ñ”€„ôô€¹Õµ‰•Èœñð€…9Õµ‰•È¹¥Í%¹Ñ••È¡½½É‘¥¹…Ñ”€´€¸Ô¤¤ñð(€€€€€µ…É¬¹É½Õ¹‘•€„ôôÑÉÕ”ñðÑåÁ•½˜µ…É¬¹Ý¥‘Ñ €„ôô€¹Õµ‰•Èœñðµ…É¬¹Ý¥‘Ñ €ðô€Àñðµ…É¬¹Ý¥‘Ñ €ø€Äñðµ…É¬¹Ý¥‘Ñ €„ôôµ…É¬¹¡•¥¡Ðñð(€€€€€ÑåÁ•½˜µ…É¬¹‰…­É½Õ¹‘½±½È€„ôô€ÍÑÉ¥¹œœñðµ…É¬¹ÍÑÉ½­”€„ôôÕ¹‘•™¥¹•€˜˜µ…É¬¹ÍÑÉ½­”€„ôô€¹½¹”œ¤ì(€€€€€É•ÑÕÉ¸É•©•Ð Q¡¥ÌMÕ‘½­ÕA…•áÁ½ÉÐ¡…Ì…¸Õ¹ÍÕÁÁ½ÉÑ•Ñ¡•Éµ½µ•Ñ•È‰Õ±ˆ¸œ¤(€€€ô(€€€É•ÑÕÉ¸ì•±°è•±±%¹‘•à¡mµ…É¬¹•¹Ñ•ÉlÁt€´€¸Ô°µ…É¬¹•¹Ñ•ÉlÅt€´€¸Õt¤°½±½Èèµ…É¬¹‰…­É½Õ¹‘½±½È¹Ñ½1½Ý•É…Í” ¤ô(€ô¤(€¥˜€¡¹•ÜM•Ð¡‰Õ±‰Ì¹µ…À¡‰Õ±ˆ€ôø‰Õ±ˆ¹•±°¤¤¹Í¥é”€„ôô‰Õ±‰Ì¹±•¹Ñ ¤É•ÑÕÉ¸É•©•Ð QÝ¼MÕ‘½­ÕA…Ñ¡•Éµ½µ•Ñ•È‰Õ±‰Ì½Ù•É±…À¸œ¤(€½¹ÍÐÉÕ±•Ì€ô±¥¹•Ì¹µ…À¡±¥¹”€ôøì(€€€¥˜€ …É•½É¡±¥¹”¤ñð=‰©•Ð¹­•åÌ¡±¥¹”¤¹Í½µ”¡­•ä€ôø€…lÝ…åA½¥¹ÑÌœ°€½±½Èœ°€Ñ¡¥­¹•ÍÌt¹¥¹±Õ‘•Ì¡­•ä¤¤ñð(€€€€€ÑåÁ•½˜±¥¹”¹½±½È€„ôô€ÍÑÉ¥¹œœñðÑåÁ•½˜±¥¹”¹Ñ¡¥­¹•ÍÌ€„ôô€¹Õµ‰•Èœñð±¥¹”¹Ñ¡¥­¹•ÍÌ€ðô€À¤ì(€€€€€É•ÑÕÉ¸É•©•Ð Q¡¥ÌMÕ‘½­ÕA…•áÁ½ÉÐ¡…Ì…¸Õ¹ÍÕÁÁ½ÉÑ•Ñ¡•Éµ½µ•Ñ•È±¥¹”¸œ¤(€€€ô(€€€½¹ÍÐÁ…Ñ €ôÉ•…‘A…Ñ ¡±¥¹”¹Ý…åA½¥¹ÑÌ°€ä¤(€€€¥˜€¡Á…Ñ ¹±•¹Ñ €ð€Èñð¹•ÜM•Ð¡Á…Ñ ¤¹Í¥é”€„ôôÁ…Ñ ¹±•¹Ñ ¤É•ÑÕÉ¸É•©•Ð Q¡¥ÌMÕ‘½­ÕA…Ñ¡•Éµ½µ•Ñ•È¡…Ì…¸¥¹Ù…±¥Á…Ñ ¸œ¤(€€€½¹ÍÐ½±½È€ô±¥¹”¹½±½È¹Ñ½1½Ý•É…Í” ¤(€€€½¹ÍÐ•¹‘Ì€ômÁ…Ñ¡lÁt°Á…Ñ¡mÁ…Ñ ¹±•¹Ñ €´€Åut(€€€½¹ÍÐµ…Ñ¡¥¹œ€ô‰Õ±‰Ì¹™±…Ñ5…À ¡‰Õ±ˆ°¥¹‘•à¤€ôø‰Õ±ˆ¹½±½È€ôôô½±½È€˜˜•¹‘Ì¹¥¹±Õ‘•Ì¡‰Õ±ˆ¹•±°¤€üm¥¹‘•át€èmt¤(€€€¥˜€¡µ…Ñ¡¥¹œ¹±•¹Ñ €„ôô€Ä¤É•ÑÕÉ¸É•©•Ð … MÕ‘½­ÕA…Ñ¡•Éµ½µ•Ñ•È¹••‘Ì½¹”µ…Ñ¡¥¹œ‰Õ±ˆ…Ð…¸•¹½˜¥ÑÌ±¥¹”¸œ¤(€€€½¹ÍÐm‰Õ±‰%¹‘•át€ôµ…Ñ¡¥¹œ(€€€½¹ÍÐm‰Õ±‰t€ôƒ]4ÖÚ$z{-®éÜj×ˆX\šË˜›Ü™\ÛÛÜ‹ÓÝÙ\Ø\ÙJ
-HOOH	ÈÌ	ÊHÂˆÚ\˜Û\Ëœ\Ú
-X\šÊBˆH[ÙHYˆ
-\[ÙˆX\šË^OOH	ÜÝš[™ÉÈ	‰ˆ×–ÌKNW^ÌKIË\Ý
-X\šË^
-JHÂˆ\™XÝœ\Ú
-ÈÜYˆÜY
-X\šË˜Ù[\ŠKYÚ]ÎˆË‹‹›X\šË^K›X\
-[X™\ŠHJBˆH[ÙH™]\›ˆ™Z™XÝ
-	Õ\ÈÝYÚÝTY^Ü\È[ˆ[œÝ\ÜY]XY\HÛYK‰ÊBˆBˆYˆ
-\™XÝ›[™Ý	‰ˆ
-Ú\˜Û\Ë›[™Ý[X™\œË›[™Ý
-HY\™XÝ›[™Ý	‰ˆ
-XÚ\˜Û\Ë›[™Ý[[X™\œË›[™Ý
-JHÂˆ™]\›ˆ™Z™XÝ
-	Õ\ÈÝYÚÝTY^Ü\È[ˆ[œÝ\ÜY]XY\HÛYK‰ÊBˆBˆYˆ
-\™XÝ›[™Ý
-H™]\›ˆ\™XÝ›X\
-[HOˆ
-È\Nˆ	Ü]XY\IË‹‹œ[HH\ÈÛÛœÝ
-JB‚ˆÛÛœÝ\ÜÚYÛ™YH™]ÈX\™XÛÜ™Ýš[™Ë[šÛ›ÝÛ‹[X™\–×OŠ
-Bˆ›Üˆ
-ÛÛœÝÚ\˜ÛHÙˆÚ\˜Û\ÊH\ÜÚYÛ™YœÙ]
-Ú\˜ÛK×JBˆ›Üˆ
-ÛÛœÝX\šÈÙˆ[X™\œÊHÂˆÛÛœÝÜ›ÝËÛÛ[[—HHX\šË˜Ù[\ˆ\È[X™\–×BˆÛÛœÝX]Ú\ÈHÚ\˜Û\Ë›X\
-Ú\˜ÛHOˆÂˆÛÛœÝØÚ\˜ÛT›ÝËÚ\˜ÛPÛÛ[[—HHÚ\˜ÛK˜Ù[\ˆ\È[X™\–×Bˆ™]\›ˆÈÚ\˜ÛK\Ý[˜ÙNˆX]š\Ý
-›ÝÈHÚ\˜ÛT›ÝËÛÛ[[ˆHÚ\˜ÛPÛÛ[[ŠHBˆJK™š[\Š
-È\Ý[˜ÙHJHOˆ\Ý[˜ÙHHŒŠKœÛÜ
+import type { VariantRule } from '../engine.ts'
+import { WINDOKU_REGIONS } from '../variants.ts'
+import { readKropkiDots, readPath } from '../sized-rule-sudoku-pad.ts'
+import { makeImportedPuzzle, record } from './shared.ts'
 
-YšYÚ
-HOˆY™\Ý[˜ÙHHšYÚ™\Ý[˜ÙJBˆYˆ
-[X]Ú\Ë›[™ÝX]Ú\ÖÌWOË™\Ý[˜ÙHOOHX]Ú\ÖÌK™\Ý[˜ÙJHÂˆ™]\›ˆ™Z™XÝ
-	Õ\ÈÝYÚÝTY^Ü\ÈH[X™\ˆ]Ù\È›Ý™[Û™ÈÈÛ™H]XY\HÚ\˜ÛK‰ÊBˆBˆ\ÜÚYÛ™Y™Ù]
-X]Ú\ÖÌK˜Ú\˜ÛJOËœ\Ú
-X\šË^\È[X™\ŠBˆBˆ™]\›ˆÚ\˜Û\Ë›X\
-Ú\˜ÛHOˆÂˆÛÛœÝYÚ]ÈH\ÜÚYÛ™Y™Ù]
-Ú\˜ÛJHÏÈ×BˆYˆ
-YYÚ]Ë›[™ÝYÚ]Ë›[™Ýˆ
-H™]\›ˆ™Z™XÝ
-	Õ\ÈÝYÚÝTY^Ü\È[ˆ[˜[Y]XY\HÚ\˜ÛK‰ÊBˆ™]\›ˆÈ\Nˆ	Ü]XY\IÈ\ÈÛÛœÝÜYˆÜY
-Ú\˜ÛK˜Ù[\ˆ\È[X™\–×JKYÚ]ÈBˆJBŸB‚˜ÛÛœÝTÑWÔ•SHH×ŠÎœÝ[™\™›Ü›X[
-JÎˆWÊ–Þ0å×WÊŽJOÈÝYÚÝH[\È\WÉÚB˜ÛÛœÝ“ÓÓÓ”ÑPÕUU‘WÔ•SHH×“›Û˜ÛÛœÙXÝ]]™Nˆ[žHÛÈÜÙÛÛ˜[HY˜XÙ[Ù[ÈØ[››ÝÛÛZ[ˆÛÛœÙXÝ]]™HYÚ]×ÉÚB˜ÛÛœÝS•WÒÓ’QÒÔ•SHH×ŠÎ[KRÛšYÚˆÊOÐÙ[ÈÛ™HÚ\ÜÈÛšYÚÉø &W\È[Ý™H\\X^H›Ý]™HHØ[YHYÚ]ÉÚB˜ÛÛœÝUÒÑ“UPUT×Ô•SHH×‘]Ú›]X]\Îˆ]™\žHH[ˆHÜšY]\Ý]™HHÉø &WOÌVÉø &WOÈ\™XÝHX›Ý™H]ÜˆHÉø &WOÎVÉø &WOÈ\™XÝH™[ÝÈ]ˆ]X^H]™H›Ý]]Ù\Û–Éø &WOÝ™YY›ÝÉÚB˜ÛÛœÝUPQ•TWÔ•SHH×”]XY\\ÎˆYÚ]È[ˆÚ]HÚ\˜Û\È]\Ý™H™\Ù[]X\ÝÛ˜ÙH[ˆHÙ[ÈHÛYHÝXÚ\×ˆYˆHYÚ]\X\œÈ[Ü™H[ˆÛ˜ÙH[ˆHÚ\˜ÛK]]\Ý™H™\Ù[]X\Ý]X[žH[Y\È[ˆHÙ[ÈHÛYHÝXÚ\×ÉÚB˜ÛÛœÝÒST—Ô•STÈHÂˆ×’Ú[\ˆØYÙ\ÎˆYÚ]È[ˆHØYÙHX^H›Ý™\X][™]\ÝÝ[HÈH[X™\ˆ[ˆHÜYÛÜ›™\ˆÙˆ]ØYÙWÉÚKˆ×’Ú[\ˆØYÙ\ÎˆYÚ]È[ˆHÚ[\ˆØYÙH]\ÝÝ[HÈH[X™\ˆ[ˆHÜYÛÜ›™\ˆ[™Ø[››Ý™\X]ÉÚK—B˜ÛÛœÝÒS‘ÒÕWÔ•SHH×•Ú[™ÚÝNˆ\™H\™H[™XØ]YY][Û˜[ÞÈ™YÚ[Ûœ×ÉÚB˜ÛÛœÝÔÕQÒÕWÔ•SHH×–\ÝYÚÝNˆYÚ]ÈØ[››Ý™\X][Û™ÈXZ›ÜˆXYÛÛ˜[×ÉÚB‚™[˜Ý[Ûˆ™XYÚ[™ÚÝU[™\›^\Ê[™\›^\Îˆ[šÛ›ÝÛŠHÂˆYˆ
-P\œ˜^Kš\Ð\œ˜^J[™\›^\ÊH[™\›^\Ë›[™ÝOOHÒS‘ÒÕWÔ‘QÒSÓ”Ë›[™Ý
-HÂˆ™]\›ˆ™Z™XÝ
-	Õ\ÈÝYÚÝTYÚ[™ÚÝH\È[˜ÛÛ\]H™YÚ[ÛˆX\šÚ[™ÜË‰ÊBˆBˆÛÛœÝÙ[\œÈHÒS‘ÒÕWÔ‘QÒSÓ”Ë›X\
-Ù[ÈOˆÂˆÙ[Ëœ™YXÙJ
-Ý[KÙ[
-HOˆÝ[H
-ÈX]™›ÛÜŠÙ[ÈJK
-HÈÙ[Ë›[™Ý
-ÈKˆÙ[Ëœ™YXÙJ
-Ý[KÙ[
-HOˆÝ[H
-ÈÙ[	HK
-HÈÙ[Ë›[™Ý
-ÈKˆJBˆÛÛœÝ›Ý[™H™]ÈÙ]Ýš[™ÏŠ
-Bˆ›Üˆ
-ÛÛœÝX\šÈÙˆ[™\›^\ÊHÂˆYˆ
-\™XÛÜ™
-X\šÊHØš™XÝšÙ^\ÊX\šÊKœÛÛYJÙ^HOˆVÉØÙ[\‰Ë	ÝÚY	Ë	ÚZYÚ	Ë	Ø˜XÚÙÜ›Ý[™ÛÛÜ‰×Kš[˜ÛY\ÊÙ^JJHˆP\œ˜^Kš\Ð\œ˜^JX\šË˜Ù[\ŠHX\šË˜Ù[\‹›[™ÝOOHˆX\šËÚYOOHÈX\šËšZYÚOOHÈˆ\[ÙˆX\šË˜˜XÚÙÜ›Ý[™ÛÛÜˆOOH	ÜÝš[™ÉÈK×ˆÖÌNXKY—^ÍŸIÚK\Ý
-X\šË˜˜XÚÙÜ›Ý[™ÛÛÜŠJHÂˆ™]\›ˆ™Z™XÝ
-	Õ\ÈÝYÚÝTYÚ[™ÚÝH\È[œÝ\ÜY™YÚ[ÛˆX\šÚ[™ÜË‰ÊBˆBˆÛÛœÝÛÛÜ™[˜]\ÈHX\šË˜Ù[\ˆ\È[X™\–×BˆÛÛœÝÙ[\ˆHÙ[\œË™š[™
+const FIELDS = new Set(['id', 'metadata', 'cells', 'regions', 'cages', 'overlays', 'underlays', 'lines', 'arrows',
+  'windoku', 'diagonal+', 'diagonal-'])
+const METADATA = new Set(['source', 'title', 'author', 'rules', 'solution', 'msgcorrect', 'antiking', 'antiknight', 'nextpuzzle', 't'])
 
-Ü›ÝËÛÛ[[—JHOˆ›ÝÈOOHÛÛÜ™[˜]\ÖÌH	‰ˆÛÛ[[ˆOOHÛÛÜ™[˜]\ÖÌWJBˆYˆ
-XÙ[\ŠH™]\›ˆ™Z™XÝ
-	Õ\ÈÝYÚÝTYÚ[™ÚÝH\È[œÝ\ÜY™YÚ[ÛˆX\šÚ[™ÜË‰ÊBˆ›Ý[™˜Y
-Ù[\‹š›Ú[Š	Ë	ÊJBˆBˆYˆ
-›Ý[™œÚ^™HOOHÙ[\œË›[™Ý
-H™]\›ˆ™Z™XÝ
-	Õ\ÈÝYÚÝTYÚ[™ÚÝH\ÈÝ™\›\[™È™YÚ[ÛˆX\šÚ[™ÜË‰ÊBŸB‚™[˜Ý[Ûˆ™XYXYÛÛ˜[[™\Ê[™\Îˆ[šÛ›ÝÛŠHÂˆYˆ
-P\œ˜^Kš\Ð\œ˜^J[™\ÊH[™\Ë›[™ÝOOHŠH™]\›ˆ™Z™XÝ
-	Õ\ÈÝYÚÝTYTÝYÚÝH\È[˜ÛÛ\]HXYÛÛ˜[X\šÚ[™ÜË‰ÊBˆÛÛœÝXYÛÛ˜[ÈH™]ÈÙ]Ýš[™ÏŠ
-Bˆ›Üˆ
-ÛÛœÝ[™HÙˆ[™\ÊHÂˆYˆ
-\™XÛÜ™
-[™JHØš™XÝšÙ^\Ê[™JKœÛÛYJÙ^HOˆVÉÝØ^TÚ[ÉË	ØÛÛÜ‰Ë	ÝXÚÛ™\ÜÉ×Kš[˜ÛY\ÊÙ^JJHˆ\[Ùˆ[™K˜ÛÛÜˆOOH	ÜÝš[™ÉÈ\[Ùˆ[™KXÚÛ™\ÜÈOOH	Û[X™\‰È[™KXÚÛ™\ÜÈHˆP\œ˜^Kš\Ð\œ˜^J[™KØ^TÚ[ÊH[™KØ^TÚ[Ë›[™ÝOOHˆˆ[™KØ^TÚ[ËœÛÛYJÚ[OˆP\œ˜^Kš\Ð\œ˜^JÚ[
-HÚ[›[™ÝOOHˆÚ[œÛÛYJˆOˆ\[ÙˆˆOOH	Û[X™\‰ÊJJHÂˆ™]\›ˆ™Z™XÝ
-	Õ\ÈÝYÚÝTYTÝYÚÝH\È[œÝ\ÜYXYÛÛ˜[X\šÚ[™ÜË‰ÊBˆBˆÛÛœÝÚ[ÈH[™KØ^TÚ[È\È[X™\–×V×BˆÛÛœÝÙ^HHÚ[ÖÌVÌHOOH	‰ˆÚ[ÖÌVÌWHOOH	‰ˆÚ[ÖÌWVÌHOOHH	‰ˆÚ[ÖÌWVÌWHOOHHˆÚ[ÖÌWVÌHOOH	‰ˆÚ[ÖÌWVÌWHOOH	‰ˆÚ[ÖÌVÌHOOHH	‰ˆÚ[ÖÌVÌWHOOHHÈ	ÛXZ[‰ÂˆˆÚ[ÖÌVÌHOOH	‰ˆÚ[ÖÌVÌWHOOHH	‰ˆÚ[ÖÌWVÌHOOHH	‰ˆÚ[ÖÌWVÌWHOOHˆÚ[ÖÌWVÌHOOH	‰ˆÚ[ÖÌWVÌWHOOHH	‰ˆÚ[ÖÌVÌHOOHH	‰ˆÚ[ÖÌVÌWHOOHÈ	Ø[IÈˆ[™Yš[™YˆYˆ
-ZÙ^HXYÛÛ˜[Ëš\ÊÙ^JJH™]\›ˆ™Z™XÝ
-	Õ\ÈÝYÚÝTYTÝYÚÝH\È[œÝ\ÜYXYÛÛ˜[X\šÚ[™ÜË‰ÊBˆXYÛÛ˜[Ë˜Y
-Ù^JBˆBˆYˆ
-YXYÛÛ˜[Ëš\Ê	ÛXZ[‰ÊHYXYÛÛ˜[Ëš\Ê	Ø[IÊJH™]\›ˆ™Z™XÝ
-	Õ\ÈÝYÚÝTYTÝYÚÝH\È[˜ÛÛ\]HXYÛÛ˜[X\šÚ[™ÜË‰ÊBŸB‚™^Ü[˜Ý[Ûˆ™XYÛ\ÜÚXÔÝYÚÝTY
-]Nˆ™XÛÜ™Ýš[™Ë[šÛ›ÝÛŠHÂˆYˆ
-Øš™XÝšÙ^\Ê]JKœÛÛYJÙ^HOˆQ’QSËš\ÊÙ^JJH]KšYOOH[™Yš[™Y	‰ˆ\[Ùˆ]KšYOOH	ÜÝš[™ÉÈ\™XÛÜ™
-]K›Y]Y]JHˆØš™XÝšÙ^\Ê]K›Y]Y]JKœÛÛYJÙ^HOˆSQUQUKš\ÊÙ^JJHˆ\[Ùˆ]K›Y]Y]Kœ[\ÈOOH	ÜÝš[™ÉÈ	‰ˆ
-P\œ˜^Kš\Ð\œ˜^J]K›Y]Y]Kœ[\ÊH]K›Y]Y]Kœ[\ËœÛÛYJ[HOˆ\[Ùˆ[HOOH	ÜÝš[™ÉÊJHˆÉÝ]IË	Ý	Ë	Ø]]Ü‰Ë	Û™^^ž›IË	ÜÛÛ][Û‰×KœÛÛYJÙ^HOˆ
-]K›Y]Y]H\È™XÛÜ™Ýš[™Ë[šÛ›ÝÛŠVÚÙ^WHOOH[™Yš[™Y	‰ˆ\[Ùˆ
-]K›Y]Y]H\È™XÛÜ™Ýš[™Ë[šÛ›ÝÛŠVÚÙ^WHOOH	ÜÝš[™ÉÊHˆ]K›Y]Y]K˜[ZÚ[™ÈOOH[™Yš[™Y	‰ˆ\[Ùˆ]K›Y]Y]K˜[ZÚ[™ÈOOH	Ø›ÛÛX[‰Èˆ]K›Y]Y]K˜[ZÛšYÚOOH[™Yš[™Y	‰ˆ\[Ùˆ]K›Y]Y]K˜[ZÛšYÚOOH	Ø›ÛÛX[‰ÈˆÉÝÚ[™ÚÝIË	ÙXYÛÛ˜[
-ÉË	ÙXYÛÛ˜[I×KœÛÛYJÙ^HOˆ]VÚÙ^WHOOH[™Yš[™Y	‰ˆ\[Ùˆ]VÚÙ^WHOOH	Ø›ÛÛX[‰ÊJHÂˆ™]\›ˆ™Z™XÝ
-	Õ\ÈÝYÚÝTY^ÜÛÛZ[œÈ[œÝ\ÜY^ž›HšY[Ë‰ÊBˆBˆÛÛœÝÚ]™[œÈH™XYÚ]™[œÊ]K˜Ù[ÊBˆ™XY™YÚ[ÛœÊ]Kœ™YÚ[ÛœÊBˆÛÛœÝ[\Õ^H\œ˜^Kš\Ð\œ˜^J]K›Y]Y]Kœ[\ÊHÈ]K›Y]Y]Kœ[\Ëš›Ú[Š	×‰ÊHˆ]K›Y]Y]Kœ[\È\ÈÝš[™ÂˆÛÛœÝÛ]\Ù\ÈH[\Õ^š[J
-KœÜ]
-×ŠËÊK›X\
-Û]\ÙHOˆÛ]\ÙKœ™\XÙJ×ÊËÙË	È	ÊJK™š[\Š›ÛÛX[ŠBˆYˆ
-XÛ]\Ù\Ë›[™ÝPTÑWÔ•SK\Ý
-Û]\Ù\ÖÌJJH™]\›ˆ™Z™XÝ
-	Õ\ÈÝYÚÝTY^ž›H\È]]Ü™Y[\È\È[\Ü\ˆØ[››Ý™\šYžK‰ÊBˆÛÛœÝ[\Îˆ˜\šX[[V×HH×Bˆ]\Ó›Û˜ÛÛœÙXÝ]]™HH˜[ÙBˆ]\Ô]XY\\ÈH˜[ÙBˆ]\ÒÚ[\ØYÙ\ÈH˜[ÙBˆ]\Ð[RÚ[™ÈH˜[ÙBˆ]\Ð[RÛšYÚH˜[ÙBˆ]\Ñ]Ú›]X]\ÈH˜[ÙBˆ]\ÒÜ›ÜÚHH˜[ÙBˆ]\Õ\›[ÛY]\œÈH˜[ÙBˆ]\ÕÚ[™ÚÝHH˜[ÙBˆ]\ÖÝYÚÝHH˜[ÙBˆ›Üˆ
-ÛÛœÝÛ]\ÙHÙˆÛ]\Ù\ËœÛXÙJJJHÂˆYˆ
-“ÓÓÓ”ÑPÕUU‘WÔ•SK\Ý
-Û]\ÙJH	‰ˆZ\Ó›Û˜ÛÛœÙXÝ]]™JHÂˆ\Ó›Û˜ÛÛœÙXÝ]]™HHYBˆ[\Ëœ\Ú
-È\Nˆ	Û›Û‹XÛÛœÙXÝ]]™IÈJBˆH[ÙHYˆ
-×‘YÚ]ÈHÛšYÚÈ[Ý™H[™Ú[™ÜÈ[Ý™H]Ø^Hœ›ÛHXXÚÝ\ˆØ[››Ý™HHØ[YWÉÚK\Ý
-Û]\ÙJJHÂˆ\Ð[RÚ[™ÈHYBˆ\Ð[RÛšYÚHYBˆH[ÙHYˆ
-S•WÒÓ’QÒÔ•SK\Ý
-Û]\ÙJJHÂˆ\Ð[RÛšYÚHYBˆH[ÙHYˆ
-×[VËHRÚ[™ÎˆÙ[ÈHÚ\ÜÈÚ[™ÖÉø &W\È[Ý™H\\X^H›Ý]™HHØ[YHYÚ]ÉÚK\Ý
-Û]\ÙJJHÂˆ\Ð[RÚ[™ÈHYBˆH[ÙHYˆ
-UÒÑ“UPUT×Ô•SK\Ý
-Û]\ÙJH	‰ˆZ\Ñ]Ú›]X]\ÊHÂˆ\Ñ]Ú›]X]\ÈHYBˆH[ÙHYˆ
-×‘YÚ]ÈÙ\\˜]YžHHÚ]HÝ\™HÛÛœÙXÝ]]™Wˆ[ÝÈ\™HÚ]™[—ÉÚK\Ý
-Û]\ÙJH	‰ˆZ\ÒÜ›ÜÚJHÂˆ\ÒÜ›ÜÚHHYBˆH[ÙHYˆ
-×‘YÚ]ÈÛˆH\›[ÛY]\ˆ]\Ý[˜Ü™X\ÙHœ›ÛHH[ˆÈH[™ÉÚK\Ý
-Û]\ÙJH	‰ˆZ\Õ\›[ÛY]\œÊHÂˆ\Õ\›[ÛY]\œÈHYBˆH[ÙHYˆ
-UPQ•TWÔ•SK\Ý
-Û]\ÙJH	‰ˆZ\Ô]XY\\ÊHÂˆ\Ô]XY\\ÈHYBˆH[ÙHYˆ
-ÒST—Ô•STËœÛÛYJ]\›ˆOˆ]\›‹\Ý
-Û]\ÙJJH	‰ˆZ\ÒÚ[\ØYÙ\ÊHÂˆ\ÒÚ[\ØYÙ\ÈHYBˆH[ÙHYˆ
-ÒS‘ÒÕWÔ•SK\Ý
-Û]\ÙJH	‰ˆZ\ÕÚ[™ÚÝJHÂˆ\ÕÚ[™ÚÝHHYBˆH[ÙHYˆ
-ÔÕQÒÕWÔ•SK\Ý
-Û]\ÙJH	‰ˆZ\ÖÝYÚÝJHÂˆ\ÖÝYÚÝHHYBˆH[ÙH™]\›ˆ™Z™XÝ
-	Õ\ÈÝYÚÝTY^ž›H\È]]Ü™Y[\È\È[\Ü\ˆØ[››Ý™\šYžK‰ÊBˆBˆYˆ
-\ÕÚ[™ÚÝHOOH
-]KÚ[™ÚÝHOOHYJH\ÖÝYÚÝHOOH
-]VÉÙXYÛÛ˜[
-É×HOOHYH	‰ˆ]VÉÙXYÛÛ˜[I×HOOHYJHˆ
-]VÉÙXYÛÛ˜[
-É×HOOHYJHOOH
-]VÉÙXYÛÛ˜[I×HOOHYJJHÂˆ™]\›ˆ™Z™XÝ
-	Õ\ÈÝYÚÝTY^Ü\È[˜ÛÛœÚ\Ý[Ú[™ÚÝHÜˆTÝYÚÝH[\Ë‰ÊBˆBˆYˆ
-]K›Y]Y]K˜[ZÚ[™ÈOOH˜[ÙH	‰ˆ\Ð[RÚ[™È]K›Y]Y]K˜[ZÛšYÚOOH˜[ÙH	‰ˆ\Ð[RÛšYÚ
-HÂˆ™]\›ˆ™Z™XÝ
-	Õ\ÈÝYÚÝTY^ž›H\È[˜ÛÛœÚ\Ý[[KRÚ[™ÈÜˆ[KRÛšYÚ[\Ë‰ÊBˆBˆ\Ð[RÚ[™ÈH]K›Y]Y]K˜[ZÚ[™ÈOOHYBˆ\Ð[RÛšYÚH]K›Y]Y]K˜[ZÛšYÚOOHYBˆYˆ
-\Ð[RÚ[™ÊH[\Ëœ\Ú
-È\Nˆ	Ø[KZÚ[™ÉÈJBˆYˆ
-\Ð[RÛšYÚ
-H[\Ëœ\Ú
-È\Nˆ	Ø[KZÛšYÚ	ÈJBˆYˆ
-\Ñ]Ú›]X]\ÊH[\Ëœ\Ú
-È\Nˆ	ØÛÛ™][Û˜[[™ZYÚ›Ü‰ËšYÙÙ\‘YÚ]ˆK[\›˜]]™\ÎˆÂˆÈ›ÝÓÙ™œÙ]ˆLKÛÛ[[“Ù™œÙ]ˆYÚ]ˆHKÈ›ÝÓÙ™œÙ]ˆKÛÛ[[“Ù™œÙ]ˆYÚ]ˆHKˆHJBˆYˆ
-\ÕÚ[™ÚÝJH[\Ëœ\Ú
-‹‹•ÒS‘ÒÕWÔ‘QÒSÓ”Ë›X\
-Ù[ÈOˆ
-È\Nˆ	Ù^˜KZÝ\ÙIÈ\ÈÛÛœÝÙ[ÈJJJBˆYˆ
-]VÉÙXYÛÛ˜[
-É×HOOHYJH[\Ëœ\Ú
-È\Nˆ	ÙXYÛÛ˜[	ËXYÛÛ˜[ˆ	Ø[IÈKÈ\Nˆ	ÙXYÛÛ˜[	ËXYÛÛ˜[ˆ	ÛXZ[‰ÈJBˆYˆ
-\ÒÜ›ÜÚJHÂˆÛÛœÝÝÈH™XYÜ›ÜÚQÝÊ]K›Ý™\›^\ËJBˆYˆ
-ÝË\HOOH	ÚÜ›ÜÚIÈYÝË˜ÛÛœÙXÝ]]™OËœZ\œÏË›[™ÝÝËœ˜][ÕÛÏËœZ\œÏË›[™Ý
-HÂˆ™]\›ˆ™Z™XÝ
-	Õ\ÈÝYÚÝTY^ž›H\È[œÝ\ÜYÜ›ÜÚHÝË‰ÊBˆBˆ[\Ëœ\Ú
-ÝÊBˆBˆYˆ
-\Õ\›[ÛY]\œÊH[\Ëœ\Ú
-‹‹œ™XY\›[ÛY]\œÊ]K›[™\Ë]K[™\›^\ÊJBˆ[ÙHÂˆYˆ
-\ÕÚ[™ÚÝH	‰ˆ\œ˜^Kš\Ð\œ˜^J]K[™\›^\ÊH	‰ˆ]K[™\›^\Ë›[™Ý
-H™XYÚ[™ÚÝU[™\›^\Ê]K[™\›^\ÊBˆ[ÙHYˆ
-]K[™\›^\ÈOOH[™Yš[™Y	‰ˆ
-P\œ˜^Kš\Ð\œ˜^J]K[™\›^\ÊH]K[™\›^\Ë›[™Ý
-JHÂˆ™]\›ˆ™Z™XÝ
-	Õ\ÈÝYÚÝTY^ž›HÛÛZ[œÈ[œÝ\ÜY[\ÈÜˆX\šÚ[™ÜË‰ÊBˆBˆYˆ
-\ÖÝYÚÝH	‰ˆ\œ˜^Kš\Ð\œ˜^J]K›[™\ÊH	‰ˆ]K›[™\Ë›[™Ý
-H™XYXYÛÛ˜[[™\Ê]K›[™\ÊBˆ[ÙHYˆ
-]K›[™\ÈOOH[™Yš[™Y	‰ˆ
-P\œ˜^Kš\Ð\œ˜^J]K›[™\ÊH]K›[™\Ë›[™Ý
-JHÂˆ™]\›ˆ™Z™XÝ
-	Õ\ÈÝYÚÝTY^ž›HÛÛZ[œÈ[œÝ\ÜY[\ÈÜˆX\šÚ[™ÜË‰ÊBˆBˆBˆYˆ
-\Ô]XY\\ÊH[\Ëœ\Ú
-‹‹œ™XY]XY\\Ê]K›Ý™\›^\ÊJBˆ[ÙHYˆ
-Z\ÒÜ›ÜÚH	‰ˆ]K›Ý™\›^\ÈOOH[™Yš[™Y	‰ˆ
-P\œ˜^Kš\Ð\œ˜^J]K›Ý™\›^\ÊH]K›Ý™\›^\Ë›[™Ý
-JHÂˆ™]\›ˆ™Z™XÝ
-	Õ\ÈÝYÚÝTY^ž›HÛÛZ[œÈ[œÝ\ÜY[\ÈÜˆX\šÚ[™ÜË‰ÊBˆBˆYˆ
-]K˜\œ›ÝÜÈOOH[™Yš[™Y	‰ˆ
-P\œ˜^Kš\Ð\œ˜^J]K˜\œ›ÝÜÊH]K˜\œ›ÝÜË›[™Ý
-JHÂˆ™]\›ˆ™Z™XÝ
-	Õ\ÈÝYÚÝTY^ž›HÛÛZ[œÈ[œÝ\ÜY[\ÈÜˆX\šÚ[™ÜË‰ÊBˆBˆYˆ
-\ÒÚ[\ØYÙ\ÊH[\Ëœ\Ú
-™XYØYÙ\Ê]K˜ØYÙ\ÊJBˆ[ÙHYˆ
-]K˜ØYÙ\ÈOOH[™Yš[™Y	‰ˆ
-P\œ˜^Kš\Ð\œ˜^J]K˜ØYÙ\ÊH]K˜ØYÙ\Ë›[™Ý
-JHÂˆ™]\›ˆ™Z™XÝ
-	Õ\ÈÝYÚÝTY^ž›HÛÛZ[œÈ[œÝ\ÜY[\ÈÜˆX\šÚ[™ÜË‰ÊBˆBˆÛÛœÝ[\ÜYHXZÙR[\ÜY^ž›JÚ]™[œË[\Ë[™Yš[™Y
-BˆÛÛœÝ˜]ÔÛÛ][ÛˆH]K›Y]Y]KœÛÛ][Û‚ˆYˆ
-˜]ÔÛÛ][ÛˆOOH[™Yš[™Y	‰ˆ
-\[Ùˆ˜]ÔÛÛ][ÛˆOOH	ÜÝš[™ÉÈK×–ÌNW^Î_IË\Ý
-˜]ÔÛÛ][ÛŠH˜]ÔÛÛ][Û‹š[˜ÛY\Ê	Ì	ÊJJHÂˆ™]\›ˆ™Z™XÝ
-	Õ\ÈÝYÚÝTY^ž›H\È[ˆ[˜[YÛÛ][Û‹‰ÊBˆBˆÛÛœÝ]HH\[Ùˆ]K›Y]Y]K]HOOH	ÜÝš[™ÉÈÈ]K›Y]Y]K]Bˆˆ\[Ùˆ]K›Y]Y]KOOH	ÜÝš[™ÉÈÈ]K›Y]Y]Kˆ[™Yš[™YˆÛÛœÝ]]ÜˆH\[Ùˆ]K›Y]Y]K˜]]ÜˆOOH	ÜÝš[™ÉÈÈ]K›Y]Y]K˜]]Üˆˆ[™Yš[™YˆÛÛœÝÛÛ][ÛˆH˜]ÔÛÛ][Û‚ˆ™]\›ˆÂˆ‹‹š[\ÜYˆ‹‹Š\[Ùˆ]HOOH	ÜÝš[™ÉÈ	‰ˆ]H	‰ˆÈ]HJKˆ‹‹Š\[Ùˆ]]ÜˆOOH	ÜÝš[™ÉÈ	‰ˆ]]Üˆ	‰ˆÈÚ^™Y]]ÜŽˆ]]ÜˆJKˆ‹‹ŠÛÛ][Ûˆ	‰ˆÈ]]Ü™YÛÛ][ÛŽˆÛÛ][ÛˆJKˆBŸB
+function reject(message: string): never {
+  throw new Error(message)
+}
+
+function cellIndex(value: unknown) {
+  if (!Array.isArray(value) || value.length !== 2 ||
+    value.some(coordinate => !Number.isInteger(coordinate) || coordinate < 0 || coordinate > 8)) {
+    return reject('This SudokuPad puzzle has an invalid cell reference.')
+  }
+  return Number(value[0]) * 9 + Number(value[1])
+}
+
+function readGivens(cells: unknown) {
+  if (!Array.isArray(cells) || cells.length !== 9 || cells.some(row => !Array.isArray(row) || row.length !== 9)) {
+    return reject('This SudokuPad export requires a 9 Ã— 9 grid.')
+  }
+  return cells.flat().map(cell => {
+    if (!record(cell) || Object.keys(cell).some(key => key !== 'value') ||
+      cell.value !== undefined && !(Number.isInteger(cell.value) && Number(cell.value) >= 1 && Number(cell.value) <= 9)) {
+      return reject('This SudokuPad puzzle contains an unsupported cell clue.')
+    }
+    return String(cell.value ?? 0)
+  }).join('')
+}
+
+function readRegions(regions: unknown) {
+  if (!Array.isArray(regions) || regions.length !== 9) return reject('This SudokuPad puzzle requires nine 3 Ã— 3 boxes.')
+  const seen = new Set<number>()
+  for (const region of regions) {
+    if (!Array.isArray(region) || region.length !== 9) return reject('This SudokuPad puzzle requires nine 3 Ã— 3 boxes.')
+    const cells = region.map(cellIndex)
+    const first = cells[0]
+    const box = Math.floor(Math.floor(first / 9) / 3) * 3 + Math.floor((first % 9) / 3)
+    if (cells.some(cell => Math.floor(Math.floor(cell / 9) / 3) * 3 + Math.floor((cell % 9) / 3) !== box) ||
+      cells.some(cell => seen.has(cell))) return reject('This SudokuPad puzzle has invalid 3 Ã— 3 boxes.')
+    cells.forEach(cell => seen.add(cell))
+  }
+  if (seen.size !== 81) return reject('This SudokuPad puzzle has invalid 3 Ã— 3 boxes.')
+}
+
+function readThermometers(lines: unknown, underlays: unknown): VariantRule[] {
+  if (!Array.isArray(lines) || !lines.length || lines.length > 128 || !Array.isArray(underlays) ||
+    !underlays.length || underlays.length > 128) {
+    return reject('This SudokuPad thermometer is missing its line or bulb.')
+  }
+  const bulbs = underlays.map(mark => {
+    if (!record(mark) || Object.keys(mark).some(key => !['center', 'width', 'height', 'rounded', 'backgroundColor', 'stroke'].includes(key)) ||
+      !Array.isArray(mark.center) || mark.center.length !== 2 ||
+      mark.center.some(coordinate => typeof coordinate !== 'number' || !Number.isInteger(coordinate - .5)) ||
+      mark.rounded !== true || typeof mark.width !== 'number' || mark.width <= 0 || mark.width > 1 || mark.width !== mark.height ||
+      typeof mark.backgroundColor !== 'string' || mark.stroke !== undefined && mark.stroke !== 'none') {
+      return reject('This SudokuPad export has an unsupported thermometer bulb.')
+    }
+    return { cell: cellIndex([mark.center[0] - .5, mark.center[1] - .5]), color: mark.backgroundColor.toLowerCase() }
+  })
+  if (new Set(bulbs.map(bulb => bulb.cell)).size !== bulbs.length) return reject('Two SudokuPad thermometer bulbs overlap.')
+  const rules = lines.map(line => {
+    if (!record(line) || Object.keys(line).some(key => !['wayPoints', 'color', 'thickness'].includes(key)) ||
+      typeof line.color !== 'string' || typeof line.thickness !== 'number' || line.thickness <= 0) {
+      return reject('This SudokuPad export has an unsupported thermometer line.')
+    }
+    const path = readPath(line.wayPoints, 9)
+    if (path.length < 2 || new Set(path).size !== path.length) return reject('This SudokuPad thermometer has an invalid path.')
+    const color = line.color.toLowerCase()
+    const ends = [path[0], path[path.length - 1]]
+    const matching = bulbs.flatMap((bulb, index) => bulb.color === color && ends.includes(bulb.cell) ? [index] : [])
+    if (matching.length !== 1) return reject('Each SudokuPad thermometer needs one matching bulb at an end of its line.')
+    const [bulbIndex] = matching
+    const [bulb] = bulbs.splice(bulbIndex, 1)
+    return { type: 'thermometer' as const, cells: bulb.cell === path[0] ? path : path.reverse() }
+  })
+  if (bulbs.length) return reject('A SudokuPad thermometer bulb is missing its line.')
+  return rules
+}
+
+function readCages(cages: unknown) {
+  if (!Array.isArray(cages) || !cages.length || cages.length > 81) return reject('This SudokuPad puzzle has an invalid list of Killer cages.')
+  const used = new Set<number>()
+  const result = cages.map(cage => {
+    if (!record(cage) || Object.keys(cage).some(key => !['cells', 'value', 'unique'].includes(key)) ||
+      !Array.isArray(cage.cells) || typeof cage.value !== 'number' || !Number.isInteger(cage.value) ||
+      cage.value < 1 || cage.value > 45 || cage.unique !== true) {
+      return reject('This SudokuPad export has an unsupported Killer cage.')
+    }
+    const cells = cage.cells.map(cellIndex)
+    if (!cells.length || new Set(cells).size !== cells.length || cells.some(cell => used.has(cell))) {
+      return reject('This SudokuPad export has overlapping or invalid Killer cages.')
+    }
+    cells.forEach(cell => used.add(cell))
+    return { cells, sum: Number(cage.value) }
+  })
+  return { type: 'killer-cages', cages: result } as const
+}
+
+function readQuadruples(overlays: unknown) {
+  if (!Array.isArray(overlays) || !overlays.length || overlays.length > 256) {
+    return reject('This SudokuPad puzzle has invalid Quadruple clues.')
+  }
+  const markFields = ['center', 'width', 'height', 'rounded', 'text', 'backgroundColor', 'borderColor', 'borderSize', 'thickness', 'color', 'stroke']
+  const centered = (mark: Record<string, unknown>): mark is Record<string, unknown> & { center: [number, number] } =>
+    Array.isArray(mark.center) && mark.center.length === 2 && mark.center.every(coordinate => typeof coordinate === 'number' && Number.isFinite(coordinate))
+  const topLeft = (center: readonly number[]) => {
+    const [row, column] = center
+    if (!Number.isInteger(row) || !Number.isInteger(column) || row < 1 || row > 8 || column < 1 || column > 8) {
+      return reject('A SudokuPad Quadruple clue must sit between four cells.')
+    }
+    return (row - 1) * 9 + column - 1
+  }
+  const circles: Record<string, unknown>[] = []
+  const numbers: Record<string, unknown>[] = []
+  const direct: { topLeft: number; digits: number[] }[] = []
+  for (const mark of overlays) {
+    if (!record(mark) || Object.keys(mark).some(key => !markFields.includes(key)) || !centered(mark)) {
+      return reject('This SudokuPad export has an unsupported Quadruple clue.')
+    }
+    if (typeof mark.text === 'number' && Number.isInteger(mark.text) && mark.text >= 1 && mark.text <= 9 &&
+      mark.width === 0.1 && mark.height === 0.1) {
+      numbers.push(mark)
+    } else if (mark.text === '' && mark.rounded === true && mark.width === 0.62 && mark.height === 0.62 &&
+      typeof mark.backgroundColor === 'string' && mark.backgroundColor.toLowerCase() === '#ffffff' &&
+      typeof mark.borderColor === 'string' && mark.borderColor.toLowerCase() === '#000000') {
+      circles.push(mark)
+    } else if (typeof mark.text === 'string' && /^[1-9]{1,4}$/.test(mark.text)) {
+      direct.push({ topLeft: topLeft(mark.center), digits: [...mark.text].map(Number) })
+    } else return reject('This SudokuPad export has an unsupported Quadruple clue.')
+  }
+  if (direct.length && (circles.length || numbers.length) || !direct.length && (!circles.length || !numbers.length)) {
+    return reject('This SudokuPad export has an unsupported Quadruple clue.')
+  }
+  if (direct.length) return direct.map(rule => ({ type: 'quadruple', ...rule } as const))
+
+  const assigned = new Map<Record<string, unknown>, number[]>()
+  for (const circle of circles) assigned.set(circle, [])
+  for (const mark of numbers) {
+    const [row, column] = mark.center as number[]
+    const matches = circles.map(circle => {
+      const [circleRow, circleColumn] = circle.center as number[]
+      return { circle, distance: Math.hypot(row - circleRow, column - circleColumn) }
+    }).filter(({ distance }) => distance <= 0.2).sort((left, right) => left.distance - right.distance)
+    if (!matches.length || matches[1]?.distance === matches[0].distance) {
+      return reject('This SudokuPad export has a number that does not belong to one Quadruple circle.')
+    }
+    assigned.get(matches[0].circle)?.push(mark.text as number)
+  }
+  return circles.map(circle => {
+    const digits = assigned.get(circle) ?? []
+    if (!digits.length || digits.length > 4) return reject('This SudokuPad export has an invalid Quadruple circle.')
+    return { type: 'quadruple' as const, topLeft: topLeft(circle.center as number[]), digits }
+  })
+}
+
+const BASE_RULE = /^(?:standard|normal)(?: 9\s*[xÃ—]\s*9)? sudoku rules apply\.?$/i
+const NONCONSECUTIVE_RULE = /^Nonconsecutive: Any two orthogonally adjacent cells cannot contain consecutive digits\.?$/i
+const ANTI_KNIGHT_RULE = /^(?:Anti-Knight: ?)?Cells one chess knight['â€™]s move apart may not have the same digit\.?$/i
+const DUTCH_FLATMATES_RULE = /^Dutch Flatmates: Every 5 in the grid must have a ['â€™]?1['â€™]? directly above it or a ['â€™]?9['â€™]? directly below it\. It may have both, but it doesn['â€™]?t need both\.?$/i
+const QUADRUPLE_RULE = /^Quadruples: Digits in white circles must be present at least once in the cells the clue touches\. If a digit appears more than once in a circle, it must be present at least that many times in the cells the clue touches\.?$/i
+const KILLER_RULES = [
+  /^Killer Cages: Digits in a cage may not repeat and must sum to the number in the top left corner of that cage\.?$/i,
+  /^Killer cages: digits in a killer cage must sum to the number in the top left corner and cannot repeat\.?$/i,
+]
+const WINDOKU_RULE = /^Windoku: there are 4 indicated additional 3x3 regions\.?$/i
+const X_SUDOKU_RULE = /^X-sudoku: digits cannot repeat along major diagonals\.?$/i
+
+function readWindokuUnderlays(underlays: unknown) {
+  if (!Array.isArray(underlays) || underlays.length !== WINDOKU_REGIONS.length) {
+    return reject('This SudokuPad Windoku has incomplete region markings.')
+  }
+  const centers = WINDOKU_REGIONS.map(cells => [
+    cells.reduce((sum, cell) => sum + Math.floor(cell / 9), 0) / cells.length + .5,
+    cells.reduce((sum, cell) => sum + cell % 9, 0) / cells.length + .5,
+  ])
+  const found = new Set<string>()
+  for (const mark of underlays) {
+    if (!record(mark) || Object.keys(mark).some(key => !['center', 'width', 'height', 'backgroundColor'].includes(key)) ||
+      !Array.isArray(mark.center) || mark.center.length !== 2 || mark.width !== 3 || mark.height !== 3 ||
+      typeof mark.backgroundColor !== 'string' || !/^#[0-9a-f]{6}$/i.test(mark.backgroundColor)) {
+      return reject('This SudokuPad Windoku has unsupported region markings.')
+    }
+    const coordinates = mark.center as number[]
+    const center = centers.find(([row, column]) => row === coordinates[0] && column === coordinates[1])
+    if (!center) return reject('This SudokuPad Windoku has unsupported region markings.')
+    found.add(center.join(','))
+  }
+  if (found.size !== centers.length) return reject('This SudokuPad Windoku has overlapping region markings.')
+}
+
+function readDiagonalLines(lines: unknown) {
+  if (!Array.isArray(lines) || lines.length !== 2) return reject('This SudokuPad X-Sudoku has incomplete diagonal markings.')
+  const diagonals = new Set<string>()
+  for (const line of lines) {
+    if (!record(line) || Object.keys(line).some(key => !['wayPoints', 'color', 'thickness'].includes(key)) ||
+      typeof line.color !== 'string' || typeof line.thickness !== 'number' || line.thickness <= 0 ||
+      !Array.isArray(line.wayPoints) || line.wayPoints.length !== 2 ||
+      line.wayPoints.some(point => !Array.isArray(point) || point.length !== 2 || point.some(n => typeof n !== 'number'))) {
+      return reject('This SudokuPad X-Sudoku has unsupported diagonal markings.')
+    }
+    const points = line.wayPoints as number[][]
+    const key = points[0][0] === 0 && points[0][1] === 0 && points[1][0] === 9 && points[1][1] === 9 ||
+      points[1][0] === 0 && points[1][1] === 0 && points[0][0] === 9 && points[0][1] === 9 ? 'main'
+      : points[0][0] === 0 && points[0][1] === 9 && points[1][0] === 9 && points[1][1] === 0 ||
+        points[1][0] === 0 && points[1][1] === 9 && points[0][0] === 9 && points[0][1] === 0 ? 'anti' : undefined
+    if (!key || diagonals.has(key)) return reject('This SudokuPad X-Sudoku has unsupported diagonal markings.')
+    diagonals.add(key)
+  }
+  if (!diagonals.has('main') || !diagonals.has('anti')) return reject('This SudokuPad X-Sudoku has incomplete diagonal markings.')
+}
+
+export function readClassicSudokuPad(data: Record<string, unknown>) {
+  if (Object.keys(data).some(key => !FIELDS.has(key)) || data.id !== undefined && typeof data.id !== 'string' || !record(data.metadata) ||
+    Object.keys(data.metadata).some(key => !METADATA.has(key)) ||
+    typeof data.metadata.rules !== 'string' && (!Array.isArray(data.metadata.rules) || data.metadata.rules.some(rule => typeof rule !== 'string')) ||
+    ['title', 't', 'author', 'nextpuzzle', 'solution'].some(key => (data.metadata as Record<string, unknown>)[key] !== undefined && typeof (data.metadata as Record<string, unknown>)[key] !== 'string') ||
+    data.metadata.antiking !== undefined && typeof data.metadata.antiking !== 'boolean' ||
+    data.metadata.antiknight !== undefined && typeof data.metadata.antiknight !== 'boolean' ||
+    ['windoku', 'diagonal+', 'diagonal-'].some(key => data[key] !== undefined && typeof data[key] !== 'boolean')) {
+    return reject('This SudokuPad export contains unsupported puzzle fields.')
+  }
+  const givens = readGivens(data.cells)
+  readRegions(data.regions)
+  const rulesText = Array.isArray(data.metadata.rules) ? data.metadata.rules.join('\n') : data.metadata.rules as string
+  const clauses = rulesText.trim().split(/\n+/).map(clause => clause.replace(/\s+/g, ' ')).filter(Boolean)
+  if (!clauses.length || !BASE_RULE.test(clauses[0])) return reject('This SudokuPad puzzle has authored rules this importer cannot verify.')
+  const rules: VariantRule[] = []
+  let hasNonconsecutive = false
+  let hasQuadruples = false
+  let hasKillerCages = false
+  let hasAntiKing = false
+  let hasAntiKnight = false
+  let hasDutchFlatmates = false
+  let hasKropki = false
+  let hasThermometers = false
+  let hasWindoku = false
+  let hasXSudoku = false
+  for (const clause of clauses.slice(1)) {
+    if (NONCONSECUTIVE_RULE.test(clause) && !hasNonconsecutive) {
+      hasNonconsecutive = true
+      rules.push({ type: 'non-consecutive' })
+    } else if (/^Digits a knights move and kings move away from each other cannot be the same\.?$/i.test(clause)) {
+      hasAntiKing = true
+      hasAntiKnight = true
+    } else if (ANTI_KNIGHT_RULE.test(clause)) {
+      hasAntiKnight = true
+    } else if (/^Anti[- ]King: Cells a chess king['â€™]s move apart may not have the same digit\.?$/i.test(clause)) {
+      hasAntiKing = true
+    } else if (DUTCH_FLATMATES_RULE.test(clause) && !hasDutchFlatmates) {
+      hasDutchFlatmates = true
+    } else if (/^Digits separated by a white dot are consecutive\. All dots are given\.?$/i.test(clause) && !hasKropki) {
+      hasKropki = true
+    } else if (/^Digits on a thermometer must increase from the bulb to the end\.?$/i.test(clause) && !hasThermometers) {
+      hasThermometers = true
+    } else if (QUADRUPLE_RULE.test(clause) && !hasQuadruples) {
+      hasQuadruples = true
+    } else if (KILLER_RULES.some(pattern => pattern.test(clause)) && !hasKillerCages) {
+      hasKillerCages = true
+    } else if (WINDOKU_RULE.test(clause) && !hasWindoku) {
+      hasWindoku = true
+    } else if (X_SUDOKU_RULE.test(clause) && !hasXSudoku) {
+      hasXSudoku = true
+    } else return reject('This SudokuPad puzzle has authored rules this importer cannot verify.')
+  }
+  if (hasWindoku !== (data.windoku === true) || hasXSudoku !== (data['diagonal+'] === true && data['diagonal-'] === true) ||
+    (data['diagonal+'] === true) !== (data['diagonal-'] === true)) {
+    return reject('This SudokuPad export has inconsistent Windoku or X-Sudoku rules.')
+  }
+  if (data.metadata.antiking === false && hasAntiKing || data.metadata.antiknight === false && hasAntiKnight) {
+    return reject('This SudokuPad puzzle has inconsistent Anti-King or Anti-Knight rules.')
+  }
+  hasAntiKing ||= data.metadata.antiking === true
+  hasAntiKnight ||= data.metadata.antiknight === true
+  if (hasAntiKing) rules.push({ type: 'anti-king' })
+  if (hasAntiKnight) rules.push({ type: 'anti-knight' })
+  if (hasDutchFlatmates) rules.push({ type: 'conditional-neighbor', triggerDigit: 5, alternatives: [
+    { rowOffset: -1, columnOffset: 0, digit: 1 }, { rowOffset: 1, columnOffset: 0, digit: 9 },
+  ] })
+  if (hasWindoku) rules.push(...WINDOKU_REGIONS.map(cells => ({ type: 'extra-house' as const, cells })))
+  if (data['diagonal+'] === true) rules.push({ type: 'diagonal', diagonal: 'anti' }, { type: 'diagonal', diagonal: 'main' })
+  if (hasKropki) {
+    const dots = readKropkiDots(data.overlays, 9)
+    if (dots.type !== 'kropki' || !dots.consecutive?.pairs?.length || dots.ratioTwo?.pairs?.length) {
+      return reject('This SudokuPad puzzle has unsupported Kropki dots.')
+    }
+    rules.push(dots)
+  }
+  if (hasThermometers) rules.push(...readThermometers(data.lines, data.underlays))
+  else {
+    if (hasWindoku && Array.isArray(data.underlays) && data.underlays.length) readWindokuUnderlays(data.underlays)
+    else if (data.underlays !== undefined && (!Array.isArray(data.underlays) || data.underlays.length)) {
+      return reject('This SudokuPad puzzle contains unsupported rules or markings.')
+    }
+    if (hasXSudoku && Array.isArray(data.lines) && data.lines.length) readDiagonalLines(data.lines)
+    else if (data.lines !== undefined && (!Array.isArray(data.lines) || data.lines.length)) {
+      return reject('This SudokuPad puzzle contains unsupported rules or markings.')
+    }
+  }
+  if (hasQuadruples) rules.push(...readQuadruples(data.overlays))
+  else if (!hasKropki && data.overlays !== undefined && (!Array.isArray(data.overlays) || data.overlays.length)) {
+    return reject('This SudokuPad puzzle contains unsupported rules or markings.')
+  }
+  if (data.arrows !== undefined && (!Array.isArray(data.arrows) || data.arrows.length)) {
+    return reject('This SudokuPad puzzle contains unsupported rules or markings.')
+  }
+  if (hasKillerCages) rules.push(readCages(data.cages))
+  else if (data.cages !== undefined && (!Array.isArray(data.cages) || data.cages.length)) {
+    return reject('This SudokuPad puzzle contains unsupported rules or markings.')
+  }
+  const imported = makeImportedPuzzle(givens, rules, undefined)
+  const rawSolution = data.metadata.solution
+  if (rawSolution !== undefined && (typeof rawSolution !== 'string' || !/^[0-9]{81}$/.test(rawSolution) || rawSolution.includes('0'))) {
+    return reject('This SudokuPad puzzle has an invalid solution.')
+  }
+  const title = typeof data.metadata.title === 'string' ? data.metadata.title
+    : typeof data.metadata.t === 'string' ? data.metadata.t : undefined
+  const author = typeof data.metadata.author === 'string' ? data.metadata.author : undefined
+  const solution = rawSolution
+  return {
+    ...imported,
+    ...(typeof title === 'string' && title && { title }),
+    ...(typeof author === 'string' && author && { sizedAuthor: author }),
+    ...(solution && { authoredSolution: solution }),
+  }
+}

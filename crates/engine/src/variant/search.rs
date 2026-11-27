@@ -1,59 +1,350 @@
-YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éíãM5N‹Z–‹­¦ëeŠw¬ÕÕÍ”ÍÕÁ•Èèéì(€€€½µÁ¥±•‘Y…É¥…¹Ğ°•±±Í}¥¸°(€€€±¥¹•ÌèéÉ•¹‰…¹}ÍÕ´èéí½¹Ñ…¥¹•‘)½¥¸°½¹Ñ…¥¹•‘}©½¥¹Íô°)ôì)ÕÍ”É…Ñ”èéì(€€€¹…±åÍ¥Ì°	½…É°11L°%%QL°A½Í¥Ñ¥½¹M¹…ÁÍ¡½Ğ°I…¹‘½´°(€€€¡¥¹ÑÌèéí‘¥¥Ñ}‰¥Ğ°‘¥¥ÑÍô°)ôì((¼¼¼A½Í¥Ñ¥½¸Ù…±¥‘…Ñ¥½¸½È•á…ĞÍ•…É ™…¥±•Õ¹‘•ÈÑ¡”½µÁ¥±•ÉÕ±•Ì¸(m‘•É¥Ù”¡±½¹”°½Áä°•‰Õœ°Ä°A…ÉÑ¥…±Ä¥t)ÁÕˆ•¹Õ´Y…É¥…¹ÑA½Í¥Ñ¥½¹ÉÉ½Èì(€€€€¼¼¼Q¡”ÁÕéé±”½¹™±¥ÑÌ°¥ÌÕ¹Í½±Ù…‰±”°½ÈÉ•…¡•¥ÑÌÍ•…É ±¥µ¥Ğ¸(€€€AÕéé±”¡¹…±åÍ¥Ì¤°(€€€€¼¼¼Q¡”É•µ½Ù…°µ…Í¬…ĞÑ¡¥Ì•±°½¹Ñ…¥¹Ì‰¥ÑÌ½ÕÑÍ¥‘”‘¥¥ÑÌ€ÇŠLä¸(€€€%¹Ù…±¥‘±¥µ¥¹…Ñ¥½¹Ì¡ÕÍ¥é”¤°)ô((m‘•É¥Ù”¡±½¹”¥t)ÁÕˆ¡ÍÕÁ•È¤ÍÑÉÕĞM•…É¡A½Í¥Ñ¥½¸ì(€€€ÁÕˆ‰½…Éè	½…É°(€€€ÁÕˆµ…Í­ÌèmÔÄØì11Mt°)ô((m‘•É¥Ù”¡±½¹”°½Áä¥t)•¹Õ´M•…É¡5½‘”ğ„øì(€€€Y•É¥™ä ˜„m½¹Ñ…¥¹•‘)½¥¸ğ„ùt¤°(€€€AÉ½Á……Ñ•!½ÕÍ•Ì°(€€€€¼¼-••À…±¥‰É…Ñ•Í…µÁ±¥¹œ…¹‰½Õ¹‘•ÁÉ½½˜•±¥¥‰¥±¥ÑäÍÑ…‰±”¸(€€€AÉ•Í•ÉÙ•QÉ…Ù•ÉÍ…°°)ô()¥µÁ°½µÁ¥±•‘Y…É¥…¹Ğì(€€€€¼¼¼½µ‰¥¹”Ñ¡”¥Ù•¹Ì…¹Á±…•‘¥¥ÑÌ…¹½µÁÕÑ”±•…°…¹‘¥‘…Ñ”µ…Í­Ì¸(€€€€¼¼¼(€€€€¼¼¼…•Ì°•±°µÁ…¥ÈÉ•±…Ñ¥½¹Ì°±¥¹•Ì°EÕ…‘ÉÕÁ±•Ì…¹±½‰…°¹ÑÉ½Áä¹…ÉÉ½Ü‘½µ…¥¹ÌÕ¹Ñ¥°Ñ¡•äÍÑ…‰¥±¥é”¸(€€€€¼¼¼MÕÁÁ±¥•É•µ½Ù…°µ…Í­Ì…ÁÁ±ä…Ì…‘‘¥Ñ¥½¹…°É•ÍÑÉ¥Ñ¥½¹Ì¸¥±±••±±Ì¡…Ù”(€€€€¼¼¼µ…Í¬é•É¼¸µÁÑä•±±Ì…¸¡…Ù”¹¼…¹‘¥‘…Ñ•Ìİ¡•¸Ñ¡”ÉÕ±•Ì½¹™±¥Ğ¸(€€€ÁÕˆ™¸…¹‘¥‘…Ñ•Ì (€€€€€€€€™Í•±˜°(€€€€€€€•¹ÑÉ¥•Ìè€™	½…É°(€€€€€€€•±¥µ¥¹…Ñ¥½¹Ìè€™mÔÄØì11Mt°(€€€€¤€´øI•ÍÕ±ĞñmÔÄØì11Mt°Y…É¥…¹ÑA½Í¥Ñ¥½¹ÉÉ½Èøì(€€€€€€€=¬¡Í•±˜¹ÁÉ•Á…É”¡•¹ÑÉ¥•Ì°•±¥µ¥¹…Ñ¥½¹Ì¤ü¹µ…Í­Ì¤(€€€ô((€€€€¼¼¼½Õ¹ĞÕÀÑ¼Ñİ¼Í½±ÕÑ¥½¹ÌÕ¹‘•È…±°ÉÕ±•Ì…¹Ñ¡”ÍÕÁÁ±¥•É•µ½Ù…°µ…Í­Ì¸(€€€€¼¼¼(€€€€¼¼¼I•ÑÕÉ¹Ì„‘¥É•Ğ½¹™±¥Ğ…Ìm¹…±åÍ¥Ìèé½¹™±¥Ñt¸%¹Ù…±¥É•µ½Ù…°µ…Í­Ì(€€€€¼¼¼…É”É•Á½ÉÑ•Í•Á…É…Ñ•±ä¸Q¡”¹½‘”‰Õ‘•Ğ¥¹±Õ‘•ÌÑ¡”ÍÑ…ÉÑ¥¹œÁ½Í¥Ñ¥½¸¸(€€€€¼¼¼M•…É µ½¹±ä¡½ÕÍ”ÁÉ½Á……Ñ¥½¸…¹‘¥ÍÑ¥¹Ğµ‘¥¥ĞI•¥½¸MÕ´¡•­Ì(€€€€¼¼¼…¸½µÁ±•Ñ”½Õ¹ÑÌİ¥Ñ¡¥¸‰Õ‘•ÑÌÑ¡…ĞÁÉ•Ù¥½ÕÍ±ä•á¡…ÕÍÑ•¸Q¡•Í”(€€€€¼¼¼¡•­Ì‘¼¹½Ğ¡…¹”mM•±˜èé…¹‘¥‘…Ñ•Ít¸(€€€ÁÕˆ™¸…¹…±åé” (€€€€€€€€™Í•±˜°(€€€€€€€•¹ÑÉ¥•Ìè€™	½…É°(€€€€€€€•±¥µ¥¹…Ñ¥½¹Ìè€™mÔÄØì11Mt°(€€€€€€€µ…á}¹½‘•ÌèÔÌÈ°(€€€€¤€´øI•ÍÕ±Ğñ¹…±åÍ¥Ì°Y…É¥…¹ÑA½Í¥Ñ¥½¹ÉÉ½Èøì(€€€€€€€±•ĞÉ•¹‰…¹}ÍÕµÌèY•Œñ|ø€ô½¹Ñ…¥¹•‘}©½¥¹Ì¡Í•±˜¤¹½±±•Ğ ¤ì(€€€€€€€Í•±˜¹…¹…±åé•}İ¥Ñ¡}µ½‘” (€€€€€€€€€€€•¹ÑÉ¥•Ì°(€€€€€€€€€€€•±¥µ¥¹…Ñ¥½¹Ì°(€€€€€€€€€€€µ…á}¹½‘•Ì°(€€€€€€€€€€€M•…É¡5½‘”èéY•É¥™ä ™É•¹‰…¹}ÍÕµÌ¤°(€€€€€€€€€€€€™µÕĞ9½¹”°(€€€€€€€€¤(€€€ô((€€€€¼¼¼I•ÑÕÉ¸„½µÁ±•Ñ¥½¸½¹±ä…™Ñ•ÈÁÉ½Ù¥¹œÑ¡…Ğ¥Ğ¥ÌÕ¹¥ÅÕ”¸(€€€€¼¼¼(€€€€¼¼¼Q¡¥ÌÕÍ•ÌÑ¡”Í…µ”ÑÉ…Ù•ÉÍ…°…¹¹½‘”‰Õ‘•Ğ…ÌmM•±˜èé…¹…±åé•t¸(€€€ÁÕˆ™¸Í½±Ù•}Õ¹¥ÅÕ” (€€€€€€€€™Í•±˜°(€€€€€€€•¹ÑÉ¥•Ìè€™	½…É°(€€€€€€€•±¥µ¥¹…Ñ¥½¹Ìè€™mÔÄØì11Mt°(€€€€€€€µ…á}¹½‘•ÌèÔÌÈ°(€€€€¤€´øI•ÍÕ±Ğñ	½…É°Y…É¥…¹ÑA½Í¥Ñ¥½¹ÉÉ½Èøì(€€€€€€€±•ĞµÕĞÍ½±ÕÑ¥½¸€ô9½¹”ì(€€€€€€€±•ĞÉ•¹‰…¹}ÍÕµÌèY•Œñ|ø€ô½¹Ñ…¥¹•‘}©½¥¹Ì¡Í•±˜¤¹½±±•Ğ ¤ì(€€€€€€€±•Ğ…¹…±åÍ¥Ì€ôÍ•±˜¹…¹…±åé•}İ¥Ñ¡}µ½‘” (€€€€€€€€€€€•¹ÑÉ¥•Ì°(€€€€€€€€€€€•±¥µ¥¹…Ñ¥½¹Ì°(€€€€€€€€€€€µ…á}¹½‘•Ì°(€€€€€€€€€€€M•…É¡5½‘”èéY•É¥™ä ™É•¹‰…¹}ÍÕµÌ¤°(€€€€€€€€€€€€™µÕĞÍ½±ÕÑ¥½¸°(€€€€€€€€¤üì(€€€€€€€¥˜…¹…±åÍ¥Ì€ôô¹…±åÍ¥ÌèéU¹¥ÅÕ”ì(€€€€€€€€€€€=¬¡Í½±ÕÑ¥½¸¹•áÁ•Ğ ‰„½µÁ±•Ñ•½Õ¹Ğ½˜½¹”É•½É‘Ì¥ÑÌÍ½±ÕÑ¥½¸ˆ¤¤(€€€€€€€ô•±Í”ì(€€€€€€€€€€€ÉÈ¡Y…É¥…¹ÑA½Í¥Ñ¥½¹ÉÉ½ÈèéAÕéé±”¡…¹…±åÍ¥Ì¤¤(€€€€€€€ô(€€€ô((€€€€¼¼…É±¥•ÈÕ¹¥ÅÕ•¹•ÍÌÍÕ•ÍÌ…¸ÑÉ¥•È•áÁ•¹Í¥Ù”•µÁÑäÉ…Á Í•…É¡•Ì¸(€€€€¼¼AÉ•Í•ÉÙ”Ñ¡¥Ì½µÁÕÑ…Ñ¥½¹…°…Ñ”İ¡¥±”ÁÕ‰±¥Œ•á…Ğ¡•­ÌÉ½ÜÍÑÉ½¹•È¸(€€€ÁÕˆ¡ÍÕÁ•È¤™¸…¹…±åé•}™½É}ÁÉ½½˜ (€€€€€€€€™Í•±˜°(€€€€€€€•¹ÑÉ¥•Ìè€™	½…É°(€€€€€€€•±¥µ¥¹…Ñ¥½¹Ìè€™mÔÄØì11Mt°(€€€€€€€µ…á}¹½‘•ÌèÔÌÈ°(€€€€¤€´øI•ÍÕ±Ğñ¹…±åÍ¥Ì°Y…É¥…¹ÑA½Í¥Ñ¥½¹ÉÉ½Èøì(€€€€€€€Í•±˜¹…¹…±åé•}İ¥Ñ¡}µ½‘” (€€€€€€€€€€€•¹ÑÉ¥•Ì°(€€€€€€€€€€€•±¥µ¥¹…Ñ¥½¹Ì°(€€€€€€€€€€€µ…á}¹½‘•Ì°(€€€€€€€€€€€M•…É¡5½‘”èéAÉ•Í•ÉÙ•QÉ…Ù•ÉÍ…°°(€€€€€€€€€€€€™µÕĞ9½¹”°(€€€€€€€€¤(€€€ô((€€€™¸…¹…±åé•}İ¥Ñ¡}µ½‘” (€€€€€€€€™Í•±˜°(€€€€€€€•¹ÑÉ¥•Ìè€™	½…É°(€€€€€€€•±¥µ¥¹…Ñ¥½¹Ìè€™mÔÄØì11Mt°(€€€€€€€µÕĞµ…á}¹½‘•ÌèÔÌÈ°(€€€€€€€µ½‘”èM•…É¡5½‘”ğ|ø°(€€€€€€€Í½±ÕÑ¥½¸è€™µÕĞ=ÁÑ¥½¸ñ	½…Éø°(€€€€¤€´øI•ÍÕ±Ğñ¹…±åÍ¥Ì°Y…É¥…¹ÑA½Í¥Ñ¥½¹ÉÉ½Èøì(€€€€€€€±•ĞÁ½Í¥Ñ¥½¸€ôµ…Ñ Í•±˜¹ÁÉ•Á…É•}Í•…É ¡•¹ÑÉ¥•Ì°•±¥µ¥¹…Ñ¥½¹Ì°µ…á}¹½‘•Ì°µ½‘”¤ì(€€€€€€€€€€€=¬¡Á½Í¥Ñ¥½¸¤€ôøÁ½Í¥Ñ¥½¸°(€€€€€€€€€€€ÉÈ¡Y…É¥…¹ÑA½Í¥Ñ¥½¹ÉÉ½ÈèéAÕéé±”¡…¹…±åÍ¥Ì¤¤€ôøÉ•ÑÕÉ¸=¬¡…¹…±åÍ¥Ì¤°(€€€€€€€€€€€ÉÈ¡•ÉÉ½È¤€ôøÉ•ÑÕÉ¸ÉÈ¡•ÉÉ½È¤°(€€€€€€€ôì(€€€€€€€±•Ğ½Õ¹Ğ€ôÍ•±˜¹Í•…É  (€€€€€€€€€€€Á½Í¥Ñ¥½¸°(€€€€€€€€€€€€È°(€€€€€€€€€€€€™µÕĞµ…á}¹½‘•Ì°(€€€€€€€€€€€€™µÕĞñ‰½…É‘ğì(€€€€€€€€€€€€€€€Í½±ÕÑ¥½¸¹•Ñ}½É}¥¹Í•ÉĞ¡‰½…É¤ì(€€€€€€€€€€€ô°(€€€€€€€€€€€µ½‘”°(€€€€€€€€€€€€™µÕĞ‘¥¥ÑÌ°(€€€€€€€€¤ì(€€€€€€€=¬¡µ…Ñ ½×]4ÖÚ$z{-®éÜj×^Û›Ù\Ëˆ	›]]›Ø\™ÂˆÛÛ][ÛˆHÛÛYJ›Ø\™
-NÂˆKˆ[ÙKˆ	›]]Ü™\‹ˆ
-HÂˆ›Û™HOˆ\œŠ˜\šX[ÜÚ][Û‘\œ›Ü”^›J[˜[\Ú\Î”ÙX\˜Ú[Z]
-JKˆÛÛYJÊHOˆÛÛ][Û‹›Ú×ÛÜŠ˜\šX[ÜÚ][Û‘\œ›Ü”^›J[˜[\Ú\Î•[œÛÛ˜X›JJKˆBˆB‚ˆËËÈš\Ú]]™\HÛÛ\][ÛˆÚ][ˆH›İ[™Ëˆ›È\X[\İ\È™]\›™Y‚ˆXŠİ\\ŠH›ˆÛÛ\]WØ›İ[™Y
-	œÙ[‹[Z]ˆN]]›Ù\ÎˆLÌŠHOˆÜ[Û™XÏ›Ø\™ˆÂˆ][ÙHHÙX\˜Ú[ÙN•™\šYJ	–×JNÂˆ]ÜÚ][ÛˆHÙ[‚ˆœ™\\™WÜÙX\˜Ú
-	–ÌÈÑS×K	–ÌÈÑS×K›Ù\Ë[ÙJBˆ›ÚÊ
-OÎÂˆ]]]^[İ]ÈH™XÎ›™]Ê
-NÂˆ]Ûİ[HÙ[‹œÙX\˜Ú
-ˆÜÚ][Û‹ˆ[Z]ˆ	›]]›Ù\Ëˆ	›]]›Ø\™^[İ]Ëœ\Ú
-›Ø\™
-Kˆ[ÙKˆ	›]]YÚ]Ëˆ
-OÎÂˆ
-Ûİ[[Z]
-K[—ÜÛÛYJ^[İ]ÊBˆB‚ˆ›ˆ™\\™WÜÙX\˜Ú
-ˆ	œÙ[‹ˆ[šY\Îˆ	›Ø\™ˆ[[Z[˜][ÛœÎˆ	–İLMÈÑS×KˆX^Û›Ù\ÎˆLÌ‹ˆ[ÙNˆÙX\˜Ú[ÙO	×Ï‹ˆ
-HOˆ™\İ[ÙX\˜ÚÜÚ][Û‹˜\šX[ÜÚ][Û‘\œ›ÜˆÂˆ]]]ÜÚ][ÛˆHÙ[‹œ™\\™J[šY\Ë[[Z[˜][ÛœÊOÎÂˆYˆX^Û›Ù\Èˆˆ	‰ˆX]Ú\ÈJ[ÙKÙX\˜Ú[ÙN•™\šYJÊJBˆ	‰ˆ\Ù[‹œ]XY\\Ëš\×Ù[\J
-Bˆ	‰ˆÜÚ][Û‹›X\ÚÜËš]\Š
-K˜[JX\ÚßX\ÚË˜Ûİ[ÛÛ™\Ê
-HˆJBˆÂˆYˆ\Ù[‹œ™\İšXİÜ]XY\WÛ^[İ]Ê	›]]ÜÚ][ÛŠHÂˆ™]\›ˆ\œŠ˜\šX[ÜÚ][Û‘\œ›Ü”^›J[˜[\Ú\Î•[œÛÛ˜X›JJNÂˆBˆÙ[‹œ™\İšXİÙÛXZ[œÊ	›]]ÜÚ][Û‹[ÙJNÂˆBˆÚÊÜÚ][ÛŠBˆB‚ˆXŠİ\\ŠH›ˆ™\\™Jˆ	œÙ[‹ˆ[šY\Îˆ	›Ø\™ˆ[[Z[˜][ÛœÎˆ	–İLMÈÑS×Kˆ
-HOˆ™\İ[ÙX\˜ÚÜÚ][Û‹˜\šX[ÜÚ][Û‘\œ›ÜˆÂˆYˆ]ÛÛYJÙ[
-HH[[Z[˜][ÛœËš]\Š
-KœÜÚ][ÛŠ	›X\ÚßX\ÚÈ	ˆQQÒUÈOH
-HÂˆ™]\›ˆ\œŠ˜\šX[ÜÚ][Û‘\œ›Ü’[˜[Y[[Z[˜][ÛœÊÙ[
-JNÂˆBˆ]ÜÚ][ÛˆHÜÚ][Û”Û˜\ÚİÂˆÚ]™[œÎˆÙ[‹™Ú]™[œËˆ[šY\Îˆ
-™[šY\Ëˆ[[Z[˜][ÛœÎˆ
-™[[Z[˜][ÛœËˆNÂˆ]›Ø\™HÜÚ][Û‹˜[Y\Ê
-K›X\Ù\œŠ˜\šX[ÜÚ][Û‘\œ›Ü”^›JOÎÂˆ]]]X\ÚÜÈHİ˜\œ˜^N™œ›ÛWÙ›ŠÙ[ÂˆYˆ›Ø\™ØÙ[HOHÂˆÙ[‹˜[İÙYÙYÚ]ÖØÙ[H	ˆY[[Z[˜][ÛœÖØÙ[BˆH[ÙHÂˆˆBˆJNÂˆ]]]XÙYHÌÈWNÂˆ›Üˆ
-Ù[	™YÚ]
-H[ˆ›Ø\™š]\Š
-K™[[Y\˜]J
-K™š[\Š	ŠË	™YÚ]
-_YÚ]OH
-HÂˆ]š]HYÚ]Øš]
-YÚ]
-NÂˆ]YÚ]ØÙ[ÈH	›]]XÙYİ\Ú^™N™œ›ÛJYÚ]HJWNÂˆYˆÙ[‹˜[İÙYÙYÚ]ÖØÙ[H	ˆš]OHÙ[‹œY\œÖØÙ[H	ˆ
-™YÚ]ØÙ[ÈOHÂˆ™]\›ˆ\œŠ˜\šX[ÜÚ][Û‘\œ›Ü”^›J[˜[\Ú\ÎÛÛ™›Xİ
-JNÂˆBˆ
-™YÚ]ØÙ[ÈHHÙ[Âˆ›ÜˆY\ˆ[ˆÙ[×Ú[ŠÙ[‹œY\œÖØÙ[JHÂˆX\ÚÜÖÜY\—H	HXš]ÂˆBˆBˆ›ÜˆØYÙH[ˆ	œÙ[‹˜ØYÙ\ÈÂˆYˆXØYÙKœ\›Z]×ÜXÙ[Y[Ê	˜›Ø\™
-HÂˆ™]\›ˆ\œŠ˜\šX[ÜÚ][Û‘\œ›Ü”^›J[˜[\Ú\ÎÛÛ™›Xİ
-JNÂˆBˆBˆ›ÜˆZ\ˆ[ˆ	œÙ[‹œZ\œÈÂˆ]Ùš\œİÙXÛÛ™HHZ\‹˜Ù[Ë›X\
-Ù[›Ø\™ØÙ[JNÂˆYˆš\œİOH	‰ˆÙXÛÛ™OH	‰ˆ\Z\‹œ\›Z]Êš\œİÙXÛÛ™
-HÂˆ™]\›ˆ\œŠ˜\šX[ÜÚ][Û‘\œ›Ü”^›J[˜[\Ú\ÎÛÛ™›Xİ
-JNÂˆBˆBˆ›Üˆ[™H[ˆ	œÙ[‹›[™\ÈÂˆ][ˆH[™K˜Ù[Ë›[Š
-NÂˆ]]]ÛXZ[œÈHÑQÒUÎÈÑS×NÂˆ][™WÙÛXZ[œÈH	›]]ÛXZ[œÖË‹›[—NÂˆ›Üˆ
-ÛXZ[‹	˜Ù[
-H[ˆ[™WÙÛXZ[œËš]\—Û]]
+use super::{
+    CompiledVariant, cells_in,
+    lines::renban_sum::{ContainedJoin, contained_joins},
+};
+use crate::{
+    Analysis, Board, CELLS, DIGITS, PositionSnapshot, Random,
+    hints::{digit_bit, digits},
+};
 
-Kš\
-	›[™K˜Ù[ÊHÂˆYˆ›Ø\™ØÙ[HOHÂˆ
-™ÛXZ[ˆHYÚ]Øš]
-›Ø\™ØÙ[JNÂˆBˆBˆYˆ[™WÙÛXZ[œËš]\Š
-K˜[J	™ÛXZ[ŸÛXZ[ˆOHQÒUÊHÂˆ]]]İ\ÜHÌÈÑS×NÂˆ[™Kœİ\Ü
-[™WÙÛXZ[œË	›]]İ\ÜË‹›[—JNÂˆYˆİ\ÜÌHOHÂˆ™]\›ˆ\œŠ˜\šX[ÜÚ][Û‘\œ›Ü”^›J[˜[\Ú\ÎÛÛ™›Xİ
-JNÂˆBˆBˆBˆ›ÜˆÛYH[ˆ	œÙ[‹œ]XY\\ÈÂˆ]ÛXZ[œÈHÛYK˜Ù[Ë›X\
-Ù[ÂˆYˆ›Ø\™ØÙ[HOHÂˆQÒUÂˆH[ÙHÂˆYÚ]Øš]
-›Ø\™ØÙ[JBˆBˆJNÂˆYˆXÛYKš\×Ø\ÜÖj¹âkºwµçhºÚn¶Šâ‚)Ú–Ú$zw(º{xÓMS¢Ö¥¢ëiºÙbë5ignment(domains) {
+/// Position validation or exact search failed under the compiled rules.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum VariantPositionError {
+    /// The puzzle conflicts, is unsolvable, or reached its search limit.
+    Puzzle(Analysis),
+    /// The removal mask at this cell contains bits outside digits 1â€“9.
+    InvalidEliminations(usize),
+}
+
+#[derive(Clone)]
+pub(super) struct SearchPosition {
+    pub board: Board,
+    pub masks: [u16; CELLS],
+}
+
+#[derive(Clone, Copy)]
+enum SearchMode<'a> {
+    Verify(&'a [ContainedJoin<'a>]),
+    PropagateHouses,
+    // Keep calibrated sampling and bounded proof eligibility stable.
+    PreserveTraversal,
+}
+
+impl CompiledVariant {
+    /// Combine the givens and placed digits and compute legal candidate masks.
+    ///
+    /// Cages, cell-pair relations, lines, Quadruples and Global Entropy narrow domains until they stabilize.
+    /// Supplied removal masks apply as additional restrictions. Filled cells have
+    /// mask zero. Empty cells can have no candidates when the rules conflict.
+    pub fn candidates(
+        &self,
+        entries: &Board,
+        eliminations: &[u16; CELLS],
+    ) -> Result<[u16; CELLS], VariantPositionError> {
+        Ok(self.prepare(entries, eliminations)?.masks)
+    }
+
+    /// Count up to two solutions under all rules and the supplied removal masks.
+    ///
+    /// Returns a direct conflict as [`Analysis::Conflict`]. Invalid removal masks
+    /// are reported separately. The node budget includes the starting position.
+    /// Search-only house propagation and distinct-digit Region Sum checks
+    /// can complete counts within budgets that previously exhausted. These
+    /// checks do not change [`Self::candidates`].
+    pub fn analyze(
+        &self,
+        entries: &Board,
+        eliminations: &[u16; CELLS],
+        max_nodes: u32,
+    ) -> Result<Analysis, VariantPositionError> {
+        let renban_sums: Vec<_> = contained_joins(self).collect();
+        self.analyze_with_mode(
+            entries,
+            eliminations,
+            max_nodes,
+            SearchMode::Verify(&renban_sums),
+            &mut None,
+        )
+    }
+
+    /// Return a completion only after proving that it is unique.
+    ///
+    /// This uses the same traversal and node budget as [`Self::analyze`].
+    pub fn solve_unique(
+        &self,
+        entries: &Board,
+        eliminations: &[u16; CELLS],
+        max_nodes: u32,
+    ) -> Result<Board, VariantPositionError> {
+        let mut solution = None;
+        let renban_sums: Vec<_> = contained_joins(self).collect();
+        let analysis = self.analyze_with_mode(
+            entries,
+            eliminations,
+            max_nodes,
+            SearchMode::Verify(&renban_sums),
+            &mut solution,
+        )?;
+        if analysis == Analysis::Unique {
+            Ok(solution.expect("a completed count of one records its solution"))
+        } else {
+            Err(VariantPositionError::Puzzle(analysis))
+        }
+    }
+
+    // Earlier uniqueness success can trigger expensive empty graph searches.
+    // Preserve this computational gate while public exact checks grow stronger.
+    pub(super) fn analyze_for_proof(
+        &self,
+        entries: &Board,
+        eliminations: &[u16; CELLS],
+        max_nodes: u32,
+    ) -> Result<Analysis, VariantPositionError> {
+        self.analyze_with_mode(
+            entries,
+            eliminations,
+            max_nodes,
+            SearchMode::PreserveTraversal,
+            &mut None,
+        )
+    }
+
+    fn analyze_with_mode(
+        &self,
+        entries: &Board,
+        eliminations: &[u16; CELLS],
+        mut max_nodes: u32,
+        mode: SearchMode<'_>,
+        solution: &mut Option<Board>,
+    ) -> Result<Analysis, VariantPositionError> {
+        let position = match self.prepare_search(entries, eliminations, max_nodes, mode) {
+            Ok(position) => position,
+            Err(VariantPositionError::Puzzle(analysis)) => return Ok(analysis),
+            Err(error) => return Err(error),
+        };
+        let count = self.search(
+            position,
+            2,
+            &mut max_nodes,
+            &mut |board| {
+                solution.get_or_insert(board);
+            },
+            mode,
+            &mut digits,
+        );
+        Ok(match count {
+            None => Analysis::SearchLimit,
+            Some(0) => Analysis::Unsolvable,
+            Some(1) => Analysis::Unique,
+            Some(_) => Analysis::Multiple,
+        })
+    }
+
+    /// Find one completion under all rules and the supplied removal masks.
+    ///
+    /// A successful solve may have other completions. Use [`Self::analyze`] to
+    /// check uniqueness. The node budget includes the starting position.
+    pub fn solve(
+        &self,
+        entries: &Board,
+        eliminations: &[u16; CELLS],
+        max_nodes: u32,
+    ) -> Result<Board, VariantPositionError> {
+        if self.quadruples.is_empty()
+            && !self.lines.iter().any(|line| line.supports_distinct_sums())
+        {
+            return self.solve_for_proof(entries, eliminations, max_nodes);
+        }
+        self.complete(
+            entries,
+            eliminations,
+            max_nodes,
+            SearchMode::Verify(&[]),
+            digits,
+        )
+    }
+
+    pub(super) fn solve_for_proof(
+        &self,
+        entries: &Board,
+        eliminations: &[u16; CELLS],
+        max_nodes: u32,
+    ) -> Result<Board, VariantPositionError> {
+        self.complete(
+            entries,
+            eliminations,
+            max_nodes,
+            SearchMode::PropagateHouses,
+            digits,
+        )
+    }
+
+    /// Find one rule-compliant completion by trying candidate digits in seeded order.
+    ///
+    /// The same position, seed, and node limit give the same result. This can
+    /// sample solutions for generation. It does not test uniqueness.
+    /// Sampling preserves its established traversal rather than using the
+    /// additional house propagation of verification and deterministic solving.
+    pub fn solve_seeded(
+        &self,
+        entries: &Board,
+        eliminations: &[u16; CELLS],
+        max_nodes: u32,
+        seed: u32,
+    ) -> Result<Board, VariantPositionError> {
+        let mut random = Random::from_seed(seed);
+        self.complete(
+            entries,
+            eliminations,
+            max_nodes,
+            SearchMode::PreserveTraversal,
+            |mask| {
+                // Each recursive call owns its digit order.
+                let mut order = [0; 9];
+                let len = mask.count_ones() as usize;
+                for (slot, digit) in order.iter_mut().zip(digits(mask)) {
+                    *slot = digit;
+                }
+                random.shuffle(&mut order[..len]);
+                order.into_iter().take(len)
+            },
+        )
+    }
+
+    fn complete<D: Iterator<Item = u8>>(
+        &self,
+        entries: &Board,
+        eliminations: &[u16; CELLS],
+        mut max_nodes: u32,
+        mode: SearchMode<'_>,
+        mut order: impl FnMut(u16) -> D,
+    ) -> Result<Board, VariantPositionError> {
+        let position = self.prepare_search(entries, eliminations, max_nodes, mode)?;
+        let mut solution = None;
+        match self.search(
+            position,
+            1,
+            &mut max_nodes,
+            &mut |board| {
+                solution = Some(board);
+            },
+            mode,
+            &mut order,
+        ) {
+            None => Err(VariantPositionError::Puzzle(Analysis::SearchLimit)),
+            Some(_) => solution.ok_or(VariantPositionError::Puzzle(Analysis::Unsolvable)),
+        }
+    }
+
+    /// Visit every completion within the bounds. No partial list is returned.
+    pub(super) fn complete_bounded(&self, limit: u8, mut nodes: u32) -> Option<Vec<Board>> {
+        let mode = SearchMode::Verify(&[]);
+        let position = self
+            .prepare_search(&[0; CELLS], &[0; CELLS], nodes, mode)
+            .ok()?;
+        let mut layouts = Vec::new();
+        let count = self.search(
+            position,
+            limit,
+            &mut nodes,
+            &mut |board| layouts.push(board),
+            mode,
+            &mut digits,
+        )?;
+        (count < limit).then_some(layouts)
+    }
+
+    fn prepare_search(
+        &self,
+        entries: &Board,
+        eliminations: &[u16; CELLS],
+        max_nodes: u32,
+        mode: SearchMode<'_>,
+    ) -> Result<SearchPosition, VariantPositionError> {
+        let mut position = self.prepare(entries, eliminations)?;
+        if max_nodes > 0
+            && matches!(mode, SearchMode::Verify(_))
+            && !self.quadruples.is_empty()
+            && position.masks.iter().any(|mask| mask.count_ones() > 1)
+        {
+            if !self.restrict_quadruple_layouts(&mut position) {
+                return Err(VariantPositionError::Puzzle(Analysis::Unsolvable));
+            }
+            self.restrict_domains(&mut position, mode);
+        }
+        Ok(position)
+    }
+
+    pub(super) fn prepare(
+        &self,
+        entries: &Board,
+        eliminations: &[u16; CELLS],
+    ) -> Result<SearchPosition, VariantPositionError> {
+        if let Some(cell) = eliminations.iter().position(|&mask| mask & !DIGITS != 0) {
+            return Err(VariantPositionError::InvalidEliminations(cell));
+        }
+        let position = PositionSnapshot {
+            givens: self.givens,
+            entries: *entries,
+            eliminations: *eliminations,
+        };
+        let board = position.values().map_err(VariantPositionError::Puzzle)?;
+        let mut masks = std::array::from_fn(|cell| {
+            if board[cell] == 0 {
+                self.allowed_digits[cell] & !eliminations[cell]
+            } else {
+                0
+            }
+        });
+        let mut placed = [0; 9];
+        for (cell, &digit) in board.iter().enumerate().filter(|&(_, &digit)| digit != 0) {
+            let bit = digit_bit(digit);
+            let digit_cells = &mut placed[usize::from(digit - 1)];
+            if self.allowed_digits[cell] & bit == 0 || self.peers[cell] & *digit_cells != 0 {
+                return Err(VariantPositionError::Puzzle(Analysis::Conflict));
+            }
+            *digit_cells |= 1 << cell;
+            for peer in cells_in(self.peers[cell]) {
+                masks[peer] &= !bit;
+            }
+        }
+        for cage in &self.cages {
+            if !cage.permits_placements(&board) {
+                return Err(VariantPositionError::Puzzle(Analysis::Conflict));
+            }
+        }
+        for pair in &self.pairs {
+            let [first, second] = pair.cells.map(|cell| board[cell]);
+            if first != 0 && second != 0 && !pair.permits(first, second) {
+                return Err(VariantPositionError::Puzzle(Analysis::Conflict));
+            }
+        }
+        for line in &self.lines {
+            let len = line.cells.len();
+            let mut domains = [DIGITS; CELLS];
+            let line_domains = &mut domains[..len];
+            for (domain, &cell) in line_domains.iter_mut().zip(&line.cells) {
+                if board[cell] != 0 {
+                    *domain = digit_bit(board[cell]);
+                }
+            }
+            if line_domains.iter().any(|&domain| domain != DIGITS) {
+                let mut support = [0; CELLS];
+                line.support(line_domains, &mut support[..len]);
+                if support[0] == 0 {
+                    return Err(VariantPositionError::Puzzle(Analysis::Conflict));
+                }
+            }
+        }
+        for clue in &self.quadruples {
+            let domains = clue.cells.map(|cell| {
+                if board[cell] == 0 {
+                    DIGITS
+                } else {
+                    digit_bit(board[cell])
+                }
+            });
+            if !clue.has_assignment(domains) {
                 return Err(VariantPositionError::Puzzle(Analysis::Conflict));
             }
         }
@@ -174,4 +465,321 @@ JNÂˆBˆBˆBˆ›ÜˆÛYH[ˆ	œÙ[‹œ]XY\
     }
 
     /// Apply one candidate and propagate clue support without branching.
-×M5¶‰ËkºwµçBà¢ÆWBfW&–g’ÒÖF6†W2†ÖöFRÂ6V&6„ÖöFS£¥fW&–g’…ò’“°¢ÆWB¦ö–å÷v–æF÷w2ÒfW&–g’bb6VÆbævÆö&ÅöVçG&÷’æ—5÷6öÖR‚“°¢Æö÷°¢f÷"6vR–âg6VÆbæ6vW2°¢6vRç&W7G&–7B‡÷6—F–öâ“°¢Ğ¢ÆWB×WB6†ævVBÒfÇ6S°¢f÷"—"–âg6VÆbç—'2°¢ÆWBFöÖ–ç2Ò—"æ6VÆÇ2æÖ‡Æ6VÆÇÂÖF6‚÷6—F–öâæ&ö&E¶6VÆÅÒ°¢Óâ÷6—F–öâæÖ6·5¶6VÆÅÒÀ¢F–v—BÓâF–v—Eö&—B†F–v—B’À¢Ò“°¢ÆWB7W÷'FVBÒ—"ç&W7G&–7B†FöÖ–ç2“°¢f÷"†6VÆÂÂÖ6²’–â—"æ6VÆÇ2æ–çFõö—FW"‚’ç¦—‡7W÷'FVB’°¢–b÷6—F–öâæ&ö&E¶6VÆÅÒÓÒbb÷6—F–öâæÖ6·5¶6VÆÅÒÒÖ6²°¢÷6—F–öâæÖ6·5¶6VÆÅÒÒÖ6³°¢6†ævVBÒG'VS°¢Ğ¢Ğ¢Ğ¢f÷"Æ–æR–âg6VÆbæÆ–æW2°¢ÆWBÆVâÒÆ–æRæ6VÆÇ2æÆVâ‚“°¢ÆWB×WBFöÖ–ç2Ò³²4TÄÅ5Ó°¢ÆWBÆ–æUöFöÖ–ç2Òf×WBFöÖ–ç5²âæÆVåÓ°¢f÷"†FöÖ–âÂf6VÆÂ’–âÆ–æUöFöÖ–ç2æ—FW%ö×WB‚’ç¦—‚fÆ–æRæ6VÆÇ2’°¢¦FöÖ–âÒÖF6‚÷6—F–öâæ&ö&E¶6VÆÅÒ°¢Óâ÷6—F–öâæÖ6·5¶6VÆÅÒÀ¢F–v—BÓâF–v—Eö&—B†F–v—B’À¢Ó°¢Ğ¢ÆWB×WB7W÷'BÒ³²4TÄÅ5Ó°¢–bfW&–g’°¢Æ–æRç7W÷'EöW†7B†Æ–æUöFöÖ–ç2Âf×WB7W÷'E²âæÆVåÒ“°¢ÒVÇ6R°¢Æ–æRç7W÷'B†Æ–æUöFöÖ–ç2Âf×WB7W÷'E²âæÆVåÒ“°¢Ğ¢f÷"‚f6VÆÂÂfÖ6²’–âÆ–æRæ6VÆÇ2æ—FW"‚’ç¦—‚g7W÷'B’°¢–b÷6—F–öâæ&ö&E¶6VÆÅÒÓÒbb÷6—F–öâæÖ6·5¶6VÆÅÒÒÖ6²°¢÷6—F–öâæÖ6·5¶6VÆÅÒÒÖ6³°¢6†ævVBÒG'VS°¢Ğ¢Ğ¢Ğ¢–bÆWB6V&6„ÖöFS£¥fW&–g’‡&Væ&å÷7V×2’ÒÖöFR°¢f÷"¦ö–â–â&Væ&å÷7V×2°¢ÆWB6VÆÇ2Ò¦ö–âæ6VÆÇ2‚“°¢ÆWB×WBFöÖ–ç2Ò³²•Ó°¢f÷"‚f6VÆÂÂÖ6²’–â6VÆÇ2æ—FW"‚’ç¦—‚f×WBFöÖ–ç2’°¢¦Ö6²ÒÖF6‚÷6—F–öâæ&ö&E¶6VÆÅÒ°¢Óâ÷6—F–öâæÖ6·5¶6VÆÅÒÀ¢F–v—BÓâF–v—Eö&—B†F–v—B’À¢Ó°¢Ğ¢ÆWB7W÷'FVBÒ¦ö–âç7W÷'B‚fFöÖ–ç5²âæ6VÆÇ2æÆVâ‚•Ò“°¢f÷"‚f6VÆÂÂÖ6²’–â6VÆÇ2æ—FW"‚’ç¦—‡7W÷'FVBæÖ6·2’°¢–b÷6—F–öâæ&ö&E¶6VÆÅÒÓÒbb÷6—F–öâæÖ6·5¶6VÆÅÒÒÖ6²°¢÷6—F–öâæÖ6·5¶6VÆÅÒÒÖ6³°¢6†ævVBÒG'VS°¢Ğ¢Ğ¢Ğ¢Ğ¢f÷"6ÇVR–âg6VÆbçVG'WÆW2°¢ÆWBFöÖ–ç2Ò6ÇVRæ6VÆÇ2æÖ‡Æ6VÆÇÂÖF6‚÷6—F–öâæ&ö&E¶6VÆÅÒ°¢Óâ÷6—F–öâæÖ6·5¶6VÆÅÒÀ¢F–v—BÓâF–v—Eö&—B†F–v—B’À¢Ò“°¢ÆWB7W÷'FVBÒ–b¦ö–å÷v–æF÷w2°¢6ÇVRç7W÷'E÷v—F…öVçG&÷’†FöÖ–ç2¢ÒVÇ6R°¢6ÇVRç7W÷'B†FöÖ–ç2¢Ó°¢f÷"†6VÆÂÂÖ6²’–â6ÇVRæ6VÆÇ2æ–çFõö—FW"‚’ç¦—‡7W÷'FVB’°¢–b÷6—F–öâæ&ö&E¶6VÆÅÒÓÒbb÷6—F–öâæÖ6·5¶6VÆÅÒÒÖ6²°¢÷6—F–öâæÖ6·5¶6VÆÅÒÒÖ6³°¢6†ævVBÒG'VS°¢Ğ¢Ğ¢Ğ¢–bÆWB6öÖR†6ÇVR’Òg6VÆbæÆWGFW&VE÷VG'WÆW2°¢ÆWBFöÖ–ç2Ò7FC£¦'&“£¦g&öÕöfâ‡Æ6VÆÇÂÖF6‚÷6—F–öâæ&ö&E¶6VÆÅÒ°¢Óâ÷6—F–öâæÖ6·5¶6VÆÅÒÀ¢F–v—BÓâF–v—Eö&—B†F–v—B’À¢Ò“°¢–bÆWB6öÖR‡7W÷'B’Ò6ÇVRç7W÷'B‚fFöÖ–ç2’°¢f÷"†6VÆÂÂÖ6²’–â7W÷'Bæ–çFõö—FW"‚’æVçVÖW&FR‚’°¢–b÷6—F–öâæ&ö&E¶6VÆÅÒÓÒbb÷6—F–öâæÖ6·5¶6VÆÅÒÒÖ6²°¢÷6—F–öâæÖ6·5¶6VÆÅÒÒÖ6³°¢6†ævVBÒG'VS°¢Ğ¢Ğ¢ÒVÇ6R–b6ÇVRçW&Ö—G2‚fFöÖ–ç2’°¢÷6—F–öâæÖ6·2æf–ÆÂƒ“°¢&WGW&ã°¢Ğ¢Ğ¢f÷"…òÂ6VÆÇ2’–â6VÆbæVçG&÷•÷v–æF÷w2‚’°¢ÆWBFöÖ–ç2Ò6VÆÇ2æÖ‡Æ6VÆÇÂÖF6‚÷6—F–öâæ&ö&E¶6VÆÅÒ°¢Óâ÷6—F–öâæÖ6·5¶6VÆÅÒÀ¢F–v—BÓâF–v—Eö&—B†F–v—B’À¢Ò“°¢f÷"†6VÆÂÂÖ6²’–â6VÆÇ0¢æ–çFõö—FW"‚¢ç¦—‡7WW#£¦vÆö&ÅöVçG&÷“£§7W÷'Eö–åöw&÷W2€¢FöÖ–ç2À¢6VÆbævÆö&ÅöVçG&÷•öw&÷W2À¢’¢°¢–b÷6—F–öâæ&ö&E¶6VÆÅÒÓÒbb÷6—F–öâæÖ6·5¶6VÆÅÒÒÖ6²°¢÷6—F–öâæÖ6·5¶6VÆÅÒÒÖ6³°¢6†ævVBÒG'VS°¢Ğ¢Ğ¢Ğ¢f÷"…òÂ6VÆÇ2Âw&÷W’–â6VÆbæVçG&÷•öw&÷W÷v–æF÷w2‚’°¢ÆWBFöÖ–ç2Ò6VÆÇ2æÖ‡Æ6VÆÇÂÖF6‚÷6—F–öâæ&ö&E¶6VÆÅÒ°¢Óâ÷6—F–öâæÖ6·5¶6VÆÅÒÀ¢F–v—BÓâF–v—Eö&—B†F–v—B’À¢Ò“°¢f÷"†6VÆÂÂÖ6²’–à¢6VÆÇ0¢æ–çFõö—FW"‚¢ç¦—‡7WW#£¦vÆö&ÅöVçG&÷“£§7W÷'E÷&WVFVEöw&÷W€¢FöÖ–ç2Âw&÷WÀ¢’¢°¢–b÷6—F–öâæ&ö&E¶6VÆÅÒÓÒbb÷6—F–öâæÖ6·5¶6VÆÅÒÒÖ6²°¢÷6—F–öâæÖ6·5¶6VÆÅÒÒÖ6³°¢6†ævVBÒG'VS°¢Ğ¢Ğ¢Ğ¢f÷"6ÇVR–âg6VÆbææV–v†&÷%öÖF6†W2°¢ÖF6‚6ÇVRç&W7G&–7B‚g÷6—F–öâæ&ö&BÂf×WB÷6—F–öâæÖ6·2’°¢ö²‡&W7G&–7FVB’Óâ6†ævVBÃÒ&W7G&–7FVBÀ¢W'"‚‚’’Óâ°¢÷6—F–öâæÖ6·2æf–ÆÂƒ“°¢&WGW&ã°¢Ğ¢Ğ¢Ğ¢f÷"'VÆR–âg6VÆbæ6öæF—F–öæÅöæV–v†&÷'2°¢ÖF6‚'VÆRç&W7G&–7B‚g÷6—F–öâæ&ö&BÂf×WB÷6—F–öâæÖ6·2’°¢ö²‡&W7G&–7FVB’Óâ6†ævVBÃÒ&W7G&–7FVBÀ¢W'"‚‚’’Óâ°¢÷6—F–öâæÖ6·2æf–ÆÂƒ“°¢&WGW&ã°¢Ğ¢Ğ¢Ğ¢f÷"7V&R–âg6VÆbæÖv–5÷7V&W2°¢ÖF6‚7V&Rç&W7G&–7B‚g÷6—F–öâæ&ö&BÂf×WB÷6—F–öâæÖ6·2’°¢ö²‡&W7G&–7FVB’Óâ6†ævVBÃÒ&W7G&–7FVBÀ¢W'"‚‚’’Óâ°¢÷6—F–öâæÖ6·2æf–ÆÂƒ“°¢&WGW&ã°¢Ğ¢Ğ¢Ğ¢f÷"6vU÷7V×2–âg6VÆbçVæ¶æ÷våö6vU÷7V×2°¢ÖF6‚6vU÷7V×2ç&W7G&–7B‚g÷6—F–öâæ&ö&BÂf×WB÷6—F–öâæÖ6·2’°¢ö²‡&W7G&–7FVB’Óâ6†ævVBÃÒ&W7G&–7FVBÀ¢W'"‚‚’’Óâ°¢÷6—F–öâæÖ6·2æf–ÆÂƒ“°¢&WGW&ã°¢Ğ¢Ğ¢Ğ¢–b6†ævVB°¢'&V³°¢Ğ¢Ğ¢Ğ§Ğ ¢5¶6fr‡FW7B•Ğ¦ÖöBW†7Eö†÷W6U÷FW7G2°¢W6R7WW#£¢£°¢W6R7&FS£§µW§¦ÆU'VÆRÂf&–çEW§¦ÆWÓ° ¢5·FW7EĞ¢fâ&WF–æVE÷&Vv–öç5öFõöæ÷E÷&V–çG&öGV6U÷&VÖ÷fVEöF—7F–æ7FæW72‚’°¢ÆWB6öÇWF–öâÒ7FC£¦'&“£¦g&öÕöfâ‡Æ6VÆÇÂ‚†6VÆÂò’²6VÆÂR’’R’²’2S‚“°¢ÆWB×WBv—fVç2Ò6öÇWF–öã°¢v—fVç5³5ÒÒ°¢v—fVç5³•ÒÒ°¢ÆWB×WBFVf–æ—F–öâÒf&–çEW§¦ÆS£¦6Æ76–2†v—fVç2“°¢òòÆF–â6ö×ÆWF–öâ&WVG2"–âF†Rf—'7B'BæB†2B–âF†P¢òò6V6öæBâ&÷F‚'G2×W7B7F–ÆÂ7VÒFòBv—F†÷WBF†R&÷‚'VÆRà¢FVf–æ—F–öâç'VÆW2çW6‚…W§¦ÆU'VÆS£¥&Vv–öå7VÒ°¢6VÆÇ3¢fV2³Â’Â5ÒÀ¢w&÷Wö'•÷&Vv–öã¢fÇ6RÀ¢6VvÖVçG3¢æöæRÀ¢Ò“°¢ÆWB&VGV6VBÒFVf–æ—F–öâæ6ö×–ÆU÷v—F…÷&Vv–öç2†fÇ6R’çVçw&‚“°¢76W'EöW‡&VGV6VBæ†÷W6W2æÆVâ‚’Â#r“°¢76W'EöW‡&VGV6VBç6V&6…ö†÷W6W2æÆVâ‚’Â‚“°¢76W'EöW€¢&VGV6VBææÇ—¦R‚e³²4TÄÅ5ÒÂe³²4TÄÅ5ÒÂ2’À¢ö²„æÇ—6—3£¥Væ—VR¢“°¢76W'EöW‡&VGV6VBç6öÇfR‚e³²4TÄÅ5ÒÂe³²4TÄÅ5ÒÂ2’Âö²‡6öÇWF–öâ’“°¢76W'EöW€¢FVf–æ—F–öà¢æ6ö×–ÆR‚¢çVçw&‚¢ææÇ—¦R‚e³²4TÄÅ5ÒÂe³²4TÄÅ5ÒÂ’À¢ö²„æÇ—6—3£¤6öæfÆ–7B¢“°¢Ğ§Ğ ¢òòf÷"öæRF–v—B7V'6WBÂF†R&VÖ–æ–ærF–v—G2FWFW&Ö–æR†÷rÖç’6VÆÇ0¢òò†fR&VVâf–ÆÆVBâÖVÖö—¦F–öâfö–G2&Wf—6—F–ærW&×WFF–öç2öbF†R&Vf—‚à§V"†7&FR’fâ&V6÷&E÷7W÷'CÆ6öç7Bã¢W6—¦RÂ6öç7B44„S¢W6—¦Sâ€¢&VÖ–æ–æs¢SbÀ¢6æF–FFW3¢e·SeÒÀ¢7W÷'C¢f×WB·Sc²åÒÀ¢÷76–&ÆS¢f×WB´÷F–öãÆ&ööÃã²44„UÒÀ¢’Óâ&ööÂ°¢–b&VÖ–æ–ærÓÒ°¢&WGW&âG'VS°¢Ğ¢–bÆWB6öÖR†f÷VæB’Ò÷76–&ÆU·&VÖ–æ–ær2W6—¦UÒ°¢&WGW&âf÷VæC°¢Ğ¢ÆWB6VÆÂÒ6æF–FFW2æÆVâ‚’Ò&VÖ–æ–æræ6÷VçEööæW2‚’2W6—¦S°¢ÆWB×WBf÷VæBÒfÇ6S°¢f÷"F–v—B–â7&FS£¦†–çG3£¦F–v—G2†6æF–FFW5¶6VÆÅÒb&VÖ–æ–ær’°¢ÆWB&—BÒF–v—Eö&—B†F–v—B“°¢–b&V6÷&E÷7W÷'B‡&VÖ–æ–ærâ&—BÂ6æF–FFW2Â7W÷'BÂ÷76–&ÆR’°¢7W÷'E¶6VÆÅÒÃÒ&—C°¢f÷VæBÒG'VS°¢Ğ¢Ğ¢÷76–&ÆU·&VÖ–æ–ær2W6—¦UÒÒ6öÖR†f÷VæB“°¢f÷Væ@§Ğ 
+    pub(super) fn propagate_placement(
+        &self,
+        position: &SearchPosition,
+        cell: usize,
+        digit: u8,
+    ) -> SearchPosition {
+        self.propagate_placement_with_mode(position, cell, digit, SearchMode::PreserveTraversal)
+    }
+
+    fn propagate_placement_with_mode(
+        &self,
+        position: &SearchPosition,
+        cell: usize,
+        digit: u8,
+        mode: SearchMode<'_>,
+    ) -> SearchPosition {
+        let mut child = position.clone();
+        child.board[cell] = digit;
+        child.masks[cell] = 0;
+        let bit = digit_bit(digit);
+        for peer in cells_in(self.peers[cell]) {
+            child.masks[peer] &= !bit;
+        }
+        self.restrict_domains(&mut child, mode);
+        child
+    }
+
+    // Exact search can use forced house domains without changing public
+    // candidates or deciding which human techniques the logical solver uses.
+    fn restrict_search_houses(&self, position: &mut SearchPosition, mode: SearchMode<'_>) -> bool {
+        loop {
+            if (0..CELLS).any(|cell| position.board[cell] == 0 && position.masks[cell] == 0) {
+                return false;
+            }
+            let mut changed = false;
+            for &index in &self.search_houses {
+                let house = &self.houses[index];
+                let (mut placed, mut supported, mut repeated) = (0, 0, 0);
+                for &cell in &house.cells {
+                    let digit = position.board[cell];
+                    if digit != 0 {
+                        placed |= digit_bit(digit);
+                    }
+                    let mask = position.masks[cell];
+                    repeated |= supported & mask;
+                    supported |= mask;
+                }
+                let missing = DIGITS & !placed;
+                if missing & !supported != 0 {
+                    return false;
+                }
+                let singles = missing & !repeated;
+                if singles == 0 {
+                    continue;
+                }
+                for &cell in &house.cells {
+                    let forced = position.masks[cell] & singles;
+                    if forced != 0 {
+                        // Two missing digits cannot both occupy this one cell.
+                        if !forced.is_power_of_two() {
+                            return false;
+                        }
+                        if position.masks[cell] == forced {
+                            continue;
+                        }
+                        position.masks[cell] = forced;
+                        changed = true;
+                    }
+                }
+            }
+            if !changed {
+                return true;
+            }
+            self.restrict_domains(position, mode);
+        }
+    }
+
+    fn restrict_domains(&self, position: &mut SearchPosition, mode: SearchMode<'_>) {
+        // Verification can join rules with the same assignment. Public
+        // candidates and logical gates keep their per-rule support.
+        let verify = matches!(mode, SearchMode::Verify(_));
+        let join_windows = verify && self.global_entropy.is_some();
+        loop {
+            for cage in &self.cages {
+                cage.restrict(position);
+            }
+            let mut changed = false;
+            for pair in &self.pairs {
+                let domains = pair.cells.map(|cell| match position.board[cell] {
+                    0 => position.masks[cell],
+                    digit => digit_bit(digit),
+                });
+                let supported = pair.restrict(domains);
+                for (cell, mask) in pair.cells.into_iter().zip(supported) {
+                    if position.board[cell] == 0 && position.masks[cell] != mask {
+                        position.masks[cell] = mask;
+                        changed = true;
+                    }
+                }
+            }
+            for line in &self.lines {
+                let len = line.cells.len();
+                let mut domains = [0; CELLS];
+                let line_domains = &mut domains[..len];
+                for (domain, &cell) in line_domains.iter_mut().zip(&line.cells) {
+                    *domain = match position.board[cell] {
+                        0 => position.masks[cell],
+                        digit => digit_bit(digit),
+                    };
+                }
+                let mut support = [0; CELLS];
+                if verify {
+                    line.support_exact(line_domains, &mut support[..len]);
+                } else {
+                    line.support(line_domains, &mut support[..len]);
+                }
+                for (&cell, &mask) in line.cells.iter().zip(&support) {
+                    if position.board[cell] == 0 && position.masks[cell] != mask {
+                        position.masks[cell] = mask;
+                        changed = true;
+                    }
+                }
+            }
+            if let SearchMode::Verify(renban_sums) = mode {
+                for join in renban_sums {
+                    let cells = join.cells();
+                    let mut domains = [0; 9];
+                    for (&cell, mask) in cells.iter().zip(&mut domains) {
+                        *mask = match position.board[cell] {
+                            0 => position.masks[cell],
+                            digit => digit_bit(digit),
+                        };
+                    }
+                    let supported = join.support(&domains[..cells.len()]);
+                    for (&cell, mask) in cells.iter().zip(supported.masks) {
+                        if position.board[cell] == 0 && position.masks[cell] != mask {
+                            position.masks[cell] = mask;
+                            changed = true;
+                        }
+                    }
+                }
+            }
+            for clue in &self.quadruples {
+                let domains = clue.cells.map(|cell| match position.board[cell] {
+                    0 => position.masks[cell],
+                    digit => digit_bit(digit),
+                });
+                let supported = if join_windows {
+                    clue.support_with_entropy(domains)
+                } else {
+                    clue.support(domains)
+                };
+                for (cell, mask) in clue.cells.into_iter().zip(supported) {
+                    if position.board[cell] == 0 && position.masks[cell] != mask {
+                        position.masks[cell] = mask;
+                        changed = true;
+                    }
+                }
+            }
+            if let Some(clue) = &self.lettered_quadruples {
+                let domains = std::array::from_fn(|cell| match position.board[cell] {
+                    0 => position.masks[cell],
+                    digit => digit_bit(digit),
+                });
+                if let Some(support) = clue.support(&domains) {
+                    for (cell, mask) in support.into_iter().enumerate() {
+                        if position.board[cell] == 0 && position.masks[cell] != mask {
+                            position.masks[cell] = mask;
+                            changed = true;
+                        }
+                    }
+                } else if !clue.permits(&domains) {
+                    position.masks.fill(0);
+                    return;
+                }
+            }
+            for (_, cells) in self.entropy_windows() {
+                let domains = cells.map(|cell| match position.board[cell] {
+                    0 => position.masks[cell],
+                    digit => digit_bit(digit),
+                });
+                for (cell, mask) in cells
+                    .into_iter()
+                    .zip(super::global_entropy::support_in_groups(
+                        domains,
+                        self.global_entropy_groups,
+                    ))
+                {
+                    if position.board[cell] == 0 && position.masks[cell] != mask {
+                        position.masks[cell] = mask;
+                        changed = true;
+                    }
+                }
+            }
+            for (_, cells, group) in self.entropy_group_windows() {
+                let domains = cells.map(|cell| match position.board[cell] {
+                    0 => position.masks[cell],
+                    digit => digit_bit(digit),
+                });
+                for (cell, mask) in
+                    cells
+                        .into_iter()
+                        .zip(super::global_entropy::support_repeated_group(
+                            domains, group,
+                        ))
+                {
+                    if position.board[cell] == 0 && position.masks[cell] != mask {
+                        position.masks[cell] = mask;
+                        changed = true;
+                    }
+                }
+            }
+            for clue in &self.neighbor_matches {
+                match clue.restrict(&position.board, &mut position.masks) {
+                    Ok(restricted) => changed |= restricted,
+                    Err(()) => {
+                        position.masks.fill(0);
+                        return;
+                    }
+                }
+            }
+            for rule in &self.conditional_neighbors {
+                match rule.restrict(&position.board, &mut position.masks) {
+                    Ok(restricted) => changed |= restricted,
+                    Err(()) => {
+                        position.masks.fill(0);
+                        return;
+                    }
+                }
+            }
+            for square in &self.magic_squares {
+                match square.restrict(&position.board, &mut position.masks) {
+                    Ok(restricted) => changed |= restricted,
+                    Err(()) => {
+                        position.masks.fill(0);
+                        return;
+                    }
+                }
+            }
+            for cage_sums in &self.unknown_cage_sums {
+                match cage_sums.restrict(&position.board, &mut position.masks) {
+                    Ok(restricted) => changed |= restricted,
+                    Err(()) => {
+                        position.masks.fill(0);
+                        return;
+                    }
+                }
+            }
+            if !changed {
+                break;
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod exact_house_tests {
+    use super::*;
+    use crate::{PuzzleRule, VariantPuzzle};
+
+    #[test]
+    fn retained_regions_do_not_reintroduce_removed_distinctness() {
+        let solution = std::array::from_fn(|cell| ((cell / 9 + cell % 9) % 9 + 1) as u8);
+        let mut givens = solution;
+        givens[3] = 0;
+        givens[9] = 0;
+        let mut definition = VariantPuzzle::classic(givens);
+        // A Latin completion repeats 2 in the first part and has 4 in the
+        // second. Both parts must still sum to 4 without the box rule.
+        definition.rules.push(PuzzleRule::RegionSum {
+            cells: vec![1, 9, 3],
+            group_by_region: false,
+            segments: None,
+        });
+        let reduced = definition.compile_with_regions(false).unwrap();
+        assert_eq!(reduced.houses.len(), 27);
+        assert_eq!(reduced.search_houses.len(), 18);
+        assert_eq!(
+            reduced.analyze(&[0; CELLS], &[0; CELLS], 3),
+            Ok(Analysis::Unique)
+        );
+        assert_eq!(reduced.solve(&[0; CELLS], &[0; CELLS], 3), Ok(solution));
+        assert_eq!(
+            definition
+                .compile()
+                .unwrap()
+                .analyze(&[0; CELLS], &[0; CELLS], 1),
+            Ok(Analysis::Conflict)
+        );
+    }
+}
+
+// For one digit subset, the remaining digits determine how many cells
+// have been filled. Memoization avoids revisiting permutations of the prefix.
+pub(crate) fn record_support<const N: usize, const CACHE: usize>(
+    remaining: u16,
+    candidates: &[u16],
+    support: &mut [u16; N],
+    possible: &mut [Option<bool>; CACHE],
+) -> bool {
+    if remaining == 0 {
+        return true;
+    }
+    if let Some(found) = possible[remaining as usize] {
+        return found;
+    }
+    let cell = candidates.len() - remaining.count_ones() as usize;
+    let mut found = false;
+    for digit in crate::hints::digits(candidates[cell] & remaining) {
+        let bit = digit_bit(digit);
+        if record_support(remaining ^ bit, candidates, support, possible) {
+            support[cell] |= bit;
+            found = true;
+        }
+    }
+    possible[remaining as usize] = Some(found);
+    found
+}

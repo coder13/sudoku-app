@@ -1,46 +1,357 @@
-YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éíãM5N‹Z–‹­¦ëeŠw¬Ô¼¼„QåÁ•ÉÕ±•Ì™½È„Í¥¹±”€äƒ\€äÉ¥¸()ÕÍ”ÍÑèéÍå¹Œèé=¹•1½¬ì()ÕÍ”É…Ñ”èéí	½…É°11L°M¥é•‘½ÑI•±…Ñ¥½¸°M¥é•‘1…‰•±•‘½Ñôì()µ½…ÅÉ”ì)µ½…•Ìì)µ½½µÁ¥±”ì(m™œ¡…¹ä¡™•…ÑÕÉ”€ô€‰•¹•É…Ñ¥½¸ˆ°Ñ•ÍÐ¤¥t)µ½•¹•É…Ñ¥½¸ì)ÁÕˆ¡É…Ñ”¤µ½±½‰…±}•¹ÑÉ½Áäì)µ½±¥¹•Ìì)µ½±½¥…°ì)µ½Á…¥ÉÌì)ÁÕˆ¡É…Ñ”¤ÕÍ”Á…¥ÉÌèéA…¥É½¹ÍÑÉ…¥¹Ðì(m™œ¡…¹ä¡™•…ÑÕÉ”€ô€‰Ñ•…¡¥¹œˆ°Ñ•ÍÐ¤¥t)µ½ÁÉ…Ñ¥”ì)µ½ÅÕ…‘ÉÕÁ±”ì)µ½Í•…É ì)µ½Íåµµ•ÑÉäì)µ½Ù¥Í¥‰¥±¥Ñäì(m™œ¡™•…ÑÕÉ”€ô€‰Ý…Í´µ…Á¤ˆ¥t)µ½Ý¥É”ì()ÕÍ”…ÅÉ”èéÅÉ•½¹ÍÑÉ…¥¹Ðì)ÁÕˆÕÍ”…ÅÉ”èéíÅÉ•½Õ¹Ð°ÅÉ•¥Ù•¹M¡…‘”°ÅÉ•-¥¹°ÅÉ•A½Í¥Ñ¥½¹ÉÉ½È°ÅÉ•I•¥½¸°ÅÉ•M¡…‘•ôì)ÕÍ”…•Ìèéí…•!½ÕÍ•MÕ´°½µÁ¥±•‘…•ôì(m™œ¡…¹ä¡™•…ÑÕÉ”€ô€‰•¹•É…Ñ¥½¸ˆ°Ñ•ÍÐ¤¥t)ÁÕˆÕÍ”•¹•É…Ñ¥½¸èéì(€€€•¹•É…Ñ•‘Y…É¥…¹Ð°5…É­•É…µ¥±ä°=ÕÑÍ¥‘•±Õ•-¥¹°Y…É¥…¹Ñ±Õ•1…å½ÕÐ°Y…É¥…¹Ñ•¹•É…Ñ¥½¹ÉÉ½È°(€€€Y…É¥…¹Ñ•¹•É…Ñ¥½¹=ÁÑ¥½¹Ì°ÍÑ…ÉÑ}Ù…É¥…¹Ñ}•¹•É…Ñ¥½¸°)ôì)ÕÍ”±¥¹•Ìèéì(€€€¥Í©½¥¹ÑÉ½ÕÁMÕ´°É½ÕÁMÕµ¡…¥¸°É½ÕÁMÕµ!½ÕÍ”°É½ÕÁMÕµA¡…Í”°1¥¹•½¹ÍÑÉ…¥¹Ð°5½‘Õ±…ÉMÕ´°)ôì)ÁÕˆ¡É…Ñ”¤ÕÍ”±¥¹•Ìèéì(€€€‘¥¥Ñ}Í•Ñ}ÍÕÁÁ½ÉÐ°É•…¡…‰±•}ÍÕµÌ°É•…¡…‰±•}ÍÕµÍ}Ý¥Ñ¡}½™™Í•Ð°É•¥½¹}ÍÕµ}É…¹•Ì°(€€€ÍÕµ}ÍÕÁÁ½ÉÑ}Ý¥Ñ¡}ÁÉ•™¥à°ÍÕµ}ÍÕÁÁ½ÉÑ}Ý¥Ñ¡}ÁÉ•™¥á}…¹‘}½™™Í•Ð°)ôì)ÁÕˆ¡É…Ñ”¤ÕÍ”±¥¹•ÌèéíÉ•¹‰…¹}ÍÕÁÁ½ÉÐ°Ý¥‘•}É•¹‰…¹}ÍÕÁÁ½ÉÑôì)ÁÕˆÕÍ”±½¥…°èéì(€€€YI%9Q}M=I%9}YIM%=8°Y…É¥…¹Ñ±Õ•M½Á”°Y…É¥…¹Ñ½¹ÍÑÉ…¥¹Ñ¡•¬°Y…É¥…¹Ñ½¹ÍÑÉ…¥¹ÑM½Á”°(€€€Y…É¥…¹Ñ•‘ÕÑ¥½¸°Y…É¥…¹Ñ¹ÑÉ½ÁåÉ•…AÉ½½˜°Y…É¥…¹ÑÙ¥‘•¹”°Y…É¥…¹Ñá±ÕÍ¥½¹AÉ•µ¥Í”°(€€€Y…É¥…¹ÑÉ½ÕÁ1¥¹•!½ÕÍ•…Í”°Y…É¥…¹ÑÉ½ÕÁ1¥¹•!½ÕÍ•½¹™±¥Ð°Y…É¥…¹ÑÉ½ÕÁ1¥¹•!½ÕÍ•AÉ½½˜°(€€€Y…É¥…¹ÑÉ½ÕÁ=É‘•É	É…¹ °Y…É¥…¹ÑÉ½ÕÁ=É‘•É¡•¬°Y…É¥…¹ÑÉ½ÕÁ=É‘•É±¥µ¥¹…Ñ¥½¹AÉ½½˜°(€€€Y…É¥…¹ÑÉ½ÕÁ=É‘•ÉAÉ½½˜°Y…É¥…¹ÑÉ½ÕÁ=É‘•ÉI•™ÕÑ…Ñ¥½¸°Y…É¥…¹ÑÉ½ÕÁ=É‘•ÉM½Á”°(€€€Y…É¥…¹ÑÉ½ÕÁMÕµ¡…¥¹AÉ½½˜°Y…É¥…¹ÑÉ½ÕÁMÕµ1¥¹¬°Y…É¥…¹ÑÉ½ÕÁMÕµ1¥¹­M½ÕÉ”°(€€€Y…É¥…¹Ñ-É½Á­¥!½ÕÍ•AÉ½½˜°Y…É¥…¹Ñ1¥¹•!½ÕÍ•AÉ½½˜°Y…É¥…¹Ñ1¥¹­•‘±Õ•AÉ½½˜°Y…É¥…¹Ñ1½¥…±ÉÉ½È°(€€€Y…É¥…¹Ñ5…Ñ¡¥¹¥¥Ñ	±½¬°Y…É¥…¹Ñ5…Ñ¡¥¹¥¥Ñ¡•¬°Y…É¥…¹Ñ5…Ñ¡¥¹¥¥ÑAÉ½½˜°(€€€Y…É¥…¹Ñ5…Ñ¡¥¹1…å½ÕÑ…Í”°Y…É¥…¹Ñ5…Ñ¡¥¹1…å½ÕÑAÉ½½˜°Y…É¥…¹ÑI…Ñ¥¹œ°Y…É¥…¹ÑI…å!½ÕÍ•AÉ½½˜°(€€€Y…É¥…¹ÑI•¥½¹MÕµ!½ÕÍ•1¥¹”°Y…É¥…¹ÑI•¥½¹MÕµ!½ÕÍ•AÉ½½˜°Y…É¥…¹ÑI•¥½¹MÕµA…ÉÐ°(€€€Y…É¥…¹ÑI•¥½¹MÕµAÉ½½˜°Y…É¥…¹ÑI•¹‰…¹É½ÕÁ½¹™±¥Ð°Y…É¥…¹ÑI•¹‰…¹É½ÕÁA±…•µ•¹Ð°(€€€Y…É¥…¹ÑI•¹‰…¹É½ÕÁAÉ½©•Ñ¥½¸°Y…É¥…¹ÑI•¹‰…¹É½ÕÁAÉ½½˜°Y…É¥…¹ÑI•¹‰…¹!½ÕÍ•AÉ½½˜°(€€€Y…É¥…¹ÑI•¹‰…¹MÕµ!½ÕÍ•AÉ½½˜°Y…É¥…¹ÑI•¹‰…¹MÕµ!½ÕÍ•]¥Ñ¹•ÍÌ°Y…É¥…¹ÑI•¹‰…¹MÕµAÉ½½˜°Y…É¥…¹ÑI•Á±…ä°(€€€Y…É¥…¹ÑMÕµA…¥ÉAÉ½½˜°Y…É¥…¹ÑQ•¡¹¥ÅÕ”°Y…É¥…¹ÑQ¡•Éµ½µ•Ñ•É!½ÕÍ•AÉ½½˜°Y…É¥…¹ÑQÉ…”°(€€€Y…É¥…¹ÑQÉ¥…±…¥±ÕÉ”°)ôì)ÕÍ”Á…¥ÉÌèéí¥¥ÑI•ÍÑÉ¥Ñ¥½¹±Õ”°A…¥É±Õ”°A…É¥Ñå±Õ”°A½Í¥Ñ¥Ù•MÕµôì(m™œ¡…±° (€€€™•…ÑÕÉ”€ô€‰Ñ•…¡¥¹œˆ°(€€€™•…ÑÕÉ”€ô€‰Ý…Í´µ…Á¤ˆ°(€€€…¹ä¡Ñ…É•Ñ}…É €ô€‰Ý…Í´ÌÈˆ°Ñ•ÍÐ°™•…ÑÕÉ”€ô€‰±¤ˆ¤(¤¥t)ÁÕˆ¡É…Ñ”¤ÕÍ”ÁÉ…Ñ¥”èé•¹•É…Ñ•}ÁÉ…Ñ¥•}•á…µÁ±”ì(m™œ¡…¹ä¡™•…ÑÕÉ”€ô€‰Ñ•…¡¥¹œˆ°Ñ•ÍÐ¤¥t)ÁÕˆÕÍ”ÁÉ…Ñ¥”èéíY…É¥…¹ÑAÉ…Ñ¥•ÉÉ½È°Y…É¥…¹ÑAÉ…Ñ¥•á•É¥Í”°Ù…É¥…¹Ñ}ÁÉ…Ñ¥•}•á…µÁ±•Íôì)ÕÍ”ÅÕ…‘ÉÕÁ±”èéEÕ…‘ÉÕÁ±”ì)ÁÕˆ¡É…Ñ”¤ÕÍ”Í•…É èéÉ•½É‘}ÍÕÁÁ½ÉÐì)µ½±•ÑÑ•É•‘}ÅÕ…‘ÉÕÁ±•Ìì)ÕÍ”±•ÑÑ•É•‘}ÅÕ…‘ÉÕÁ±•Ìèé1•ÑÑ•É•‘EÕ…‘ÉÕÁ±•Ìì)µ½¹•¥¡‰½É}µ…Ñ ì)ÕÍ”¹•¥¡‰½É}µ…Ñ èé½µÁ¥±•‘9•¥¡‰½É5…Ñ ì)µ½½¹‘¥Ñ¥½¹…±}¹•¥¡‰½Èì)ÕÍ”½¹‘¥Ñ¥½¹…±}¹•¥¡‰½Èèé½µÁ¥±•‘½¹‘¥Ñ¥½¹…±9•¥¡‰½Èì)µ½µ…¥}ÍÅÕ…É”ì)ÕÍ”µ…¥}ÍÅÕ…É”èé½µÁ¥±•‘5…¥MÅÕ…É”ì)µ½Õ¹­¹½Ý¹}…•}ÍÕµÌì)ÁÕˆ¡É…Ñ”¤ÕÍ”ÅÕ…‘ÉÕÁ±”èéEÕ…‘ÉÕÁ±•MÕÁÁ½ÉÐì)ÁÕˆÕÍ”Í•…É èéY…É¥…¹ÑA½Í¥Ñ¥½¹ÉÉ½Èì)ÁÕˆ¡É…Ñ”¤ÕÍ”Íåµµ•ÑÉäèéMÅÕ…É•QÉ…¹Í™½É´ì)ÁÕˆÕÍ”Íåµµ•ÑÉäèé…¹½¹¥…±}Ù…É¥…¹Ðì)ÕÍ”Õ¹­¹½Ý¹}…•}ÍÕµÌèé½µÁ¥±•‘U¹­¹½Ý¹…•MÕµÌì)ÁÕˆÕÍ”Ù¥Í¥‰¥±¥ÑäèéíY…É¥…¹ÑY¥Í¥‰¥±¥Ñä°Y…É¥…¹ÑY¥Í¥‰¥±¥ÑåÉÉ½Éôì((¼¼¼Q¡”Ù•ÉÍ¥½¸½˜Ñ¡”ÍÑÉÕÑÕÉ•ÁÕéé±”…¹Á½Í¥Ñ¥½¸™½Éµ…Ð¸)ÁÕˆ½¹ÍÐYI%9Q}=I5Q}YIM%=8èÔÌÈ€ô€Äì(¼¼¼•™…Õ±Ðµ…á¥µÕ´¹½‘•Ì™½È„Ù…É¥…¹Ð•á…ÐÍ•…É ¸)ÁÕˆ½¹ÍÐU1Q}YI%9Q}MI!}9=LèÔÌÈ€ôÉ…Ñ”èéMI!}1%5%Pì((¼¼¼]¡¥ ½˜Ñ¡”ÑÝ¼±½¹œ‘¥…½¹…±ÌÑ¼É•ÅÕ¥É”…Ì„¡½ÕÍ”¸(m‘•É¥Ù”¡±½¹”°½Áä°•‰Õœ°Ä°!…Í °=É°A…ÉÑ¥…±Ä°A…ÉÑ¥…±=É¥t(m™}…ÑÑÈ (€€€™•…ÑÕÉ”€ô€‰Ý…Í´µ…Á¤ˆ°(€€€‘•É¥Ù”¡Í•É‘”èé•Í•É¥…±¥é”°Í•É‘”èéM•É¥…±¥é”¤°(€€€Í•É‘”¡É•¹…µ•}…±°€ô€‰­•‰…ˆµ…Í”ˆ¤(¥t)ÁÕˆ•¹Õ´¥…½¹…°ì(€€€€¼¼¼Q¡”‘¥…½¹…°™É½´Ñ¡”Ñ½Àµ±•™ÐÑ¼Ñ¡”‰½ÑÑ½´µÉ¥¡Ð•±°¸(€€€5…¥¸°(€€€€¼¼¼Q¡”‘¥…½¹…°™É½´Ñ¡”Ñ½ÀµÉ¥¡ÐÑ¼Ñ¡”‰½ÑÑ½´µ±•™Ð•±°¸(€€€¹Ñ¤°)ô()¥µÁ°¥…½¹…°ì(€€€™¸•±±Ì¡Í•±˜¤€´ømÕÍ¥é”ì€åtì(€€€€€€€ÍÑèé…ÉÉ…äèé™É½µ}™¸¡ñÉ½Ýðµ…Ñ Í•±˜ì(€€€€€€€€€€€M•±˜èé5…¥¸€ôøÉ½Ü€¨€ÄÀ°(€€€€€€€€€€€M•±˜èé¹Ñ¤€ôøÉ½Ü€¨€à€¬€à°(€€€€€€€ô¤(€€€ô)ô((¼¼¼I•¥½¹ÌÕÍ•…±½¹Í¥‘”Ñ¡”É½ÝÌ…¹½±Õµ¹Ì¸(m‘•É¥Ù”¡±½¹”°•‰Õœ°•™…Õ±Ð°Ä°!…Í °=É°A…ÉÑ¥…±Ä°A…ÉÑ¥…±=É¥t(m™}…ÑÑÈ (€€€™•…ÑÕÉ”€ô€‹]4ÖÚ$z{-®éÜj×›ÜX\ÝˆÙ[ŽŽ‘X\ÝˆÙ[ŽŽ”ÛÝ]X\ÝˆÙ[ŽŽ”ÛÝ]ˆÙ[ŽŽ”ÛÝ]Ù\ÝˆÙ[ŽŽ•Ù\ÝˆÙ[ŽŽ“›ÜÙ\ÝˆNÂ‚ˆ›ˆ[JÙ[ŠHOˆ
-NN
-HÂˆX]ÚÙ[ˆÂˆÙ[ŽŽ“›ÜOˆ
-LK
-KˆÙ[ŽŽ“›ÜX\ÝOˆ
-LKJKˆÙ[ŽŽ‘X\ÝOˆ
-JKˆÙ[ŽŽ”ÛÝ]X\ÝOˆ
-KJKˆÙ[ŽŽ”ÛÝ]Oˆ
-K
-KˆÙ[ŽŽ”ÛÝ]Ù\ÝOˆ
-KLJKˆÙ[ŽŽ•Ù\ÝOˆ
-LJKˆÙ[ŽŽ“›ÜÙ\ÝOˆ
-LKLJKˆBˆBŸB‚‹ËËÈÛ™HÚ\˜ÛH[ˆH^ž›K]ÚYH]\‹]ËYYÚ]Ù^K‚ˆÖÙ\š]™JÛÛ™KXYË\K\ÚÜ™\X[\K\X[Ü™
-WBˆÖØÙ™×Ø]Šˆ™X]\™HHØ\ÛKX\H‹ˆ\š]™JÙ\™NŽ‘\Ù\šX[^™KÙ\™NŽ”Ù\šX[^™JKˆÙ\™J™[˜[YWØ[H˜Ø[Y[Ø\ÙH‹[žWÝ[šÛ›ÝÛ—ÙšY[ÊBŠWBœXˆÝXÝ]\™Y]XY\HÂˆËËÈÜ[YÙ[ÝXÚ[™ÈHÚ\˜ÛK‚ˆXˆÜÛYˆ\Ú^™KˆËËÈXXÚš[Y]\ˆ]\ÝØØÝ\ˆ[ˆHÙ\\˜]HÙ[‚ˆXˆ]\œÎˆÝš[™ËŸB‚‹ËËÈHš[YYÚ]]]\ÝØØÝ\ˆ[ˆ]X\ÝÛ™HÜÙÛÛ˜[™ZYÚ›Ü‹‚ˆÖÙ\š]™JÛÛ™KÛÜKXYË\K\ÚÜ™\X[\K\X[Ü™
-WBˆÖØÙ™×Ø]Šˆ™X]\™HHØ\ÛKX\H‹ˆ\š]™JÙ\™NŽ‘\Ù\šX[^™KÙ\™NŽ”Ù\šX[^™JKˆÙ\™J™[˜[YWØ[H˜Ø[Y[Ø\ÙH‹[žWÝ[šÛ›ÝÛ—ÙšY[ÊBŠWBœXˆÝXÝ™ZYÚ›Ü“X]ÚÛYHÂˆËËÈÙ[ÛÛZ[š[™ÈH]]Ü™YÛYHX™[‚ˆXˆÙ[ˆ\Ú^™KˆËËÈYÚ]™\]Z\™Y[ˆ[ˆÜÙÛÛ˜[™ZYÚ›Ü‹‚ˆXˆYÚ]ˆNŸB‚‹ËËÈH™[]]™H™ZYÚ›ÜˆÜ[Ûˆ›ÜˆÛÛ™][Û˜[YÚ][\Ë‚ˆÖÙ\š]™JÛÛ™KÛÜKXYË\K\ÚÜ™\X[\K\X[Ü™
-WBˆÖØÙ™×Ø]Šˆ™X]\™HHØ\ÛKX\H‹ˆ\š]™JÙ\™NŽ‘\Ù\šX[^™KÙ\™NŽ”Ù\šX[^™JKˆÙ\™J™[˜[YWØ[H˜Ø[Y[Ø\ÙH‹[žWÝ[šÛ›ÝÛ—ÙšY[ÊBŠWBœXˆÝXÝÛÛ™][Û˜[™ZYÚ›Ü[\›˜]]™HÂˆËËÈ›ÝÈ\ÜXÙ[Y[œ›ÛHHšYÙÙ\ˆÙ[‚ˆXˆ›Ý×ÛÙ™œÙ]ˆNˆËËÈÛÛ[[ˆ\ÜXÙ[Y[œ›ÛHHšYÙÙ\ˆÙ[‚ˆXˆÛÛ[[—ÛÙ™œÙ]ˆNˆËËÈ™\]Z\™YYÚ][ˆH™[]]™HÙ[‚ˆXˆYÚ]ˆNŸB‚‹ËËÈ[ˆY™š[™H˜[YHÚ[™ÙH\YY™Y›Ü™HH\œ˜Z[ˆ\š]Y]XÈ[H\ÈÚXÚÙY‚ˆÖÙ\š]™JÛÛ™KÛÜKXYË\K\ÚÜ™\X[\K\X[Ü™
-WBˆÖØÙ™×Ø]Šˆ™X]\™HHØ\ÛKX\H‹ˆ\š]™JÙ\™NŽ‘\Ù\šX[^™KÙ\™NŽ”Ù\šX[^™JKˆÙ\™J™[˜[YWØ[H˜Ø[Y[Ø\ÙH‹[žWÝ[šÛ›ÝÛ—ÙšY[ÊBŠWBœXˆÝXÝ\œ˜Z[•˜[YU˜[œÙ›Ü›HÂˆËËÈ][\HH˜\ÙHYÚ]žH\È˜XÝÜˆ™Y›Ü™HY[™ÈÙ™œÙ]‚ˆXˆ][\Y\ŽˆNˆËËÈY\ÈÚYÛ™Y[[Ý[Y\ˆ][\XØ][Û‹‚ˆXˆÙ™œÙ]ˆNŸB‚‹ËÈÛ™H\ÝÝ\Y\ÈHÚ\™HY[YšY\œÈ[™H›ÝØÛÛ	ÜÈÝ\ÜY\[HÚXÚË‚›XXÜ›×Ü[\ÈH[\ÈÂˆ
-	
-ˆ	
-ÖÉØÎ›Y]WJJ‚ˆ	˜\šX[šY[Oˆ	Y›]\˜[È	
-	
-ÖÉšY[ÙØÎ›Y]WJJˆ	šY[šY[ˆ	NJK
-ˆ	
-
-OÈBˆ
-JÊHOˆÂˆËËÈH\YÛÛœÝ˜Z[^Y\™YÛˆÜÙˆ›ÝÜËÛÛ[[œË[™HÙ[XÝY™YÚ[ÛœË‚ˆÖÙ\š]™JÛÛ™KXYË\K\ÚÜ™\X[\K\X[Ü™
-WBˆÖØÙ™×Ø]Š™X]\™HHØ\ÛKX\H‹\š]™JÙ\™NŽ‘\Ù\šX[^™KÙ\™NŽ”Ù\šX[^™JKÙ\™JYÈH\H‹™[˜[YWØ[ÙšY[ÈH˜Ø[Y[Ø\ÙH‹[žWÝ[šÛ›ÝÛ—ÙšY[ÊJWBˆXˆ[[H^ž›T[HÂˆ	
-	
-ÖÉØ×JJ‚ˆÖØÙ™×Ø]Š™X]\™HHØ\ÛKX\H‹Ù\™J™[˜[YHH	Y
-JWBˆ	˜\šX[É
-	
-ÖÉšY[ÙØ×JJˆ	šY[ˆ	JK
-ŸJK
-ÂˆB‚ˆ[\^ž›T[HÂˆËËÈÝX›HÚ\™HY[YšY\ˆ›ÜˆH[H˜[Z[K‚ˆXˆÛÛœÝ›ˆY
-	œÙ[ŠHOˆ	‰ÜÝ]XÈÝˆÂˆX]ÚÙ[ˆÈ	
-Ù[ŽŽ‰˜\šX[È‹ˆHOˆ	Y
-K
-ÈBˆB‚ˆÖØÙ™Ê[
-™X]\™HHØ\ÛKX\H‹[žJ\™Ù]Ø\˜ÚHØ\ÛLÌˆ‹\Ý™X]\™HH˜ÛHŠJJWBˆXŠÜ˜]JH›ˆÝ\Ü×ÚY
-Yˆ	œÝŠHOˆ›ÛÛÂˆX]Ú\ÈJY	
-	Y
-_
-ÊBˆBˆBˆNÂŸB‚œ[\ÈHÂˆËËÈ™\]Z\™H[ˆY][Û˜[Û™ÈXYÛÛ˜[ÈÛÛZ[ˆXXÚYÚ]Û˜ÙK‚ˆXYÛÛ˜[Oˆ™XYÛÛ˜[ˆÂˆËËÈÚXÚXYÛÛ˜[ÈÛÛœÝ˜Z[‹‚ˆXYÛÛ˜[ˆXYÛÛ˜[ˆBˆËËÈ™\]Z\™H[ˆ\˜š]˜\žHÙ]Ùˆš[™HÙ[ÈÈÛÛZ[ˆXXÚYÚ]Û˜ÙK‚ˆ^˜RÝ\ÙHOˆ™^˜KZÝ\ÙHˆÂˆËËÈÙ[[™XÙ\È[ˆHÝ\ÙK‚ˆÙ[Îˆ™XÏ\Ú^™O‹ˆBˆËËÈ™\]Z\™HHÚYYÜ›Ý\ÛX[\ˆ[ˆHÝ\ÙHÈÛÛZ[ˆY™™\™[YÚ]Ë‚ˆ\Ý[˜ÝÙ[ÈOˆ™\Ý[˜ÝXÙ[ÈˆÂˆËËÈHÙ[È[ˆHÜ›Ý\‚ˆÙ[Îˆ™XÏ\Ú^™O‹ˆËËÈÜ[Û˜[]]Ü™YÚYK‚ˆÖØÙ™×Ø]Š™X]\™HHØ\ÛKX\H‹Ù\™JY˜][ÚÚ\ÜÙ\šX[^š[™×ÚYˆH“Ü[ÛŽŽš\×Û›Û™HŠJWBˆÛÛÜŽˆÜ[ÛÝš[™Ï‹ˆBˆËËÈY\\™HÚY[™È[\ÈÈHÝYÚÝHÜˆ][ˆÜ]X\™K‚ˆ\\™HOˆ˜\\™HˆÂˆj¹âžkºwµçhºÚn¶Šâ‚)Ú–Ú$zw(º{xÓMS¢Ö¥¢ëiºÙbë5   /// Aqre Snake rules or the digit-consecutive Aqre+ rules.
+//! Typed rules for a single 9 Ã— 9 grid.
+
+use std::sync::OnceLock;
+
+use crate::{Board, CELLS, SizedDotRelation, SizedLabeledDot};
+
+mod aqre;
+mod cages;
+mod compile;
+#[cfg(any(feature = "generation", test))]
+mod generation;
+pub(crate) mod global_entropy;
+mod lines;
+mod logical;
+mod pairs;
+pub(crate) use pairs::PairConstraint;
+#[cfg(any(feature = "teaching", test))]
+mod practice;
+mod quadruple;
+mod search;
+mod symmetry;
+mod visibility;
+#[cfg(feature = "wasm-api")]
+mod wire;
+
+use aqre::AqreConstraint;
+pub use aqre::{AqreCount, AqreGivenShade, AqreKind, AqrePositionError, AqreRegion, AqreShade};
+use cages::{CageHouseSum, CompiledCage};
+#[cfg(any(feature = "generation", test))]
+pub use generation::{
+    GeneratedVariant, MarkerFamily, OutsideClueKind, VariantClueLayout, VariantGenerationError,
+    VariantGenerationOptions, start_variant_generation,
+};
+use lines::{
+    DisjointGroupSum, GroupSumChain, GroupSumHouse, GroupSumPhase, LineConstraint, ModularSum,
+};
+pub(crate) use lines::{
+    digit_set_support, reachable_sums, reachable_sums_with_offset, region_sum_ranges,
+    sum_support_with_prefix, sum_support_with_prefix_and_offset,
+};
+pub(crate) use lines::{renban_support, wide_renban_support};
+pub use logical::{
+    VARIANT_SCORING_VERSION, VariantClueScope, VariantConstraintCheck, VariantConstraintScope,
+    VariantDeduction, VariantEntropyAreaProof, VariantEvidence, VariantExclusionPremise,
+    VariantGroupLineHouseCase, VariantGroupLineHouseConflict, VariantGroupLineHouseProof,
+    VariantGroupOrderBranch, VariantGroupOrderCheck, VariantGroupOrderEliminationProof,
+    VariantGroupOrderProof, VariantGroupOrderRefutation, VariantGroupOrderScope,
+    VariantGroupSumChainProof, VariantGroupSumLink, VariantGroupSumLinkSource,
+    VariantKropkiHouseProof, VariantLineHouseProof, VariantLinkedClueProof, VariantLogicalError,
+    VariantMatchingDigitBlock, VariantMatchingDigitCheck, VariantMatchingDigitProof,
+    VariantMatchingLayoutCase, VariantMatchingLayoutProof, VariantRating, VariantRayHouseProof,
+    VariantRegionSumHouseLine, VariantRegionSumHouseProof, VariantRegionSumPart,
+    VariantRegionSumProof, VariantRenbanGroupConflict, VariantRenbanGroupPlacement,
+    VariantRenbanGroupProjection, VariantRenbanGroupProof, VariantRenbanHouseProof,
+    VariantRenbanSumHouseProof, VariantRenbanSumHouseWitness, VariantRenbanSumProof, VariantReplay,
+    VariantSumPairProof, VariantTechnique, VariantThermometerHouseProof, VariantTrace,
+    VariantTrialFailure,
+};
+use pairs::{DigitRestrictionClue, PairClue, ParityClue, PositiveSum};
+#[cfg(all(
+    feature = "teaching",
+    feature = "wasm-api",
+    any(target_arch = "wasm32", test, feature = "cli")
+))]
+pub(crate) use practice::generate_practice_example;
+#[cfg(any(feature = "teaching", test))]
+pub use practice::{VariantPracticeError, VariantPracticeExercise, variant_practice_examples};
+use quadruple::Quadruple;
+pub(crate) use search::record_support;
+mod lettered_quadruples;
+use lettered_quadruples::LetteredQuadruples;
+mod neighbor_match;
+use neighbor_match::CompiledNeighborMatch;
+mod conditional_neighbor;
+use conditional_neighbor::CompiledConditionalNeighbor;
+mod magic_square;
+use magic_square::CompiledMagicSquare;
+mod unknown_cage_sums;
+pub(crate) use quadruple::QuadrupleSupport;
+pub use search::VariantPositionError;
+pub(crate) use symmetry::SquareTransform;
+pub use symmetry::canonical_variant;
+use unknown_cage_sums::CompiledUnknownCageSums;
+pub use visibility::{VariantVisibility, VariantVisibilityError};
+
+/// The version of the structured puzzle and position format.
+pub const VARIANT_FORMAT_VERSION: u32 = 1;
+/// Default maximum nodes for a variant exact search.
+pub const DEFAULT_VARIANT_SEARCH_NODES: u32 = crate::SEARCH_LIMIT;
+
+/// Which of the two long diagonals to require as a house.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(rename_all = "kebab-case")
+)]
+pub enum Diagonal {
+    /// The diagonal from the top-left to the bottom-right cell.
+    Main,
+    /// The diagonal from the top-right to the bottom-left cell.
+    Anti,
+}
+
+impl Diagonal {
+    fn cells(self) -> [usize; 9] {
+        std::array::from_fn(|row| match self {
+            Self::Main => row * 10,
+            Self::Anti => row * 8 + 8,
+        })
+    }
+}
+
+/// Regions used alongside the rows and columns.
+#[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(tag = "type", rename_all = "kebab-case", deny_unknown_fields)
+)]
+pub enum RegionLayout {
+    /// Standard 3 Ã— 3 boxes in row-major order.
+    #[default]
+    Boxes,
+    /// Nine regions that partition the grid. An authored region may have separated pieces.
+    Jigsaw {
+        /// Regions in caller-supplied order, each with nine cell indices.
+        regions: Vec<Vec<usize>>,
+    },
+    /// A Latin square with only the explicitly marked regions.
+    Partial {
+        /// Disjoint, orthogonally connected nine-cell regions.
+        regions: Vec<Vec<usize>>,
+    },
+}
+
+/// Which digits a parity rule allows.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(rename_all = "kebab-case")
+)]
+pub enum Parity {
+    /// The odd digits in the layout.
+    Odd,
+    /// The even digits in the layout.
+    Even,
+}
+
+/// Shape used to display a digit restriction clue.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(rename_all = "kebab-case")
+)]
+pub enum DigitRestrictionShape {
+    Circle,
+    Cross,
+    Square,
+}
+
+/// The low, middle, or high digit group in an Entropy area.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(rename_all = "kebab-case")
+)]
+pub enum EntropyGroup {
+    /// Digits 1â€“3.
+    Low,
+    /// Digits 4â€“6.
+    Middle,
+    /// Digits 7â€“9.
+    High,
+}
+
+/// Marked cell pairs and the optional negative rule for this marker type.
+#[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(default, deny_unknown_fields)
+)]
+pub struct MarkedPairs {
+    /// Orthogonally adjacent cell pairs carrying this marker.
+    pub pairs: Vec<[usize; 2]>,
+    /// Exclude this relationship on adjacent pairs with no marker from the same family.
+    pub negative: bool,
+}
+
+/// Direction from an outside clue into the grid.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(rename_all = "kebab-case")
+)]
+pub enum ClueDirection {
+    /// Up one row per cell.
+    North,
+    /// Up one row and right one column per cell.
+    NorthEast,
+    /// Right one column per cell.
+    East,
+    /// Down one row and right one column per cell.
+    SouthEast,
+    /// Down one row per cell.
+    South,
+    /// Down one row and left one column per cell.
+    SouthWest,
+    /// Left one column per cell.
+    West,
+    /// Up one row and left one column per cell.
+    NorthWest,
+}
+
+impl ClueDirection {
+    const ALL: [Self; 8] = [
+        Self::North,
+        Self::NorthEast,
+        Self::East,
+        Self::SouthEast,
+        Self::South,
+        Self::SouthWest,
+        Self::West,
+        Self::NorthWest,
+    ];
+
+    fn delta(self) -> (i8, i8) {
+        match self {
+            Self::North => (-1, 0),
+            Self::NorthEast => (-1, 1),
+            Self::East => (0, 1),
+            Self::SouthEast => (1, 1),
+            Self::South => (1, 0),
+            Self::SouthWest => (1, -1),
+            Self::West => (0, -1),
+            Self::NorthWest => (-1, -1),
+        }
+    }
+}
+
+/// One circle in a puzzle-wide letter-to-digit key.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(rename_all = "camelCase", deny_unknown_fields)
+)]
+pub struct LetteredQuadruple {
+    /// Top-left cell touching the circle.
+    pub top_left: usize,
+    /// Each printed letter must occur in a separate cell.
+    pub letters: String,
+}
+
+/// A printed digit that must occur in at least one orthogonal neighbor.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(rename_all = "camelCase", deny_unknown_fields)
+)]
+pub struct NeighborMatchClue {
+    /// Cell containing the authored clue label.
+    pub cell: usize,
+    /// Digit required in an orthogonal neighbor.
+    pub digit: u8,
+}
+
+/// A relative neighbor option for conditional digit rules.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(rename_all = "camelCase", deny_unknown_fields)
+)]
+pub struct ConditionalNeighborAlternative {
+    /// Row displacement from the trigger cell.
+    pub row_offset: i8,
+    /// Column displacement from the trigger cell.
+    pub column_offset: i8,
+    /// Required digit in the relative cell.
+    pub digit: u8,
+}
+
+/// An affine value change applied before a Terrain arithmetic rule is checked.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(rename_all = "camelCase", deny_unknown_fields)
+)]
+pub struct TerrainValueTransform {
+    /// Multiply the base digit by this factor before adding `offset`.
+    pub multiplier: i8,
+    /// Add this signed amount after multiplication.
+    pub offset: i8,
+}
+
+// One list supplies the wire identifiers and the protocol's supported-rule check.
+macro_rules! rules {
+    ($(
+        $(#[$doc:meta])*
+        $variant:ident => $id:literal { $($(#[$field_doc:meta])* $field:ident: $ty:ty),* $(,)? }
+    )+) => {
+        /// A typed constraint layered on top of rows, columns, and the selected regions.
+        #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+        #[cfg_attr(feature = "wasm-api", derive(serde::Deserialize, serde::Serialize), serde(tag = "type", rename_all_fields = "camelCase", deny_unknown_fields))]
+        pub enum PuzzleRule {
+            $($(#[$doc])*
+            #[cfg_attr(feature = "wasm-api", serde(rename = $id))]
+            $variant {$($(#[$field_doc])* $field: $ty),*}),+
+        }
+
+        impl PuzzleRule {
+            /// Stable wire identifier for the rule family.
+            pub const fn id(&self) -> &'static str {
+                match self { $(Self::$variant { .. } => $id),+ }
+            }
+
+            #[cfg(all(feature = "wasm-api", any(target_arch = "wasm32", test, feature = "cli")))]
+            pub(crate) fn supports_id(id: &str) -> bool {
+                matches!(id, $($id)|+)
+            }
+        }
+    };
+}
+
+rules! {
+    /// Require an additional long diagonal to contain each digit once.
+    Diagonal => "diagonal" {
+        /// Which diagonal to constrain.
+        diagonal: Diagonal,
+    }
+    /// Require an arbitrary set of nine cells to contain each digit once.
+    ExtraHouse => "extra-house" {
+        /// Cell indices in the house.
+        cells: Vec<usize>,
+    }
+    /// Require a shaded group smaller than a house to contain different digits.
+    DistinctCells => "distinct-cells" {
+        /// The cells in the group.
+        cells: Vec<usize>,
+        /// Optional authored shade.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "Option::is_none"))]
+        color: Option<String>,
+    }
+    /// Add Aqre shading rules to a Sudoku or Latin square.
+    Aqre => "aqre" {
+        /// Aqre Snake rules or the digit-consecutive Aqre+ rules.
         kind: AqreKind,
         /// Cell regions with optional shaded-cell count clues.
         regions: Vec<AqreRegion>,
@@ -140,11 +451,589 @@ _
         #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "Vec::is_empty"))]
         except: Vec<[usize; 2]>,
     }
-    /// Require the digit in one cell to be less ×M5¶‰žËkºwµçW&Â6VvÖVçG2à¢òòòF†V—"Væ–öâ×W7BWVÂ6VÆÇ6²F†W’Fòæ÷B6†ævRF†RÖ—'&÷&VB—'2à¢òòòG&v–ærF‡2Ö’&Wf—6—B6VÆÇ2à¢5¶6fuöGG"†fVGW&RÒ'v6ÒÖ’"Â6W&FR†FVfVÇBÂ6¶—÷6W&–Æ—¦–æuö–bÒ$÷F–öã£¦—5öæöæR"’•Ð¢6VvÖVçG3¢÷F–öãÅfV3ÅfV3ÇW6—¦SããâÀ¢Ð¢òòò&WV—&RæV–v†&÷&–ærF–v—G2ÆöærF†RÆ–æRFòF–ffW"'’v—fVâÖ÷VçBà¢v†—7W'2Óâ'v†—7W'2"°¢òòò÷&FW&VBvÆ²Â–æ6ÇVF–ær&WVFVB6VÆÇ2B6Æ÷7W&W2÷"&Wf—6—G2à¢òòòBÖ÷7Bƒ"&VfW&Væ6W2Âv—F‚F—7F–æ7B6öç6V7WF—fR6VÆÇ2à¢6VÆÇ3¢fV3ÇW6—¦SâÀ¢òòòÖ–æ–×VÒF–ffW&Væ6R&WGvVVâ6öç6V7WF—fR6VÆÇ2öâF†RÆ–æRà¢Ö–åöF–ffW&Væ6S¢S‚À¢Ð¢òòò&WV—&RF†RF‚w2F–v—G2FòFBFòF†RF–v—B–â6—&6ÆRà¢'&÷rÓâ&'&÷r"°¢òòò–æFW‚öbF†R6—&6ÆR6VÆÂà¢6—&6ÆS¢W6—¦RÀ¢òòòF—7F–æ7B6VÆÂ–æF–6W2–âF‚÷&FW"ÂW†6ÇVF–ærF†R6—&6ÆRà¢6VÆÇ3¢fV3ÇW6—¦SâÀ¢Ð¢òòò&WV—&RF†RF‚7VÒFòWVÂF†RGvòÖF–v—BçVÖ&W"–â–ÆÂà¢–ÆÄ'&÷rÓâ'–ÆÂÖ'&÷r"°¢òòòF†RFVç26VÆÂföÆÆ÷vVB'’F†RöæW26VÆÂà¢–ÆÃ¢·W6—¦S²%ÒÀ¢òòòF—7F–æ7BF‚6VÆÇ2–âG&v–ær÷&FW"ÂW†6ÇVF–ærF†R–ÆÂ6VÆÇ2à¢6VÆÇ3¢fV3ÇW6—¦SâÀ¢òòòF†R'&÷rÆVfW2F†RFVç26VÆÂ–ç7FVBöbF†RöæW26VÆÂv†VâG'VRà¢5¶6fuöGG"†fVGW&RÒ'v6ÒÖ’"Â6W&FR†FVfVÇBÂ6¶—÷6W&–Æ—¦–æuö–bÒ'7FC£¦÷3£¤æ÷C£¦æ÷B"’•Ð¢g&öÕ÷FVç3¢&ööÂÀ¢Ð¢òòò&WV—&R6WBöb6öç6V7WF—fRF–v—G2–âç’÷&FW"v—F†÷WB&WWF—F–öâà¢&Væ&âÓâ'&Væ&â"°¢òòòF—7F–æ7B6VÆÇ2–âÆöv–6Â÷&FW"ÂWFòF†Rw&–Bw2F–v—B6÷VçBà¢6VÆÇ3¢fV3ÇW6—¦SâÀ¢òòò÷F–öæÂf—6–&ÆRF‡2v†÷6RVæ–öâWVÇ26VÆÇ6à¢òòòG&v–ærF‡2Ö’&Wf—6—B6VÆÇ2v—F†÷WB&WVF–ærF†V—"F–v—G2à¢5¶6fuöGG"†fVGW&RÒ'v6ÒÖ’"Â6W&FR†FVfVÇBÂ6¶—÷6W&–Æ—¦–æuö–bÒ$÷F–öã£¦—5öæöæR"’•Ð¢6VvÖVçG3¢÷F–öãÅfV3ÅfV3ÇW6—¦SããâÀ¢Ð¢òòò&WV—&RF–v—G2Fò&—6R÷"fÆÂ'’öæRBWfW'’7FWÆöærF†Rv†öÆRF‚à¢6öç6V7WF—fU'VâÓâ&6öç6V7WF—fR×'Vâ"°¢òòòF—7F–æ7B6VÆÇ2–âF‚÷&FW"à¢6VÆÇ3¢fV3ÇW6—¦SâÀ¢òòò÷F–öæÂWF†÷&VBÆ–æR6öÆ÷"à¢5¶6fuöGG"†fVGW&RÒ'v6ÒÖ’"Â6W&FR†FVfVÇBÂ6¶—÷6W&–Æ—¦–æuö–bÒ$÷F–öã£¦—5öæöæR"’•Ð¢6öÆ÷#¢÷F–öãÅ7G&–æsâÀ¢òòò'VÆ"f—†W2F†R–æ7&V6–ærF—&V7F–öâFòF†RF‚÷&FW"à¢5¶6fuöGG"†fVGW&RÒ'v6ÒÖ’"Â6W&FR†FVfVÇBÂ6¶—÷6W&–Æ—¦–æuö–bÒ'7FC£¦÷3£¤æ÷C£¦æ÷B"’•Ð¢g&öÕö'VÆ#¢&ööÂÀ¢Ð¢òòò&WV—&RV6‚F‡&VR7V66W76—fR÷6—F–öç2FòW6RÆ÷rÂÖVF—VÒæB†–v‚F–v—G2à¢VçG&÷–2Óâ&VçG&÷–2"°¢òòò÷&FW&VBvÆ²Â&WF–æ–ær6Æ÷7W&W2æB&Wf—6—G2âGvò÷6—F–öç2W6RF–ffW&VçBw&÷W2à¢òòòöæR÷6—F–öâ—2Vç&W7G&–7FVBâWfW'’&VfW&Væ6R×W7B&R–âF†Rw&–Bà¢6VÆÇ3¢fV3ÇW6—¦SâÀ¢Ð¢òòò&WV—&RV6‚F‡&VR7V66W76—fR÷6—F–öç2FòW6RF–ffW&VçB&VÖ–æFW'2ÖöGVÆòF‡&VRà¢ÖöGVÆ"Óâ&ÖöGVÆ""°¢òòò÷&FW&VBvÆ²Â&WF–æ–ær6Æ÷7W&W2æB&Wf—6—G2âGvò÷6—F–öç2W6RF–ffW&VçBw&÷W2à¢òòòöæR÷6—F–öâ—2Vç&W7G&–7FVBâWfW'’&VfW&Væ6R×W7B&R–âF†Rw&–Bà¢6VÆÇ3¢fV3ÇW6—¦SâÀ¢Ð¢òòò&WV—&RöæRF–v—Bg&öÒV6‚öbF‡&VRw&÷W2–âWfW'’"9r"&Và¢vÆö&ÄVçG&÷’Óâ&vÆö&ÂÖVçG&÷’"°¢òòò÷F–öæÂWF†÷&VBF–v—Bw&÷W2âöÖ—GFVBw&÷W2W6RF†R7FæF&B(	32ÂN(	3bÂ~(	3’7Æ—Bà¢5¶6fuöGG"†fVGW&RÒ'v6ÒÖ’"Â6W&FR†FVfVÇBÂ6¶—÷6W&–Æ—¦–æuö–bÒ%fV3£¦—5öV×G’"’•Ð¢w&÷W3¢fV3ÅfV3ÇSƒãâÀ¢Ð¢òòò&WV—&RF†R–æF–6FVBw&÷WFòV"Gv–6R–â"9r"&VÂv—F‚V6‚÷F†W"w&÷Wöæ6Rà¢VçG&÷•v–æF÷tw&÷WÓâ&VçG&÷’×v–æF÷rÖw&÷W"°¢òòòF†Rf÷W"6VÆÇ2öböæR"9r"&V–â&÷rÖÖ¦÷"÷&FW"à¢6VÆÇ3¢·W6—¦S²EÒÀ¢òòòv†–6‚VçG&÷’w&÷WV'2Gv–6Rà¢w&÷W¢VçG&÷”w&÷WÀ¢Ð¢òòò&WV—&RâW‡Æ–6—B6WBöbF–v—G2Fòö67W"–â66VæF–ær÷&FW"ÆöærF—&V7FVB†÷W6Rà¢F–v—D÷&FW"Óâ&F–v—BÖ÷&FW""°¢òòòF†Ræ–æR6VÆÇ2öb&÷r÷"6öÇVÖâÂ÷&FW&VBg&öÒF†R6ÇVR6–FRà¢6VÆÇ3¢fV3ÇW6—¦SâÀ¢òòòF—7F–æ7BF–v—G2v†÷6R÷6—F–öç2×W7B–æ7&V6R–âF†RF—&V7FVB6VÆÂ÷&FW"à¢F–v—G3¢fV3ÇSƒâÀ¢Ð¢òòò&WV—&Râ&VçB6öææV7F–öâ7&÷72'&ö¶VâVçG&÷–2F‚Fòf–Â–âBÆV7BöæR7&÷76–ærG&—ÆRà¢f÷&&–FFVäVçG&÷–46öææV7F–öâÓâ&f÷&&–FFVâÖVçG&÷–2Ö6öææV7F–öâ"°¢òòòF†RGvò6VÆÇ2öâV—F†W"6–FRöbF†RvæBF†V—"æV–v†&÷&–ærÆ–æR6VÆÇ2Â–âF‚÷&FW"à¢6VÆÇ3¢·W6—¦S²EÒÀ¢Ð¢òòò&WV—&RV6‚–çFW&–÷"F–v—BFòš®x§‚ÚîÆ­yÚ.¶›­¢¸ Šv¥¶‰Ê.žÞ4ÓTèµ©hºÚn¶X§zÍY˜[ÝšXÝH™]ÙY[ˆH[™Ú[YÚ]Ë‚ˆ™]ÙY[ˆOˆ˜™]ÙY[ˆˆÂˆËËÈÙ[[™XÙ\È[ˆ[™HÜ™\‹[˜ÛY[™È›Ý[™Ú[Ë‚ˆÙ[Îˆ™XÏ\Ú^™O‹ˆBˆËËÈ[™Ú[ÈY™™\ˆžH]X\Ý›Ý\ˆ[™[\š[ÜˆYÚ]ÈYHÝ]ÚYHZ\ˆ˜[™ÙK‚ˆØÚÛÝ]Oˆ›ØÚÛÝ]ˆÂˆËËÈÙ[[™XÙ\È[ˆ[™HÜ™\‹[˜ÛY[™È›Ý[™Ú[Ë‚ˆÙ[Îˆ™XÏ\Ú^™O‹ˆBˆËËÈ™\]Z\™H\]X[Ý[\È[ˆH\ÈÙˆH[™H]šYYžH™YÚ[Ûˆ›Ü™\œË‚ˆ™YÚ[Û”Ý[HOˆœ™YÚ[Û‹\Ý[HˆÂˆËËÈÙ[[™XÙ\È[ˆ[™HÜ™\‹ˆH^ž›IÜÈ›Þ\ÈÜˆšYÜØ]È™YÚ[ÛœÈ]šYHH[™K‚ˆÙ[Îˆ™XÏ\Ú^™O‹ˆËËÈÛÛXš[™HÙ\\˜]Hš\Ú]ÈÈHØ[YH™YÚ[Ûˆ[ÈÛ™HÝ[K‚ˆÖØÙ™×Ø]Š™X]\™HHØ\ÛKX\H‹Ù\™JY˜][
-JWBˆÜ›Ý\ØžWÜ™YÚ[ÛŽˆ›ÛÛˆËËÈÜ[Û˜[š\ÚX›H]ÈÚÜÙH[š[Ûˆ\]X[ÈHÙÚXØ[Ù[Ë‚ˆËËÈ˜]Ú[™È]ÈX^HÛÜÙHÜˆ™]š\Ú]Ù[ÈÚ]Ý]Ú[™Ú[™ÈHÝ[\Ë‚ˆÖØÙ™×Ø]Š™X]\™HHØ\ÛKX\H‹Ù\™JY˜][ÚÚ\ÜÙ\šX[^š[™×ÚYˆH“Ü[ÛŽŽš\×Û›Û™HŠJWBˆÙYÛY[ÎˆÜ[Û™XÏ™XÏ\Ú^™O‹ˆBˆËËÈ™\]Z\™HHÝ[H™]ÙY[ˆHH[™HH[ˆH›ÝÈÜˆÛÛ[[‹‚ˆØ[™ÚXÚOˆœØ[™ÚXÚˆÂˆËËÈH›ÝÈÜˆÛÛ[[‹Ü™\™Yœ›ÛHHÛYH[ÈHÜšY‚ˆÙ[Îˆ™XÏ\Ú^™O‹ˆËËÈ\™XÝ[Ûˆœ›ÛHHÛYK‚ˆ\™XÝ[ÛŽˆÛYQ\™XÝ[Û‹ˆËËÈÝ[HÙˆYÚ]ÈÝšXÝH™]ÙY[ˆH[™K‚ˆÝ[NˆLM‹ˆBˆËËÈ™\]Z\™HHX^[][H˜[œÙ›Ü›YY˜[YHÝ[H™]ÙY[ˆ[žH˜[œÙ›Ü›YYKÎHZ\‹‚ˆ\œ˜Z[”Ø[™ÚXÚOˆ\œ˜Z[‹\Ø[™ÚXÚˆÂˆËËÈHÛÛ\]H›ÝÈÜˆÛÛ[[‹Ü™\™Yœ›ÛHHÛYH[ÈHÜšY‚ˆÙ[Îˆ™XÏ\Ú^™O‹ˆËËÈ\™XÝ[Ûˆœ›ÛHHÛYK‚ˆ\™XÝ[ÛŽˆÛYQ\™XÝ[Û‹ˆËËÈX^[][H˜[œÙ›Ü›YYÝ[H™]ÙY[ˆ[žH˜[œÙ›Ü›YYH[™˜[œÙ›Ü›YYK‚ˆX^[][NˆLM‹ˆËËÈ\‹XÙ[˜[œÙ›Ü›\È[ˆHØ[YHÜ™\ˆ\ÈÙ[Ø‚ˆ˜[œÙ›Ü›\Îˆ™XÏ\œ˜Z[•˜[YU˜[œÙ›Ü›O‹ˆBˆËËÈ™\]Z\™HHÝ[HÙˆ[ˆ[\™HXYÛÛ˜[ˆÝ\ˆ[\È]\›Z[™HÚ]\ˆYÚ]ÈØ[ˆ™\X]‚ˆ]RÚ[\ˆOˆ›]KZÚ[\ˆˆÂˆËËÈHXYÛÛ˜[Ü™\™Yœ›ÛHHÛYH[ÈHÜšY‚ˆÙ[Îˆ™XÏ\Ú^™O‹ˆËËÈXYÛÛ˜[\™XÝ[Ûˆœ›ÛHHÛYK‚ˆ\™XÝ[ÛŽˆÛYQ\™XÝ[Û‹ˆËËÈÝ[HÙˆ[YÚ]ÈÛˆHXYÛÛ˜[‚ˆÝ[NˆLM‹ˆBˆËËÈ™\]Z\™HHÝ[HÙˆHš\œÝYÚ]ÈÙˆH›ÝÈÜˆÛÛ[[‹Ú\™H\ÈHš\œÝYÚ]‚ˆÝ[HOˆž\Ý[HˆÂˆËËÈH›ÝÈÜˆÛÛ[[‹Ü™\™Yœ›ÛHHÛYH[ÈHÜšY‚ˆÙ[Îˆ™XÏ\Ú^™O‹ˆËËÈ\™XÝ[Ûˆœ›ÛHHÛYK‚ˆ\™XÝ[ÛŽˆÛYQ\™XÝ[Û‹ˆËËÈÝ[HÙˆH™Yš^[˜ÛY[™È]Èš\œÝYÚ]‚ˆÝ[NˆLM‹ˆBˆËËÈÛÝ[HÝXØÙ\ÜÚ]™H™]ÈX^[][HYÚ]È[Û™ÈH›ÝÈÜˆÛÛ[[‹‚ˆÚÞ\ØÜ˜\\œÈOˆœÚÞ\ØÜ˜\\œÈˆÂˆËËÈH›ÝÈÜˆÛÛ[[‹Ü™\™Yœ›ÛHHÛYH[ÈHÜšY‚ˆÙ[Îˆ™XÏ\Ú^™O‹ˆËËÈ\™XÝ[Ûˆœ›ÛHHÛYK‚ˆ\™XÝ[ÛŽˆÛYQ\™XÝ[Û‹ˆËËÈ[X™\ˆÙˆYÚ]Èš\ÚX›Hœ›ÛHHÛYK‚ˆÛÝ[ˆNˆBŸB‚‹ËËÈHÙ]ÙˆÙ[ÈÚÜÙH\Ý[˜ÝYÚ]È]\ÝYÈH\™Ù]‚ˆÖÙ\š]™JÛÛ™KXYË\K\ÚÜ™\X[\K\X[Ü™
-WBˆÖØÙ™×Ø]Šˆ™X]\™HHØ\ÛKX\H‹ˆ\š]™JÙ\™NŽ‘\Ù\šX[^™KÙ\™NŽ”Ù\šX[^™JKˆÙ\™J[žWÝ[šÛ›ÝÛ—ÙšY[ÊBŠWBœXˆÝXÝÚ[\ØYÙHÂˆËËÈÙ[[™XÙ\È[ˆHØYÙK‚ˆXˆÙ[Îˆ™XÏ\Ú^™O‹ˆËËÈ™\]Z\™YÝ[HÙˆHYÚ]È[ˆHØYÙK‚ˆXˆÝ[NˆLM‹ŸB‚‹ËËÈ™\œÚ[Û™YÚ]™[œÈ[™[\È›ÜˆHH0åÈHÝYÚÝH^ž›K‚ˆÖÙ\š]™JÛÛ™KXYË\K\ÚÜ™\X[\K\X[Ü™
-WBˆÖØÙ™×Ø]Šˆ™X]\™HHØ\ÛKX\H‹ˆ\š]™JÙ\™NŽ‘\Ù\šX[^™KÙ\™NŽ”Ù\šX[^™JKˆÙ\™J[žWÝ[šÛ›ÝÛ—ÙšY[ÊBŠWBœXˆÝXÝ˜\šX[^ž›HÂˆËËÈÝXÝ\™Y›Ü›X]™\œÚ[Û‹‚ˆXˆ™\œÚ[ÛŽˆLÌ‹ˆËËÈš^YYÚ]È[ˆ›ÝË[XZ›ÜˆÜ™\‹‚ˆÖØÙ™×Ø]Š™X]\™HHØ\ÛKX\H‹Ù\™JÚ]HÚ\™NŽ™ÜšYŠJWBˆXˆÚ]™[œÎˆ›Ø\™ˆËËÈ›Þ\ÈÜˆ™\XÙ[Y[™YÚ[ÛœË‚ˆÖØÙ™×Ø]Š™X]\™HHØ\ÛKX\H‹Ù\™JY˜][
-JWBˆXˆ™YÚ[ÛœÎˆ™YÚ[Û“^[Ý]ˆËËÈY][Û˜[[\È[™›Ü˜ÙYÙÙ]\‹‚ˆÖØÙ™×Ø]Š™X]\™HHØ\ÛKX\H‹Ù\™JY˜][
-JWBˆXˆ[\Îˆ™XÏ^ž›T[O‹ŸB‚š[\˜\šX[^ž›HÂˆËËÈHÝXÝ\™Y\]Z]˜[[Ùˆ[ˆKXÚ\˜XÝ\ˆÛ\ÜÚXÈ^ž›K‚ˆXˆ›ˆÛ\ÜÚXÊÚ]™[œÎˆ›Ø\™
-HOˆÙ[ˆÂˆÙ[ˆÂˆ™\œÚ[ÛŽˆT’PS•Ñ“Ô“PUÕ‘T”ÒSÓ‹ˆÚ]™[œËˆ™YÚ[ÛœÎˆ™YÚ[Û“^[Ý]Ž›Þ\Ëˆ[\Îˆ™XÎŽ›™]Ê
-KˆBˆB‚ˆËËÈÛ\ÜÚXÈ›Þ\ÈÚ]›ÝÛ™ÈXYÛÛ˜[È\ÈY][Û˜[õÓMm¢G§²ÚîÆ­yÐ€€Í•É‘”¡‘•™…Õ±Ð€ô€‰Ý¥É”èé•µÁÑå}É¥ˆ°Ý¥Ñ €ô€‰Ý¥É”èéÍ¡…‘•Ìˆ¤(€€€€¥t(€€€ÁÕˆÍ¡…‘•Ìè	½…É°)ô()¥µÁ°Y…É¥…¹ÑA½Í¥Ñ¥½¸ì(€€€€¼¼¼MÑ…ÉÐ™É½´Ñ¡”¥Ù•¹ÌÝ¥Ñ ¹¼Á±…•‘¥¥ÑÌ½È…¹‘¥‘…Ñ”É•µ½Ù…±Ì¸(€€€ÁÕˆ™¸¹•Ü¡ÁÕéé±”èY…É¥…¹ÑAÕéé±”¤€´øM•±˜ì(€€€€€€€M•±˜ì(€€€€€€€€€€€ÁÕéé±”°(€€€€€€€€€€€•¹ÑÉ¥•ÌèlÀì11Mt°(€€€€€€€€€€€•±¥µ¥¹…Ñ¥½¹ÌèlÀì11Mt°(€€€€€€€€€€€Í¡…‘•ÌèlÀì11Mt°(€€€€€€€ô(€€€ô((€€€™¸É•½É‘}…Ñ¥½¹Ì ™µÕÐÍ•±˜°…Ñ¥½¹Ìè€™mÉ…Ñ”èé!¥¹ÑÑ¥½¹t¤ì(€€€€€€€É…Ñ”èéÁ½Í¥Ñ¥½¸èéÉ•½É‘}…Ñ¥½¹Ì ™µÕÐÍ•±˜¹•¹ÑÉ¥•Ì°€™µÕÐÍ•±˜¹•±¥µ¥¹…Ñ¥½¹Ì°…Ñ¥½¹Ì¤ì(€€€ô)ô((¼¼¼%‘•¹Ñ¥Ñä½˜„¡½ÕÍ”¥¸Ñ¡”½µÁ¥±•ÉÕ±”Í•Ð¸(m‘•É¥Ù”¡±½¹”°½Áä°•‰Õœ°Ä°A…ÉÑ¥…±Ä¥t(m™}…ÑÑÈ (€€€™•…ÑÕÉ”€ô€‰Ý…Í´µ…Á¤ˆ°(€€€‘•É¥Ù”¡Í•É‘”èéM•É¥…±¥é”¤°(€€€Í•É‘”¡É•¹…µ•}…±°€ô€‰­•‰…ˆµ…Í”ˆ¤(¥t)ÁÕˆ•¹Õ´Y…É¥…¹Ñ!½ÕÍ•-¥¹ì(€€€€¼¼¼I½Ü¥¹‘•à¸(€€€I½Ü¡ÕÍ¥é”¤°(€€€€¼¼¼½±Õµ¸¥¹‘•à¸(€€€½±Õµ¸¡ÕÍ¥é”¤°(€€€€¼¼¼MÑ…¹‘…É‰½à½È¥ÉÉ•Õ±…ÈÉ•¥½¸¥¹‘•à¸(€€€I•¥½¸¡ÕÍ¥é”¤°(€€€€¼¼¼‘•±…É•‘¥…½¹…°¸(€€€¥…½¹…°¡¥…½¹…°¤°(€€€€¼¼¼Q¡”¥¹‘•à½˜Ñ¡”ÉÕ±”Ñ¡…Ð‘•™¥¹•ÌÑ¡¥Ì¡½ÕÍ”¸(€€€áÑÉ„¡ÕÍ¥é”¤°)ô((¼¼¼½µÁ¥±•¡½ÕÍ”Ý¥Ñ ¹¥¹”•±±ÌÑ¡…ÐµÕÍÐ½¹Ñ…¥¸‘¥ÍÑ¥¹Ð‘¥¥ÑÌ¸(m‘•É¥Ù”¡±½¹”°•‰Õœ°Ä°A…ÉÑ¥…±Ä¥t)ÁÕˆÍÑÉÕÐY…É¥…¹Ñ!½ÕÍ”ì(€€€€¼¼¼%‘•¹Ñ¥Ñä½˜Ñ¡”¡½ÕÍ”Ý¥Ñ¡¥¸Ñ¡”ÉÕ±”Í•Ð¸(€€€ÁÕˆ­¥¹èY…É¥…¹Ñ!½ÕÍ•-¥¹°(€€€€¼¼¼•±°¥¹‘¥•Ì¥¸Ñ¡”¡½ÕÍ”¸(€€€ÁÕˆ•±±ÌèmÕÍ¥é”ì€åt°)ô((¼¼¼%¹Ù…±¥½¹™¥ÕÉ…Ñ¥½¸½˜Ñ¡”Ù•ÉÍ¥½¹•ÁÕéé±”‘•™¥¹¥Ñ¥½¸¸(m‘•É¥Ù”¡±½¹”°½Áä°•‰Õœ°Ä°A…ÉÑ¥…±Ä¥t)ÁÕˆ•¹Õ´Y…É¥…¹Ñ•™¥¹¥Ñ¥½¹ÉÉ½Èì(€€€€¼¼¼Q¡¥Ì½µÁ¥±•È‘½•Ì¹½ÐÍÕÁÁ½ÉÐÑ¡”™½Éµ…ÐÙ•ÉÍ¥½¸¸(€€€U¹ÍÕÁÁ½ÉÑ•‘Y•ÉÍ¥½¸¡ÔÌÈ¤°(€€€€¼¼¼¥Ù•¸‘¥¥Ð•á••‘Ì€ä…ÐÑ¡”ÍÕÁÁ±¥••±°¥¹‘•à¸(€€€%¹Ù…±¥‘¥Ù•¸¡ÕÍ¥é”¤°(€€€€¼¼¼Q¡”)¥Í…Ü±…å½ÕÐ¥Ìµ¥ÍÍ¥¹œÉ•¥½¹Ì½È¡…Ì•áÑÉ„É•¥½¹Ì¸(€€€%¹Ù…±¥‘I•¥½¹½Õ¹Ð°(€€€€¼¼¼¡½ÕÍ”¡…ÌÑ¡”ÝÉ½¹œÍ¥é”°É•Á•…ÑÌ„•±°°½ÈÉ•™•É•¹•Ì„•±°½ÕÑÍ¥‘”Ñ¡”É¥¸(€€€%¹Ù…±¥‘!½ÕÍ”¡Y…É¥…¹Ñ!½ÕÍ•-¥¹¤°(€€€€¼¼¼=¹”½˜Ñ¡”µ…É­•É•¥½¹Ì¥¸„Á…ÉÑ¥…°±…å½ÕÐ½¹Ñ…¥¹Ì‘¥Í½¹¹•Ñ••±±Ì¸(€€€¥Í½¹¹•Ñ•‘I•¥½¸¡ÕÍ¥é”¤°(€€€€¼¼¼QÝ¼¥ÉÉ•Õ±…ÈÉ•¥½¹ÌÍ¡…É”„•±°¸(€€€=Ù•É±…ÁÁ¥¹I•¥½¸¡ÕÍ¥é”¤°(€€€€¼¼¼…”½¹Ñ…¥¹Ì¥¹Ù…±¥½ÈÉ•Á•…Ñ••±±Ì°½È¡…Ì…¸¥¹Ù…±¥Í¥é”¸(€€€%¹Ù…±¥‘…”¡ÕÍ¥é”¤°(€€€€¼¼¼…”½Ù•É±…ÁÌ…¹½Ñ¡•È…”¸(€€€=Ù•É±…ÁÁ¥¹…”¡ÕÍ¥é”¤°(€€€€¼¼¼9¼‘¥ÍÑ¥¹Ð‘¥¥ÑÌ…¸Í…Ñ¥Í™äÑ¡”…”ÍÕ´™½È¥ÑÌÍ¥é”¸(€€€%¹Ù…±¥‘…•MÕ´¡ÕÍ¥é”¤°(€€€€¼¼¼ÉÕ±”É•ÅÕ¥É•Ì„…”¥¸•Ù•Éä•±°°‰ÕÐ¥ÑÌ…•Ì±•…Ù”…ÁÌ¸(€€€%¹½µÁ±•Ñ•…•Ì°(€€€€¼¼¼ÉÕ±”¡…Ì¥¹Ù…±¥°É•Á•…Ñ•°½È¥¹ÍÕ™™¥¥•¹Ð•±°É•™•É•¹•Ì½È…¸¥¹Ù…±¥Á…É…µ•Ñ•È¸(€€€%¹Ù…±¥‘IÕ±”¡ÕÍ¥é”¤°)ô((¼¼¼Y…±¥‘…Ñ•Ñ½Á½±½ä…¹ÉÕ±”‘…Ñ„É•ÕÍ…‰±”…É½ÍÌÁ½Í¥Ñ¥½¹Ì½˜½¹”ÁÕéé±”¸(m‘•É¥Ù”¡±½¹”°•‰Õœ¥t)ÁÕˆÍÑÉÕÐ½µÁ¥±•‘Y…É¥…¹Ðì(€€€¥Ù•¹Ìè	½…É°(€€€±…ÍÍ¥}‰½á•Ìè‰½½°°(€€€¡½ÕÍ•ÌèY•ŒñY…É¥…¹Ñ!½ÕÍ”ø°(€€€¡½ÕÍ•}µ…Í­ÌèY•ŒñÔÄÈàø°(€€€Í•…É¡}¡½ÕÍ•ÌèY•ŒñÕÍ¥é”ø°(€€€µ•µ‰•ÉÍ¡¥ÁÌèmY•ŒñÕÍ¥é”øì11Mt°(€€€Á••ÉÌèmÔÄÈàì11Mt°(€€€Í•…É¡}‘•É•”èmÔÄØì11Mt°(€€€…•ÌèY•Œñ½µÁ¥±•‘…”ø°(€€€…•}¡½ÕÍ•}ÍÕµÌè=¹•1½¬ñY•Œñ…•!½ÕÍ•MÕ´øø°(€€€ÉÕ±•}ÁÉ½½™Ìè=¹•1½¬ñ±½¥…°èéIÕ±•AÉ½½™%¹‘•àø°(€€€…±±½Ý•‘}‘¥¥ÑÌèmÔÄØì11Mt°(€€€Á…¥ÉÌèY•ŒñA…¥É½¹ÍÑÉ…¥¹Ðø°(€€€±¥¹•ÌèY•Œñ1¥¹•½¹ÍÑÉ…¥¹Ðø°(€€€µ½‘Õ±…É}ÍÕµÌèY•Œñ5½‘Õ±…ÉMÕ´ø°(€€€É½ÕÁ}ÍÕµ}¡½ÕÍ•ÌèY•ŒñÉ½ÕÁMÕµ!½ÕÍ”ø°(€€€É½ÕÁ}ÍÕµ}Á¡…Í•ÌèY•ŒñÉ½ÕÁMÕµA¡…Í”ø°(€€€‘¥Í©½¥¹Ñ}É½ÕÁ}ÍÕµÌèY•Œñ¥Í©½¥¹ÑÉ½ÕÁMÕ´ø°(€€€É½ÕÁ}ÍÕµ}¡…¥¹ÌèY•ŒñÉ½ÕÁMÕµ¡…¥¸ø°(€€€ÅÕ…‘ÉÕÁ±•ÌèY•ŒñEÕ…‘ÉÕÁ±”ø°(€€€±•ÑÑ•É•‘}ÅÕ…‘ÉÕÁ±•Ìè=ÁÑ¥½¸ñ1•ÑÑ•É•‘EÕ…‘ÉÕÁ±•Ìø°(€€€¹•¥¡‰½É}µ…Ñ¡•ÌèY•Œñ½µÁ¥±•‘9•¥¡‰½É5…Ñ ø°(€€€½¹‘¥Ñ¥½¹…±}¹•¥¡‰½ÉÌèY•Œñ½µÁ¥±•‘½¹‘¥Ñ¥½¹…±9•¥¡‰½Èø°(€€€µ…¥}ÍÅÕ…É•ÌèY•Œñ½µÁ¥±•‘5…¥MÅÕ…É”ø°(€€€Õ¹­¹½Ý¹}…•}ÍÕµÌèY•Œñ½µÁ¥±•‘U¹­¹½Ý¹…•MÕµÌø°(€€€±½‰…±}•¹ÑÉ½Áäè=ÁÑ¥½¸ñÕÍ¥é”ø°(€€€±½‰…±}•¹ÑÉ½Áå}É½ÕÁÌèmÔÄØì€Ít°(€€€•¹ÑÉ½Áå}Ý¥¹‘½Ý}É½ÕÁÌèY•Œð¡ÕÍ¥é”°mÕÍ¥é”ì€Ñt°¹ÑÉ½ÁåÉ½ÕÀ¤ø°(€€€…ÅÉ•}ÉÕ±•ÌèY•ŒñÅÉ•½¹ÍÑÉ…¥¹Ðø°(€€€Á…¥É}±Õ•ÌèY•ŒñA…¥É±Õ”ø°(€€€Á½Í¥Ñ¥Ù•}ÍÕµÌèY•ŒñA½Í¥Ñ¥Ù•MÕ´ø°(€€€Á…¥É}±Õ•}µ•µ‰•ÉÍ¡¥ÁÌèmY•ŒñÕÍ¥é”øì11Mt°(€€€Á…É¥Ñå}±Õ•ÌèY•ŒñA…É¥Ñå±Õ”ø°(€€€‘¥¥Ñ}É•ÍÑÉ¥Ñ¥½¹}±Õ•ÌèY•Œñ¥¥ÑI•ÍÑÉ¥Ñ¥½¹±Õ”ø°(€€€•áÑÉ…}ÉÕ±•}•±±ÌèÔÄÈà°(€€€­É½Á­¥}µ…É­ÌèÍÑèé½ÁÌèéI…¹”ñÕÍ¥é”ø°)ô()¥µÁ°½µÁ¥±•‘Y…É¥…¹Ðì(€€€™¸Í¡…É•‘}•¹™½É•‘}¡½ÕÍ” ™Í•±˜°™¥ÉÍÐèÕÍ¥é”°½Ñ¡•ÉÌè€™mÕÍ¥é•t¤€´ø=ÁÑ¥½¸ñY…É¥…¹Ñ!½ÕÍ•-¥¹øì(€€€€€€€±•Ð•±±Ì€ô½Ñ¡•ÉÌ¹¥Ñ•È ¤¹™½± À°ñµ…Í¬°€™•±±ðµ…Í¬ð€ ÅÔÄÈà€ðð•±°¤¤ì(€€€€€€€Í•±˜¹µ•µ‰•ÉÍ¡¥ÁÍm™¥ÉÍÑt(€€€€€€€€€€€€¹¥Ñ•È ¤(€€€€€€€€€€€€¹™¥¹¡ð˜™¥¹‘•áðì(€€€€€€€€€€€€€€€Í•±˜¹¡½ÕÍ•}µ…Í­Ím¥¹‘•át€˜•±±Ì€ôô•±±Ì(€€€€€€€€€€€€€€€€€€€€˜˜Í•±˜¹Í•…É¡}¡½ÕÍ•Ì¹‰¥¹…Éå}Í•…É  ™¥¹‘•à¤¹¥Í}½¬ ¤(€€€€€€€€€€€ô¤(€€€€€€€€€€€€¹µ…À¡ð™¥¹‘•áðÍ•±˜¹¡½ÕÍ•Ím¥¹‘•át¹­¥¹¤(€€€ô((€€€™¸…É•}ÁÉ¥µ…Éå}Á••ÉÌ ™Í•±˜°™¥ÉÍÐèÕÍ¥é”°Í•½¹èÕÍ¥é”°•¹™½É•}É•¥½¹Ìè‰½½°¤€´ø‰½½°ì(€€€€€€€™¥ÉÍÐ€„ôÍ•½¹(€€€€€€€€€€€€˜˜€¡™¥ÉÍÐ€¼€ä€ôôÍ•½¹€¼€ä(€€€€€€€€€€€€€€€ñð™¥ÉÍÐ€”€ä€ôôÍ•½¹€”€ä(€€€€€€€€€€€€€€€ñð•¹™½É•}É•¥½¹Ì(€€€€€€€€€€€€€€€€€€€€˜˜Í•±˜(€€€€€€€€€€€€€€€€€€€€€€€€¹ÁÉ¥µ…Éå}É•¥½¸¡™¥ÉÍÐ¤(€€€€€€€€€€€€€€€€€€€€€€€€¹¥Í}Í½µ•}…¹¡ñÉ•¥½¹ðÍ•±˜¹ÁÉ¥µ…Éå}É•¥½¸¡Í•½¹¤€ôôM½µ”¡É•¥½¸¤¤¤(€€€ô((€€€™¸ÁÉ¥µ…Éå}É•¥½¸ ™Í•±˜°•±°èÕÍ¥é”¤€´ø=ÁÑ¥½¸ñÕÍ¥é”øì(€€€€€€€±•Ð€™¡½ÕÍ”€ôÍ•±˜¹µ•µ‰•ÉÍ¡¥ÁÍm•±±t¹•Ð È¤üì(€€€€€€€¥˜±•ÐY…É¥…¹Ñ!½ÕÍ•-¥¹èéI•¥½¸¡É•¥½¸¤€ôÍ•±˜¹¡½ÕÍ•Ím¡½ÕÍ•t¹­¥¹ì(€€€€€€€€€€€M½µ”¡É•¥½¸¤(€€€€€€€ô•±Í”ì(€€€€€€€€€€€9½¹”(€€€€€€€ô(€€€ô((€€€€¼¼¼=É¥¥¹…°¥Ù•¹Ì½˜Ñ¡”½µÁ¥±•ÁÕéé±”¸(€€€ÁÕˆ™¸¥Ù•¹Ì ™Í•±˜¤€´ø€™	½…Éì(€€€€€€€€™Í•±˜¹¥Ù•¹Ì(€€€ô((€€€€¼¼¼!½ÕÍ•Ì¥¸ÍÑ…‰±”½É‘•È°Ý¥Ñ É½ÝÌ°½±Õµ¹Ì°…¹É•¥½¹Ì™½±±½Ý•‰ä•áÑÉ„¡½ÕÍ•Ì¸(€€€ÁÕˆ™¸¡½ÕÍ•Ì ™Í•±˜¤€´ø€™mY…É¥…¹Ñ!½ÕÍ•tì(€€€€€€€€™Í•±˜¹¡½ÕÍ•Ì(€€€ô((€€€€¼¼¼%¹‘¥•Ì¥¹Ñ¼¡½ÕÍ•Ì ¥€½˜Ñ¡”¡½ÕÍ•Ì½¹Ñ…¥¹¥¹œÑ¡”•±°¸(€€€ÁÕˆ™¸¡½ÕÍ•Í}…Ð ™Í•±˜°•±°èÕÍ¥é”¤€´ø=ÁÑ¥½¸ð™mÕÍ¥é•tøì(€€€€€€€Í•±˜¹µ•µ‰•ÉÍ¡¥ÁÌ¹•Ð¡•±°¤¹µ…À¡Y•Œèé…Í}Í±¥”¤(€€€ô((€€€€¼¼¼½µµ½¸•±±Ì½˜ÑÝ¼¡½ÕÍ•Ì¸¸¥¹Ù…±¥¡½ÕÍ”¥¹‘•àÉ•ÑÕÉ¹Ì9½¹•€¸(€€€ÁÕˆ™¸¥¹Ñ•ÉÍ•Ñ¥½¸ ™Í•±˜°™¥ÉÍÐèÕÍ¥é”°Í•½¹èÕÍ¥é”¤€´ø=ÁÑ¥½¸ñ¥µÁ°%Ñ•É…Ñ½Èñ%Ñ•´€ôÕÍ¥é”øøì(€€€€€€€M½µ”¡•±±Í}¥¸ (€€€€€€€€€€€€©Í•±˜¹¡½ÕÍ•}µ…Í­Ì¹•Ð¡™¥ÉÍÐ¤ü€˜€©Í•±˜¹¡½ÕÍ•}µ…Í­Ì¹•Ð¡Í•½¹¤ü°(€€€€€€€€¤¤(€€€ô((€€€€¼¼¼•±±ÌÑ¡…Ð…¹¹½ÐÍ¡…É”„‘¥¥ÐÝ¥Ñ Ñ¡¥Ì•±°°¥¹±Õ‘¥¹œ…”Á••ÉÌ¸(€€€ÁÕˆ™¸Á••ÉÌ ™Í•±˜°•±°èÕÍ¥é”¤€´ø=ÁÑ¥½¸ñ¥µÁ°%Ñ•É…Ñ½Èñ%Ñ•´€ôÕÍ¥é”øøì(€€€€€€€Í•±˜¹Á••ÉÌ¹•Ð¡•±°¤¹½Á¥• ¤¹µ…À¡•±±Í}¥¸¤(€€€ô)ô((¼¼É…Ý¥¹œ•½µ•ÑÉäµÕÍÐ¹…µ”•á…Ñ±äÑ¡”±½¥…°•±±Ì¸I•Á•…Ñ•Ù¥Í¥ÑÌ‘¼¹½Ð(¼¼…‘„Í•½¹½ÕÉÉ•¹”½˜„‘¥¥ÐÑ¼„Í•Ð½È„µ¥ÉÉ½É•±¥¹”¸)™¸‘É…Ý¥¹}Á…Ñ¡Í}½Ù•È¡•±±Ìè€™mÕÍ¥é•t°Í•µ•¹ÑÌè€™=ÁÑ¥½¸ñY•ŒñY•ŒñÕÍ¥é”øøø¤€´ø‰½½°ì(€€€±•ÐM½µ”¡Í•µ•¹ÑÌ¤€ôÍ•µ•¹ÑÌ•±Í”ì(€€€€€€€É•ÑÕÉ¸ÑÉÕ”ì(€€€ôì(€€€€…Í•µ•¹ÑÌ¹¥Í}•µÁÑä ¤(€€€€€€€€˜˜Í•µ•¹ÑÌ(€€€€€€€€€€€€¹¥Ñ•È ¤(€€€€€€€€€€€€¹…±°¡ñÁ…Ñ¡ð€…Á…Ñ ¹¥Í}•µÁÑä ¤€˜˜Á…Ñ ¹¥Ñ•È ¤¹…±°¡ð™•±±ð•±°€ð11L¤¤(€€€€€€€€˜˜M½µ” (€€€€€€€€€€€Í•µ•¹ÑÌ(€€€€€€€€€€€€€€€€¹¥Ñ•È ¤(€€€€€€€€€€€€€€€€¹™±…ÑÑ•¸ ¤(€€€€€€€€€€€€€€€€¹™½± ÁÔÄÈà°ñµ…Í¬°€™•±±ðµ…Í¬ð€ Ä€ðð•±°¤¤°(€€€€€€€€¤€ôô•±±}µ…Í¬¡•±±Ì¤)ô()ÁÕˆ¡É…Ñ”¤™¸•±±}µ…Í¬¡•±±Ìè€™mÕÍ¥é•t¤€´ø=ÁÑ¥½¸ñÔÄÈàøì(€€€•±±Ì¹¥Ñ•È ¤¹ÑÉå}™½± À°ñµ…Í¬°€™•±±ðì(€€€€€€€¥˜•±°€øô11Lì(€€€€€€€€€€€É•ÑÕÉ¸9½¹”ì(€€€€€€€ô(€€€€€€€±•Ð‰¥Ð€ô€Ä€ðð•±°ì(€€€€€€€€¡µ…Í¬€˜‰¥Ð€ôô€À¤¹Ñ¡•¹}Í½µ”¡µ…Í¬ð‰¥Ð¤(€€€ô¤)ô()™¸•±±Í}¥¸¡µÕÐµ…Í¬èÔÄÈà¤€´ø¥µÁ°%Ñ•É…Ñ½Èñ%Ñ•´€ôÕÍ¥é”øì(€€€ÍÑèé¥Ñ•Èèé™É½µ}™¸¡µ½Ù”ñðì(€€€€€€€¥˜µ…Í¬€ôô€Àì(€€€€€€€€€€€É•ÑÕÉ¸9½¹”ì(€€€€€€€ô(€€€€€€€±•Ð•±°€ôµ…Í¬¹ÑÉ…¥±¥¹}é•É½Ì ¤…ÌÕÍ¥é”ì(€€€€€€€µ…Í¬€˜ôµ…Í¬€´€Äì(€€€€€€€M½µ”¡•±°¤(€€€ô¤)ô()™¸‘¥¥Ñ}ÍÕ´¡µ…Í¬èÔÄØ¤€´øÔÄØì(€€€É…Ñ”èé¡¥¹ÑÌèé‘¥¥ÑÌ¡µ…Í¬¤¹µ…À¡ÔÄØèé™É½´¤¹ÍÕ´ ¤)ô(
+    /// Require the digit in one cell to be less than the digit in another.
+    Inequality => "inequality" {
+        /// Cell with the smaller digit.
+        less: usize,
+        /// Cell with the larger digit.
+        greater: usize,
+    }
+    /// Compare each marked cell with its edge neighbors using strict less-than.
+    Minimum => "minimum" {
+        /// Cells marked by this Minimum layer.
+        cells: Vec<usize>,
+        /// Omit comparisons between two cells on this layer.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "std::ops::Not::not"))]
+        ignore_marked_neighbors: bool,
+    }
+    /// Compare each marked cell with its edge neighbors using strict greater-than.
+    Maximum => "maximum" {
+        /// Cells marked by this Maximum layer.
+        cells: Vec<usize>,
+        /// Omit comparisons between two cells on this layer.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "std::ops::Not::not"))]
+        ignore_marked_neighbors: bool,
+    }
+    /// Constrain adjacent digits using Kropki dots.
+    Kropki => "kropki" {
+        /// White dots for consecutive digits.
+        #[cfg_attr(feature = "wasm-api", serde(default))]
+        consecutive: MarkedPairs,
+        /// Black dots for a ratio of two.
+        #[cfg_attr(feature = "wasm-api", serde(default))]
+        ratio_two: MarkedPairs,
+    }
+    /// Constrain adjacent digits using numbered difference or ratio dots.
+    LabeledDots => "labeled-dots" {
+        /// Relationship indicated by this color of dot.
+        relation: SizedDotRelation,
+        /// Positive dots and their printed values.
+        marks: Vec<SizedLabeledDot>,
+        /// Forbid the default relation on edges without a dot of this color.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "std::ops::Not::not"))]
+        negative: bool,
+    }
+    /// Constrain adjacent digits using V and X markers.
+    Xv => "xv" {
+        /// V markers for a sum of five.
+        #[cfg_attr(feature = "wasm-api", serde(default))]
+        five: MarkedPairs,
+        /// X markers for a sum of ten.
+        #[cfg_attr(feature = "wasm-api", serde(default))]
+        ten: MarkedPairs,
+    }
+    /// Require the digits in two edge-sharing cells to add to the given total.
+    /// Totals of five and ten also count as positive V and X marks.
+    AdjacentTotal => "adjacent-total" {
+        /// Two distinct orthogonally adjacent cell indices, in source order.
+        cells: [usize; 2],
+        /// Total from three through seventeen.
+        sum: u8,
+    }
+    /// Require digits to increase strictly from the bulb to the tip.
+    Thermometer => "thermometer" {
+        /// Cell indices in order, starting at the bulb.
+        cells: Vec<usize>,
+    }
+    /// Require an ordered line to read the same in both directions.
+    Palindrome => "palindrome" {
+        /// Distinct cell indices in logical order, paired from opposite ends.
+        cells: Vec<usize>,
+        /// Optional drawing paths when the visible clue has several segments.
+        /// Their union must equal `cells`; they do not change the mirrored pairs.
+        /// Drawing paths may revisit cells.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "Option::is_none"))]
+        segments: Option<Vec<Vec<usize>>>,
+    }
+    /// Require neighboring digits along the line to differ by a given amount.
+    Whispers => "whispers" {
+        /// Ordered walk, including repeated cells at closures or revisits.
+        /// At most 82 references, with distinct consecutive cells.
+        cells: Vec<usize>,
+        /// Minimum difference between consecutive cells on the line.
+        min_difference: u8,
+    }
+    /// Require the path's digits to add to the digit in a circle.
+    Arrow => "arrow" {
+        /// Index of the circle cell.
+        circle: usize,
+        /// Distinct cell indices in path order, excluding the circle.
+        cells: Vec<usize>,
+    }
+    /// Require the path sum to equal the two-digit number in a pill.
+    PillArrow => "pill-arrow" {
+        /// The tens cell followed by the ones cell.
+        pill: [usize; 2],
+        /// Distinct path cells in drawing order, excluding the pill cells.
+        cells: Vec<usize>,
+        /// The arrow leaves the tens cell instead of the ones cell when true.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "std::ops::Not::not"))]
+        from_tens: bool,
+    }
+    /// Require a set of consecutive digits in any order without repetition.
+    Renban => "renban" {
+        /// Distinct cells in logical order, up to the grid's digit count.
+        cells: Vec<usize>,
+        /// Optional visible paths whose union equals `cells`.
+        /// Drawing paths may revisit cells without repeating their digits.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "Option::is_none"))]
+        segments: Option<Vec<Vec<usize>>>,
+    }
+    /// Require digits to rise or fall by one at every step along the whole path.
+    ConsecutiveRun => "consecutive-run" {
+        /// Distinct cells in path order.
+        cells: Vec<usize>,
+        /// Optional authored line color.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "Option::is_none"))]
+        color: Option<String>,
+        /// A bulb fixes the increasing direction to the path order.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "std::ops::Not::not"))]
+        from_bulb: bool,
+    }
+    /// Require each three successive positions to use low, medium and high digits.
+    Entropic => "entropic" {
+        /// Ordered walk, retaining closures and revisits. Two positions use different groups.
+        /// One position is unrestricted. Every reference must be in the grid.
+        cells: Vec<usize>,
+    }
+    /// Require each three successive positions to use different remainders modulo three.
+    Modular => "modular" {
+        /// Ordered walk, retaining closures and revisits. Two positions use different groups.
+        /// One position is unrestricted. Every reference must be in the grid.
+        cells: Vec<usize>,
+    }
+    /// Require one digit from each of three groups in every 2 Ã— 2 area.
+    GlobalEntropy => "global-entropy" {
+        /// Optional authored digit groups. Omitted groups use the standard 1â€“3, 4â€“6, 7â€“9 split.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "Vec::is_empty"))]
+        groups: Vec<Vec<u8>>,
+    }
+    /// Require the indicated group to appear twice in a 2 Ã— 2 area, with each other group once.
+    EntropyWindowGroup => "entropy-window-group" {
+        /// The four cells of one 2 Ã— 2 area in row-major order.
+        cells: [usize; 4],
+        /// Which entropy group appears twice.
+        group: EntropyGroup,
+    }
+    /// Require an explicit set of digits to occur in ascending order along a directed house.
+    DigitOrder => "digit-order" {
+        /// The nine cells of a row or column, ordered from the clue side.
+        cells: Vec<usize>,
+        /// Distinct digits whose positions must increase in the directed cell order.
+        digits: Vec<u8>,
+    }
+    /// Require an apparent connection across a broken Entropic path to fail in at least one crossing triple.
+    ForbiddenEntropicConnection => "forbidden-entropic-connection" {
+        /// The two cells on either side of the gap and their neighboring line cells, in path order.
+        cells: [usize; 4],
+    }
+    /// Require each interior digit to fall strictly between the endpoint digits.
+    Between => "between" {
+        /// Cell indices in line order, including both endpoints.
+        cells: Vec<usize>,
+    }
+    /// Endpoints differ by at least four and interior digits lie outside their range.
+    Lockout => "lockout" {
+        /// Cell indices in line order, including both endpoints.
+        cells: Vec<usize>,
+    }
+    /// Require equal sums in the parts of a line divided by region borders.
+    RegionSum => "region-sum" {
+        /// Cell indices in line order. The puzzle's boxes or Jigsaw regions divide the line.
+        cells: Vec<usize>,
+        /// Combine separate visits to the same region into one sum.
+        #[cfg_attr(feature = "wasm-api", serde(default))]
+        group_by_region: bool,
+        /// Optional visible paths whose union equals the logical cells.
+        /// Drawing paths may close or revisit cells without changing the sums.
+        #[cfg_attr(feature = "wasm-api", serde(default, skip_serializing_if = "Option::is_none"))]
+        segments: Option<Vec<Vec<usize>>>,
+    }
+    /// Require a sum between the 1 and the 9 in a row or column.
+    Sandwich => "sandwich" {
+        /// The row or column, ordered from the clue into the grid.
+        cells: Vec<usize>,
+        /// Direction from the clue.
+        direction: ClueDirection,
+        /// Sum of digits strictly between 1 and 9.
+        sum: u16,
+    }
+    /// Require the maximum transformed value sum between any transformed 1/9 pair.
+    TerrainSandwich => "terrain-sandwich" {
+        /// The complete row or column, ordered from the clue into the grid.
+        cells: Vec<usize>,
+        /// Direction from the clue.
+        direction: ClueDirection,
+        /// Maximum transformed sum between any transformed 1 and transformed 9.
+        maximum: i16,
+        /// Per-cell transforms in the same order as `cells`.
+        transforms: Vec<TerrainValueTransform>,
+    }
+    /// Require the sum of an entire diagonal. Other rules determine whether digits can repeat.
+    LittleKiller => "little-killer" {
+        /// The diagonal, ordered from the clue into the grid.
+        cells: Vec<usize>,
+        /// Diagonal direction from the clue.
+        direction: ClueDirection,
+        /// Sum of all digits on the diagonal.
+        sum: u16,
+    }
+    /// Require a sum of the first X digits of a row or column, where X is the first digit.
+    XSum => "x-sum" {
+        /// The row or column, ordered from the clue into the grid.
+        cells: Vec<usize>,
+        /// Direction from the clue.
+        direction: ClueDirection,
+        /// Sum of the prefix, including its first digit.
+        sum: u16,
+    }
+    /// Count the successive new maximum digits along a row or column.
+    Skyscrapers => "skyscrapers" {
+        /// The row or column, ordered from the clue into the grid.
+        cells: Vec<usize>,
+        /// Direction from the clue.
+        direction: ClueDirection,
+        /// Number of digits visible from the clue.
+        count: u8,
+    }
+}
+
+/// A set of cells whose distinct digits must add to a target.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(deny_unknown_fields)
+)]
+pub struct KillerCage {
+    /// Cell indices in the cage.
+    pub cells: Vec<usize>,
+    /// Required sum of the digits in the cage.
+    pub sum: u16,
+}
+
+/// Versioned givens and rules for a 9 Ã— 9 Sudoku puzzle.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(deny_unknown_fields)
+)]
+pub struct VariantPuzzle {
+    /// Structured format version.
+    pub version: u32,
+    /// Fixed digits in row-major order.
+    #[cfg_attr(feature = "wasm-api", serde(with = "wire::grid"))]
+    pub givens: Board,
+    /// Boxes or replacement regions.
+    #[cfg_attr(feature = "wasm-api", serde(default))]
+    pub regions: RegionLayout,
+    /// Additional rules enforced together.
+    #[cfg_attr(feature = "wasm-api", serde(default))]
+    pub rules: Vec<PuzzleRule>,
+}
+
+impl VariantPuzzle {
+    /// The structured equivalent of an 81-character classic puzzle.
+    pub fn classic(givens: Board) -> Self {
+        Self {
+            version: VARIANT_FORMAT_VERSION,
+            givens,
+            regions: RegionLayout::Boxes,
+            rules: Vec::new(),
+        }
+    }
+
+    /// Classic boxes with both long diagonals as additional houses.
+    pub fn x_sudoku(givens: Board) -> Self {
+        Self {
+            rules: [Diagonal::Main, Diagonal::Anti]
+                .map(|diagonal| PuzzleRule::Diagonal { diagonal })
+                .to_vec(),
+            ..Self::classic(givens)
+        }
+    }
+
+    /// Replace the classic boxes with irregular regions.
+    pub fn jigsaw(givens: Board, regions: Vec<Vec<usize>>) -> Self {
+        Self {
+            regions: RegionLayout::Jigsaw { regions },
+            ..Self::classic(givens)
+        }
+    }
+
+    /// Classic boxes and Killer cages that cover the grid.
+    pub fn killer(givens: Board, cages: Vec<KillerCage>) -> Self {
+        Self {
+            rules: vec![PuzzleRule::KillerCages {
+                cages,
+                cover_grid: true,
+            }],
+            ..Self::classic(givens)
+        }
+    }
+
+    /// Classic boxes and the four inner Windoku houses.
+    pub fn windoku(givens: Board) -> Self {
+        let mut puzzle = Self::classic(givens);
+        for top in [1, 5] {
+            for left in [1, 5] {
+                let cells = (0..9).map(|i| (top + i / 3) * 9 + left + i % 3).collect();
+                puzzle.rules.push(PuzzleRule::ExtraHouse { cells });
+            }
+        }
+        puzzle
+    }
+
+    /// Classic boxes and nine houses with one corresponding cell from each box.
+    pub fn disjoint_groups(givens: Board) -> Self {
+        let rules = (0..9)
+            .map(|offset| PuzzleRule::ExtraHouse {
+                cells: (0..9)
+                    .map(|group| group / 3 * 27 + group % 3 * 3 + offset / 3 * 9 + offset % 3)
+                    .collect(),
+            })
+            .collect();
+        Self {
+            rules,
+            ..Self::classic(givens)
+        }
+    }
+
+    /// Classic boxes with Anti-Knight, Anti-King, and orthogonal Non-Consecutive rules.
+    pub fn miracle(givens: Board) -> Self {
+        Self {
+            rules: vec![
+                PuzzleRule::AntiKnight {},
+                PuzzleRule::AntiKing {},
+                PuzzleRule::NonConsecutive { except: vec![] },
+            ],
+            ..Self::classic(givens)
+        }
+    }
+}
+
+/// A versioned puzzle with placed digits and established candidate removals.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(deny_unknown_fields)
+)]
+pub struct VariantPosition {
+    /// The puzzle and rules for this position.
+    pub puzzle: VariantPuzzle,
+    /// Digits placed since the start.
+    #[cfg_attr(
+        feature = "wasm-api",
+        serde(default = "wire::empty_grid", with = "wire::grid")
+    )]
+    pub entries: Board,
+    /// Candidate removals, with bit 0 for digit 1 through bit 8 for digit 9.
+    #[cfg_attr(
+        feature = "wasm-api",
+        serde(default = "wire::empty_masks", with = "wire::masks")
+    )]
+    pub eliminations: [u16; CELLS],
+    /// Cell shades: 0 unknown, 1 unshaded, and 2 shaded.
+    #[cfg_attr(
+        feature = "wasm-api",
+        serde(default = "wire::empty_grid", with = "wire::shades")
+    )]
+    pub shades: Board,
+}
+
+impl VariantPosition {
+    /// Start from the givens with no placed digits or candidate removals.
+    pub fn new(puzzle: VariantPuzzle) -> Self {
+        Self {
+            puzzle,
+            entries: [0; CELLS],
+            eliminations: [0; CELLS],
+            shades: [0; CELLS],
+        }
+    }
+
+    fn record_actions(&mut self, actions: &[crate::HintAction]) {
+        crate::position::record_actions(&mut self.entries, &mut self.eliminations, actions);
+    }
+}
+
+/// Identity of a house in the compiled rule set.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Serialize),
+    serde(rename_all = "kebab-case")
+)]
+pub enum VariantHouseKind {
+    /// Row index.
+    Row(usize),
+    /// Column index.
+    Column(usize),
+    /// Standard box or irregular region index.
+    Region(usize),
+    /// A declared diagonal.
+    Diagonal(Diagonal),
+    /// The index of the rule that defines this house.
+    Extra(usize),
+}
+
+/// A compiled house with nine cells that must contain distinct digits.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VariantHouse {
+    /// Identity of the house within the rule set.
+    pub kind: VariantHouseKind,
+    /// Cell indices in the house.
+    pub cells: [usize; 9],
+}
+
+/// Invalid configuration of the versioned puzzle definition.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum VariantDefinitionError {
+    /// This compiler does not support the format version.
+    UnsupportedVersion(u32),
+    /// A given digit exceeds 9 at the supplied cell index.
+    InvalidGiven(usize),
+    /// The Jigsaw layout is missing regions or has extra regions.
+    InvalidRegionCount,
+    /// A house has the wrong size, repeats a cell, or references a cell outside the grid.
+    InvalidHouse(VariantHouseKind),
+    /// One of the marked regions in a partial layout contains disconnected cells.
+    DisconnectedRegion(usize),
+    /// Two irregular regions share a cell.
+    OverlappingRegion(usize),
+    /// A cage contains invalid or repeated cells, or has an invalid size.
+    InvalidCage(usize),
+    /// A cage overlaps another cage.
+    OverlappingCage(usize),
+    /// No distinct digits can satisfy the cage sum for its size.
+    InvalidCageSum(usize),
+    /// A rule requires a cage in every cell, but its cages leave gaps.
+    IncompleteCages,
+    /// A rule has invalid, repeated, or insufficient cell references or an invalid parameter.
+    InvalidRule(usize),
+}
+
+/// Validated topology and rule data reusable across positions of one puzzle.
+#[derive(Clone, Debug)]
+pub struct CompiledVariant {
+    givens: Board,
+    classic_boxes: bool,
+    houses: Vec<VariantHouse>,
+    house_masks: Vec<u128>,
+    search_houses: Vec<usize>,
+    memberships: [Vec<usize>; CELLS],
+    peers: [u128; CELLS],
+    search_degree: [u16; CELLS],
+    cages: Vec<CompiledCage>,
+    cage_house_sums: OnceLock<Vec<CageHouseSum>>,
+    rule_proofs: OnceLock<logical::RuleProofIndex>,
+    allowed_digits: [u16; CELLS],
+    pairs: Vec<PairConstraint>,
+    lines: Vec<LineConstraint>,
+    modular_sums: Vec<ModularSum>,
+    group_sum_houses: Vec<GroupSumHouse>,
+    group_sum_phases: Vec<GroupSumPhase>,
+    disjoint_group_sums: Vec<DisjointGroupSum>,
+    group_sum_chains: Vec<GroupSumChain>,
+    quadruples: Vec<Quadruple>,
+    lettered_quadruples: Option<LetteredQuadruples>,
+    neighbor_matches: Vec<CompiledNeighborMatch>,
+    conditional_neighbors: Vec<CompiledConditionalNeighbor>,
+    magic_squares: Vec<CompiledMagicSquare>,
+    unknown_cage_sums: Vec<CompiledUnknownCageSums>,
+    global_entropy: Option<usize>,
+    global_entropy_groups: [u16; 3],
+    entropy_window_groups: Vec<(usize, [usize; 4], EntropyGroup)>,
+    aqre_rules: Vec<AqreConstraint>,
+    pair_clues: Vec<PairClue>,
+    positive_sums: Vec<PositiveSum>,
+    pair_clue_memberships: [Vec<usize>; CELLS],
+    parity_clues: Vec<ParityClue>,
+    digit_restriction_clues: Vec<DigitRestrictionClue>,
+    extra_rule_cells: u128,
+    kropki_marks: std::ops::Range<usize>,
+}
+
+impl CompiledVariant {
+    fn shared_enforced_house(&self, first: usize, others: &[usize]) -> Option<VariantHouseKind> {
+        let cells = others.iter().fold(0, |mask, &cell| mask | (1u128 << cell));
+        self.memberships[first]
+            .iter()
+            .find(|&&index| {
+                self.house_masks[index] & cells == cells
+                    && self.search_houses.binary_search(&index).is_ok()
+            })
+            .map(|&index| self.houses[index].kind)
+    }
+
+    fn are_primary_peers(&self, first: usize, second: usize, enforce_regions: bool) -> bool {
+        first != second
+            && (first / 9 == second / 9
+                || first % 9 == second % 9
+                || enforce_regions
+                    && self
+                        .primary_region(first)
+                        .is_some_and(|region| self.primary_region(second) == Some(region)))
+    }
+
+    fn primary_region(&self, cell: usize) -> Option<usize> {
+        let &house = self.memberships[cell].get(2)?;
+        if let VariantHouseKind::Region(region) = self.houses[house].kind {
+            Some(region)
+        } else {
+            None
+        }
+    }
+
+    /// Original givens of the compiled puzzle.
+    pub fn givens(&self) -> &Board {
+        &self.givens
+    }
+
+    /// Houses in stable order, with rows, columns, and regions followed by extra houses.
+    pub fn houses(&self) -> &[VariantHouse] {
+        &self.houses
+    }
+
+    /// Indices into `houses()` of the houses containing the cell.
+    pub fn houses_at(&self, cell: usize) -> Option<&[usize]> {
+        self.memberships.get(cell).map(Vec::as_slice)
+    }
+
+    /// Common cells of two houses. An invalid house index returns `None`.
+    pub fn intersection(&self, first: usize, second: usize) -> Option<impl Iterator<Item = usize>> {
+        Some(cells_in(
+            *self.house_masks.get(first)? & *self.house_masks.get(second)?,
+        ))
+    }
+
+    /// Cells that cannot share a digit with this cell, including cage peers.
+    pub fn peers(&self, cell: usize) -> Option<impl Iterator<Item = usize>> {
+        self.peers.get(cell).copied().map(cells_in)
+    }
+}
+
+// Drawing geometry must name exactly the logical cells. Repeated visits do not
+// add a second occurrence of a digit to a set or a mirrored line.
+fn drawing_paths_cover(cells: &[usize], segments: &Option<Vec<Vec<usize>>>) -> bool {
+    let Some(segments) = segments else {
+        return true;
+    };
+    !segments.is_empty()
+        && segments
+            .iter()
+            .all(|path| !path.is_empty() && path.iter().all(|&cell| cell < CELLS))
+        && Some(
+            segments
+                .iter()
+                .flatten()
+                .fold(0u128, |mask, &cell| mask | (1 << cell)),
+        ) == cell_mask(cells)
+}
+
+pub(crate) fn cell_mask(cells: &[usize]) -> Option<u128> {
+    cells.iter().try_fold(0, |mask, &cell| {
+        if cell >= CELLS {
+            return None;
+        }
+        let bit = 1 << cell;
+        (mask & bit == 0).then_some(mask | bit)
+    })
+}
+
+fn cells_in(mut mask: u128) -> impl Iterator<Item = usize> {
+    std::iter::from_fn(move || {
+        if mask == 0 {
+            return None;
+        }
+        let cell = mask.trailing_zeros() as usize;
+        mask &= mask - 1;
+        Some(cell)
+    })
+}
+
+fn digit_sum(mask: u16) -> u16 {
+    crate::hints::digits(mask).map(u16::from).sum()
+}

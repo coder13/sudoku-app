@@ -1,139 +1,465 @@
-YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éíãM5N‹Z–‹­¦ëeŠw¬Ô¼¼„Y…±¥‘…Ñ”ÁÕéé±”‘•™¥¹¥Ñ¥½¹Ì…¹½µÁ¥±”Í¡…É•Ñ½Á½±½ä…¹ÉÕ±”‘…Ñ„¸()ÕÍ”ÍÑèéÍå¹Œèé=¹•1½¬ì()ÕÍ”ÍÕÁ•Èèéì(€€€ÅÉ•½¹ÍÑÉ…¥¹Ğ°½µÁ¥±•‘½¹‘¥Ñ¥½¹…±9•¥¡‰½È°½µÁ¥±•‘5…¥MÅÕ…É”°½µÁ¥±•‘9•¥¡‰½É5…Ñ °½µÁ¥±•‘U¹­¹½İ¹…•MÕµÌ°(€€€½µÁ¥±•‘Y…É¥…¹Ğ°1•ÑÑ•É•‘EÕ…‘ÉÕÁ±•Ì°1¥¹•½¹ÍÑÉ…¥¹Ğ°AÕéé±•IÕ±”°EÕ…‘ÉÕÁ±”°I•¥½¹1…å½ÕĞ°(€€€YI%9Q}=I5Q}YIM%=8°Y…É¥…¹Ñ•™¥¹¥Ñ¥½¹ÉÉ½È°Y…É¥…¹Ñ!½ÕÍ”°Y…É¥…¹Ñ!½ÕÍ•-¥¹°Y…É¥…¹ÑAÕéé±”°(€€€•±±}µ…Í¬°•±±Í}¥¸°(€€€±¥¹•Ìèé½µÁ¥±•}±¥¹•}ÍÕµÌ°(€€€Á…¥ÉÌèéíA…¥É½µÁ¥±•È°Á½Í¥Ñ¥Ù•}ÍÕµÍô°)ôì)ÕÍ”É…Ñ”èéí11L°%%QMôì()¥µÁ°Y…É¥…¹ÑAÕéé±”ì(€€€€¼¼¼Y…±¥‘…Ñ”Ñ¡”‘•™¥¹¥Ñ¥½¸…¹ÁÉ•½µÁÕÑ”Ñ¡”Ñ½Á½±½ä…¹½¹ÍÑÉ…¥¹Ğ‘…Ñ„¸(€€€€¼¼¼(€€€€¼¼¼Q¡”½µÁ¥±•ÁÕéé±”…¸…¹…±åé”µÕ±Ñ¥Á±”Á½Í¥Ñ¥½¹Ìİ¥Ñ Ñ¡”Í…µ”¥Ù•¹Ì…¹ÉÕ±•Ì¸(€€€ÁÕˆ™¸½µÁ¥±” ™Í•±˜¤€´øI•ÍÕ±Ğñ½µÁ¥±•‘Y…É¥…¹Ğ°Y…É¥…¹Ñ•™¥¹¥Ñ¥½¹ÉÉ½Èøì(€€€€€€€Í•±˜¹½µÁ¥±•}İ¥Ñ¡}É•¥½¹Ì¡ÑÉÕ”¤(€€€ô((€€€ÁÕˆ¡ÍÕÁ•È¤™¸½µÁ¥±•}İ¥Ñ¡}É•¥½¹Ì (€€€€€€€€™Í•±˜°(€€€€€€€•¹™½É•}É•¥½¹Ìè‰½½°°(€€€€¤€´øI•ÍÕ±Ğñ½µÁ¥±•‘Y…É¥…¹Ğ°Y…É¥…¹Ñ•™¥¹¥Ñ¥½¹ÉÉ½Èøì(€€€€€€€Í•±˜¹½µÁ¥±•}İ¥Ñ¡}áÙ}•á•µÁÑ¥½¹Ì¡•¹™½É•}É•¥½¹Ì°€™mt¤(€€€ô((€€€€¼¼‘•Á•¹‘•¹ä¡•¬É•µ½Ù•Ìµ…Ñ¡•µ…Ñ¥…°½¹ÍÑÉ…¥¹ÑÌ°¹½ĞÑ¡”Ù¥Í¥‰±”(€€€€¼¼±½…Ñ¥½¹Ì½˜X½`µ…É­ÌÑ¡…Ğ•á•µÁĞ•‘•Ì™É½´„¹•…Ñ¥Ù”ÉÕ±”¸(€€€ÁÕˆ¡ÍÕÁ•È¤™¸½µÁ¥±•}İ¥Ñ¡}áÙ}•á•µÁÑ¥½¹Ì (€€€€€€€€™Í•±˜°(€€€€€€€•¹™½É•}É•¥½¹Ìè‰½½°°(€€€€€€€•á•µÁÑ¥½¹Ìè€™mmÕÍ¥é”ì€Éut°(€€€€¤€´øI•ÍÕ±Ğñ½µÁ¥±•‘Y…É¥…¹Ğ°Y…É¥…¹Ñ•™¥¹¥Ñ¥½¹ÉÉ½Èøì(€€€€€€€¥˜Í•±˜¹Ù•ÉÍ¥½¸€„ôYI%9Q}=I5Q}YIM%=8ì(€€€€€€€€€€€É•ÑÕÉ¸ÉÈ¡Y…É¥…¹Ñ•™¥¹¥Ñ¥½¹ÉÉ½ÈèéU¹ÍÕÁÁ½ÉÑ•‘Y•ÉÍ¥½¸¡Í•±˜¹Ù•ÉÍ¥½¸¤¤ì(€€€€€€€ô(€€€€€€€¥˜±•ĞM½µ”¡•±°¤€ôÍ•±˜¹¥Ù•¹Ì¹¥Ñ•È ¤¹Á½Í¥Ñ¥½¸¡ğ™‘¥¥Ñğ‘¥¥Ğ€ø€ä¤ì(€€€€€€€€€€€É•ÑÕÉ¸ÉÈ¡Y…É¥…¹Ñ•™¥¹¥Ñ¥½¹ÉÉ½Èèé%¹Ù…±¥‘¥Ù•¸¡•±°¤¤ì(€€€€€€€ô((€€€€€€€±•ĞµÕĞ½µÁ¥±•€ô½µÁ¥±•‘Y…É¥…¹Ğì(€€€€€€€€€€€¥Ù•¹ÌèÍ•±˜¹¥Ù•¹Ì°(€€€€€€€€€€€±…ÍÍ¥}‰½á•Ìèµ…Ñ¡•Ì„¡Í•±˜¹É•¥½¹Ì°I•¥½¹1…å½ÕĞèé	½á•Ì¤°(€€€€€€€€€€€¡½ÕÍ•ÌèY•Œèé¹•Ü ¤°(€€€€€€€€€€€¡½ÕÍ•}µ…Í­ÌèY•Œèé¹•Ü ¤°(€€€€€€€€€€€Í•…É¡}¡½ÕÍ•ÌèY•Œèé¹•Ü ¤°(€€€€€€€€€€€µ•µ‰•ÉÍ¡¥ÁÌèÍÑèé…ÉÉ…äèé™É½µ}™¸¡ñ}ğY•Œèé¹•Ü ¤¤°(€€€€€€€€€€€Á••ÉÌèlÀì11Mt°(€€€€€€€€€€€Í•…É¡}‘•É•”èlÀì11Mt°(€€€€€€€€€€€…•ÌèY•Œèé¹•Ü ¤°(€€€€€€€€€€€…•}¡½ÕÍ•}ÍÕµÌè=¹•1½¬èé¹•Ü ¤°(€€€€€€€€€€€ÉÕ±•}ÁÉ½½™Ìè=¹•1½¬èé¹•Ü ¤°(€€€€€€€€€€€…±±½İ•‘}‘¥¥ÑÌèm%%QLì11Mt°(€€€€€€€€€€€Á…¥ÉÌèY•Œèé¹•Ü ¤°(€€€€€€€€€€€±¥¹•ÌèY•Œèé¹•Ü ¤°(€€€€€€€€€€€µ½‘Õ±…É}ÍÕµÌèY•Œèé¹•Ü ¤°(€€€€€€€€€€€É½ÕÁ}ÍÕµ}¡½ÕÍ•ÌèY•Œèé¹•Ü ¤°(€€€€€€€€€€€É½ÕÁ}ÍÕµ}Á¡…Í•ÌèY•Œèé¹•Ü ¤°(€€€€€€€€€€€‘¥Í©½¥¹Ñ}É½ÕÁ}ÍÕµÌèY•Œèé¹•Ü ¤°(€€€€€€€€€€€É½ÕÁ}ÍÕµ}¡…¥¹ÌèY•Œèé¹•Ü ¤°(€€€€€€€€€€€ÅÕ…‘ÉÕÁ±•ÌèY•Œèé¹•Ü ¤°(€€€€€€€€€€€±•ÑÑ•É•‘}ÅÕ…‘ÉÕÁ±•Ìè9½¹”°(€€€€€€€€€€€¹•¥¡‰½É}µ…Ñ¡•ÌèY•Œèé¹•Ü ¤°(€€€€€€€€€€€½¹‘¥Ñ¥½¹…±}¹•¥¡‰½ÉÌèY•Œèé¹•Ü ¤°(€€€€€€€€€€€µ…¥}ÍÅÕ…É•ÌèY•Œèé¹•Ü ¤°(€€€€€€€€€€€Õ¹­¹½İ¹}…•}ÍÕµÌèY•Œèé¹•Ü ¤°(€€€€€€€€€€€±½‰…±}•¹ÑÉ½Áäè9½¹”°(€€€€€€€€€€€±½‰…±}•¹ÑÉ½Áå}É½ÕÁÌèlÁˆÀÀÀÀÀÀÄÄÄ°€ÁˆÀÀÀÄÄÄÀÀÀ°€ÁˆÄÄÄÀÀÀÀÀÁt°(€€€€€€€€€€€•¹ÑÉ½Áå}İ¥¹‘½İ}É½ÕÁÌèY•Œèé¹•Ü ¤°(€€€€€€€€€€€…ÅÉ•}ÉÕ±•ÌèY•Œèé¹•Ü ¤°(€€€€€€€€€€€Á…¥É}±Õ•ÌèY•Œèé¹•Ü ¤°(€€€€€€€€€€€Á½Í¥Ñ¥Ù•}ÍÕµÌèY•Œèé¹•Ü ¤°(€€€€€€€€€€€Á…¥É}±Õ•}µ•µ‰•ÉÍ¡¥ÁÌèÍÑèé…ÉÉ…äèé™É½µ}™¸¡ñ}ğY•Œèé¹•Ü ¤¤°(€€€€€€€€€€€Á…É¥Ñå}±Õ•ÌèY•Œèé¹•Ü ¤°(€€€€€€€€€€€‘¥¥Ñ}É•ÍÑÉ¥Ñ¥½¹}±Õ•ÌèY•Œèé¹•Ü ¤°(€€€€€€€€€€€•áÑÉ…}ÉÕ±•}•±±Ìè€À°(€€€€€€€€€€€­É½Á­¥}µ…É­Ìè€À¸¸À°(€€€€€€€ôì((€€€€€€€™½È¤¥¸€À¸¸äì(€€€€€€€€€€€½µÁ¥±•¹…‘‘}¡½ÕÍ” (€€€€€€€€€€€€€€€Y…É¥…¹Ñ!½ÕÍ•-¥¹èéI½Ü¡¤¤°(€€€€€€€€€€€€€€€ÍÑèé…ÉÉ…äèé™É½µ}™¸¡ñ½±Õµ¹ğ€ä€¨¤€¬½±Õµ¸¤°(€€€€€€€€€€€€¤üì(€€€€€€€ô(€€€€€€€™½È¤¥¸€À¸¸äì(€€€€€€€€€€€½µÁ¥±•¹…‘‘}¡½ÕÍ” (€€€€€€€€€€€€€€€Y…É¥…¹Ñ!½ÕÍ•-¥¹èé½±Õµ¸¡¤¤°(€€€€€€€€€€€€€€€ÍÑèé…ÉÉ…äèé™É½µ}™¸¡ñÉ½İğ€ä€¨É½Ü€¬¤¤°(€€€€€€€€€€€€¤üì(€€€€€€€ô(€€€€€€€½µÁ¥±•¹…‘‘}É•¥½¹Ì ™Í•±˜¹É•¥½¹Ì¤üì(€€€€€€€±•ĞÁÉ¥µ…Éå}¡½ÕÍ•}½Õ¹Ğ€ô½µÁ¥±•¹¡½ÕÍ•Ì¹±•¸ ¤ì(€€€€€€€¥˜€…•¹™½É•}É•¥½¹Ìì(€€€€€€€€€€€€¼¼-••ÀÑ¡”É•¥½¸•½µ•ÑÉä™½ÈI•¥½¸MÕ´±¥¹•Ì…¹É•µ½Ù”½¹±ä(€€€€€€€€€€€€¼¼Ñ¡”…±°µ‘¥™™•É•¹ĞÉÕ±”°™½ÈÕ¹¥ÅÕ•¹•ÍÌ½µÁ…É¥Í½¹Ì¥¸•¹•É…Ñ¥½¸¸(€€€€€€€€€€€½µÁ¥±•¹Á••ÉÌ€ôlÀì11Mtì(€€€€€€€€€€€™½È¤¥¸€À¸¸Äàì(€€€€€€€€€€€€€€€½µÁ¥±•¹…‘‘}Á••ÉÌ¡½µÁ¥±•¹¡½ÕÍ•}µ…Í­Ím¥t¤ì(€€€€€€€€€€€ô(€€€€€€€ô(€€€€€€€±•ĞµÕĞ½ÕÁ¥•‘}…•Ì€ô€Àì(€€€€€€€±•ĞµÕĞÁ…¥ÉÌ€ôA…¥É½µÁ¥±•Èèé‘•™…Õ±Ğ ¤ì(€€€€€€€Á…¥ÉÌ¹•á•µÁÑ}áÙ}•‘•Ì¡•á•µÁÑ¥½¹Ì¤ì(€€€€€€€™½È€¡¥¹‘•à°ÉÕ±”¤¥¸Í•±˜¹ÉÕ±•Ì¹¥Ñ•È ¤¹•¹Õµ•É…Ñ” ¤ì(€€€€€€€€€€€µ…Ñ ÉÕ±”ì(€€€€€€€€€€€€€€€AÕéé±•IÕ±”èé¥…½¹…°ì‘¥…½¹…°ô€ôøì(€€€€€€€€€€€€€€€€€€€½µÁ¥±•¹…‘‘}¡½ÕÍ”¡Y…É¥…¹Ñ!½ÕÍ•-¥¹èé¥…½¹…° ©‘¥…½¹…°¤°‘¥…½¹…°¹•±±Ì ¤¤üì(€€€€€€€€€€€€€ƒ]4ÖÚ$z{-®éÜj×UÚ[™İÑÜ›İ\ÈÙ[ËÜ›İ\HOˆÂˆ]İÜÛYÜÜšYÚ›İÛWÛY›İÛWÜšYÚHH
-˜Ù[ÎÂˆYˆÜÛYHÌ‚ˆÜÛY	HHHˆÜÜšYÚOHÜÛY
-ÈBˆ›İÛWÛYOHÜÛY
-ÈBˆ›İÛWÜšYÚOHÜÛY
-ÈLˆÂˆ™]\›ˆ\œŠ˜\šX[Yš[š][Û‘\œ›Ü’[˜[Y[J[™^
-JNÂˆBˆÛÛ\[Y™[›ÜWİÚ[™İ×ÙÜ›İ\Ëœ\Ú
+//! Validate puzzle definitions and compile shared topology and rule data.
 
-[™^
-˜Ù[Ë
-™Ü›İ\
-JNÂˆBˆ^›T[N‘YÚ]Ü™\ˆÈ‹ˆH^›T[N‘›Ü˜šY[‘[›ÜXĞÛÛ›™Xİ[ÛˆÈ‹ˆHOˆÂˆ][™HBˆ[™PÛÛœİ˜Z[˜ÛÛ\[J	›]]ÛÛ\[Y[™^[K[™›Ü˜ÙWÜ™YÚ[ÛœÊOÎÂˆÛÛ\[Y›[™\Ëœ\Ú
-[™JNÂˆBˆ^›T[N\\™HÂˆÚ[™ˆ™YÚ[ÛœËˆÚ]™[—ÜÚY\ËˆHOˆÂˆYˆÛÛ\[Y˜\\™WÜ[\Ë›[Š
-HˆÂˆ™]\›ˆ\œŠ˜\šX[Yš[š][Û‘\œ›Ü’[˜[Y[J[™^
-JNÂˆBˆ]\\™HH\\™PÛÛœİ˜Z[˜ÛÛ\[J
-šÚ[™™YÚ[ÛœËÚ]™[—ÜÚY\ÊBˆ›X\Ù\œŠß˜\šX[Yš[š][Û‘\œ›Ü’[˜[Y[J[™^
-JOÎÂˆÛÛ\[Y˜\\™WÜ[\Ëœ\Ú
-\\™JNÂˆBˆ^›T[N”]XY\HÈÜÛYYÚ]ÈBˆ^›T[N”]XY\Tİ[HÈÜÛYYÚ]ÈHOˆÂˆ]\×Üİ[HHX]Ú\ÈJ[K^›T[N”]XY\Tİ[HÈ‹ˆJNÂˆ]ÛYHH]XY\N˜ÛÛ\[Jˆ	˜ÛÛ\[Yˆ[™^ˆ
-ÜÛYˆYÚ]Ëˆ\×Üİ[Kˆ[™›Ü˜ÙWÜ™YÚ[ÛœËˆ
-OÎÂˆÛÛ\[Yœ]XY\\Ëœ\Ú
-ÛYJNÂˆBˆ^›T[N“]\™Y]XY\\ÈÈÛY\ÈHOˆÂˆYˆÛÛ\[Y›]\™YÜ]XY\\Ëš\×ÜÛÛYJ
-HÂˆ™]\›ˆ\œŠ˜\šX[Yš[š][Û‘\œ›Ü’[˜[Y[J[™^
-JNÂˆBˆÛÛ\[Y›]\™YÜ]XY\\ÈHÛÛYJ]\™Y]XY\\Î˜ÛÛ\[JˆÙ[‹ˆ[™^ˆÛY\Ëˆ[™›Ü˜ÙWÜ™YÚ[ÛœËˆ
-OÊNÂˆBˆ^›T[N“™ZYÚ›Ü“X]ÚÈÛY\ÈHOˆÂˆÛÛ\[Yˆ›™ZYÚ›Ü—ÛX]Ú\Âˆ™^[™
-ÛÛ\[Y™ZYÚ›Ü“X]Ú˜ÛÛ\[J[™^ÛY\ÊOÊNÂˆBˆ^›T[NÛÛ™][Û˜[™ZYÚ›ÜˆÈšYÙÙ\—ÙYÚ][\›˜]]™\ÈHOˆÂˆÛÛ\[Y˜ÛÛ™][Û˜[Û™ZYÚ›ÜœË™^[™
-ÛÛ\[YÛÛ™][Û˜[™ZYÚ›Ü˜ÛÛ\[Jˆ[™^
-šYÙÙ\—ÙYÚ][\›˜]]™\Ëˆ
-OÊNÂˆBˆ^›T[N“XYÚXÔÜ]X\™HÈÙ[ÈHOˆÂˆÛÛ\[Yˆ›XYÚX×ÜÜ]X\™\Âˆœ\Ú
-ÛÛ\[YXYÚXÔÜ]X\™N˜ÛÛ\[J[™^Ù[ÊOÊNÂˆBˆ^›T[N•[šÛ›İÛØYÙTİ[\ÈÂˆØYÙ\ËˆÛÛœÙXİ]]™WÜZ\œËˆHOˆÂˆÛÛ\[Yˆ[šÛ›İÛ—ØØYÙWÜİ[\Âˆœ\Ú
-ÛÛ\[Y[šÛ›İÛØYÙTİ[\Î˜ÛÛ\[Jˆ[™^ˆØYÙ\ËˆÛÛœÙXİ]]™WÜZ\œËˆ	›]]ØØİ\YYØØYÙ\Ëˆ
-OÊNÂˆBˆ^›T[N\œ›İÈÈ‹ˆBˆ^›T[N”[\œ›İÈÈ‹ˆBˆ^›T[N”™[˜˜[ˆÈ‹ˆBˆ^›T[NÛÛœÙXİ]]™T[ˆÈ‹ˆBˆ^›T[N‘\İ[˜İÙ[ÈÈ‹ˆBˆ^›T[N’[œÚYQÜšYÈ‹ˆBˆ^›T[N‘[›ÜXÈÈ‹ˆBˆ^›T[N“[Ù[\ˆÈ‹ˆBˆ^›T[N™]ÙY[ˆÈ‹ˆBˆ^›T[N“ØÚÛİ]È‹ˆBˆ^›T[N”™YÚ[Û”İ[HÈ‹ˆBˆ^›T[N”Ø[™ÚXÚÈ‹ˆBˆ^›T[N•\œ˜Z[”Ø[™ÚXÚÈ‹ˆBˆ^›T[N“]RÚ[\ˆÈ‹ˆBˆ^›T[N–İ[HÈ‹ˆBˆ^›T[N”ÚŞ\ØÜ˜\\œÈÈ‹ˆHOˆÂˆ][™HBˆ[™PÛÛœİ˜Z[˜ÛÛ\[J	›]]ÛÛ\[Y[™^[K[™›Ü˜ÙWÜ™YÚ[ÛœÊOÎÂˆÛÛ\[Y›[™\Ëœ\Ú
-[™JNÂˆBˆ^›T[N”\š]HÈ‹ˆBˆ^›T[N‘YÚ]™\İšXİ[ÛˆÈ‹ˆBˆ^›T[NÛÛ™HÈ‹ˆBˆ^›T[N[RÛšYÚßBˆ^›T[N[RÚ[™ÈßBˆ^›T[N“›ÛÛÛœÙXİ]]™HÈ‹ˆBˆ^›T[N‘\İ[™ZYÚ›ÜœÈÈ‹ˆBˆ^›T[N’[™\]X[]HÈ‹ˆBˆ^›T[N“Z[š[][HÈ‹ˆBˆ^›T[N“X^[][HÈ‹ˆBˆ^›T[N’Ü›ÜÚHÈ‹ˆBˆ^›T[N“X™[YİÈÈ‹ˆBˆ^›T[N–ˆÈ‹ˆBˆ^›T[NY˜XÙ[İ[È‹ˆBˆ^›T[N•\›[ÛY]\ˆÈ‹ˆBˆ^›T[N”[[™›ÛYHÈ‹ˆBˆ^›T[N•Ú\Ü\œÈÈ‹ˆHOˆÂˆZ\œË˜ÛÛ\[WÜ[J	›]]ÛÛ\[Y[™^[JOÎÂˆBˆBˆBˆZ\œË™š[š\Ú
-	›]]ÛÛ\[Y
-NÂˆ›ÜˆÜ]X\™H[ˆ	›]]ÛÛ\[Y›XYÚX×ÜÜ]X\™\ÈÂˆÜ]X\™K\ÙWÛ›Ü›X[Ü]\›œ×İÚ[—Ø[Ù\İ[˜İ
-	˜ÛÛ\[YœY\œÊNÂˆBˆËÈ™YÚ[ÛˆÙ[ÛY]HØ[ˆ™[XZ[ˆ]˜Z[X›H›Üˆİ[H[™\ÈY\ˆHÙ[™\˜][Û‚ˆËÈ\[™[˜ŞHÚXÚÈ™[[İ™\È]È\İ[˜İ™\ÜÈ[Kˆ›ÜYØ]HÛ›Hİ\Ù\ÂˆËÈÚÜÙHÙ[È\™HXİX[HZ\Ú\ÙH^ÛYYHHÛÛ\[YÜÛÙŞK‚ˆÛÛ\[YœÙX\˜ÚÚİ\Ù\ÈHÛÛ\[Yˆšİ\ÙWÛX\ÚÜÂˆš]\Š
-Bˆ™[[Y\˜]J
-Bˆ™š[\—ÛX\
-
-[™^	›X\ÚÊ_ÂˆÙ[×Ú[ŠX\ÚÊBˆ˜[
-Ù[Âˆ]İ\œÈHX\ÚÈ	ˆJ]LLÙ[
-NÂˆÛÛ\[YœY\œÖØÙ[H	ˆİ\œÈOHİ\œÂˆJBˆ[—ÜÛÛYJ[™^
-BˆJBˆ˜ÛÛXİ
+use std::sync::OnceLock;
 
-NÂˆÛÛ\[YœÜÚ]]™WÜİ[\ÈHÜÚ]]™WÜİ[\Ê	œÙ[‹œ[\ÊNÂˆÛÛ\[WÛ[™WÜİ[\Ê	›]]ÛÛ\[Y
-NÂˆ›Üˆ[™H[ˆ	˜ÛÛ\[Y›[™\ÈÂˆ]]]ÙY[ˆHLLÂˆ›Üˆ	˜Ù[[ˆ	›[™K˜Ù[ÈÂˆ]š]H]LLÙ[ÂˆYˆÙY[ˆ	ˆš]OHÂˆÛÛ\[YœÙX\˜ÚÙYÜ™YVØÙ[H
-ÏHNÂˆÙY[ˆHš]ÂˆBˆBˆBˆÛÛ\[Y™^˜WÜ[WØÙ[ÈHÛÛ\[Yšİ\ÙWÛX\ÚÜÖÜš[X\WÚİ\ÙWØÛİ[‹—Bˆš]\Š
-Bˆ˜ÛÜYY
+use super::{
+    AqreConstraint, CompiledConditionalNeighbor, CompiledMagicSquare, CompiledNeighborMatch, CompiledUnknownCageSums,
+    CompiledVariant, LetteredQuadruples, LineConstraint, PuzzleRule, Quadruple, RegionLayout,
+    VARIANT_FORMAT_VERSION, VariantDefinitionError, VariantHouse, VariantHouseKind, VariantPuzzle,
+    cell_mask, cells_in,
+    lines::compile_line_sums,
+    pairs::{PairCompiler, positive_sums},
+};
+use crate::{CELLS, DIGITS};
 
-Bˆ˜ÚZ[ŠÛÛ\[Y˜ØYÙ\Ëš]\Š
-K›X\
-ØYÙ_ØYÙK›X\ÚÊJBˆ˜ÚZ[ŠˆÛÛ\[Yˆ›[™\Âˆš]\Š
-Bˆ›X\
-[™_Ù[ÛX\ÚÊ	›[™K˜Ù[ÊK[Ü˜\
+impl VariantPuzzle {
+    /// Validate the definition and precompute the topology and constraint data.
+    ///
+    /// The compiled puzzle can analyze multiple positions with the same givens and rules.
+    pub fn compile(&self) -> Result<CompiledVariant, VariantDefinitionError> {
+        self.compile_with_regions(true)
+    }
 
-JKˆ
-Bˆ˜ÚZ[ŠˆÛÛ\[YˆœZ\—ØÛY\Âˆš]\Š
-Bˆ›X\
-ÛY_Ù[ÛX\ÚÊ	˜ÛYK˜Ù[ÊK[Ü˜\
+    pub(super) fn compile_with_regions(
+        &self,
+        enforce_regions: bool,
+    ) -> Result<CompiledVariant, VariantDefinitionError> {
+        self.compile_with_xv_exemptions(enforce_regions, &[])
+    }
 
-JKˆ
-Bˆ˜ÚZ[ŠˆÛÛ\[Yˆœ]XY\\Âˆš]\Š
-Bˆ›X\
-ÛY_Ù[ÛX\ÚÊ	˜ÛYK˜Ù[ÊK[Ü˜\
+    // A dependency check removes mathematical constraints, not the visible
+    // locations of V/X marks that exempt edges from a negative rule.
+    pub(super) fn compile_with_xv_exemptions(
+        &self,
+        enforce_regions: bool,
+        exemptions: &[[usize; 2]],
+    ) -> Result<CompiledVariant, VariantDefinitionError> {
+        if self.version != VARIANT_FORMAT_VERSION {
+            return Err(VariantDefinitionError::UnsupportedVersion(self.version));
+        }
+        if let Some(cell) = self.givens.iter().position(|&digit| digit > 9) {
+            return Err(VariantDefinitionError::InvalidGiven(cell));
+        }
 
-JKˆ
-Bˆ˜ÚZ[ŠÛÛ\[Yœ\š]WØÛY\Ëš]\Š
-K›X\
-ÛY_]LLÛYK˜Ù[
-JBˆ˜ÚZ[ŠˆÛÛ\[Yˆ™YÚ]Ü™\İšXİ[Û—ØÛY\Âˆš]\Š
-Bˆ›X\
-ÛY_]LLÛYK˜Ù[
-Kˆ
-Bˆ˜ÚZ[ŠˆÛÛ\[Yˆ›™ZYÚ›Ü—ÛX]Ú\Âˆš]\Š
-Bˆ™›]ÛX\
-ÛY_ÛYK›™ZYÚ›ÜœËš]\Š
-K›X\
-	˜Ù[]LLÙ[
-JKˆ
-Bˆ˜ÚZ[ŠÛÛ\[Y˜ÛÛ™][Û˜[Û™ZYÚ›ÜœËš]\Š
-K™›]ÛX\
-ÛY_Âˆİš]\›Û˜ÙJÛYKœÛİ\˜ÙJBˆ˜ÚZ[ŠÛYK˜[\›˜]]™\Ëš]\Š
-K›X\
-	ŠÙ[Ê_Ù[
-JBˆ›X\
-Ù[]LLÙ[
-BˆJJBˆ™›Û
-Ù[ËØÛÜ_Ù[ÈØÛÜJNÂˆYˆÛÛ\[Y™ÛØ˜[Ù[›ÜKš\×ÜÛÛYJ
-BˆÛÛ\[Y›]\™YÜ]XY\\Ëš\×ÜÛÛYJ
-BˆXÛÛ\[Y˜\\™WÜ[\Ëš\×Ù[\J
-BˆÂˆÛÛ\[Y™^˜WÜ[WØÙ[ÈH
-]LLÑSÊHHNÂˆBˆÚÊÛÛ\[Y
-BˆBŸB‚š[\ÛÛ\[Y˜\šX[Âˆ›ˆYÜ™YÚ[ÛœÊ	›]]Ù[‹™YÚ[Ûœ×Û^[İ]ˆ	”™YÚ[Û“^[İ]
-HOˆ™\İ[
+        let mut compiled = CompiledVariant {
+            givens: self.givens,
+            classic_boxes: matches!(self.regions, RegionLayout::Boxes),
+            houses: Vec::new(),
+            house_masks: Vec::new(),
+            search_houses: Vec::new(),
+            memberships: std::array::from_fn(|_| Vec::new()),
+            peers: [0; CELLS],
+            search_degree: [0; CELLS],
+            cages: Vec::new(),
+            cage_house_sums: OnceLock::new(),
+            rule_proofs: OnceLock::new(),
+            allowed_digits: [DIGITS; CELLS],
+            pairs: Vec::new(),
+            lines: Vec::new(),
+            modular_sums: Vec::new(),
+            group_sum_houses: Vec::new(),
+            group_sum_phases: Vec::new(),
+            disjoint_group_sums: Vec::new(),
+            group_sum_chains: Vec::new(),
+            quadruples: Vec::new(),
+            lettered_quadruples: None,
+            neighbor_matches: Vec::new(),
+            conditional_neighbors: Vec::new(),
+            magic_squares: Vec::new(),
+            unknown_cage_sums: Vec::new(),
+            global_entropy: None,
+            global_entropy_groups: [0b000000111, 0b000111000, 0b111000000],
+            entropy_window_groups: Vec::new(),
+            aqre_rules: Vec::new(),
+            pair_clues: Vec::new(),
+            positive_sums: Vec::new(),
+            pair_clue_memberships: std::array::from_fn(|_| Vec::new()),
+            parity_clues: Vec::new(),
+            digit_restriction_clues: Vec::new(),
+            extra_rule_cells: 0,
+            kropki_marks: 0..0,
+        };
 
-K˜\šX[Yš[š][Û‘\œ›ÜˆÂˆX]Ú™YÚ[Ûœ×Û^[İ]Âˆ™YÚ[Û“^[İ]›Ş\ÈOˆÂˆ›ÜˆH[ˆ‹HÂˆÙ[‹˜YÚİ\ÙJˆ˜\šX[İ\ÙRÚ[™”™YÚ[ÛŠJKˆİ˜\œ˜^N™œ›ÛWÙ›ŠÙ™œÙ]ÂˆÈ
-ˆ
-HÈÊH
-ÈÈ
-ˆ
-H	HÊH
-ÈH
-ˆ
-Ù™œÙ]ÈÊH
-ÈÙ™œÙ]	HÂˆJKˆ
-OÎÂˆBˆBˆ™YÚ[Û“^[İ]’šYÜØ]ÈÈ™YÚ[ÛœÈH™YÚ[Û“^[İ]”\X[È™YÚ[ÛœÈHOˆÂˆYˆ™YÚ[ÛœË›[Š
-HˆBˆX]Ú\ÈJ™YÚ[Ûœ×Û^[İ]™YÚ[Û“^[İ]’šYÜØ]ÈÈ‹ˆJH	‰ˆ™YÚ[ÛœË›[Š
-HOHBˆÂˆ™]\›ˆ\œŠ˜\šX[Yš[š][Û‘\œ›Ü’[˜[Y™YÚ[ÛÛİ[
-NÂˆBˆ]]]Ûİ™\™YHÂˆ›Üˆ
-K™YÚ[ÛŠH[ˆ™YÚ[ÛœËš]\Š
-K™[[Y\˜]J
-HÂˆ]Ú[™H˜\šX[İ\ÙRÚ[™”™YÚ[ÛŠJNÂˆ]Ù[ÈH™YÚ[Û‚ˆ˜\×ÜÛXÙJ
-BˆWÚ[Ê
-Bˆ›X\Ù\œŠß˜\šX[Yš[š][Û‘\œ›Ü’[˜[Yİ\ÙJÚ[™
-JOÎÂˆ]X\ÚÈBˆÙ[ÛX\ÚÊ™YÚ[ÛŠK›Ú×ÛÜŠ˜\šX[Yš[š][Û‘\œ›Ü’[˜[Yİ\ÙJÚ[™
-JOÎÂˆYˆÛİ™\™Y	ˆX\ÚÈOHÂˆ™]\›ˆ\œŠ˜\šX[Yš[š][Û‘\œ›Ü“İ™\›\[™Ô™YÚ[ÛŠJJNÂˆBˆYˆX]Ú\ÈJ™YÚ[Ûœ×Û^[İ]™YÚ[Û“^[İ]”\X[È‹ˆJH	‰ˆXÛÛ›™XİY
-X\ÚÊHÂˆ™]\›ˆ\œŠ˜\šX[Yš[š][Û‘\œ›Ü‘\ØÛÛ›™XİY™YÚ[ÛŠJJNÂˆBˆÛİ™\™YHX\ÚÎÂˆÙ[‹˜YÚİ\ÙJÚ[™Ù[ÊOÎÂˆBˆBˆBˆÚÊ
+        for i in 0..9 {
+            compiled.add_house(
+                VariantHouseKind::Row(i),
+                std::array::from_fn(|column| 9 * i + column),
+            )?;
+        }
+        for i in 0..9 {
+            compiled.add_house(
+                VariantHouseKind::Column(i),
+                std::array::from_fn(|row| 9 * row + i),
+            )?;
+        }
+        compiled.add_regions(&self.regions)?;
+        let primary_house_count = compiled.houses.len();
+        if !enforce_regions {
+            // Keep the region geometry for Region Sum lines and remove only
+            // the all-different rule, for uniqueness comparisons in generation.
+            compiled.peers = [0; CELLS];
+            for i in 0..18 {
+                compiled.add_peers(compiled.house_masks[i]);
+            }
+        }
+        let mut occupied_cages = 0;
+        let mut pairs = PairCompiler::default();
+        pairs.exempt_xv_edges(exemptions);
+        for (index, rule) in self.rules.iter().enumerate() {
+            match rule {
+                PuzzleRule::Diagonal { diagonal } => {
+                    compiled.add_house(VariantHouseKind::Diagonal(*diagonal), diagonal.cells())?;
+                }
+                PuzzleRule::ExtraHouse { cells } => {
+                    let house = VariantHouseKind::Extra(index);
+                    let cells = cells
+                        .as_slice()
+                        .try_into()
+                        .map_err(|_| VariantDefinitionError::InvalidHouse(house))?;
+                    compiled.add_house(house, cells)?;
+                }
+                PuzzleRule::KillerCages { cages, cover_grid } => {
+                    let first_cage = compiled.cages.len();
+                    for (cage_index, cage) in cages.iter().enumerate() {
+                        compiled.add_cage(cage, index, cage_index, &mut occupied_cages)?;
+                    }
+                    if *cover_grid
+                        && compiled.cages[first_cage..]
+                            .iter()
+                            .map(|cage| cage.cells.len())
+                            .sum::<usize>()
+                            != CELLS
+                    {
+                        return Err(VariantDefinitionError::IncompleteCages);
+                    }
+                }
+                PuzzleRule::GlobalEntropy { groups } => {
+                    let groups = if groups.is_empty() {
+                        [0b000000111, 0b000111000, 0b111000000]
+                    } else {
+                        let mut masks = [0u16; 3];
+                        let mut seen = 0u16;
+                        if groups.len() != 3 {
+                            return Err(VariantDefinitionError::InvalidRule(index));
+                        }
+                        for (group, digits) in groups.iter().enumerate() {
+                            if digits.is_empty() {
+                                return Err(VariantDefinitionError::InvalidRule(index));
+                            }
+                            for &digit in digits {
+                                if !(1..=9).contains(&digit) || seen & (1 << (digit - 1)) != 0 {
+                                    return Err(VariantDefinitionError::InvalidRule(index));
+                                }
+                                let bit = 1 << (digit - 1);
+                                seen |= bit;
+                                masks[group] |= bit;
+                            }
+                        }
+                        if seen != 0b111111111 {
+                            return Err(VariantDefinitionError::InvalidRule(index));
+                        }
+                        let mut canonical_masks = masks;
+                        canonical_masks.sort_unstable();
+                        if canonical_masks != [0b000000111, 0b000111000, 0b111000000] {
+                            return Err(VariantDefinitionError::InvalidRule(index));
+                        }
+                        masks
+                    };
+                    compiled.global_entropy_groups = groups;
+                    compiled.global_entropy.get_or_insert(index);
+                }
+                PuzzleRule::EntropyWindowGroup { cells, group } => {
+                    let [top_left, top_right, bottom_left, bottom_right] = *cells;
+                    if top_left >= 72
+                        || top_left % 9 >= 8
+                        || top_right != top_left + 1
+                        || bottom_left != top_left + 9
+                        || bottom_right != top_left + 10
+                    {
+                        return Err(VariantDefinitionError::InvalidRule(index));
+                    }
+                    compiled.entropy_window_groups.push((index, *cells, *group));
+                }
+                PuzzleRule::DigitOrder { .. } | PuzzleRule::ForbiddenEntropicConnection { .. } => {
+                    let line =
+                        LineConstraint::compile(&mut compiled, index, rule, enforce_regions)?;
+                    compiled.lines.push(line);
+                }
+                PuzzleRule::Aqre {
+                    kind,
+                    regions,
+                    given_shades,
+                } => {
+                    if compiled.aqre_rules.len() > 0 {
+                        return Err(VariantDefinitionError::InvalidRule(index));
+                    }
+                    let aqre = AqreConstraint::compile(*kind, regions, given_shades)
+                        .map_err(|_| VariantDefinitionError::InvalidRule(index))?;
+                    compiled.aqre_rules.push(aqre);
+                }
+                PuzzleRule::Quadruple { top_left, digits }
+                | PuzzleRule::QuadrupleSum { top_left, digits } => {
+                    let is_sum = matches!(rule, PuzzleRule::QuadrupleSum { .. });
+                    let clue = Quadruple::compile(
+                        &compiled,
+                        index,
+                        *top_left,
+                        digits,
+                        is_sum,
+                        enforce_regions,
+                    )?;
+                    compiled.quadruples.push(clue);
+                }
+                PuzzleRule::LetteredQuadruples { clues } => {
+                    if compiled.lettered_quadruples.is_some() {
+                        return Err(VariantDefinitionError::InvalidRule(index));
+                    }
+                    compiled.lettered_quadruples = Some(LetteredQuadruples::compile(
+                        self,
+                        index,
+                        clues,
+                        enforce_regions,
+                    )?);
+                }
+                PuzzleRule::NeighborMatch { clues } => {
+                    compiled
+                        .neighbor_matches
+                        .extend(CompiledNeighborMatch::compile(index, clues)?);
+                }
+                PuzzleRule::ConditionalNeighbor { trigger_digit, alternatives } => {
+                    compiled.conditional_neighbors.extend(CompiledConditionalNeighbor::compile(
+                        index, *trigger_digit, alternatives,
+                    )?);
+                }
+                PuzzleRule::MagicSquare { cells } => {
+                    compiled
+                        .magic_squares
+                        .push(CompiledMagicSquare::compile(index, cells)?);
+                }
+                PuzzleRule::UnknownCageSums {
+                    cages,
+                    consecutive_pairs,
+                } => {
+                    compiled
+                        .unknown_cage_sums
+                        .push(CompiledUnknownCageSums::compile(
+                            index,
+                            cages,
+                            consecutive_pairs,
+                            &mut occupied_cages,
+                        )?);
+                }
+                PuzzleRule::Arrow { .. }
+                | PuzzleRule::PillArrow { .. }
+                | PuzzleRule::Renban { .. }
+                | PuzzleRule::ConsecutiveRun { .. }
+                | PuzzleRule::DistinctCells { .. }
+                | PuzzleRule::InsideGrid { .. }
+                | PuzzleRule::Entropic { .. }
+                | PuzzleRule::Modular { .. }
+                | PuzzleRule::Between { .. }
+                | PuzzleRule::Lockout { .. }
+                | PuzzleRule::RegionSum { .. }
+                | PuzzleRule::Sandwich { .. }
+                | PuzzleRule::TerrainSandwich { .. }
+                | PuzzleRule::LittleKiller { .. }
+                | PuzzleRule::XSum { .. }
+                | PuzzleRule::Skyscrapers { .. } => {
+                    let line =
+                        LineConstraint::compile(&mut compiled, index, rule, enforce_regions)?;
+                    compiled.lines.push(line);
+                }
+                PuzzleRule::Parity { .. }
+                | PuzzleRule::DigitRestriction { .. }
+                | PuzzleRule::Clone { .. }
+                | PuzzleRule::AntiKnight {}
+                | PuzzleRule::AntiKing {}
+                | PuzzleRule::NonConsecutive { .. }
+                | PuzzleRule::DistantNeighbors { .. }
+                | PuzzleRule::Inequality { .. }
+                | PuzzleRule::Minimum { .. }
+                | PuzzleRule::Maximum { .. }
+                | PuzzleRule::Kropki { .. }
+                | PuzzleRule::LabeledDots { .. }
+                | PuzzleRule::Xv { .. }
+                | PuzzleRule::AdjacentTotal { .. }
+                | PuzzleRule::Thermometer { .. }
+                | PuzzleRule::Palindrome { .. }
+                | PuzzleRule::Whispers { .. } => {
+                    pairs.compile_rule(&mut compiled, index, rule)?;
+                }
+            }
+        }
+        pairs.finish(&mut compiled);
+        for square in &mut compiled.magic_squares {
+            square.use_normal_patterns_when_all_distinct(&compiled.peers);
+        }
+        // Region geometry can remain available for sum lines after a generation
+        // dependency check removes its distinctness rule. Propagate only houses
+        // whose cells are actually pairwise excluded by the compiled topology.
+        compiled.search_houses = compiled
+            .house_masks
+            .iter()
+            .enumerate()
+            .filter_map(|(index, &mask)| {
+                cells_in(mask)
+                    .all(|cell| {
+                        let others = mask & !(1u128 << cell);
+                        compiled.peers[cell] & others == others
+                    })
+                    .then_some(index)
+            })
+            .collect();
+        compiled.positive_sums = positive_sums(&self.rules);
+        compile_line_sums(&mut compiled);
+        for line in &compiled.lines {
+            let mut seen = 0u128;
+            for &cell in &line.cells {
+                let bit = 1u128 << cell;
+                if seen & bit == 0 {
+                    compiled.search_degree[cell] += 1;
+                    seen |= bit;
+                }
+            }
+        }
+        compiled.extra_rule_cells = compiled.house_masks[primary_house_count..]
+            .iter()
+            .copied()
+            .chain(compiled.cages.iter().map(|cage| cage.mask))
+            .chain(
+                compiled
+                    .lines
+                    .iter()
+                    .map(|line| cell_mask(&line.cells).unwrap()),
+            )
+            .chain(
+                compiled
+                    .pair_clues
+                    .iter()
+                    .map(|clue| cell_mask(&clue.cells).unwrap()),
+            )
+            .chain(
+                compiled
+                    .quadruples
+                    .iter()
+                    .map(|clue| cell_mask(&clue.cells).unwrap()),
+            )
+            .chain(compiled.parity_clues.iter().map(|clue| 1u128 << clue.cell))
+            .chain(
+                compiled
+                    .digit_restriction_clues
+                    .iter()
+                    .map(|clue| 1u128 << clue.cell),
+            )
+            .chain(
+                compiled
+                    .neighbor_matches
+                    .iter()
+                    .flat_map(|clue| clue.neighbors.iter().map(|&cell| 1u128 << cell)),
+            )
+            .chain(compiled.conditional_neighbors.iter().flat_map(|clue| {
+                std::iter::once(clue.source)
+                    .chain(clue.alternatives.iter().map(|&(cell, _)| cell))
+                    .map(|cell| 1u128 << cell)
+            }))
+            .fold(0, |cells, scope| cells | scope);
+        if compiled.global_entropy.is_some()
+            || compiled.lettered_quadruples.is_some()
+            || !compiled.aqre_rules.is_empty()
+        {
+            compiled.extra_rule_cells = (1u128 << CELLS) - 1;
+        }
+        Ok(compiled)
+    }
+}
 
-JBˆB‚ˆ›ˆYÚİ\ÙJˆ	›]]Ù[‹ˆÚ[™ˆ˜\šX[İ\ÙRÚ[™ˆÙ[Îˆİ\Ú^™NÈWKˆ
-HOˆ™\İ[
+impl CompiledVariant {
+    fn add_regions(&mut self, regions_layout: &RegionLayout) -> Result<(), VariantDefinitionError> {
+        match regions_layout {
+            RegionLayout::Boxes => {
+                for i in 0..9 {
+                    self.add_house(
+                        VariantHouseKind::Region(i),
+                        std::array::from_fn(|offset| {
+                            27 * (i / 3) + 3 * (i % 3) + 9 * (offset / 3) + offset % 3
+                        }),
+                    )?;
+                }
+            }
+            RegionLayout::Jigsaw { regions } | RegionLayout::Partial { regions } => {
+                if regions.len() > 9
+                    || matches!(regions_layout, RegionLayout::Jigsaw { .. }) && regions.len() != 9
+                {
+                    return Err(VariantDefinitionError::InvalidRegionCount);
+                }
+                let mut covered = 0;
+                for (i, region) in regions.iter().enumerate() {
+                    let kind = VariantHouseKind::Region(i);
+                    let cells = region
+                        .as_slice()
+                        .try_into()
+                        .map_err(|_| VariantDefinitionError::InvalidHouse(kind))?;
+                    let mask =
+                        cell_mask(region).ok_or(VariantDefinitionError::InvalidHouse(kind))?;
+                    if covered & mask != 0 {
+                        return Err(VariantDefinitionError::OverlappingRegion(i));
+                    }
+                    if matches!(regions_layout, RegionLayout::Partial { .. }) && !connected(mask) {
+                        return Err(VariantDefinitionError::DisconnectedRegion(i));
+                    }
+                    covered |= mask;
+                    self.add_house(kind, cells)?;
+                }
+            }
+        }
+        Ok(())
+    }
 
-K˜\šX[Yš[š][Û‘\œ›ÜˆÂˆ]X\ÚÈHÙ[ÛX\ÚÊ	˜Ù[ÊK›Ú×ÛÜŠ˜\šX[Yš[š][Û‘\œ›Ü’[˜[Yİ\ÙJÚ[™
-JOÎÂˆ][™^HÙ[‹šİ\Ù\Ë›[Š
-NÂˆ›ÜˆÙ[[ˆÙ[ÈÂˆÙ[‹›Y[X™\œÚ\ÖØÙ[Kœ\Ú
-[™^
-NÂˆBˆÙ[‹˜YÜY\œÊX\ÚÊNÂˆÙ[‹šİ\Ù\Ëœ\Ú
-˜\šX[İ\ÙHÈÚ[™Ù[ÈJNÂˆÙ[‹šİ\ÙWÛX\ÚÜËœ\Ú
-X\ÚÊNÂˆÚÊ
+    fn add_house(
+        &mut self,
+        kind: VariantHouseKind,
+        cells: [usize; 9],
+    ) -> Result<(), VariantDefinitionError> {
+        let mask = cell_mask(&cells).ok_or(VariantDefinitionError::InvalidHouse(kind))?;
+        let index = self.houses.len();
+        for cell in cells {
+            self.memberships[cell].push(index);
+        }
+        self.add_peers(mask);
+        self.houses.push(VariantHouse { kind, cells });
+        self.house_masks.push(mask);
+        Ok(())
+    }
 
-JBˆB‚ˆXŠİ\\ŠH›ˆYÜY\œÊ	›]]Ù[‹X\ÚÎˆLL
-HÂˆ›ÜˆÙ[[ˆÙ[×Ú[ŠX\ÚÊHÂˆÙ[‹œY\œÖØÙ[HHX\ÚÈ	ˆJHÙ[
-NÂˆBˆBŸB‚™›ˆÛÛ›™XİY
-X\ÚÎˆLL
-HOˆ›ÛÛÂˆ]]]š\Ú]YHÂˆ]]][™[™ÈHHX\ÚË˜Z[[™×Ş™\›ÜÊ
-NÂˆÚ[H]ÛÛYJÙ[
-HHÙ[×Ú[Š[™[™ÊK›™^
+    pub(super) fn add_peers(&mut self, mask: u128) {
+        for cell in cells_in(mask) {
+            self.peers[cell] |= mask & !(1 << cell);
+        }
+    }
+}
 
-HÂˆ]š]HHÙ[Âˆ[™[™È	HXš]Âˆš\Ú]YHš]Âˆ]
-›İËÛÛ
-HH
-Ù[ÈKÙ[	HJNÂˆ]]]Y˜XÙ[HÂˆYˆ›İÈˆÂˆY˜XÙ[Hš]ˆNÂˆBˆYˆ›İÈÂˆY˜XÙ[Hš]NÂˆBˆYˆÛÛˆÂˆY˜XÙ[Hš]ˆNÂˆBˆYˆÛÛÂˆY˜XÙ[Hš]NÂˆBˆ[™[™ÈHY˜XÙ[	ˆX\ÚÈ	ˆ]š\Ú]YÂˆBˆš\Ú]YOHX\ÚÂŸB
+fn connected(mask: u128) -> bool {
+    let mut visited = 0;
+    let mut pending = 1 << mask.trailing_zeros();
+    while let Some(cell) = cells_in(pending).next() {
+        let bit = 1 << cell;
+        pending &= !bit;
+        visited |= bit;
+        let (row, col) = (cell / 9, cell % 9);
+        let mut adjacent = 0;
+        if row > 0 {
+            adjacent |= bit >> 9;
+        }
+        if row < 8 {
+            adjacent |= bit << 9;
+        }
+        if col > 0 {
+            adjacent |= bit >> 1;
+        }
+        if col < 8 {
+            adjacent |= bit << 1;
+        }
+        pending |= adjacent & mask & !visited;
+    }
+    visited == mask
+}

@@ -1,117 +1,232 @@
-YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éíãM5N‹Z–‹­¦ëeŠw¬Õ¥µÁ½ÉĞì‘¥™™¥Õ±Ñå%¹‘•àô™É½´€œ¸½‘¥™™¥Õ±Ñä¹ÑÌœ)¥µÁ½ÉĞÑåÁ”ì¥™™¥Õ±Ñä°Y…É¥…¹Ñ±Õ•1…å½ÕĞ°Y…É¥…¹Ñ•¹•É…Ñ¥½¹I•ÅÕ•ÍĞ°Y…É¥…¹ÑAÕéé±”°Y…É¥…¹ÑIÕ±”ô™É½´€œ¸½•¹¥¹”¹ÑÌœ)¥µÁ½ÉĞÍ••‘	…¹¬™É½´€œ¸½Ù…É¥…¹ĞµÍ••‘Ì¹©Í½¸œİ¥Ñ ìÑåÁ”è€©Í½¸œô)¥µÁ½ÉĞì±Õ••±Ñ„ô™É½´€œ¸½½ÕÑÍ¥‘”µ±Õ•Ì¹ÑÌœ)¥µÁ½ÉĞìÅÕ…‘ÉÕÁ±••±±Ì°]%9=-U}I%=9L°ÑåÁ”A±…å…‰±•Y…É¥…¹Ğô™É½´€œ¸½Ù…É¥…¹ÑÌ¹ÑÌœ()•áÁ½ÉĞÑåÁ”Y…É¥…¹ÑM••€ôì(€Í••è¹Õµ‰•È(€µ…á¥Ù•¹Ìè¹Õµ‰•È(€µ¥¹¥Ù•¹Ìüè¹Õµ‰•È(€µ…áÑÑ•µÁÑÌüè¹Õµ‰•È(€€¼¨¨É•Í µÍ•…É ‰Õ‘•Ğ…™Ñ•È…±°¡•­•É•¥Á•Ì™…¥°Ñ¼ÁÉ½‘Õ”…¸Õ¹Á±…å•ÁÕéé±”¸€¨¼(€É•ÑÉåÑÑ•µÁÑÌüè¹Õµ‰•È(€…•M¥é•Ìüè¹Õµ‰•Émt(€‘½Ñ½Õ¹Ğüè¹Õµ‰•È(€µ…É­½Õ¹Ğüè¹Õµ‰•È(€µ…É­•‘•±±Ìüè¹Õµ‰•Émt(€ÅÕ…‘ÉÕÁ±•ÌüèìÑ½Á1•™Ğè¹Õµ‰•Èì±Õ•M¥é”è¹Õµ‰•Èõmt(€µ¥¹¥™™•É•¹”üè¹Õµ‰•È(€±…å½ÕĞüèÍÑÉ¥¹œ(€±¥¹•Ìüè¹Õµ‰•Émumt(€Á…¥ÉÌüè¹Õµ‰•Émumt(€±½¹•É½ÕÁÌüè¹Õµ‰•Émumumt(€½ÕÑÍ¥‘”üè€¡ì•±±Ìè¹Õµ‰•Émtì‘¥É•Ñ¥½¸èÍÑÉ¥¹œô€˜€¡ìÍÕ´è¹Õµ‰•Èì½Õ¹Ğüè¹•Ù•Èôğì½Õ¹Ğè¹Õµ‰•ÈìÍÕ´üè¹•Ù•Èô¤¥mt(€É•¥½¹ÌüèÍÑÉ¥¹œ)ô((¼¼Q¡”•¹¥¹”É•Á±…åÌÑ¡•Í”‰½Õ¹‘•Í•…É¡•Ìİ¡•¸„™É•Í …ÑÑ•µÁĞµ¥ÍÍ•Ì¥ÑÌÑ…É•Ğ¸)•áÁ½ÉĞ½¹ÍĞÙ…É¥…¹ÑM••‘ÌèI•½ÉñA±…å…‰±•Y…É¥…¹Ğ°A…ÉÑ¥…°ñI•½Éñ¥™™¥Õ±Ñä°Y…É¥…¹ÑM••‘mtøøø€ôÍ••‘	…¹¬()•áÁ½ÉĞ™Õ¹Ñ¥½¸©¥Í…İ1…å½ÕĞ¡É•¥½¹5…ÀèÍÑÉ¥¹œ¤èáÑÉ…Ğñ9½¹9Õ±±…‰±”ñY…É¥…¹ÑAÕéé±•lÉ•¥½¹Ìtø°ìÑåÁ”è€©¥Í…Üœôøì(€É•ÑÕÉ¸ìÑåÁ”è€©¥Í…Üœ°É•¥½¹ÌèÉÉ…ä¹™É½´¡ì±•¹Ñ è€äô°€¡|°É•¥½¸¤€ôø(€€€l¸¸¹É•¥½¹5…Át¹™±…Ñ5…À ¡¥°•±°¤€ôø¥€ôôôMÑÉ¥¹œ¡É•¥½¸¤€üm•±±t€èmt¤¤ô)ô()½¹ÍĞ½µ¥ÑÑ•€ô¹•ÜM•Ğ¡l(€€™½É¥¹œµ¹•Ğœ°€µÕ±Ñ¤µÍ•Ñ½Èµ±½­•µÍ•ÑÌœ°€Í¬µ±½½Àœ°€É½ÕÁ•µ‘¥Í½¹Ñ¥¹Õ½ÕÌµ¹¥”µ±½½Àœ°€É½ÕÁ•µ½¹Ñ¥¹Õ½ÕÌµ¹¥”µ±½½Àœ°(€€¼¼¥É•ĞÁ±…•µ•¹ÑÌ…É”ÕÉÉ•¹Ñ±äÁ…ÉĞ½˜±…ÍÍ¥ŒÁ±…ä½¹±ä¸(€€‘¥É•ĞµÁ½¥¹Ñ¥¹œœ°€‘¥É•Ğµ±…¥µ¥¹œœ°€‘¥É•Ğµ¡¥‘‘•¸µÁ…¥Èœ°€‘¥É•Ğµ¡¥‘‘•¸µÑÉ¥Á±”œ°)t¤()•áÁ½ÉĞ™Õ¹Ñ¥½¸Ù…É¥…¹ÑQ•¡¹¥ÅÕ•=É‘•È¡Ù…É¥…¹Ñ=É‘•ÈèÉ•…‘½¹±äÍÑÉ¥¹mt°±…ÍÍ¥=É‘•ÈèÉ•…‘½¹±äÍÑÉ¥¹mt°‘¥™™¥Õ±Ñ¥•ÌèA…ÉÑ¥…°ñI•½ÉñÍÑÉ¥¹œ°¥™™¥Õ±Ñäøø¤ì(€É•ÑÕÉ¸l¸¸¹¹•ÜM•Ğ¡l¸¸¹Ù…É¥…¹Ñ=É‘•È°€¸¸¹±…ÍÍ¥=É‘•È¹™¥±Ñ•È ¡¥¤€ôø€…½µ¥ÑÑ•¹¡…Ì¡¥¤¥t¥t(€€€€¹Í½ÉĞ ¡„°ˆ¤€ôø‘¥™™¥Õ±Ñå%¹‘•à¡‘¥™™¥Õ±Ñ¥•Ím…t€üü€¥µÁ½ÍÍ¥‰±”œ¤€´‘¥™™¥Õ±Ñå%¹‘•à¡‘¥™™¥Õ±Ñ¥•Ím‰t€üü€¥µÁ½ÍÍ¥‰±”œ¤¤)ô()•áÁ½ÉĞ™Õ¹Ñ¥½¸İ¥Ñ¡5•‘¥ÕµY…É¥…¹ÑQ•¡¹¥ÅÕ•Ì¡½É‘•ÈèÍÑÉ¥¹mt°Ñ¥•ÉÌèA…ÉÑ¥…°ñI•½ÉñÍÑÉ¥¹œ°¥™™¥Õ±Ñäøø°Ñ•¡¹¥ÅÕ•ÌèÉ•…‘½¹±äÍÑÉ¥¹mt¤ì(€¥˜€ …Ñ•¡¹¥ÅÕ•Ì¹±•¹Ñ ¤É•ÑÕÉ¸½É‘•È(€½¹ÍĞ¥¹‘•à€ô½É‘•È¹™¥¹‘%¹‘•à¡¥€ôø‘¥™™¥Õ±Ñå%¹‘•à¡Ñ¥•ÉÍm¥‘t€üü€¥µÁ½ÍÍ¥‰±”œ¤€ø‘¥™™¥Õ±Ñå%¹‘•à µ•‘¥Õ´œ¤¤(€É•ÑÕÉ¸¥¹‘•à€ğ€À€ül¸¸¹½É‘•È°€¸¸¹Ñ•¡¹¥ÅÕ•Ít€èl¸¸¹½É‘•È¹Í±¥” À°¥¹‘•à¤°€¸¸¹Ñ•¡¹¥ÅÕ•Ì°€¸¸¹½É‘•È¹Í±¥”¡¥¹‘•à¥t)ô()•áÁ½ÉĞ™Õ¹Ñ¥½¸Ù…É¥…¹Ñ•¹•É…Ñ¥½¹I•ÅÕ•ÍĞ (€¥èA±…å…‰±•Y…É¥…¹Ğ°‘¥™™¥Õ±Ñäè¥™™¥Õ±Ñä°É•¥Á”èY…É¥…¹ÑM••°Ñ•¡¹¥ÅÕ•=É‘•ÈèÉ•…‘½¹±äÍÑÉ¥¹mt°(€Í••€ôÉ•¥Á”¹Í••°(¤èY…É¥…¹Ñ•¹•É…Ñ¥½¹I•ÅÕ•ÍĞì(€½¹ÍĞÉÕ±•ÌèY…É¥…¹ÑIÕ±•mt€ômt(€½¹ÍĞ‘•É¥Ù•‘±Õ•ÌèY…É¥…¹Ñ±Õ•1…å½ÕÑmt€ômt(€Íİ¥Ñ €¡¥¤ì(€€€…Í”€İ¥¹‘½­Ôœè(€€€€€ÉÕ±•Ì¹ÁÕÍ  ¸¸¹]%9=-U}I%=9L¹µ…À¡•±±Ì€ôø€¡ìÑåÁ”è€•áÑÉ„µ¡½ÕÍ”œ…Ì½¹ÍĞ°•±±Ìô¤¤¤(€€€€€‰É•…¬(€€€…Í”€‘¥…½¹…°œè(€€€€€ÉÕ±•Ì¹ÁÕÍ ¡ìÑåÁ”è€‘¥…½¹…°œ°‘¥…½¹…°è€µ…¥¸œô°ìÑåÁ”è€‘¥…½¹…°œ°‘¥…½¹…°è€…¹Ñ¤œô¤(€€€€€‰É•…¬(€€€…Í”€…¹Ñ¤µ­¹¥¡Ğœè…Í”€…¹Ñ¤µ­¥¹œœè…Í”€¹½¸µ½¹Í•ÕÑ¥Ù”œè…Í”€±½‰…°µ•¹ÑÉ½Áäœè(€€€€€ÉÕ±•Ì¹ÁÕÍ ¡ìÑåÁ”è¥ô¤(€€€€€‰É•…¬(€€€…Í”€­¥±±•Èµ…•Ìœè(€€€€€‘•É¥Ù•‘±Õ•Ì¹ÁÕÍ ¡ìÑåÁ”è€­¥±±•Èµ…”µÍ¥é•Ìœ°Í¥é•ÌèÉ•¥Á”¹…•M¥é•Ì„°½Ù•ÉÉ¥èÑÉÕ”ô¤(€€€€€‰É•…¬(€€€…Í”€­É½Á­¤œè(€€€€€‘•É¥Ù•‘±Õ•Ì¹ÁÕÍ ¡ìÑåÁ”è€µ…É­•ÉÌœ°™…µ¥±äè€­É½Á­¤œ°½Õ¹ĞèÉ•¥Á”¹‘½Ñ½Õ¹Ğô¤(€€€€€‰É•…¬(€€€…Í”€áØœè(€€€€€‘•É¥Ù•‘±Õ•Ì¹ÁÕÍ ¡ìÑåÁ”è€µ…É­•ÉÌœ°™…µ¥±äè€áØœ°½Õ¹ĞèÉ•¥Á”¹µ…É­½Õ¹Ğô¤(€€€€€‰É•…¬(€€€…Í”€ÅÕ…‘ÉÕÁ±”œè(€€€€€™½È€¡½¹ÍĞ±Õ”½˜É•¥Á”¹ÅÕ…‘ÉÕÁ±•Ì„¤‘•É¥Ù•‘±Õ•Ì¹ÁÕÍ ¡ìÑåÁ”è€ÅÕ…‘ÉÕÁ±”œ°€¸¸¹±Õ”ô¤(€€€€€‰É•…¬(€€€…Í”€Á…É¥Ñäœè(€€€€€‘•É¥Ù•‘±Õ•Ì¹ÁÕÍ ¡ìÑåÁ”è€Á…É¥Ñäœ°•±±ÌèÉ•¥Á”¹µ…É­•‘•±±Ì„ô¤(€€€€€‰É•…¬(€€€…Í”€…‘©…•¹ĞµÑ½Ñ…°œè(€€€€€™½È€¡½¹ÍĞm„°‰t½˜É•¥Á”¹Á…¥ÉÌ„¤‘•É¥Ù•‘±Õ•Ì¹ÁÕÍ ¡ìÑåÁ”è€…‘©…•¹ĞµÑ½Ñ…°œ°•±±Ìèm„°‰tô¤(€€€€€‰É•…¬(€€€…Í”€¥¹•ÅÕ…±¥Ñäœè(€€€€€™½È€¡½¹ÍĞm„°‰t½˜É•¥Á”¹Á…¥ÉÌ„¤‘•É¥Ù•‘±Õ•Ì¹ÁÕÍ ¡ìÑåÁ”è€¥¹•ÅÕ…±¥Ñäœ°•±±Ìèm„°‰tô¤(€€€€€‰É•…¬(€€€…Í”€Ñ¡•Éµ½µ•Ñ•Èœè…Í”€‰•Ñİ••¸œè…Í”€É•¥½¸µÍÕ´œè…Í”€Á…±¥¹‘É½µ”œè…Í”€•¹ÑÉ½Á¥Œœè…Í”€µ½‘Õ±…Èœè…Í”€É•¹‰…¸œè(€€€€€™½È€¡½¹ÍĞ•±±Ì½˜É•¥Á”¹±¥¹•Ì„¤ÉÕ±•Ì¹ÁÕÍ ¡ìÑåÁ”è¥°•±±Ìô¤(€€€€€‰É•…¬(€€€…Í”€İ¡¥ÍÁ•ÉÌœè(€€€€€™½È€¡½¹ÍĞ•±±Ì½˜É•¥Á”¹±¥¹•Ì„¤ÉÕ±•Ì¹ÁÕÍ ¡ìÑåÁ”è€İ¡¥ÍÁ•ÉÌœ°•±±Ì°µ¥¹¥™™•É•¹”èÉ•¥Á”¹µ¥¹¥™™•É•¹”„ô¤(€€€€€‰É•…¬(€€€…Í”€±¥ÑÑ±”µ­¥±±•Èœè(€€€€€™½È€¡¿]4ÖÚ$z{-®éÜj×Îˆ[K˜Ù[Ë›X\
-Ù[
-HBˆØ\ÙH	İ[šÛ›İÛ‹XØYÙK\İ[\ÉÎˆ™]\›ˆÈ‹‹œ[KØYÙ\Îˆ[K˜ØYÙ\Ë›X\
-ØYÙHOˆØYÙK›X\
-Ù[
-JHBˆØ\ÙH	Ø[KZÛšYÚ	ÎˆØ\ÙH	Ø[KZÚ[™ÉÎˆ™]\›ˆ[BˆØ\ÙH	ÚÚ[\‹XØYÙ\ÉÎ‚ˆ™]\›ˆÈ‹‹œ[KØYÙ\Îˆ[K˜ØYÙ\Ë›X\
+import { difficultyIndex } from './difficulty.ts'
+import type { Difficulty, VariantClueLayout, VariantGenerationRequest, VariantPuzzle, VariantRule } from './engine.ts'
+import seedBank from './variant-seeds.json' with { type: 'json' }
+import { clueDelta } from './outside-clues.ts'
+import { quadrupleCells, WINDOKU_REGIONS, type PlayableVariant } from './variants.ts'
 
-ØYÙJHOˆ
-È‹‹˜ØYÙKÙ[ÎˆØYÙK˜Ù[Ë›X\
-Ù[
-HJJHBˆØ\ÙH	Ü\š]IÎˆØ\ÙH	ÙYÚ]\™\İšXİ[Û‰ÎˆØ\ÙH	Ù^˜KZİ\ÙIÎˆØ\ÙH	Ù\İ[˜İXÙ[ÉÎˆØ\ÙH	ØÛÛœÙXİ]]™K\[‰Îˆ™]\›ˆÈ‹‹œ[KÙ[Îˆ[K˜Ù[Ë›X\
-Ù[
-HBˆØ\ÙH	Ù[›ÜK]Ú[™İËYÜ›İ\	Îˆ™]\›ˆÈ‹‹œ[KÙ[Îˆ[K˜Ù[Ë›X\
-Ù[
-KœÛÜ
+export type VariantSeed = {
+  seed: number
+  maxGivens: number
+  minGivens?: number
+  maxAttempts?: number
+  /** Fresh-search budget after all checked recipes fail to produce an unplayed puzzle. */
+  retryAttempts?: number
+  cageSizes?: number[]
+  dotCount?: number
+  markCount?: number
+  markedCells?: number[]
+  quadruples?: { topLeft: number; clueSize: number }[]
+  minDifference?: number
+  layout?: string
+  lines?: number[][]
+  pairs?: number[][]
+  cloneGroups?: number[][][]
+  outside?: ({ cells: number[]; direction: string } & ({ sum: number; count?: never } | { count: number; sum?: never }))[]
+  regions?: string
+}
 
-KŠHOˆHHŠH\ÈÛ[X™\‹[X™\‹[X™\‹[X™\—HBˆØ\ÙH	Ù›Ü˜šY[‹Y[›ÜXËXÛÛ›™Xİ[Û‰Îˆ™]\›ˆÈ‹‹œ[KÙ[Îˆ[K˜Ù[Ë›X\
-Ù[
-H\ÈÛ[X™\‹[X™\‹[X™\‹[X™\—HBˆØ\ÙH	Ú[œÚYKYÜšY	Îˆ™]\›ˆÈ‹‹œ[K›İÜÎˆ[Kœ›İÜË›X\
-›İÈOˆ›İË›X\
-Ù[
-JHBˆØ\ÙH	Û™ZYÚ›Ü‹[X]Ú	Îˆ™]\›ˆÈ‹‹œ[KÛY\Îˆ[K˜ÛY\Ë›X\
-ÛYHOˆ
-È‹‹˜ÛYKÙ[ˆÙ[
-ÛYK˜Ù[
-HJJHBˆØ\ÙH	ØÛÛ™][Û˜[[™ZYÚ›Ü‰Îˆ™]\›ˆÈ‹‹œ[K[\›˜]]™\Îˆ[K˜[\›˜]]™\Ë›X\
-[\›˜]]™HOˆÂˆ]›İÓÙ™œÙ]H[\›˜]]™Kœ›İÓÙ™œÙ]ÛÛ[[“Ù™œÙ]H[\›˜]]™K˜ÛÛ[[“Ù™œÙ]ˆYˆ
-Ş[[Y]H	ˆJHÜ›İÓÙ™œÙ]ÛÛ[[“Ù™œÙ]HHØÛÛ[[“Ù™œÙ]›İÓÙ™œÙ]BˆYˆ
-Ş[[Y]H	ˆŠH›İÓÙ™œÙ]H\›İÓÙ™œÙ]ˆYˆ
-Ş[[Y]H	ˆ
-HÛÛ[[“Ù™œÙ]HXÛÛ[[“Ù™œÙ]ˆ™]\›ˆÈ‹‹˜[\›˜]]™K›İÓÙ™œÙ]ÛÛ[[“Ù™œÙ]BˆJKœÛÜ
+// The engine replays these bounded searches when a fresh attempt misses its target.
+export const variantSeeds: Record<PlayableVariant, Partial<Record<Difficulty, VariantSeed[]>>> = seedBank
 
-KŠHOˆKœ›İÓÙ™œÙ]H‹œ›İÓÙ™œÙ]K˜ÛÛ[[“Ù™œÙ]H‹˜ÛÛ[[“Ù™œÙ]K™YÚ]H‹™YÚ]
-HBˆËÈÛØ˜[[›ÜIÜÈÜ[Û˜[Ü›İ\È\][ÛˆYÚ]ËÛÈH[H]Ù[‚ˆËÈ\È›ÈÙ[ÛY]HÈ˜[œÙ›Ü›K‚ˆØ\ÙH	ÙÛØ˜[Y[›ÜIÎˆ™]\›ˆ[BˆØ\ÙH	ÙYÚ][Ü™\‰Îˆ™]\›ˆÈ‹‹œ[KÙ[Îˆ[K˜Ù[Ë›X\
-Ù[
-HBˆØ\ÙH	Ù\İ[[™ZYÚ›ÜœÉÎˆ™]\›ˆÈ‹‹œ[KX\šÙYÙ[Îˆ[K›X\šÙYÙ[Ë›X\
-Ù[
-HBˆØ\ÙH	Û]\™Y\]XY\\ÉÎˆ™]\›ˆÈ‹‹œ[KÛY\Îˆ[K˜ÛY\Ë›X\
-ÛYHOˆ
-Âˆ‹‹˜ÛYKÜYˆX]›Z[Š‹‹œ]XY\PÙ[ÊÛYKÜY
-K›X\
-Ù[
-JKˆJJHBˆØ\ÙH	Ø\\™IÎˆ™]\›ˆÈ‹‹œ[K™YÚ[ÛœÎˆ[Kœ™YÚ[ÛœË›X\
-™YÚ[ÛˆOˆ
-Âˆ‹‹œ™YÚ[Û‹ˆÙ[Îˆ™YÚ[Û‹˜Ù[Ë›X\
-Ù[
-KœÛÜ
+export function jigsawLayout(regionMap: string): Extract<NonNullable<VariantPuzzle['regions']>, { type: 'jigsaw' }> {
+  return { type: 'jigsaw', regions: Array.from({ length: 9 }, (_, region) =>
+    [...regionMap].flatMap((id, cell) => id === String(region) ? [cell] : [])) }
+}
 
-KŠHOˆHHŠKˆ‹‹Š™YÚ[Û‹˜Ûİ[Ë\HOOH	ÙYÚ]XÙ[	È	‰ˆÈÛİ[ˆÈ‹‹œ™YÚ[Û‹˜Ûİ[Ù[ˆÙ[
-™YÚ[Û‹˜Ûİ[˜Ù[
-HHJKˆJJKœÛÜ
+const omitted = new Set([
+  'forcing-net', 'multi-sector-locked-sets', 'sk-loop', 'grouped-discontinuous-nice-loop', 'grouped-continuous-nice-loop',
+  // Direct placements are currently part of classic play only.
+  'direct-pointing', 'direct-claiming', 'direct-hidden-pair', 'direct-hidden-triple',
+])
 
-KŠHOˆK˜Ù[ÖÌHH‹˜Ù[ÖÌJKˆÚ]™[”ÚY\Îˆ[K™Ú]™[”ÚY\Ë›X\
-Ú]™[ˆOˆ
-È‹‹™Ú]™[‹Ù[ˆÙ[
-Ú]™[‹˜Ù[
-HJJKœÛÜ
+export function variantTechniqueOrder(variantOrder: readonly string[], classicOrder: readonly string[], difficulties: Partial<Record<string, Difficulty>>) {
+  return [...new Set([...variantOrder, ...classicOrder.filter((id) => !omitted.has(id))])]
+    .sort((a, b) => difficultyIndex(difficulties[a] ?? 'impossible') - difficultyIndex(difficulties[b] ?? 'impossible'))
+}
 
-KŠHOˆK˜Ù[H‹˜Ù[
-HBˆØ\ÙH	Ü]XY\IÎˆØ\ÙH	Ü]XY\K\İ[IÎˆ™]\›ˆÈ‹‹œ[KÜYˆX]›Z[Š‹‹œ]XY\PÙ[Ê[KÜY
-K›X\
-Ù[
-JHBˆØ\ÙH	Û]KZÚ[\‰ÎˆÂˆÛÛœİÙ‹×HHÛYQ[J[K™\™Xİ[ÛŠBˆ]›İÈH‹ÛÛ[[ˆHÂˆYˆ
-Ş[[Y]H	ˆJHÜ›İËÛÛ[[—HHØÛÛ[[‹›İ×BˆYˆ
-Ş[[Y]H	ˆŠH›İÈH\›İÂˆYˆ
-Ş[[Y]H	ˆ
-HÛÛ[[ˆHXÛÛ[[‚ˆÛÛœİ\™Xİ[ÛˆH›İÈÈÛÛ[[ˆÈ	Û›Ü]Ù\İ	Èˆ	Û›ÜYX\İ	ÈˆÛÛ[[ˆÈ	ÜÛİ]]Ù\İ	Èˆ	ÜÛİ]YX\İ	Âˆ™]\›ˆÈ‹‹œ[KÙ[Îˆ[K˜Ù[Ë›X\
-Ù[
-K\™Xİ[ÛˆBˆBˆØ\ÙH	ÜØ[™ÚXÚ	ÎˆØ\ÙH	İ\œ˜Z[‹\Ø[™ÚXÚ	ÎˆØ\ÙH	Ş\İ[IÎˆØ\ÙH	ÜÚŞ\ØÜ˜\\œÉÎˆÂˆÛÛœİÙ[ÈH[K˜Ù[Ë›X\
-Ù[
-Kİ\HÙ[ÖÌWHHÙ[ÖÌBˆ™]\›ˆÈ‹‹œ[KÙ[Ë\™Xİ[Ûˆİ\OOHHÈ	ÙX\İ	Èˆİ\OOHLHÈ	İÙ\İ	Èˆİ\OOHHÈ	ÜÛİ]	Èˆ	Û›Ü	ÈBˆBˆØ\ÙH	ØÛÛ™IÎˆ™]\›ˆÈ‹‹œ[KÜ›İ\Îˆ[K™Ü›İ\Ë›X\
-Ü›İ\OˆÜ›İ\›X\
-Ù[
-JHBˆØ\ÙH	Ú[™\]X[]IÎˆ™]\›ˆÈ‹‹œ[K\ÜÎˆÙ[
-[K›\ÜÊKÜ™X]\ˆÙ[
-[K™Ü™X]\ŠHBˆØ\ÙH	ÛZ[š[][IÎˆØ\ÙH	ÛX^[][IÎˆ™]\›ˆÈ‹‹œ[KÙ[Îˆ[K˜Ù[Ë›X\
-Ù[
-HBˆØ\ÙH	ÛX™[YYİÉÎˆ™]\›ˆÈ‹‹œ[KX\šÜÎˆ[K›X\šÜË›X\
-X\šÈOˆ
-Âˆ‹‹›X\šËÙ[ÎˆØÙ[
-X\šË˜Ù[ÖÌJKÙ[
-X\šË˜Ù[ÖÌWJWH\ÈÛÛœİˆJJHBˆØ\ÙH	Û›Û‹XÛÛœÙXİ]]™IÎˆ™]\›ˆÈ‹‹œ[K‹‹Š[K™^Ù\	‰ˆÈ^Ù\ˆ[K™^Ù\›X\
+export function withMediumVariantTechniques(order: string[], tiers: Partial<Record<string, Difficulty>>, techniques: readonly string[]) {
+  if (!techniques.length) return order
+  const index = order.findIndex(id => difficultyIndex(tiers[id] ?? 'impossible') > difficultyIndex('medium'))
+  return index < 0 ? [...order, ...techniques] : [...order.slice(0, index), ...techniques, ...order.slice(index)]
+}
 
-ØK—JHOˆØÙ[
-JKÙ[
-ŠWH\ÈÛÛœİ
-HJHBˆØ\ÙH	Ù[›ÜXÉÎˆØ\ÙH	Û[Ù[\‰ÎˆØ\ÙH	İÚ\Ü\œÉÎˆ™]\›ˆÈ‹‹œ[KÙ[Îˆ[K˜Ù[Ë›X\
-Ù[
-HBˆØ\ÙH	Ü[[™›ÛYIÎˆØ\ÙH	Ü™[˜˜[‰ÎˆØ\ÙH	Ü™YÚ[Û‹\İ[IÎˆ™]\›ˆÈ‹‹œ[KÙ[Îˆ[K˜Ù[Ë›X\
-Ù[
-Kˆ‹‹Š[KœÙYÛY[È	‰ˆÈÙYÛY[Îˆ[KœÙYÛY[Ë›X\
-]Oˆ]›X\
-Ù[
-JHJHBˆØ\ÙH	İ\›[ÛY]\‰ÎˆØ\ÙH	Ø™]ÙY[‰ÎˆØ\ÙH	ÛØÚÛİ]	Îˆ™]\›ˆÈ‹‹œ[KÙ[Îˆ[K˜Ù[Ë›X\
-Ù[
-HBˆØ\ÙH	Ø\œ›İÉÎˆ™]\›ˆÈ‹‹œ[KÚ\˜ÛNˆÙ[
-[K˜Ú\˜ÛJKÙ[Îˆ[K˜Ù[Ë›X\
-Ù[
-HBˆØ\ÙH	Ü[X\œ›İÉÎˆ™]\›ˆÈ‹‹œ[K[ˆØÙ[
-[Kœ[ÌJKÙ[
-[Kœ[ÌWJWKÙ[Îˆ[K˜Ù[Ë›X\
-Ù[
-HBˆØ\ÙH	ÚÜ›ÜÚIÎˆÂˆÛÛœİ™Y›XİX\šÜÈH
-X\šÜÎˆ\[Ùˆ[K˜ÛÛœÙXİ]]™JHO‚ˆX\šÜÈ	‰ˆÈ‹‹›X\šÜËZ\œÎˆX\šÜËœZ\œÏË›X\
+export function variantGenerationRequest(
+  id: PlayableVariant, difficulty: Difficulty, recipe: VariantSeed, techniqueOrder: readonly string[],
+  seed = recipe.seed,
+): VariantGenerationRequest {
+  const rules: VariantRule[] = []
+  const derivedClues: VariantClueLayout[] = []
+  switch (id) {
+    case 'windoku':
+      rules.push(...WINDOKU_REGIONS.map(cells => ({ type: 'extra-house' as const, cells })))
+      break
+    case 'diagonal':
+      rules.push({ type: 'diagonal', diagonal: 'main' }, { type: 'diagonal', diagonal: 'anti' })
+      break
+    case 'anti-knight': case 'anti-king': case 'non-consecutive': case 'global-entropy':
+      rules.push({ type: id })
+      break
+    case 'killer-cages':
+      derivedClues.push({ type: 'killer-cage-sizes', sizes: recipe.cageSizes!, coverGrid: true })
+      break
+    case 'kropki':
+      derivedClues.push({ type: 'markers', family: 'kropki', count: recipe.dotCount })
+      break
+    case 'xv':
+      derivedClues.push({ type: 'markers', family: 'xv', count: recipe.markCount })
+      break
+    case 'quadruple':
+      for (const clue of recipe.quadruples!) derivedClues.push({ type: 'quadruple', ...clue })
+      break
+    case 'parity':
+      derivedClues.push({ type: 'parity', cells: recipe.markedCells! })
+      break
+    case 'adjacent-total':
+      for (const [a, b] of recipe.pairs!) derivedClues.push({ type: 'adjacent-total', cells: [a, b] })
+      break
+    case 'inequality':
+      for (const [a, b] of recipe.pairs!) derivedClues.push({ type: 'inequality', cells: [a, b] })
+      break
+    case 'thermometer': case 'between': case 'region-sum': case 'palindrome': case 'entropic': case 'modular': case 'renban':
+      for (const cells of recipe.lines!) rules.push({ type: id, cells })
+      break
+    case 'whispers':
+      for (const cells of recipe.lines!) rules.push({ type: 'whispers', cells, minDifference: recipe.minDifference! })
+      break
+    case 'little-killer':
+      for (const clue of recipe.outside!) {
+        const direction = clue.direction
+        if (typeof clue.sum !== 'number') throw new Error('Missing diagonal recipe total.')
+        if (direction !== 'north-east' && direction !== 'south-east' && direction !== 'south-west' && direction !== 'north-west') throw new Error('Invalid diagonal recipe direction.')
+        rules.push({ type: 'little-killer', cells: clue.cells, sum: clue.sum, direction })
+      }
+      break
+    case 'sandwich': case 'x-sum':
+      for (const clue of recipe.outside!) {
+        const direction = clue.direction
+        if (typeof clue.sum !== 'number') throw new Error('Missing outside-clue recipe total.')
+        if (direction !== 'north' && direction !== 'east' && direction !== 'south' && direction !== 'west') throw new Error('Invalid outside-clue recipe direction.')
+        rules.push({ type: id, cells: clue.cells, sum: clue.sum, direction })
+      }
+      break
+    case 'skyscrapers':
+      for (const clue of recipe.outside!) {
+        const direction = clue.direction
+        if (typeof clue.count !== 'number' || direction !== 'north' && direction !== 'east' && direction !== 'south' && direction !== 'west') throw new Error('Invalid visibility-clue recipe.')
+        rules.push({ type: 'skyscrapers', cells: clue.cells, count: clue.count, direction })
+      }
+      break
+    case 'clone':
+      for (const groups of recipe.cloneGroups!) rules.push({ type: 'clone', groups })
+      break
+    case 'arrow':
+      for (const [circle, ...cells] of recipe.lines!) rules.push({ type: 'arrow', circle, cells })
+      break
+  }
+  return {
+    type: 'generate-variant', seed, maxAttempts: recipe.maxAttempts ?? 1,
+    template: { version: 1, givens: recipe.layout ?? '0'.repeat(81), rules,
+      regions: id === 'jigsaw' ? jigsawLayout(recipe.regions!) : undefined },
+    derivedClues, givens: [recipe.minGivens ?? 0, recipe.maxGivens], requiredRule: id === 'windoku' ? 'extra-house' : id, difficulty, techniqueOrder,
+  }
+}
 
-ØK—JHOˆØÙ[
-JKÙ[
-ŠWH\ÈÛÛœİ
-HBˆ™]\›ˆÈ‹‹œ[KÛÛœÙXİ]]™Nˆ™Y›XİX\šÜÊ[K˜ÛÛœÙXİ]]™JK˜][ÕÛÎˆ™Y›XİX\šÜÊ[Kœ˜][ÕÛÊHBˆBˆØ\ÙH	ØY˜XÙ[]İ[	Îˆ™]\›ˆÈ‹‹œ[KÙ[ÎˆØÙ[
-[K˜Ù[ÖÌJKÙ[
-[K˜Ù[ÖÌWJWH\ÈÛÛœİBˆØ\ÙH	Ş‰ÎˆÂˆÛÛœİ™Y›XİX\šÜÈH
-X\šÜÎˆ\[Ùˆ[K™š]™JHO‚ˆX\šÜÈ	‰ˆÈ‹‹›X\šÜËZ\œÎˆX\šÜËœZ\œÏË›X\
+export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): VariantPuzzle {
+  function cell(index: number) {
+    let row = Math.floor(index / 9)
+    let column = index % 9
+    if (symmetry & 1) [row, column] = [column, row]
+    if (symmetry & 2) row = 8 - row
+    if (symmetry & 4) column = 8 - column
+    return row * 9 + column
+  }
 
-ØK—JHOˆØÙ[
-JKÙ[
-ŠWH\ÈÛÛœİ
-HBˆ™]\›ˆÈ‹‹œ[K‹‹Š[K™š]™H	‰ˆÈš]™Nˆ™Y›XİX\šÜÊ[K™š]™JHJK‹‹Š[K[ˆ	‰ˆÈ[ˆ™Y›XİX\šÜÊ[K[ŠHJHBˆBˆY˜][ˆÂˆÛÛœİ^]\İ]™Nˆ™]™\ˆH[Bˆ™]\›ˆ^]\İ]™BˆBˆBˆJKˆBŸB
+  const givens = Array<string>(81)
+  for (let index = 0; index < 81; index++) givens[cell(index)] = puzzle.givens[index]
+  return {
+    ...puzzle, givens: givens.join(''),
+    regions: puzzle.regions && puzzle.regions.type !== 'boxes'
+      ? { ...puzzle.regions, regions: puzzle.regions.regions.map(region => region.map(cell)) } : puzzle.regions,
+    rules: puzzle.rules?.map((rule) => {
+      switch (rule.type) {
+        case 'diagonal': {
+          const start = cell(rule.diagonal === 'main' ? 0 : 8)
+          return { ...rule, diagonal: start === 0 || start === 80 ? 'main' : 'anti' }
+        }
+        case 'magic-square': return { ...rule, cells: rule.cells.map(cell) }
+        case 'unknown-cage-sums': return { ...rule, cages: rule.cages.map(cage => cage.map(cell)) }
+        case 'anti-knight': case 'anti-king': return rule
+        case 'killer-cages':
+          return { ...rule, cages: rule.cages.map((cage) => ({ ...cage, cells: cage.cells.map(cell) })) }
+        case 'parity': case 'digit-restriction': case 'extra-house': case 'distinct-cells': case 'consecutive-run': return { ...rule, cells: rule.cells.map(cell) }
+        case 'entropy-window-group': return { ...rule, cells: rule.cells.map(cell).sort((a, b) => a - b) as [number, number, number, number] }
+        case 'forbidden-entropic-connection': return { ...rule, cells: rule.cells.map(cell) as [number, number, number, number] }
+        case 'inside-grid': return { ...rule, rows: rule.rows.map(row => row.map(cell)) }
+        case 'neighbor-match': return { ...rule, clues: rule.clues.map(clue => ({ ...clue, cell: cell(clue.cell) })) }
+        case 'conditional-neighbor': return { ...rule, alternatives: rule.alternatives.map(alternative => {
+          let rowOffset = alternative.rowOffset, columnOffset = alternative.columnOffset
+          if (symmetry & 1) [rowOffset, columnOffset] = [columnOffset, rowOffset]
+          if (symmetry & 2) rowOffset = -rowOffset
+          if (symmetry & 4) columnOffset = -columnOffset
+          return { ...alternative, rowOffset, columnOffset }
+        }).sort((a, b) => a.rowOffset - b.rowOffset || a.columnOffset - b.columnOffset || a.digit - b.digit) }
+        // Global Entropy's optional groups partition digits, so the rule itself
+        // has no geometry to transform.
+        case 'global-entropy': return rule
+        case 'digit-order': return { ...rule, cells: rule.cells.map(cell) }
+        case 'distant-neighbors': return { ...rule, markedCells: rule.markedCells.map(cell) }
+        case 'lettered-quadruples': return { ...rule, clues: rule.clues.map(clue => ({
+          ...clue, topLeft: Math.min(...quadrupleCells(clue.topLeft).map(cell)),
+        })) }
+        case 'aqre': return { ...rule, regions: rule.regions.map(region => ({
+          ...region,
+          cells: region.cells.map(cell).sort((a, b) => a - b),
+          ...(region.count?.type === 'digit-cell' && { count: { ...region.count, cell: cell(region.count.cell) } }),
+        })).sort((a, b) => a.cells[0] - b.cells[0]),
+          givenShades: rule.givenShades.map(given => ({ ...given, cell: cell(given.cell) })).sort((a, b) => a.cell - b.cell) }
+        case 'quadruple': case 'quadruple-sum': return { ...rule, topLeft: Math.min(...quadrupleCells(rule.topLeft).map(cell)) }
+        case 'little-killer': {
+          const [dr, dc] = clueDelta(rule.direction)
+          let row = dr, column = dc
+          if (symmetry & 1) [row, column] = [column, row]
+          if (symmetry & 2) row = -row
+          if (symmetry & 4) column = -column
+          const direction = row < 0 ? column < 0 ? 'north-west' : 'north-east' : column < 0 ? 'south-west' : 'south-east'
+          return { ...rule, cells: rule.cells.map(cell), direction }
+        }
+        case 'sandwich': case 'terrain-sandwich': case 'x-sum': case 'skyscrapers': {
+          const cells = rule.cells.map(cell), step = cells[1] - cells[0]
+          return { ...rule, cells, direction: step === 1 ? 'east' : step === -1 ? 'west' : step === 9 ? 'south' : 'north' }
+        }
+        case 'clone': return { ...rule, groups: rule.groups.map(group => group.map(cell)) }
+        case 'inequality': return { ...rule, less: cell(rule.less), greater: cell(rule.greater) }
+        case 'minimum': case 'maximum': return { ...rule, cells: rule.cells.map(cell) }
+        case 'labeled-dots': return { ...rule, marks: rule.marks.map(mark => ({
+          ...mark, cells: [cell(mark.cells[0]), cell(mark.cells[1])] as const,
+        })) }
+        case 'non-consecutive': return { ...rule, ...(rule.except && { except: rule.except.map(([a, b]) => [cell(a), cell(b)] as const) }) }
+        case 'entropic': case 'modular': case 'whispers': return { ...rule, cells: rule.cells.map(cell) }
+        case 'palindrome': case 'renban': case 'region-sum': return { ...rule, cells: rule.cells.map(cell),
+          ...(rule.segments && { segments: rule.segments.map(path => path.map(cell)) }) }
+        case 'thermometer': case 'between': case 'lockout': return { ...rule, cells: rule.cells.map(cell) }
+        case 'arrow': return { ...rule, circle: cell(rule.circle), cells: rule.cells.map(cell) }
+        case 'pill-arrow': return { ...rule, pill: [cell(rule.pill[0]), cell(rule.pill[1])], cells: rule.cells.map(cell) }
+        case 'kropki': {
+          const reflectMarks = (marks: typeof rule.consecutive) =>
+            marks && { ...marks, pairs: marks.pairs?.map(([a, b]) => [cell(a), cell(b)] as const) }
+          return { ...rule, consecutive: reflectMarks(rule.consecutive), ratioTwo: reflectMarks(rule.ratioTwo) }
+        }
+        case 'adjacent-total': return { ...rule, cells: [cell(rule.cells[0]), cell(rule.cells[1])] as const }
+        case 'xv': {
+          const reflectMarks = (marks: typeof rule.five) =>
+            marks && { ...marks, pairs: marks.pairs?.map(([a, b]) => [cell(a), cell(b)] as const) }
+          return { ...rule, ...(rule.five && { five: reflectMarks(rule.five) }), ...(rule.ten && { ten: reflectMarks(rule.ten) }) }
+        }
+        default: {
+          const exhaustive: never = rule
+          return exhaustive
+        }
+      }
+    }),
+  }
+}

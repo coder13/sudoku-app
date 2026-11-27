@@ -1,98 +1,325 @@
-YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éíãM5N‹Z–‹­¦ëeŠw¬Õ¥µÁ½ÉÐÑåÁ”ì5…É­•‘A…¥ÉÌ°Y…É¥…¹ÑAÕéé±”°Y…É¥…¹ÑIÕ±”ô™É½´€œ¸½•¹¥¹”¹ÑÌœ)¥µÁ½ÉÐìÙ…±¥‘%µÁ½ÉÑ•‘•±±½±½ÉÌ°ÑåÁ”%µÁ½ÉÑ•‘•±±½±½ÉÌô™É½´€œ¸½¥µÁ½ÉÑ•µ½±½ÉÌ¹ÑÌœ)¥µÁ½ÉÐì•±±ÍM¡…É•‘”°ÅÕ…‘ÉÕÁ±••±±Ì°ÑåÁ”Y…É¥…¹Ñ…µ”ô™É½´€œ¸½Ù…É¥…¹ÑÌ¹ÑÌœ()•áÁ½ÉÐ½¹ÍÐ=}IU1€ô€½ÉÉ•ÐÁ±…•µ•¹Ð±•…ÉÌ™½œ™É½´¥ÑÌ•±°…¹Ñ¡”ÍÕÉÉ½Õ¹‘¥¹œ•±±Ì¸œ()•áÁ½ÉÐÑåÁ”½•™¥¹¥Ñ¥½¸€ôì¥¹¥Ñ¥…±•±±ÌèÉ•…‘½¹±ä¹Õµ‰•Émtì•±±½±½ÉÌüè%µÁ½ÉÑ•‘•±±½±½ÉÌô()•áÁ½ÉÐ™Õ¹Ñ¥½¸¥Í½•™¥¹¥Ñ¥½¸¡Ù…±Õ”èÕ¹­¹½Ý¸¤èÙ…±Õ”¥Ì½•™¥¹¥Ñ¥½¸ì(€¥˜€ …Ù…±Õ”ñðÑåÁ•½˜Ù…±Õ”€„ôô€½‰©•Ðœñð€„ ¥¹¥Ñ¥…±•±±Ìœ¥¸Ù…±Õ”¤ñð(€€€=‰©•Ð¹­•åÌ¡Ù…±Õ”¤¹Í½µ”¡­•ä€ôø­•ä€„ôô€¥¹¥Ñ¥…±•±±Ìœ€˜˜­•ä€„ôô€•±±½±½ÉÌœ¤¤É•ÑÕÉ¸™…±Í”(€½¹ÍÐì¥¹¥Ñ¥…±•±±Ì°•±±½±½ÉÌô€ôÙ…±Õ”…Ìì¥¹¥Ñ¥…±•±±ÌèÕ¹­¹½Ý¸ì•±±½±½ÉÌüèÕ¹­¹½Ý¸ô(€É•ÑÕÉ¸ÉÉ…ä¹¥ÍÉÉ…ä¡¥¹¥Ñ¥…±•±±Ì¤€˜˜¥¹¥Ñ¥…±•±±Ì¹±•¹Ñ €ø€À€˜˜¥¹¥Ñ¥…±•±±Ì¹±•¹Ñ €ðô€àÄ€˜˜(€€€¹•ÜM•Ð¡¥¹¥Ñ¥…±•±±Ì¤¹Í¥é”€ôôô¥¹¥Ñ¥…±•±±Ì¹±•¹Ñ €˜˜(€€€¥¹¥Ñ¥…±•±±Ì¹•Ù•Éä¡•±°€ôø9Õµ‰•È¹¥Í%¹Ñ••È¡•±°¤€˜˜•±°€øô€À€˜˜•±°€ð€àÄ¤€˜˜(€€€€¡•±±½±½ÉÌ€ôôôÕ¹‘•™¥¹•ñðÙ…±¥‘%µÁ½ÉÑ•‘•±±½±½ÉÌ¡•±±½±½ÉÌ¤¤)ô()½¹ÍÐ™½9•¥¡‰½É¡½½‘Ì€ôÉÉ…ä¹™É½´¡ì±•¹Ñ è€àÄô°€¡|°•±°¤€ôøì(€½¹ÍÐÉ½Ü€ô5…Ñ ¹™±½½È¡•±°€¼€ä¤(€½¹ÍÐ½±Õµ¸€ô•±°€”€ä(€½¹ÍÐ¹•¥¡‰½ÉÌè¹Õµ‰•Émt€ômt(€™½È€¡±•ÐÈ€ô5…Ñ ¹µ…à À°É½Ü€´€Ä¤ìÈ€ðô5…Ñ ¹µ¥¸ à°É½Ü€¬€Ä¤ìÈ¬¬¤ì(€€€™½È€¡±•ÐŒ€ô5…Ñ ¹µ…à À°½±Õµ¸€´€Ä¤ìŒ€ðô5…Ñ ¹µ¥¸ à°½±Õµ¸€¬€Ä¤ìŒ¬¬¤¹•¥¡‰½ÉÌ¹ÁÕÍ ¡È€¨€ä€¬Œ¤(€ô(€É•ÑÕÉ¸¹•¥¡‰½ÉÌ)ô¤((¼¨¨½… É•Ù•…±ÌÑ¡”¹•¥¡‰½É¡½½½˜•… ÕÉÉ•¹Ñ±ä½ÉÉ•ÐÁ±…å•È•¹ÑÉä¸€¨¼)•áÁ½ÉÐ™Õ¹Ñ¥½¸É•Ù•…±•‘½•±±Ì¡™½œè½•™¥¹¥Ñ¥½¸°•¹ÑÉ¥•ÌèÍÑÉ¥¹œ°Í½±ÕÑ¥½¸èÍÑÉ¥¹œ¤èI•…‘½¹±åM•Ðñ¹Õµ‰•Èøì(€½¹ÍÐ•±±Ì€ô¹•ÜM•Ð¡™½œ¹¥¹¥Ñ¥…±•±±Ì¤(€™½È€¡±•Ð•±°€ô€Àì•±°€ð€àÄì•±°¬¬¤ì(€€€¥˜€¡•¹ÑÉ¥•Ím•±±t€ôôô€œÀœñð•¹ÑÉ¥•Ím•±±t€„ôôÍ½±ÕÑ¥½¹m•±±t¤½¹Ñ¥¹Õ”(€€€™½È€¡½¹ÍÐ¹•¥¡‰½È½˜™½9•¥¡‰½É¡½½‘Ím•±±t¤•±±Ì¹…‘¡¹•¥¡‰½È¤(€ô(€É•ÑÕÉ¸•±±Ì)ô((¼¨¨Ù…±¥Á±…•µ•¹Ð…Ð…¹ä½˜Ñ¡•Í”•±±Ì¡…¹•ÌÑ¡”Ù¥Í¥‰±”ÁÕéé±”¸€¨¼)•áÁ½ÉÐ™Õ¹Ñ¥½¸™½I•Ù•…±A±…•µ•¹ÑÌ¡Ù¥Í¥‰±”èI•…‘½¹±åM•Ðñ¹Õµ‰•Èø¤è¹Õµ‰•Émtì(€É•ÑÕÉ¸™½9•¥¡‰½É¡½½‘Ì¹™±…Ñ5…À ¡¹•¥¡‰½ÉÌ°•±°¤€ôø¹•¥¡‰½ÉÌ¹Í½µ”¡¹•¥¡‰½È€ôø€…Ù¥Í¥‰±”¹¡…Ì¡¹•¥¡‰½È¤¤€üm•±±t€èmt¤)ô()™Õ¹Ñ¥½¸Ù¥Í¥‰±•A…Ñ¡Ì¡Á…Ñ èÉ•…‘½¹±ä¹Õµ‰•Émt°Ù¥Í¥‰±”èI•…‘½¹±åM•Ðñ¹Õµ‰•Èø¤è¹Õµ‰•Émumtì(€½¹ÍÐÉÕ¹Ìè¹Õµ‰•Émumt€ômt(€±•ÐÉÕ¸è¹Õµ‰•Émt€ômt(€™½È€¡½¹ÍÐ•±°½˜Á…Ñ ¤ì(€€€¥˜€¡Ù¥Í¥‰±”¹¡…Ì¡•±°¤¤ÉÕ¸¹ÁÕÍ ¡•±°¤(€€€•±Í”ì(€€€€€¥˜€¡ÉÕ¸¹±•¹Ñ €ø€Ä¤ÉÕ¹Ì¹ÁÕÍ ¡ÉÕ¸¤(€€€€€ÉÕ¸€ômt(€€€ô(€ô(€¥˜€¡ÉÕ¸¹±•¹Ñ €ø€Ä¤ÉÕ¹Ì¹ÁÕÍ ¡ÉÕ¸¤(€É•ÑÕÉ¸ÉÕ¹Ì)ô()™Õ¹Ñ¥½¸Ù¥Í¥‰±•5…É­Ì¡µ…É­Ìè5…É­•‘A…¥ÉÌðÕ¹‘•™¥¹•°Ù¥Í¥‰±”èI•…‘½¹±åM•Ðñ¹Õµ‰•Èø°½µÁ±•Ñ”è‰½½±•…¸¤è5…É­•‘A…¥ÉÌðÕ¹‘•™¥¹•ì(€½¹ÍÐÁ…¥ÉÌ€ôµ…É­Ìü¹Á…¥ÉÌü¹™¥±Ñ•È¡Á…¥È€ôøÁ…¥È¹•Ù•Éä¡•±°€ôøÙ¥Í¥‰±”¹¡…Ì¡•±°¤¤¤(€½¹ÍÐ¹•…Ñ¥Ù”€ô½µÁ±•Ñ”€˜˜µ…É­Ìü¹¹•…Ñ¥Ù”€ôôôÑÉÕ”(€É•ÑÕÉ¸Á…¥ÉÌü¹±•¹Ñ ñð¹•…Ñ¥Ù”€üì€¸¸¸¡Á…¥ÉÌü¹±•¹Ñ €˜˜ìÁ…¥ÉÌô¤°€¸¸¸¡¹•…Ñ¥Ù”€˜˜ì¹•…Ñ¥Ù”ô¤ô€èÕ¹‘•™¥¹•)ô((¼¨¨½¹Ñ¥¹Õ½ÕÌÁ…Ñ ½˜É•Ù•…±•Í¡…‘¥¹œ¥‘•¹Ñ¥™¥•Ì•±±Ì¥¸Ñ¡”Í…µ”É½ÕÀ¸€¨¼)™Õ¹Ñ¥½¸Ù¥Í¥‰±•M¡…‘•‘É½ÕÁÌ¡•±±ÌèÉ•…‘½¹±ä¹Õµ‰•Émt°Ù¥Í¥‰±”èI•…‘½¹±åM•Ðñ¹Õµ‰•Èø¤ì(€½¹ÍÐÉ•µ…¥¹¥¹œ€ô¹•ÜM•Ð¡•±±Ì¹™¥±Ñ•È¡•±°€ôøÙ¥Í¥‰±”¹¡…Ì¡•±°¤¤¤(€½¹ÍÐÉ½ÕÁÌè¹Õµ‰•Émumt€ômt(€™½È€¡½¹ÍÐÍÑ…ÉÐ½˜É•µ…¥¹¥¹œ¤ì(€€€½¹ÍÐÉ½ÕÀ€ômÍÑ…ÉÑt(€€€É•µ…¥¹¥¹œ¹‘•±•Ñ”¡ÍÑ…ÉÐ¤(€€€™½È€¡½¹ÍÐ•±°½˜É½ÕÀ¤™½È€¡½¹ÍÐ¹•¥¡‰½È½˜É•µ…¥¹¥¹œ¤ì(€€€€€¥˜€¡•±±ÍM¡…É•‘”¡•±°°¹•¥¡‰½È¤¤ì(€€€€€€€É•µ…¥¹¥¹œ¹‘•±•Ñ”¡¹•¥¡‰½È¤(€€€€€€€É½ÕÀ¹ÁÕÍ ¡¹•¥¡‰½È¤(€€€€€ô(€€€ô(€€€¥˜€¡É½ÕÀ¹±•¹Ñ €øô€È¤É½ÕÁÌ¹ÁÕÍ ¡É½ÕÀ¤(€ô(€É•ÑÕÉ¸É½ÕÁÌ)ô((¼¨¨Q¡”ÁÉ¥¹Ñ•‘¥¥ÑÌÑ¡…Ð±¥”•¹Ñ¥É•±ä½ÕÑÍ¥‘”Ñ¡”™½œ¸€¨¼)™Õ¹Ñ¥½¸Ù¥Í¥‰±•EÕ…‘ÉÕÁ±•¥¥ÑÌ¡ÉÕ±”èáÑÉ…ÐñY…É¥…¹ÑIÕ±”°ìÑåÁ”è€ÅÕ…‘ÉÕÁ±”œð€ÅÕ…‘ÉÕÁ±”µÍÕ´œôø°Ù¥Í¥‰±”èI•…‘½¹±åM•Ðñ¹Õµ‰•Èø¤ì(€½¹ÍÐ•±±Ì€ôÅÕ…‘ÉÕÁ±••±±Ì¡ÉÕ±”¹Ñ½Á1•™Ð¤(€½¹ÍÐ½Õ¹Ð€ôÉÕ±”¹‘¥¥ÑÌ¹±•¹Ñ (€¥˜€¡•±±Ì¹•Ù•Éä¡•±°€ôøÙ¥Í¥‰±”¹¡…Ì¡•±°¤¤¤É•ÑÕÉ¸ÉÕ±”¹‘¥¥ÑÌ(€¥˜€¡½Õ¹Ð€ôôô€Ä¤É•ÑÕÉ¸mt(€É•ÑÕÉ¸ÉÕ±”¹‘¥¥ÑÌ¹™¥±Ñ•È ¡|°Í±½Ð¤€ôøì(€€€€¼¼Q¡”½¹”´…¹ÑÝ¼µ‘¥¥Ð±…å½ÕÑÌ…É”Ù•ÉÑ¥…±±ä•¹Ñ•É•¸%¸Ñ¡”(€€€€¼¼Ñ¡É•”µ‘¥¥Ð±…å½ÕÐÑ¡”±…ÍÐ‘¥¥Ð¥Ì•¹Ñ•É•…É½ÍÌÑ¡”‰½ÑÑ½´•±±Ì¸(€€€¥˜€¡½Õ¹Ð€ôôô€È¤É•ÑÕÉ¸Ù¥Í¥‰±”¹¡…Ì¡•±±ÍmÍ±½Ñt¤€˜˜Ù¥Í¥‰±”¹¡…Ì¡•±±ÍmÍ±½Ð€¬€Ét¤(€€€¥˜€¡½Õ¹Ð€ôôô€Ì€˜˜Í±½Ð€ôôô€È¤É•ÑÕÉ¸Ù¥Í¥‰±”¹¡…Ì¡•±±ÍlÉt¤€˜˜Ù¥Í¥‰±”¹¡…Ì¡•±±ÍlÍt¤(€€€É•ÑÕÉ¸Ù¥Í¥‰±”¹¡…Ì¡•±±ÍmÍ±½Ñt¤(€ô¤)ô()™Õ¹Ñ¥½¸•áÑÉ•µ…9•¥¡‰½ÉÌ¡•±°è¹Õµ‰•È¤ì(€É•ÑÕÉ¸m•±°€øô€ä€ü•±°€´€ä€è€´Ä°•±°€ð€ÜÈ€ü•±°€¬€ä€è€´Ä°(€€€•±°€”€ä€ø€À€ü•±°€´€Ä€è€´Ä°•±°€”€ä€ð€à€ü•±°€¬€Ä€è€´Åt¹™¥±Ñ•È¡½Ñ¡•È€ôø½Ñ¡•È€ø÷]4ÖÚ$z{-®éÜj×˜ÝXÙ[ÉÎ‚ˆ™]\›ˆ[š\ÚX›J[K˜Ù[ÊHÈÜ[WHˆš\ÚX›TÚYYÜ›Ý\Ê[K˜Ù[Ëš\ÚX›JK›X\
-Ù[ÈOˆ
-È‹‹œ[KÙ[ÈJJBˆØ\ÙH	ØÛÛœÙXÝ]]™K\[‰Î‚ˆYˆ
-[K™œ›ÛP[ŠH™]\›ˆ[š\ÚX›J[K˜Ù[ÊHÈÜ[WHˆ×Bˆ™]\›ˆš\ÚX›T]Ê[K˜Ù[Ëš\ÚX›JK›X\
-Ù[ÈOˆ
-È‹‹œ[KÙ[ÈJJBˆØ\ÙH	ÝÚ\Ü\œÉÎ‚ˆØ\ÙH	Û[Ù[\‰Î‚ˆØ\ÙH	Ù[›ÜXÉÎ‚ˆËÈ]™\žHÛÛYÝ[Ý\È[ˆÙY\ÈHÜšYÚ[˜[Z\Ú\ÙH\ÙH™[][ÛœÚ\Ë‚ˆ™]\›ˆ[š\ÚX›J[K˜Ù[ÊHÈÜ[WHˆš\ÚX›T]Ê[K˜Ù[Ëš\ÚX›JK›X\
-Ù[ÈOˆ
-È‹‹œ[KÙ[ÈJJBˆØ\ÙH	ØÛÛ™IÎˆÂˆÛÛœÝÜ›Ý\ÈH[K™Ü›Ý\Ë™š[\Š[š\ÚX›JBˆ™]\›ˆÜ›Ý\Ë›[™ÝÈÞÈ‹‹œ[KÜ›Ý\ÈWHˆ×BˆBˆØ\ÙH	ÙXYÛÛ˜[	Î‚ˆ™]\›ˆ[š\ÚX›J\œ˜^K™œ›ÛJÈ[™ÝˆHK
-ËJHOˆ[K™XYÛÛ˜[OOH	ÛXZ[‰ÈÈL
-ˆHˆ
-ˆ
-H
-ÈJJJHÈÜ[WHˆ×BˆØ\ÙH	Ü]XY\IÎˆØ\ÙH	Ü]XY\K\Ý[IÎˆÂˆÛÛœÝYÚ]ÈHš\ÚX›T]XY\QYÚ]Ê[Kš\ÚX›JBˆËÈXXÚ^ÜÙYYÚ]]\ÝÝ[ØØÝ\ˆÛÛY]Ú\™H[ˆH›Ý\ˆÙ[Ë‚ˆ™]\›ˆYÚ]Ë›[™ÝÈÞÈ‹‹œ[KYÚ]ÈWHˆ×BˆBˆØ\ÙH	Ú[™\]X[]IÎ‚ˆ™]\›ˆ[š\ÚX›JÜ[K›\ÜË[K™Ü™X]\—JHÈÜ[WHˆ×BˆØ\ÙH	ÛZ[š[][IÎˆØ\ÙH	ÛX^[][IÎˆÂˆYˆ
-^™[XUš\ÚX›J[K˜Ù[Ëš\ÚX›JJH™]\›ˆÜ[WBˆÛÛœÝÚÚ\YH[KšYÛ›Ü™SX\šÙY™ZYÚ›ÜœÈÈ™]ÈÙ]
-[K˜Ù[ÊHˆ[™Yš[™YˆÛÛœÝZ[š[][HH[K\HOOH	ÛZ[š[][IÂˆËÈHÛÛ\\š\ÛÛˆ™YYÈ›ÝÙ[Èš\ÚX›K[˜ÛY[™È[žHX\šÈ]^[\ÈZ\ˆÚ\™YYÙK‚ˆ™]\›ˆ[K˜Ù[Ë™›]X\
-Ù[Oˆš\ÚX›Kš\ÊÙ[
-BˆÈ^™[XS™ZYÚ›ÜœÊÙ[
-K™š[\ŠÝ\ˆOˆš\ÚX›Kš\ÊÝ\ŠH	‰ˆ\ÚÚ\YËš\ÊÝ\ŠJK›X\
-Ý\ˆOˆ
-Âˆ\Nˆ	Ú[™\]X[]IË\ÜÎˆZ[š[][HÈÙ[ˆÝ\‹Ü™X]\ŽˆZ[š[][HÈÝ\ˆˆÙ[ˆJJBˆˆ×JBˆBˆØ\ÙH	Ø\œ›ÝÉÎ‚ˆ™]\›ˆš\ÚX›Kš\Ê[K˜Ú\˜ÛJH	‰ˆ[š\ÚX›J[K˜Ù[ÊHÈÜ[WHˆ×BˆØ\ÙH	Ü[X\œ›ÝÉÎ‚ˆ™]\›ˆ[š\ÚX›J[Kœ[
-H	‰ˆ[š\ÚX›J[K˜Ù[ÊHÈÜ[WHˆ×BˆØ\ÙH	Û›Û‹XÛÛœÙXÝ]]™IÎ‚ˆ™]\›ˆ\[K™^Ù\[K™^Ù\™]™\žJ[š\ÚX›JHÈÜ[WHˆ×BˆØ\ÙH	Ø[KZÛšYÚ	Î‚ˆØ\ÙH	ØÛÛ™][Û˜[[™ZYÚ›Ü‰Î‚ˆØ\ÙH	Ø[KZÚ[™ÉÎ‚ˆØ\ÙH	ÙÛØ˜[Y[›ÜIÎ‚ˆØ\ÙH	ÜØ[™ÚXÚ	Î‚ˆØ\ÙH	Û]KZÚ[\‰Î‚ˆØ\ÙH	Þ\Ý[IÎ‚ˆØ\ÙH	ÜÚÞ\ØÜ˜\\œÉÎ‚ˆËÈH›ÙÈÛÝ™\œÈHÜšYˆÝ]ÚYHX™[È[™Z\ˆ\™XÝ[ÛœÈ\™HX›XË‚ˆ™]\›ˆÜ[WBˆØ\ÙH	Ø\\™IÎ‚ˆËÈÚY[™È™YÚ[ÛœÈ[™Z\ˆ[™XØ]ÜœÈÜ›ÜÜÈÜ™[˜\žHÙ[š\ÚXš[]H›Ý[™\šY\Ë‚ˆ™]\›ˆ[Kœ™YÚ[ÛœË™]™\žJ™YÚ[ÛˆOˆ[š\ÚX›J™YÚ[Û‹˜Ù[ÊJHÈÜ[WHˆ×BˆØ\ÙH	Û™ZYÚ›Ü‹[X]Ú	Î‚ˆ™]\›ˆ[K˜ÛY\Ë™]™\žJ
-ÈÙ[JHOˆÂˆÛÛœÝ™ZYÚ›ÜœÈHØÙ[HKÙ[
-ÈKÙ[HKÙ[
-ÈWK™š[\Š™ZYÚ›ÜˆO‚ˆ™ZYÚ›ÜˆH	‰ˆ™ZYÚ›ÜˆH	‰‚ˆ
-X]™›ÛÜŠ™ZYÚ›ÜˆÈJHOOHX]™›ÛÜŠÙ[ÈJH™ZYÚ›Üˆ	HHOOHÙ[	HJJBˆ™]\›ˆš\ÚX›Kš\ÊÙ[
-H	‰ˆ[š\ÚX›J™ZYÚ›ÜœÊBˆJHÈÜ[WHˆ×BˆØ\ÙH	Ý[šÛ›ÝÛ‹XØYÙK\Ý[\ÉÎ‚ˆ™]\›ˆ[K˜ØYÙ\Ë™]™\žJ[š\ÚX›JHÈÜ[WHˆ×BˆØ\ÙH	Ù\Ý[[™ZYÚ›ÜœÉÎ‚ˆ™]\›ˆ[š\ÚX›J[K›X\šÙYÙ[ÊHÈÜ[WHˆ×BˆY˜][‚ˆ™]\›ˆ[š\ÚX›J[K˜Ù[ÊHÈÜ[WHˆ×BˆBˆJBˆÛÛœÝÚ]™[œÈHË‹‹œ^ž›K™Ú]™[œ×K›X\
+import type { MarkedPairs, VariantPuzzle, VariantRule } from './engine.ts'
+import { validImportedCellColors, type ImportedCellColors } from './imported-colors.ts'
+import { cellsShareEdge, quadrupleCells, type VariantGame } from './variants.ts'
 
-YÚ]Ù[
-HOˆš\ÚX›Kš\ÊÙ[
-HÈYÚ]ˆ	Ì	ÊKš›Ú[Š	ÉÊBˆ™]\›ˆÈ‹‹œ^ž›KÚ]™[œË[\ÎˆÚÝÛˆBŸB‚˜ÛÛœÝ[™Qœ˜YÛY[ÈHÂˆ™]ÙY[Žˆ	Ð™]ÙY[ˆ[™IËØÚÛÝ]ˆ	ÓØÚÛÝ][™IË	ØÛÛœÙXÝ]]™K\[‰Îˆ	ÐÛÛœÙXÝ]]™H[™IË[›ÜXÎˆ	Ñ[›ÜXÈ[™IË[Ù[\Žˆ	Ó[Ù[\ˆ[™IË[[™›ÛYNˆ	Ô[[™›ÛYH[™IËˆ™[˜˜[Žˆ	Ô™[˜˜[ˆ[™IË	Ü™YÚ[Û‹\Ý[IÎˆ	Ô™YÚ[ÛˆÝ[H[™IË\›[ÛY]\Žˆ	Ý\›[ÛY]\‰ËÚ\Ü\œÎˆ	ÕÚ\Ü\œÈ[™IËŸH\ÈÛÛœÝ‚‹ÊŠˆ\ØÜšX™Hš\ÚX›Hœ˜YÛY[ÈÚ]Ý][™™\œš[™ÈHÛY\ÉÈÛÝ™\™YYÚ]ÈÜˆÙ[Ëˆ
-‹Â™^Ü[˜Ý[Ûˆ›ÙÑœ˜YÛY[X™[Ê[\Îˆ™XYÛ›H˜\šX[[V×Kš\ÚX›Nˆ™XYÛ›TÙ][X™\ŠHÂˆÛÛœÝX™[ÎˆÝš[™Ö×V×HH\œ˜^K™œ›ÛJÈ[™ÝˆHK
+export const FOG_RULE = 'A correct placement clears fog from its cell and the surrounding cells.'
 
-HOˆ×JBˆÛÛœÝYœ˜YÛY[H
-Ù[Îˆ™XYÛ›H[X™\–×K\ØÜš\[ÛŽˆÝš[™ÊHOˆÂˆYˆ
-Ù[Ë™]™\žJÙ[Oˆš\ÚX›Kš\ÊÙ[
-JJH™]\›‚ˆ›Üˆ
-ÛÛœÝÙ[Ùˆ™]ÈÙ]
-Ù[ÊJHYˆ
-š\ÚX›Kš\ÊÙ[
-JHX™[ÖØÙ[Kœ\Ú
-\ØÜš\[ÛŠBˆBˆ›Üˆ
-ÛÛœÝ[HÙˆ[\ÊHÂˆÝÚ]Ú
-[K\JHÂˆØ\ÙH	ÚÚ[\‹XØYÙ\ÉÎ‚ˆ›Üˆ
-ÛÛœÝÈÙ[ËÝ[HHÙˆ[K˜ØYÙ\ÊHÂˆYˆ
-Ù[Ë™]™\žJÙ[Oˆš\ÚX›Kš\ÊÙ[
-JJHÛÛ[YBˆÛÛœÝÛÜ›™\ˆHX]›Z[Š‹‹˜Ù[ÊBˆ›Üˆ
-ÛÛœÝÙ[ÙˆÙ[ÊHYˆ
-š\ÚX›Kš\ÊÙ[
-JHX™[ÖØÙ[Kœ\Ú
-Ù[OOHÛÜ›™\‚ˆÈØYÙHÝ[	ÜÝ[_KÝ][™HÛÛ[Y\È[™\ˆ›ÙØˆ	ØØYÙHÝ][™HÛÛ[Y\È[™\ˆ›ÙÉÊBˆBˆœ™XZÂˆØ\ÙH	Ü]XY\IÎˆØ\ÙH	Ü]XY\K\Ý[IÎ‚ˆYˆ
-]š\ÚX›T]XY\QYÚ]Ê[Kš\ÚX›JK›[™Ý
-HÂˆYœ˜YÛY[
-]XY\PÙ[Ê[KÜY
-K[K\HOOH	Ü]XY\K\Ý[IÈÈ	Ü\ÙˆH]XYP\œ›ÝÜÈÛYIÈˆ	Ü\ÙˆH]XY\HÛYIÊBˆBˆœ™XZÂˆØ\ÙH	Ø™]ÙY[‰ÎˆØ\ÙH	ÛØÚÛÝ]	ÎˆØ\ÙH	ØÛÛœÙXÝ]]™K\[‰ÎˆØ\ÙH	Ù[›ÜXÉÎˆØ\ÙH	Û[Ù[\‰ÎˆØ\ÙH	Ü[[™›ÛYIÎ‚ˆØ\ÙH	Ü™[˜˜[‰ÎˆØ\ÙH	Ü™YÚ[Û‹\Ý[IÎˆØ\ÙH	Ý\›[ÛY]\‰ÎˆØ\ÙH	ÝÚ\Ü\œÉÎ‚ˆYœ˜YÛY[
-[K˜Ù[Ë\ÙˆH	Û[™Qœ˜YÛY[ÖÜ[K\W_X
-Bˆœ™XZÂˆØ\ÙH	Û]\™Y\]XY\\ÉÎ‚ˆ›Üˆ
-ÛÛœÝÛYHÙˆ[K˜ÛY\ÊHYœ˜YÛY[
-]XY\PÙ[ÊÛYKÜY
-K	Ü\ÙˆH]\™Y]XY\IÊBˆœ™XZÂˆØ\ÙH	Ú[œÚYKYÜšY	Î‚ˆYœ˜YÛY[
-[Kœ›ÝÜË™›]
+export type FogDefinition = { initialCells: readonly number[]; cellColors?: ImportedCellColors }
 
-K	Ü\Ùˆ[ˆ[œÚYHÜšY	ÊBˆœ™XZÂˆØ\ÙH	Ù\Ý[˜ÝXÙ[ÉÎ‚ˆYœ˜YÛY[
-[K˜Ù[Ë	Ü\ÙˆHÚYYÜ›Ý\	ÊBˆœ™XZÂˆØ\ÙH	Ü[X\œ›ÝÉÎ‚ˆYœ˜YÛY[
-Ë‹‹œ[Kœ[‹‹œ[K˜Ù[×K	Ü\ÙˆH[\œ›ÝÈÛYIÊBˆœ™XZÂˆØ\ÙH	Ø\œ›ÝÉÎ‚ˆYœ˜YÛY[
-Ü[K˜Ú\˜ÛK‹‹œ[K˜Ù[×K	Ü\Ùˆ[ˆ\œ›ÝÈÛYIÊBˆœ™XZÂˆØ\ÙH	ÛZ[š[][IÎˆØ\ÙH	ÛX^[][IÎ‚ˆYˆ
-Y^™[XUš\ÚX›J[K˜Ù[Ëš\ÚX›JJHÂˆÛÛœÝ˜[YHH[K\HOOH	ÛZ[š[][IÈÈ	ÓZ[š[][HX\šÉÈˆ	ÓX^[][HX\šÉÂˆ›Üˆ
-ÛÛœÝÙ[Ùˆ[K˜Ù[ÊHYˆ
-š\ÚX›Kš\ÊÙ[
-JHX™[ÖØÙ[Kœ\Ú
-˜[YJBˆBˆœ™XZÂˆØ\ÙH	ÛX™[YYÝÉÎ‚ˆ›Üˆ
-ÛÛœÝX\šÈÙˆ[K›X\šÜÊHYœ˜YÛY[
-X\šË˜Ù[Ë[Kœ™[][ÛˆOOH	Ü˜][ÉÈÈ	Ü\ÙˆH›XÚÈÝ	Èˆ	Ü\ÙˆHÚ]HÝ	ÊBˆœ™XZÂˆØ\ÙH	ÚÜ›ÜÚIÎ‚ˆ›Üˆ
-ÛÛœÝZ\ˆÙˆ[K˜ÛÛœÙXÝ]]™OËœZ\œÈÏÈ×JHYœ˜YÛY[
-Z\‹	Ü\ÙˆHÚ]HÝ	ÊBˆ›Üˆ
-ÛÛœÝZ\ˆÙˆ[Kœ˜][ÕÛÏËœZ\œÈÏÈ×JHYœ˜YÛY[
-Z\‹	Ü\ÙˆH›XÚÈÝ	ÊBˆœ™XZÂˆØ\ÙH	Þ‰Î‚ˆ›Üˆ
-ÛÛœÝZ\ˆÙˆË‹‹Š[K™š]™OËœZ\œÈÏÈ×JK‹‹Š[K[ËœZ\œÈÏÈ×JWJHYœ˜YÛY[
-Z\‹	Ü\ÙˆHÝ[HÛYIÊBˆœ™XZÂˆØ\ÙH	ØY˜XÙ[]Ý[	Î‚ˆYœ˜YÛY[
-[K˜Ù[Ë	Ü\ÙˆHÝ[HÛYIÊBˆœ™XZÂˆØ\ÙH	Ú[™\]X[]IÎ‚ˆYœ˜YÛY[
-Ü[K›\ÜË[K™Ü™X]\—K	Ü\Ùˆ[ˆ[™\]X[]HÚYÛ‰ÊBˆœ™XZÂˆBˆBˆ™]\›ˆX™[ÂŸB‚™^Ü\H›ÙÕšY]ÈHÈ[šY\ÎˆÝš[™ÎÈÙ[Îˆ™XYÛ›TÙ][X™\ŽÈ^ž›Nˆ˜\šX[^ž›NÈÙ[ÛÛÜœÏÎˆ[\ÜYÙ[ÛÛÜœÈB\H›ÙÔ^ž›HHXÚÏ˜\šX[Ø[YK	Ü^ž›IÈ	Ù›ÙÉÏˆ	ˆ\X[XÚÏ˜\šX[Ø[YK	ÜÛÛ][Û‰Ï‚˜ÛÛœÝ›ÙÕšY]ÜÈH™]ÈÙXZÓX\›ÙÔ^ž›K›ÙÕšY]ÏŠ
-B˜ÛÛœÝ[\Q[šY\ÈH	Ì	Ëœ™\X]
-JB˜ÛÛœÝ[›ÙÕšY]ÈH™]ÈÙ]
-\œ˜^K™œ›ÛJÈ[™ÝˆHK
-ËÙ[
-HOˆÙ[
-JB‚‹ÊŠˆ\š]™HHÝ\œ™[šY]Èœ›ÛH[[]]X›H^ž›H]H[™HØ]™YÜÚ][Û‹ˆ
-‹Â™^Ü[˜Ý[Ûˆ›ÙÕšY]Ê˜\šX[ˆ›ÙÔ^ž›H[™Yš[™Y[šY\ÈH[\Q[šY\ÊNˆ›ÙÕšY]È[™Yš[™YÂˆYˆ
-]˜\šX[Ë™›ÙÊH™]\›‚ˆÛÛœÝØXÚYH›ÙÕšY]ÜË™Ù]
-˜\šX[
-BˆYˆ
-ØXÚYË™[šY\ÈOOH[šY\ÊH™]\›ˆØXÚYˆÛÛœÝÈÛÛ][ÛˆHH˜\šX[ˆÛÛœÝÛÛ\]HHÛÛ][Ûˆ	‰ˆË‹‹œÛÛ][Û—K™]™\žJ
-YÚ]Ù[
-HO‚ˆYÚ]OOH
-˜\šX[œ^ž›K™Ú]™[œÖØÙ[HOOH	Ì	ÈÈ[šY\ÖØÙ[Hˆ˜\šX[œ^ž›K™Ú]™[œÖØÙ[JJBˆÛÛœÝÙ[ÈHÛÛ\]HÈ[›ÙÕšY]ÈˆÛÛ][ÛˆÈ™]™X[Y›ÙÐÙ[Ê˜\šX[™›ÙË[šY\ËÛÛ][ÛŠHˆ™]ÈÙ]
-˜\šX[™›ÙËš[š]X[Ù[ÊBˆÛÛœÝÈÙ[ÛÛÜœÈHH˜\šX[™›ÙÂˆÛÛœÝšY]Îˆ›ÙÕšY]ÈHÈ[šY\ËÙ[Ë^ž›Nˆ›Ú™XÝ›ÙÔ^ž›J˜\šX[œ^ž›KÙ[ÊKˆ‹‹ŠÙ[ÛÛÜœÈ	‰ˆÈÙ[ÛÛÜœÎˆØš™XÝ™œ›ÛQ[šY\ÊØš™XÝ™[šY\ÊÙ[ÛÛÜœÊK™š[\Š
-ØÙ[JHOˆÙ[Ëš\Ê[X™\ŠÙ[
-JJJHJKˆBˆ›ÙÕšY]ÜËœÙ]
-˜\šX[šY]ÊBˆ™]\›ˆšY]ÂŸB‚™^Ü[˜Ý[Ûˆ^U˜\šX[^ž›J˜\šX[ˆ˜\šX[Ø[YH[™Yš[™Y[šY\ÏÎˆÝš[™ÊNˆ˜\šX[^ž›H[™Yš[™YÂˆ™]\›ˆ›ÙÕšY]Ê˜\šX[[šY\ÊOËœ^ž›HÏÈ˜\šX[Ëœ^ž›BŸB
+export function isFogDefinition(value: unknown): value is FogDefinition {
+  if (!value || typeof value !== 'object' || !('initialCells' in value) ||
+    Object.keys(value).some(key => key !== 'initialCells' && key !== 'cellColors')) return false
+  const { initialCells, cellColors } = value as { initialCells: unknown; cellColors?: unknown }
+  return Array.isArray(initialCells) && initialCells.length > 0 && initialCells.length <= 81 &&
+    new Set(initialCells).size === initialCells.length &&
+    initialCells.every(cell => Number.isInteger(cell) && cell >= 0 && cell < 81) &&
+    (cellColors === undefined || validImportedCellColors(cellColors))
+}
+
+const fogNeighborhoods = Array.from({ length: 81 }, (_, cell) => {
+  const row = Math.floor(cell / 9)
+  const column = cell % 9
+  const neighbors: number[] = []
+  for (let r = Math.max(0, row - 1); r <= Math.min(8, row + 1); r++) {
+    for (let c = Math.max(0, column - 1); c <= Math.min(8, column + 1); c++) neighbors.push(r * 9 + c)
+  }
+  return neighbors
+})
+
+/** Coach reveals the neighborhood of each currently correct player entry. */
+export function revealedFogCells(fog: FogDefinition, entries: string, solution: string): ReadonlySet<number> {
+  const cells = new Set(fog.initialCells)
+  for (let cell = 0; cell < 81; cell++) {
+    if (entries[cell] === '0' || entries[cell] !== solution[cell]) continue
+    for (const neighbor of fogNeighborhoods[cell]) cells.add(neighbor)
+  }
+  return cells
+}
+
+/** A valid placement at any of these cells changes the visible puzzle. */
+export function fogRevealPlacements(visible: ReadonlySet<number>): number[] {
+  return fogNeighborhoods.flatMap((neighbors, cell) => neighbors.some(neighbor => !visible.has(neighbor)) ? [cell] : [])
+}
+
+function visiblePaths(path: readonly number[], visible: ReadonlySet<number>): number[][] {
+  const runs: number[][] = []
+  let run: number[] = []
+  for (const cell of path) {
+    if (visible.has(cell)) run.push(cell)
+    else {
+      if (run.length > 1) runs.push(run)
+      run = []
+    }
+  }
+  if (run.length > 1) runs.push(run)
+  return runs
+}
+
+function visibleMarks(marks: MarkedPairs | undefined, visible: ReadonlySet<number>, complete: boolean): MarkedPairs | undefined {
+  const pairs = marks?.pairs?.filter(pair => pair.every(cell => visible.has(cell)))
+  const negative = complete && marks?.negative === true
+  return pairs?.length || negative ? { ...(pairs?.length && { pairs }), ...(negative && { negative }) } : undefined
+}
+
+/** A continuous patch of revealed shading identifies cells in the same group. */
+function visibleShadedGroups(cells: readonly number[], visible: ReadonlySet<number>) {
+  const remaining = new Set(cells.filter(cell => visible.has(cell)))
+  const groups: number[][] = []
+  for (const start of remaining) {
+    const group = [start]
+    remaining.delete(start)
+    for (const cell of group) for (const neighbor of remaining) {
+      if (cellsShareEdge(cell, neighbor)) {
+        remaining.delete(neighbor)
+        group.push(neighbor)
+      }
+    }
+    if (group.length >= 2) groups.push(group)
+  }
+  return groups
+}
+
+/** The printed digits that lie entirely outside the fog. */
+function visibleQuadrupleDigits(rule: Extract<VariantRule, { type: 'quadruple' | 'quadruple-sum' }>, visible: ReadonlySet<number>) {
+  const cells = quadrupleCells(rule.topLeft)
+  const count = rule.digits.length
+  if (cells.every(cell => visible.has(cell))) return rule.digits
+  if (count === 1) return []
+  return rule.digits.filter((_, slot) => {
+    // The one- and two-digit layouts are vertically centered. In the
+    // three-digit layout the last digit is centered across the bottom cells.
+    if (count === 2) return visible.has(cells[slot]) && visible.has(cells[slot + 2])
+    if (count === 3 && slot === 2) return visible.has(cells[2]) && visible.has(cells[3])
+    return visible.has(cells[slot])
+  })
+}
+
+function extremaNeighbors(cell: number) {
+  return [cell >= 9 ? cell - 9 : -1, cell < 72 ? cell + 9 : -1,
+    cell % 9 > 0 ? cell - 1 : -1, cell % 9 < 8 ? cell + 1 : -1].filter(other => other >= 0)
+}
+
+function extremaVisible(cells: readonly number[], visible: ReadonlySet<number>) {
+  return cells.every(cell => visible.has(cell) && extremaNeighbors(cell).every(other => visible.has(other)))
+}
+
+/** The puzzle facts the player can use. Exact verification uses the original definition. */
+export function projectFogPuzzle(puzzle: VariantPuzzle, visible: ReadonlySet<number>): VariantPuzzle {
+  if (visible.size === 81) return puzzle
+  const rules = puzzle.rules ?? []
+  const allVisible = (cells: readonly number[]) => cells.every(cell => visible.has(cell))
+  const allMarksVisible = (marks?: MarkedPairs) => marks?.pairs?.every(allVisible) ?? true
+  // A hidden marker can exempt an edge from a negative rule.
+  const completeKropki = rules.every(rule => rule.type !== 'kropki' ||
+    allMarksVisible(rule.consecutive) && allMarksVisible(rule.ratioTwo))
+  const completeXv = rules.every(rule => {
+    if (rule.type === 'xv') return allMarksVisible(rule.five) && allMarksVisible(rule.ten)
+    if (rule.type === 'adjacent-total' && (rule.sum === 5 || rule.sum === 10)) return allVisible(rule.cells)
+    return true
+  })
+  const shown = rules.flatMap((rule): VariantRule[] => {
+    switch (rule.type) {
+      case 'parity': {
+        const cells = rule.cells.filter(cell => visible.has(cell))
+        return cells.length ? [{ ...rule, cells }] : []
+      }
+      case 'digit-restriction': {
+        const cells = rule.cells.filter(cell => visible.has(cell))
+        return cells.length ? [{ ...rule, cells }] : []
+      }
+      case 'killer-cages': {
+        const cages = rule.cages.filter(cage => allVisible(cage.cells))
+        return cages.length ? [{ type: 'killer-cages', cages }] : []
+      }
+      case 'kropki': {
+        const consecutive = visibleMarks(rule.consecutive, visible, completeKropki)
+        const ratioTwo = visibleMarks(rule.ratioTwo, visible, completeKropki)
+        return consecutive || ratioTwo ? [{ type: 'kropki', ...(consecutive && { consecutive }), ...(ratioTwo && { ratioTwo }) }] : []
+      }
+      case 'labeled-dots': {
+        const marks = rule.marks.filter(mark => allVisible(mark.cells))
+        const negative = rule.negative && rules.every(other => other.type !== 'labeled-dots' ||
+          other.relation !== rule.relation || other.marks.every(mark => allVisible(mark.cells)))
+        return marks.length || negative ? [{ type: rule.type, relation: rule.relation, marks, ...(negative && { negative }) }] : []
+      }
+      case 'xv': {
+        const five = visibleMarks(rule.five, visible, completeXv)
+        const ten = visibleMarks(rule.ten, visible, completeXv)
+        return five || ten ? [{ type: 'xv', ...(five && { five }), ...(ten && { ten }) }] : []
+      }
+      case 'lettered-quadruples': {
+        const clues = rule.clues.filter(clue => allVisible(quadrupleCells(clue.topLeft)))
+        return clues.length ? [{ ...rule, clues }] : []
+      }
+      case 'inside-grid': return allVisible(rule.rows.flat()) ? [rule] : []
+      case 'distinct-cells':
+        return allVisible(rule.cells) ? [rule] : visibleShadedGroups(rule.cells, visible).map(cells => ({ ...rule, cells }))
+      case 'consecutive-run':
+        if (rule.fromBulb) return allVisible(rule.cells) ? [rule] : []
+        return visiblePaths(rule.cells, visible).map(cells => ({ ...rule, cells }))
+      case 'whispers':
+      case 'modular':
+      case 'entropic':
+        // Every contiguous run keeps the original pairwise phase relationships.
+        return allVisible(rule.cells) ? [rule] : visiblePaths(rule.cells, visible).map(cells => ({ ...rule, cells }))
+      case 'clone': {
+        const groups = rule.groups.filter(allVisible)
+        return groups.length ? [{ ...rule, groups }] : []
+      }
+      case 'diagonal':
+        return allVisible(Array.from({ length: 9 }, (_, i) => rule.diagonal === 'main' ? 10 * i : 8 * (i + 1))) ? [rule] : []
+      case 'quadruple': case 'quadruple-sum': {
+        const digits = visibleQuadrupleDigits(rule, visible)
+        // Each exposed digit must still occur somewhere in the four cells.
+        return digits.length ? [{ ...rule, digits }] : []
+      }
+      case 'inequality':
+        return allVisible([rule.less, rule.greater]) ? [rule] : []
+      case 'minimum': case 'maximum': {
+        if (extremaVisible(rule.cells, visible)) return [rule]
+        const skipped = rule.ignoreMarkedNeighbors ? new Set(rule.cells) : undefined
+        const minimum = rule.type === 'minimum'
+        // A comparison needs both cells visible, including any mark that exempts their shared edge.
+        return rule.cells.flatMap(cell => visible.has(cell)
+          ? extremaNeighbors(cell).filter(other => visible.has(other) && !skipped?.has(other)).map(other => ({
+              type: 'inequality', less: minimum ? cell : other, greater: minimum ? other : cell,
+            }))
+          : [])
+      }
+      case 'arrow':
+        return visible.has(rule.circle) && allVisible(rule.cells) ? [rule] : []
+      case 'pill-arrow':
+        return allVisible(rule.pill) && allVisible(rule.cells) ? [rule] : []
+      case 'non-consecutive':
+        return !rule.except || rule.except.every(allVisible) ? [rule] : []
+      case 'anti-knight':
+      case 'conditional-neighbor':
+      case 'anti-king':
+      case 'global-entropy':
+      case 'sandwich':
+      case 'little-killer':
+      case 'x-sum':
+      case 'skyscrapers':
+        // The fog covers the grid. Outside labels and their directions are public.
+        return [rule]
+      case 'aqre':
+        // Shading regions and their indicators cross ordinary cell visibility boundaries.
+        return rule.regions.every(region => allVisible(region.cells)) ? [rule] : []
+      case 'neighbor-match':
+        return rule.clues.every(({ cell }) => {
+          const neighbors = [cell - 9, cell + 9, cell - 1, cell + 1].filter(neighbor =>
+            neighbor >= 0 && neighbor < 81 &&
+            (Math.floor(neighbor / 9) === Math.floor(cell / 9) || neighbor % 9 === cell % 9))
+          return visible.has(cell) && allVisible(neighbors)
+        }) ? [rule] : []
+      case 'unknown-cage-sums':
+        return rule.cages.every(allVisible) ? [rule] : []
+      case 'distant-neighbors':
+        return allVisible(rule.markedCells) ? [rule] : []
+      default:
+        return allVisible(rule.cells) ? [rule] : []
+    }
+  })
+  const givens = [...puzzle.givens].map((digit, cell) => visible.has(cell) ? digit : '0').join('')
+  return { ...puzzle, givens, rules: shown }
+}
+
+const lineFragments = {
+  between: 'Between line', lockout: 'Lockout Line', 'consecutive-run': 'Consecutive Line', entropic: 'Entropic line', modular: 'Modular line', palindrome: 'Palindrome line',
+  renban: 'Renban line', 'region-sum': 'Region Sum line', thermometer: 'thermometer', whispers: 'Whispers line',
+} as const
+
+/** Describe visible fragments without inferring the clues' covered digits or cells. */
+export function fogFragmentLabels(rules: readonly VariantRule[], visible: ReadonlySet<number>) {
+  const labels: string[][] = Array.from({ length: 81 }, () => [])
+  const addFragment = (cells: readonly number[], description: string) => {
+    if (cells.every(cell => visible.has(cell))) return
+    for (const cell of new Set(cells)) if (visible.has(cell)) labels[cell].push(description)
+  }
+  for (const rule of rules) {
+    switch (rule.type) {
+      case 'killer-cages':
+        for (const { cells, sum } of rule.cages) {
+          if (cells.every(cell => visible.has(cell))) continue
+          const corner = Math.min(...cells)
+          for (const cell of cells) if (visible.has(cell)) labels[cell].push(cell === corner
+            ? `cage total ${sum}, outline continues under fog` : 'cage outline continues under fog')
+        }
+        break
+      case 'quadruple': case 'quadruple-sum':
+        if (!visibleQuadrupleDigits(rule, visible).length) {
+          addFragment(quadrupleCells(rule.topLeft), rule.type === 'quadruple-sum' ? 'part of a Quad-Arrows clue' : 'part of a Quadruple clue')
+        }
+        break
+      case 'between': case 'lockout': case 'consecutive-run': case 'entropic': case 'modular': case 'palindrome':
+      case 'renban': case 'region-sum': case 'thermometer': case 'whispers':
+        addFragment(rule.cells, `part of a ${lineFragments[rule.type]}`)
+        break
+      case 'lettered-quadruples':
+        for (const clue of rule.clues) addFragment(quadrupleCells(clue.topLeft), 'part of a lettered Quadruple')
+        break
+      case 'inside-grid':
+        addFragment(rule.rows.flat(), 'part of an Inside Grid')
+        break
+      case 'distinct-cells':
+        addFragment(rule.cells, 'part of a shaded group')
+        break
+      case 'pill-arrow':
+        addFragment([...rule.pill, ...rule.cells], 'part of a Pill Arrow clue')
+        break
+      case 'arrow':
+        addFragment([rule.circle, ...rule.cells], 'part of an Arrow clue')
+        break
+      case 'minimum': case 'maximum':
+        if (!extremaVisible(rule.cells, visible)) {
+          const name = rule.type === 'minimum' ? 'Minimum mark' : 'Maximum mark'
+          for (const cell of rule.cells) if (visible.has(cell)) labels[cell].push(name)
+        }
+        break
+      case 'labeled-dots':
+        for (const mark of rule.marks) addFragment(mark.cells, rule.relation === 'ratio' ? 'part of a black dot' : 'part of a white dot')
+        break
+      case 'kropki':
+        for (const pair of rule.consecutive?.pairs ?? []) addFragment(pair, 'part of a white dot')
+        for (const pair of rule.ratioTwo?.pairs ?? []) addFragment(pair, 'part of a black dot')
+        break
+      case 'xv':
+        for (const pair of [...(rule.five?.pairs ?? []), ...(rule.ten?.pairs ?? [])]) addFragment(pair, 'part of a sum clue')
+        break
+      case 'adjacent-total':
+        addFragment(rule.cells, 'part of a sum clue')
+        break
+      case 'inequality':
+        addFragment([rule.less, rule.greater], 'part of an inequality sign')
+        break
+    }
+  }
+  return labels
+}
+
+export type FogView = { entries: string; cells: ReadonlySet<number>; puzzle: VariantPuzzle; cellColors?: ImportedCellColors }
+type FogPuzzle = Pick<VariantGame, 'puzzle' | 'fog'> & Partial<Pick<VariantGame, 'solution'>>
+const fogViews = new WeakMap<FogPuzzle, FogView>()
+const emptyEntries = '0'.repeat(81)
+const fullFogView = new Set(Array.from({ length: 81 }, (_, cell) => cell))
+
+/** Derive the current view from immutable puzzle data and the saved position. */
+export function fogView(variant: FogPuzzle | undefined, entries = emptyEntries): FogView | undefined {
+  if (!variant?.fog) return
+  const cached = fogViews.get(variant)
+  if (cached?.entries === entries) return cached
+  const { solution } = variant
+  const complete = solution && [...solution].every((digit, cell) =>
+    digit === (variant.puzzle.givens[cell] === '0' ? entries[cell] : variant.puzzle.givens[cell]))
+  const cells = complete ? fullFogView : solution ? revealedFogCells(variant.fog, entries, solution) : new Set(variant.fog.initialCells)
+  const { cellColors } = variant.fog
+  const view: FogView = { entries, cells, puzzle: projectFogPuzzle(variant.puzzle, cells),
+    ...(cellColors && { cellColors: Object.fromEntries(Object.entries(cellColors).filter(([cell]) => cells.has(Number(cell)))) }),
+  }
+  fogViews.set(variant, view)
+  return view
+}
+
+export function playVariantPuzzle(variant: VariantGame | undefined, entries?: string): VariantPuzzle | undefined {
+  return fogView(variant, entries)?.puzzle ?? variant?.puzzle
+}
