@@ -57,6 +57,25 @@ test('#423 imports the authored Magic Square and unnumbered nine-cell cages', as
   assert.equal(magicSquareFixture.solution.length, 81)
 })
 
+test('#423 keeps its Magic Square semantics when a supported rule is appended', async () => {
+  const data = await decodeSudokuCoachPayload(magicSquareFixture.code)
+  const pair = Array.from({ length: 81 }, (_, cell) => cell).flatMap(cell => {
+    const row = Math.floor(cell / 9), column = cell % 9
+    return [[row < 8 ? cell + 9 : -1], [column < 8 ? cell + 1 : -1]]
+      .filter(([other]) => other >= 0 && Number(magicSquareFixture.solution[cell]) === 2 * Number(magicSquareFixture.solution[other]) ||
+        other >= 0 && Number(magicSquareFixture.solution[other]) === 2 * Number(magicSquareFixture.solution[cell]))
+      .map(([other]) => [cell, other] as [number, number])
+  })[0]
+  assert.ok(pair)
+  const ratio = { type: 'ratio', segments: [{ cells: pair, parameters: {} }] }
+  const imported = await detectPuzzle(coachCode({
+    ...data, givenConstraints: [...data.givenConstraints, ratio],
+  }))
+  const rules = imported.variant?.puzzle.rules ?? []
+  assert.ok(rules.some(rule => rule.type === 'magic-square'))
+  assert.ok(rules.some(rule => rule.type === 'kropki' && rule.ratioTwo?.pairs.some(([a, b]) => a === pair[0] && b === pair[1])))
+})
+
 test('#544 imports XV Entropy when the authored cosmetic cage is empty', async () => {
   const source = fixture.examples.find(example => example.issue === 544)
   assert.ok(source)

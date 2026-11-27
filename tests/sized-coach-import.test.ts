@@ -60,6 +60,18 @@ test('published Symmetrical Inside imports outside-digit rules with its Renban p
   }
 })
 
+test('Symmetrical Inside retains a supported companion rule added after its reviewed layers', async () => {
+  const data = coachInsideDigitGroups.decoded as { givenConstraints: unknown[] }
+  const thermometer = { type: 'thermometer', segments: [{ cells: [0, 1, 2], parameters: {} }] }
+  const imported = await detectPuzzle(coachCode({
+    ...data, givenConstraints: [...data.givenConstraints, thermometer],
+  }))
+  assert.ok(imported.sizedRules?.some(rule => rule.type === 'outside-text'))
+  assert.ok(imported.sizedRules?.some(rule => rule.type === 'thermometer' &&
+    rule.cells.length === 3 && rule.cells[0] === 0 && rule.cells[1] === 1 && rule.cells[2] === 2))
+  assert.equal(imported.authoredSolution, coachInsideDigitGroups.metadata.solution)
+})
+
 test('Symmetrical Inside retains player progress without losing its authored outside clues', async () => {
   const data = coachInsideDigitGroups.decoded
   const emptyCell = String(data.givenDigits).indexOf('0')

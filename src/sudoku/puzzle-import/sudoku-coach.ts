@@ -241,9 +241,10 @@ const authoredAsnFXSumsCoachExport = '40049b467057c5860aea9fd909abd6eba8f1ea3694
 const allBlackDotsCoachExport = 'd23c1148acfca2fe7c543a29fc3c4b52bd1aa70d9287fab8088333239d54d4e0'
 
 async function readCoachInsideDigitGroups(code: string, data: Record<string, unknown>) {
-  if (await sourceHash(code, data) !== coachInsideDigitGroupsExport) return
+  if (!Array.isArray(data.givenConstraints) || data.givenConstraints.length < 3 ||
+    await sourceHash(code, { ...data, givenConstraints: data.givenConstraints.slice(0, 3) }) !== coachInsideDigitGroupsExport) return
   const invalid = () => new Error('The Symmetrical Inside export does not match its reviewed outside-digit clues.')
-  if (data.gridSize !== 9 || !Array.isArray(data.givenConstraints) || data.givenConstraints.length !== 3) throw invalid()
+  if (data.gridSize !== 9) throw invalid()
   const [arrows, labels, renbans] = data.givenConstraints
   if (!record(arrows) || arrows.type !== 'littleKiller' || Object.keys(arrows).sort().join(',') !== 'id,segments,settings,type' ||
     !record(arrows.settings) || Object.keys(arrows.settings).length !== 0 || !Array.isArray(arrows.segments) ||
@@ -310,7 +311,7 @@ async function readCoachInsideDigitGroups(code: string, data: Record<string, unk
   if ([...arrowAt.keys()].length !== 0) throw invalid()
   const renbanRules = readCoachRules([renbans], { grid: CLASSIC_GRID })
   if (renbanRules.length !== 7 || renbanRules.some(rule => rule.type !== 'renban')) throw invalid()
-  const rules = [...renbanRules, ...outsideRules]
+  const rules = [...renbanRules, ...outsideRules, ...readCoachRules(data.givenConstraints.slice(3), { grid: CLASSIC_GRID })]
   if (!isSizedRuleList(rules, CLASSIC_GRID)) throw invalid()
   const givens = data.givenDigits === undefined ? '0'.repeat(81) : data.givenDigits
   if (typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens)) throw invalid()
@@ -318,8 +319,8 @@ async function readCoachInsideDigitGroups(code: string, data: Record<string, unk
 }
 
 async function readCoachMagicSquare(code: string, data: Record<string, unknown>) {
-  if (await sourceHash(code, data) !== magicSquareCoachExport || data.gridSize !== 9 ||
-    !Array.isArray(data.givenConstraints) || data.givenConstraints.length !== 1) return
+  if (!Array.isArray(data.givenConstraints) || data.givenConstraints.length < 1 ||
+    await sourceHash(code, { ...data, givenConstraints: data.givenConstraints.slice(0, 1) }) !== magicSquareCoachExport || data.gridSize !== 9) return
   const [layer] = data.givenConstraints
   if (!record(layer) || layer.type !== 'cage' || !Array.isArray(layer.segments) || layer.segments.length !== 13) return
   const unnumbered = layer.segments.filter(segment => record(segment) && record(segment.parameters) &&
@@ -329,10 +330,10 @@ async function readCoachMagicSquare(code: string, data: Record<string, unknown>)
 }
 
 async function readCoachUnknownCageSums(code: string, data: Record<string, unknown>) {
-  if (await sourceHash(code, data) !== unknownCageSumsCoachExport || data.gridSize !== 9 ||
-    !Array.isArray(data.givenConstraints)) return
+  if (!Array.isArray(data.givenConstraints) || data.givenConstraints.length < 4 ||
+    await sourceHash(code, { ...data, givenConstraints: data.givenConstraints.slice(0, 4) }) !== unknownCageSumsCoachExport || data.gridSize !== 9) return
   const layers = data.givenConstraints.filter(record)
-  if (layers.length !== data.givenConstraints.length || layers.length !== 4) return
+  if (layers.length !== data.givenConstraints.length || layers.length < 4) return
   const cageLayers = layers.filter(layer => layer.type === 'cage')
   const textLayers = layers.filter(layer => layer.type === 'cosmeticText')
   if (cageLayers.length !== 1 || textLayers.length !== 1) return
@@ -398,8 +399,8 @@ async function readCoachUnknownCageSums(code: string, data: Record<string, unkno
 }
 
 async function readCoachDistantNeighbors(code: string, data: Record<string, unknown>) {
-  if (await sourceHash(code, data) !== distantNeighborsCoachExport || data.gridSize !== 9 ||
-    !Array.isArray(data.givenConstraints) || data.givenConstraints.length !== 2) return
+  if (!Array.isArray(data.givenConstraints) || data.givenConstraints.length < 2 ||
+    await sourceHash(code, { ...data, givenConstraints: data.givenConstraints.slice(0, 2) }) !== distantNeighborsCoachExport || data.gridSize !== 9) return
   const layers = data.givenConstraints.filter(record)
   if (layers.length !== data.givenConstraints.length) return
   const [region] = layers.filter(layer => layer.type === 'region')
