@@ -1,4 +1,4 @@
-import { readReviewedCoachArtwork, reviewedCoachFillTitle } from '../authored-artwork.ts'
+import { readCoachCosmeticLineArtwork, readReviewedCoachArtwork, reviewedCoachFillTitle } from '../authored-artwork.ts'
 import { readReviewedCoachCrust } from './coach-crust.ts'
 import { readReviewedCoachRowEquations } from './coach-row-equation.ts'
 import { readCoachFractionalRegions } from '../coach-fractional-regions.ts'
@@ -1083,7 +1083,10 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   }
   const artworkData = sunnyEntropyMatch
     ? { ...data, givenConstraints: (data.givenConstraints as unknown[]).slice(0, 6) } : data
-  const artwork = await readReviewedCoachArtwork(code, constraints, artworkData)
+  const reviewedArtwork = await readReviewedCoachArtwork(code, constraints, artworkData)
+  const cosmeticLineArtwork = !reviewedArtwork && !reviewed220VLineLegend
+    ? readCoachCosmeticLineArtwork(constraints) : undefined
+  const artwork = reviewedArtwork ?? cosmeticLineArtwork
   if (publication?.authoredRule === 'reviewed-artwork' && !artwork?.layers) {
     throw new Error('The CS1G export does not match its reviewed authored artwork.')
   }
@@ -1098,7 +1101,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   const guideLayers = !lettered && constraints.some(layer => record(layer) && layer.type === 'whisper') &&
     constraints.some(layer => record(layer) && layer.type === 'cosmeticShape')
     ? constraints.filter(layer => record(layer) && (layer.type === 'cosmeticShape' || layer.type === 'cosmeticText')) : []
-  const artworkLayers = artwork && 'layers' in artwork ? artwork.layers ?? [] : artwork ? [artwork.layer] : []
+  const artworkLayers = artwork && Array.isArray(artwork.layers) ? artwork.layers : artwork ? [artwork.layer] : []
   const cellColours = readCoachColourCells(data.colours, data.givenColours)
   const hasShapeLayer = constraints.some(layer => record(layer) && layer.type === 'cosmeticShape')
   const declaredInsideGrid = publication?.authoredRule === 'inside-grid'

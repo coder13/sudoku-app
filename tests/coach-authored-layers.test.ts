@@ -6,6 +6,7 @@ import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
 import { parseCoachEntropyWindowGroups } from '../src/sudoku/entropy-window-groups.ts'
 import { validAuthoredArtwork } from '../src/sudoku/authored-artwork.ts'
+import { readCoachCosmeticLineArtwork } from '../src/sudoku/authored-artwork.ts'
 import { readReviewedCoachAqre } from '../src/sudoku/puzzle-import/coach-aqre.ts'
 import { readReviewedCoachTextClues } from '../src/sudoku/puzzle-import/coach-text-clues.ts'
 import { isSolved, makeGame, setAqreShade } from '../src/sudoku/game.ts'
@@ -19,6 +20,36 @@ import { coachCode } from './helpers/coach-code.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 
 useWasmWorker()
+
+test('Coach cosmetic grid lines import as artwork without changing the rule set', async () => {
+  const line = {
+    type: 'cosmeticLine',
+    settings: { lineThickness: 7, gridSnapToCentres: false, gridSnapToCorners: true },
+    segments: [
+      { cells: [[0, 3], [1, 3], [2, 3]], parameters: {} },
+      { cells: [[6, 9], [6, 8], [6, 7]], parameters: {} },
+    ],
+  }
+  const imported = await detectPuzzle(coachCode({ givenConstraints: [
+    { type: 'antiKnight', segments: [], settings: {} }, line,
+  ] }))
+  assert.deepEqual(imported.authoredArtwork, [
+    { type: 'divider', points: [[0, 3], [1, 3], [2, 3]], thickness: .07 },
+    { type: 'divider', points: [[6, 9], [6, 8], [6, 7]], thickness: .07 },
+  ])
+  assert.deepEqual(imported.variant?.puzzle.rules?.map(rule => rule.type), ['anti-knight'])
+})
+
+test('Coach cosmetic grid line artwork rejects unreviewed settings and geometry', () => {
+  const valid = {
+    type: 'cosmeticLine', settings: { lineThickness: 7, gridSnapToCentres: false, gridSnapToCorners: true },
+    segments: [{ cells: [[0, 3], [1, 3]], parameters: {} }],
+  }
+  assert.equal(readCoachCosmeticLineArtwork([valid])?.artwork.length, 1)
+  assert.equal(readCoachCosmeticLineArtwork([{ ...valid, settings: { ...valid.settings, colour: '#000000' } }]), undefined)
+  assert.equal(readCoachCosmeticLineArtwork([{ ...valid, segments: [{ cells: [[0, 3], [1.5, 3]], parameters: {} }] }]), undefined)
+  assert.equal(readCoachCosmeticLineArtwork([{ ...valid, segments: [{ cells: [[0, 3], [1, 4]], parameters: {} }] }]), undefined)
+})
 
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-authored-layers.json', import.meta.url), 'utf8')) as {
   examples: { issue: number; id: string; code: string; sourceDescription?: string }[]

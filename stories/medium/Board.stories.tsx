@@ -78,6 +78,22 @@ function BoardExample({
 
 export const ReadOnly: Story = {}
 
+export const CoachCosmeticLineArtwork: Story = {
+  args: {
+    content: {
+      givens: '0'.repeat(81),
+      values: '0'.repeat(81),
+    },
+    appearance: {
+      authoredArtwork: [
+        { type: 'divider', points: [[0, 3], [1, 3], [2, 3], [3, 3], [4, 3], [5, 3], [6, 3], [7, 3], [8, 3], [9, 3]], thickness: .07 },
+        { type: 'divider', points: [[6, 9], [6, 8], [6, 7], [6, 6], [6, 5], [6, 4], [6, 3], [6, 2], [6, 1], [6, 0]], thickness: .07 },
+        { type: 'divider', points: [[6, 6], [7, 6], [8, 6], [9, 6]], thickness: .07 },
+      ],
+    },
+  },
+}
+
 function DoubledCluesBoard({ finished = false }: { finished?: boolean }) {
   const [puzzle, setPuzzle] = useState<{ givens: string; solution: string; grid: SizedGrid; rules: readonly SizedConstraintRule[] }>()
   useEffect(() => {

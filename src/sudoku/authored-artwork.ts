@@ -257,3 +257,28 @@ export async function readReviewedCoachArtwork(code: string, constraints: readon
   })
   return validAuthoredArtwork(artwork) ? { layer, artwork, title: review.title, partialRegions: review.partialRegions } : undefined
 }
+
+/** Import a strictly cosmetic, grid-corner-snapped Coach line as board artwork. */
+export function readCoachCosmeticLineArtwork(constraints: readonly unknown[]) {
+  const layers = constraints.filter(layer => record(layer) && layer.type === 'cosmeticLine')
+  if (layers.length !== 1 || !record(layers[0])) return
+  const [layer] = layers
+  const { settings, segments } = layer
+  if (Object.keys(layer).some(key => !['id', 'type', 'segments', 'settings'].includes(key)) ||
+    !record(settings) || Object.keys(settings).some(key =>
+      !['lineThickness', 'gridSnapToCentres', 'gridSnapToCorners'].includes(key)) ||
+    settings.gridSnapToCentres !== false || settings.gridSnapToCorners !== true ||
+    typeof settings.lineThickness !== 'number' || !Number.isFinite(settings.lineThickness) ||
+    settings.lineThickness <= 0 || settings.lineThickness > 50 || !Array.isArray(segments) || !segments.length) return
+  const thickness = settings.lineThickness as number / 100
+  const artwork: AuthoredMark[] = []
+  for (const segment of segments) {
+    if (!record(segment) || Object.keys(segment).some(key => key !== 'cells' && key !== 'parameters') ||
+      !Array.isArray(segment.cells) || segment.cells.length < 2 ||
+      segment.cells.some(vertex => !point(vertex, true)) ||
+      segment.parameters !== undefined && (!record(segment.parameters) || Object.keys(segment.parameters).length > 0)) return
+    artwork.push({ type: 'divider', points: segment.cells as Point[], thickness })
+  }
+  if (!validAuthoredArtwork(artwork)) return
+  return { layer, layers: undefined, artwork, title: undefined, partialRegions: undefined }
+}
