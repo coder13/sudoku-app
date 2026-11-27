@@ -3,6 +3,9 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import lzString from 'lz-string'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { makeGame } from '../src/sudoku/game.ts'
+import { parsePuzzleExport, puzzleExportText } from '../src/sudoku/puzzle-sharing.ts'
+import { readGame } from '../src/sudoku/storage.ts'
 import { decodeSizedSudokuPad, decodeSudokuPadEnvelope } from '../src/sudoku/sized-sudoku-pad.ts'
 import { readSizedRuleSudokuPad, readSudokuPadXSumDots } from '../src/sudoku/sized-rule-sudoku-pad.ts'
 
@@ -147,6 +150,24 @@ test('#404 imports the original 4 × 4 X-Sum Twins Black Dots export', async () 
     { type: 'x-sum-dot', ends: [{ direction: 'east', index: 1 }, 4], relation: 'ratio' },
   ])
   assert.equal(imported.authoredSolution, '4231312424131342')
+})
+
+test('#404 saves and shares both X-Sum Twins dot relations without losing outside clue endpoints', async () => {
+  for (const [id, code] of [['white-dots', xSumDotCode], ['black-dots', blackXSumDotCode]] as const) {
+    const imported = await detectPuzzle(code)
+    assert.ok(imported.grid && imported.sizedRules && imported.authoredSolution)
+    const game = makeGame(`x-sums-${id}`, imported.title!, imported.givens, 'imported', Date.now(), imported.grid)
+    game.sized = { rules: imported.sizedRules, solution: imported.authoredSolution, author: imported.sizedAuthor }
+
+    const restored = readGame(game.id, JSON.stringify(game))
+    assert.ok(restored, id)
+    assert.deepEqual(restored.sized, game.sized, `${id}: saved game`)
+
+    const exported = parsePuzzleExport(puzzleExportText(game))
+    assert.deepEqual(exported.grid, imported.grid, `${id}: shared grid`)
+    assert.deepEqual(exported.sizedRules, imported.sizedRules, `${id}: shared dot endpoints and relation`)
+    assert.equal(exported.sizedAuthor, imported.sizedAuthor, `${id}: shared author`)
+  }
 })
 
 test('#404 resolves the published black-dot X-Sum Twins short link', async ({ mock }) => {
