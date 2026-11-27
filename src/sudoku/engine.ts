@@ -1,224 +1,12 @@
-import { withHintPreferences } from './hint-preferences.ts'
-import { withSolverProfile } from './solver-profile.ts'
-
-export type EngineCapabilities = { classic: true; variants: boolean; generation: boolean; teaching: boolean }
-
-export type Analysis = 'conflict' | 'unsolvable' | 'unique' | 'multiple' | 'search-limit'
-// 'unfair' is accepted only for historical saves and legacy input.
-export type Difficulty = 'beginner' | 'easy' | 'medium' | 'tricky' | 'hard' | 'very-hard' | 'expert' | 'master' | 'extreme' | 'impossible' | 'unfair'
-type SolverOptions = { techniqueOrder?: readonly string[] }
-type HintOptions = { disabledTechniques?: readonly string[] }
-type CandidatePosition = { values: string; eliminations?: readonly number[] }
-type StartingPosition = CandidatePosition & { entries?: string }
-type GenerationTarget =
-  | ({ type: 'difficulty'; level: Difficulty } & SolverOptions)
-  | { type: 'opening'; technique: string }
-type RatingTarget =
-  | { score?: readonly [number, number]; difficulty?: never }
-  | { difficulty: Difficulty; score?: never }
-type TechniqueTarget = string | { id: string; mode: 'anywhere' | 'first' | 'exclusive-opening' }
-type MatchingOptions = {
-  seed: number
-  maxAttempts: number
-  clues: number | readonly [number, number]
-  technique?: TechniqueTarget
-  exclude?: readonly string[]
-} & RatingTarget & SolverOptions
-
-export type GenerationRequest =
-  | { type: 'generate-targeted'; seed: number; maxAttempts: number; target: GenerationTarget; includeRating?: boolean; exclude?: readonly string[] }
-  | ({ type: 'generate-constrained'; includeRating?: boolean; templates?: readonly string[] } & MatchingOptions)
-  | ({ type: 'generate-from-pool' } & MatchingOptions)
-  | VariantGenerationRequest
-
-type GenerationCommand =
-  | { type: 'generation-start'; job: number; request: GenerationRequest }
-  | { type: 'generation-advance' | 'generation-cancel'; job: number }
-
-export type MarkedPairs = { pairs?: readonly (readonly [number, number])[]; negative?: boolean }
-type ClueDirection = 'north' | 'east' | 'south' | 'west'
-type DiagonalDirection = 'north-east' | 'south-east' | 'south-west' | 'north-west'
-
-export type VariantRule =
-  | { type: 'diagonal'; diagonal: 'main' | 'anti' }
-  | { type: 'extra-house'; cells: readonly number[] }
-  | { type: 'distinct-cells'; cells: readonly number[]; color?: string }
-  | { type: 'consecutive-run'; cells: readonly number[]; color?: string; fromBulb?: boolean }
-  | { type: 'inside-grid'; rows: readonly (readonly number[])[] }
-  | { type: 'killer-cages'; cages: readonly { cells: readonly number[]; sum: number; showSum?: boolean }[]; coverGrid?: boolean }
-  | { type: 'magic-square'; cells: readonly number[] }
-  | { type: 'unknown-cage-sums'; cages: readonly (readonly number[])[]; consecutivePairs: readonly (readonly [number, number])[] }
-  | { type: 'distant-neighbors'; markedCells: readonly number[] }
-  | { type: 'quadruple'; topLeft: number; digits: readonly number[] }
-  | { type: 'lettered-quadruples'; clues: readonly import('./lettered-quadruples.ts').LetteredQuadruple[] }
-  | { type: 'quadruple-sum'; topLeft: number; digits: readonly number[] }
-  | { type: 'parity'; cells: readonly number[]; parity: 'odd' | 'even' }
-  | { type: 'digit-restriction'; cells: readonly number[]; digits: readonly number[]; shape: 'circle' | 'cross' | 'square' }
-  | { type: 'clone'; groups: readonly (readonly number[])[] }
-  | { type: 'anti-knight' | 'anti-king' }
-  | { type: 'non-consecutive'; except?: readonly (readonly [number, number])[] }
-  | { type: 'inequality'; less: number; greater: number }
-  | { type: 'minimum' | 'maximum'; cells: readonly number[]; ignoreMarkedNeighbors?: boolean }
-  | SizedLabeledDotsRule
-  | { type: 'kropki'; consecutive?: MarkedPairs; ratioTwo?: MarkedPairs }
-  | { type: 'xv'; five?: MarkedPairs; ten?: MarkedPairs }
-  | { type: 'adjacent-total'; cells: readonly [number, number]; sum: number }
-  | { type: 'thermometer'; cells: readonly number[] }
-  | { type: 'between'; cells: readonly number[] }
-  | { type: 'lockout'; cells: readonly number[] }
-  | { type: 'palindrome'; cells: readonly number[]; segments?: readonly (readonly number[])[] }
-  | { type: 'renban'; cells: readonly number[]; segments?: readonly (readonly number[])[] }
-  | { type: 'entropic'; cells: readonly number[] }
-  | { type: 'modular'; cells: readonly number[] }
-  | { type: 'global-entropy'; groups?: readonly (readonly number[])[] }
-  | { type: 'entropy-window-group'; cells: readonly [number, number, number, number]; group: 'low' | 'middle' | 'high' }
-  | { type: 'digit-order'; cells: readonly number[]; digits: readonly number[] }
-  | { type: 'forbidden-entropic-connection'; cells: readonly [number, number, number, number] }
-  | { type: 'aqre'; kind: 'snake' | 'plus'; regions: readonly {
-      cells: readonly number[]
-      count?: { type: 'fixed'; value: number } | { type: 'digit-cell'; cell: number }
-    }[]; givenShades: readonly { cell: number; shade: 'unshaded' | 'shaded' }[] }
-  | { type: 'neighbor-match'; clues: readonly { cell: number; digit: number }[] }
-  | { type: 'whispers'; cells: readonly number[]; minDifference: number }
-  | { type: 'arrow'; circle: number; cells: readonly number[] }
-  | { type: 'pill-arrow'; pill: readonly [number, number]; cells: readonly number[]; fromTens?: boolean }
-  | { type: 'region-sum'; cells: readonly number[]; groupByRegion?: boolean; segments?: readonly (readonly number[])[] }
-  | { type: 'sandwich'; direction: ClueDirection; cells: readonly number[]; sum: number }
-  | { type: 'terrain-sandwich'; direction: ClueDirection; cells: readonly number[]; maximum: number; transforms: readonly { multiplier: number; offset: number }[] }
-  | { type: 'x-sum'; direction: ClueDirection; cells: readonly number[]; sum: number }
-  | { type: 'little-killer'; direction: DiagonalDirection; cells: readonly number[]; sum: number }
-  | { type: 'skyscrapers'; direction: ClueDirection; cells: readonly number[]; count: number }
-
-export type VariantPuzzle = {
-  version: 1
-  givens: string
-  regions?: { type: 'boxes' } | { type: 'jigsaw'; regions: readonly (readonly number[])[] }
-    | { type: 'partial'; regions: readonly (readonly number[])[] }
-  rules?: readonly VariantRule[]
-}
-
-export type VariantClueLayout =
-  | { type: 'killer-cages'; cages: readonly (readonly number[])[]; coverGrid?: boolean }
-  | { type: 'killer-cage-sizes'; sizes: readonly number[]; coverGrid?: boolean }
-  | { type: 'quadruple'; topLeft: number; clueSize: number }
-  | { type: 'parity'; cells: readonly number[] }
-  | { type: 'inequality'; cells: readonly [number, number] }
-  | { type: 'adjacent-total'; cells: readonly [number, number] }
-  | { type: 'markers'; family: 'kropki' | 'xv'; negative?: readonly [boolean, boolean]; count?: number }
-  | { type: 'outside'; clue: 'sandwich' | 'x-sum' | 'skyscrapers'; direction: ClueDirection; cells: readonly number[] }
-  | { type: 'outside'; clue: 'little-killer'; direction: DiagonalDirection; cells: readonly number[] }
-
-export type VariantGenerationRequest = {
-  type: 'generate-variant'
-  seed: number
-  maxAttempts: number
-  maxNodes?: number
-  template: VariantPuzzle
-  derivedClues?: readonly VariantClueLayout[]
-  givens: number | readonly [number, number]
-  variantClues?: number | readonly [number, number]
-  requiredRule?: string
-  technique?: TechniqueTarget
-  techniqueOrder?: readonly string[]
-  exclude?: readonly VariantPuzzle[]
-} & RatingTarget
-
-export type VariantPosition = {
-  puzzle: VariantPuzzle
-  entries?: string
-  eliminations?: readonly number[]
-  shades?: string
-}
-
-export type VariantVisibility = {
-  cells: readonly number[]
-  rules: readonly number[]
-  completeKropki?: boolean
-  completeXv?: boolean
-  knownRemovals?: readonly number[]
-}
-
-type VariantRequest = {
-  type: 'variant'
-  position: VariantPosition
-} & (
-  | { operation: 'analyze'; maxNodes?: number }
-  | { operation: 'solve'; maxNodes?: number; seed?: number }
-  | { operation: 'solve-unique'; maxNodes?: number }
-  | ({ visibility?: VariantVisibility } & (
-    | { operation?: 'normalize' }
-    | { operation: 'candidates' }
-    | { operation: 'solve-singles'; displayedCandidates?: readonly number[] }
-    | { operation: 'hints'; collection?: number; techniqueOrder?: readonly string[]; limit?: number; preferProgress?: boolean; difficulty?: Difficulty }
-    | { operation: 'rate'; techniqueOrder?: readonly string[] }
-    | { operation: 'trace'; techniqueOrder?: readonly string[]; stopAfterPlacementIn?: readonly number[]; includeSteps?: boolean }
-    | { operation: 'replay-step'; techniqueOrder?: readonly string[]; stepIndex: number }
-    | { operation: 'practice-position'; techniqueOrder?: readonly string[]; technique: string }
-    | { operation: 'check-practice-move'; technique: string; action: DeductionAction }
-  ))
-)
-
-export type SizedClassicPosition = {
-  version: 2
-  grid: { size: number; boxRows: number; boxColumns: number } | { size: number; regions: readonly (readonly number[])[]; wrapAround?: true } | { size: number; noRegions: true }
-  digits: readonly number[]
-}
-
-type SizedClassicRequest = { type: 'sized-classic'; position: SizedClassicPosition } & (
-  | { operation: 'analyze' }
-  | { operation: 'candidates' }
-  | { operation: 'solve' }
-  | { operation: 'next-deduction'; eliminations?: readonly number[] }
-  | { operation: 'hints'; eliminations?: readonly number[]; limit?: number }
-  | { operation: 'trace'; eliminations?: readonly number[]; singlesOnly?: boolean }
-)
-
-export type SizedClassicDeduction = {
-  technique: 'naked-single' | 'hidden-single' | 'locked-candidate'
-  houses: House[]
-  candidates: Candidate[]
-  actions: DeductionAction[]
-}
-
-export type SizedClassicTracePosition = {
-  digits: number[]
-  eliminations: number[]
-  candidates: number[]
-  deduction: SizedClassicDeduction | null
-}
-
-export type SizedVariantPosition = SizedClassicPosition & {
-  rules: readonly {
-    type: 'algebraic-cage'
-    cells: readonly number[]
-    total: { type: 'fixed'; value: number } | { type: 'variable'; name: string; offset: number }
-    label: string
-  }[]
-}
-
-export type SixGrid = Extract<import('./grid.ts').RectangularGrid, { size: 6 }>
-export type SizedDifferenceRule = { type: 'difference'; cells: readonly [number, number]; difference: number }
-export type SizedLabeledDotsRule = {
-  type: 'labeled-dots'; relation: 'difference' | 'ratio'; marks: readonly { cells: readonly [number, number]; value: number }[]; negative?: boolean
-}
-export type SizedSumEnd = number | { direction: 'north' | 'east' | 'south' | 'west'; index: number }
-export type SizedLinkedDoubleArrow = { type: 'linked-double-arrow'; ends: readonly [SizedSumEnd, SizedSumEnd]; cells: readonly number[] }
-export type SizedXSumDot = { type: 'x-sum-dot'; ends: readonly [SizedSumEnd, SizedSumEnd]; relation: 'consecutive' | 'ratio' }
-export type SizedNonogramRule = { type: 'nonogram'; axis: 'row' | 'column'; index: number; digits: readonly number[]; runs: readonly number[] }
-export type SizedSkyscrapersRule = { type: 'skyscrapers'; direction: ClueDirection; index: number; count: number }
-export type SizedCornerKropkiRule = { type: 'corner-kropki'; consecutive?: readonly number[]; ratioTwo?: readonly number[] }
-export type SizedProductCageRule = { type: 'product-cage'; cells: readonly number[]; product: number; color?: string }
-export type SizedDigitCountRule = { type: 'digit-count'; cells: readonly number[]; digit: number; minimum: number; maximum?: number }
-export type SizedConstraintAlternativesRule = {
-  type: 'constraint-alternatives'
-  family: string
-  choices: readonly (readonly SizedConstraintRule[])[]
-  choiceLabels?: readonly string[]
-  displayRules?: readonly SizedConstraintRule[]
-}
-export type SizedSumModuloRule = { type: 'sum-modulo'; cells: readonly number[]; modulus: number; remainder: number }
-export type SizedOutsideTextRule = {
-  type: 'outside-text'; direction: 'north-east' | 'south-east' | 'south-west' | 'north-west'; cells: readonly number[]; label: string
+YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éíãM5N‹Z–‹­¦ëeŠw¬Õ¥µÁ½ÉĞìİ¥Ñ¡!¥¹ÑAÉ•™•É•¹•Ìô™É½´€œ¸½¡¥¹ĞµÁÉ•™•É•¹•Ì¹ÑÌœ)¥µÁ½ÉĞìİ¥Ñ¡M½±Ù•ÉAÉ½™¥±”ô™É½´€œ¸½Í½±Ù•ÈµÁÉ½™¥±”¹ÑÌœ()•áÁ½ÉĞÑåÁ”¹¥¹•…Á…‰¥±¥Ñ¥•Ì€ôì±…ÍÍ¥ŒèÑÉÕ”ìÙ…É¥…¹ÑÌè‰½½±•…¸ì•¹•É…Ñ¥½¸è‰½½±•…¸ìÑ•…¡¥¹œè‰½½±•…¸ô()•áÁ½ÉĞÑåÁ”¹…±åÍ¥Ì€ô€½¹™±¥Ğœğ€Õ¹Í½±Ù…‰±”œğ€Õ¹¥ÅÕ”œğ€µÕ±Ñ¥Á±”œğ€Í•…É µ±¥µ¥Ğœ(¼¼€Õ¹™…¥Èœ¥Ì…•ÁÑ•½¹±ä™½È¡¥ÍÑ½É¥…°Í…Ù•Ì…¹±•…ä¥¹ÁÕĞ¸)•áÁ½ÉĞÑåÁ”¥™™¥Õ±Ñä€ô€‰•¥¹¹•Èœğ€•…Íäœğ€µ•‘¥Õ´œğ€ÑÉ¥­äœğ€¡…Éœğ€Ù•Éäµ¡…Éœğ€•áÁ•ÉĞœğ€µ…ÍÑ•Èœğ€•áÑÉ•µ”œğ€¥µÁ½ÍÍ¥‰±”œğ€Õ¹™…¥Èœ)ÑåÁ”M½±Ù•É=ÁÑ¥½¹Ì€ôìÑ•¡¹¥ÅÕ•=É‘•ÈüèÉ•…‘½¹±äÍÑÉ¥¹mtô)ÑåÁ”!¥¹Ñ=ÁÑ¥½¹Ì€ôì‘¥Í…‰±•‘Q•¡¹¥ÅÕ•ÌüèÉ•…‘½¹±äÍÑÉ¥¹mtô)ÑåÁ”…¹‘¥‘…Ñ•A½Í¥Ñ¥½¸€ôìÙ…±Õ•ÌèÍÑÉ¥¹œì•±¥µ¥¹…Ñ¥½¹ÌüèÉ•…‘½¹±ä¹Õµ‰•Émtô)ÑåÁ”MÑ…ÉÑ¥¹A½Í¥Ñ¥½¸€ô…¹‘¥‘…Ñ•A½Í¥Ñ¥½¸€˜ì•¹ÑÉ¥•ÌüèÍÑÉ¥¹œô)ÑåÁ”•¹•É…Ñ¥½¹Q…É•Ğ€ô(€ğ€¡ìÑåÁ”è€‘¥™™¥Õ±Ñäœì±•Ù•°è¥™™¥Õ±Ñäô€˜M½±Ù•É=ÁÑ¥½¹Ì¤(€ğìÑåÁ”è€½Á•¹¥¹œœìÑ•¡¹¥ÅÕ”èÍÑÉ¥¹œô)ÑåÁ”I…Ñ¥¹Q…É•Ğ€ô(€ğìÍ½É”üèÉ•…‘½¹±äm¹Õµ‰•È°¹Õµ‰•Étì‘¥™™¥Õ±Ñäüè¹•Ù•Èô(€ğì‘¥™™¥Õ±Ñäè¥™™¥Õ±ÑäìÍ½É”üè¹•Ù•Èô)ÑåÁ”Q•¡¹¥ÅÕ•Q…É•Ğ€ôÍÑÉ¥¹œğì¥èÍÑÉ¥¹œìµ½‘”è€…¹åİ¡•É”œğ€™¥ÉÍĞœğ€•á±ÕÍ¥Ù”µ½Á•¹¥¹œœô)ÑåÁ”5…Ñ¡¥¹=ÁÑ¥½¹Ì€ôì(€Í••è¹Õµ‰•È(€µ…áÑÑ•µÁÑÌè¹Õµ‰•È(€±Õ•Ìè¹Õµ‰•ÈğÉ•…‘½¹±äm¹Õµ‰•È°¹Õµ‰•Ét(€Ñ•¡¹¥ÅÕ”üèQ•¡¹¥ÅÕ•Q…É•Ğ(€•á±Õ‘”üèÉ•…‘½¹±äÍÑÉ¥¹mt)ô€˜I…Ñ¥¹Q…É•Ğ€˜M½±Ù•É=ÁÑ¥½¹Ì()•áÁ½ÉĞÑåÁ”•¹•É…Ñ¥½¹I•ÅÕ•ÍĞ€ô(€ğìÑåÁ”è€•¹•É…Ñ”µÑ…É•Ñ•œìÍ••è¹Õµ‰•Èìµ…áÑÑ•µÁÑÌè¹Õµ‰•ÈìÑ…É•Ğè•¹•É…Ñ¥½¹Q…É•Ğì¥¹±Õ‘•I…Ñ¥¹œüè‰½½±•…¸ì•á±Õ‘”üèÉ•…‘½¹±äÍÑÉ¥¹mtô(€ğ€¡ìÑåÁ”è€•¹•É…Ñ”µ½¹ÍÑÉ…¥¹•œì¥¹±Õ‘•I…Ñ¥¹œüè‰½½±•…¸ìÑ•µÁ±…Ñ•ÌüèÉ•…‘½¹±äÍÑÉ¥¹mtô€˜5…Ñ¡¥¹=ÁÑ¥½¹Ì¤(€ğ€¡ìÑåÁ”è€•¹•É…Ñ”µ™É½´µÁ½½°œô€˜5…Ñ¡¥¹=ÁÑ¥½¹Ì¤(€ğY…É¥…¹Ñ•¹•É…Ñ¥½¹I•ÅÕ•ÍĞ()ÑåÁ”•¹•É…Ñ¥½¹½µµ…¹€ô(€ğìÑåÁ”è€•¹•É…Ñ¥½¸µÍÑ…ÉĞœì©½ˆè¹Õµ‰•ÈìÉ•ÅÕ•ÍĞè•¹•É…Ñ¥½¹I•ÅÕ•ÍĞô(€ğìÑåÁ”è€•¹•É…Ñ¥½¸µ…‘Ù…¹”œğ€•¹•É…Ñ¥½¸µ…¹•°œì©½ˆè¹Õµ‰•Èô()•áÁ½ÉĞÑåÁ”5…É­•‘A…¥ÉÌ€ôìÁ…¥ÉÌüèÉ•…‘½¹±ä€¡É•…‘½¹±äm¹Õµ‰•È°¹Õµ‰•Ét¥mtì¹•…Ñ¥Ù”üè‰½½±•…¸ô)ÑåÁ”±Õ•¥É•Ñ¥½¸€ô€¹½ÉÑ œğ€•…ÍĞœğ€Í½ÕÑ œğ€İ•ÍĞœ)ÑåÁ”¥…½¹…±¥É•Ñ¥½¸€ô€¹½ÉÑ µ•…ÍĞœğ€Í½ÕÑ µ•…ÍĞœğ€Í½ÕÑ µİ•ÍĞœğ€¹½ÉÑ µİ•ÍĞœ()•áÁ½ÉĞÑåÁ”Y…É¥…¹ÑIÕ±”€ô(€ğìÑåÁ”è€‘¥…½¹…°œì‘¥…½¹…°è€µ…¥¸œğ€…¹Ñ¤œô(€ğìÑåÁ”è€•áÑÉ„µ¡½ÕÍ”œì•±±ÌèÉ•…‘½¹±ä¹Õµ‰•Émtô(€ğìÑåÁ”è€‘¥ÍÑ¥¹Ğµ•±±Ìœì•±±ÌèÉ•…‘½¹±ä¹Õµ‰•Émtì½±½ÈüèÍÑÉ¥¹œô(€ğìÑåÁ”è€½¹Í•ÕÑ¥Ù”µÉÕ¸œì•±±ÌèÉ•…‘½¹±ä¹Õµ‰•Émtì½±½ÈüèÍÑÉ¥¹œì™É½µ	Õ±ˆüè‰½½±•…¸ô(€ğìÑåÁ”è€¥¹Í¥‘”µÉ¥œìÉ½İÌèÉ•…‘½¹±ä€¡É•…‘½¹±ä¹Õµ‰•Émt¥mtô(€ğìÑåÁ”è€­¥±±•Èµ…•Ìœì…•ÌèÉ•…‘½¹±äì•±±ÌèÉ•…‘½¹±ä¹Õµ‰•ÉmtìÍÕ´è¹Õµ‰•ÈìÍ¡½İMÕ´üè‰½½±•…¸õmtì½Ù•ÉÉ¥üè‰½½±•…¸ô(€ğìÑåÁ”è€µ…¥ŒµÍÅÕ…É”œì•±±ÌèÉ•…‘½¹±ä¹Õµ‰•Émtô(€ğìÑåÁ”è€Õ¹­¹½İ¸µ…”µÍÕµÌœì…•ÌèÉ•…‘½¹±ä€¡É•…‘½¹±ä¹Õµ‰•Émt¥mtì½¹Í•ÕÑ¥Ù•A…¥ÉÌèÉ•…‘½¹±ä€¡É•…‘½¹±äm¹Õµ‰•È°¹Õµ‰•Ét¥mtô(€ğìÑåÁ”è€‘¥ÍÑ…¹Ğµ¹•¥¡‰½ÉÌœìµ…É­•‘•±±ÌèÉ•…‘½¹±ä¹Õµ‰•Émtô(€ğìÑåÁ”è€ÅÕ…‘ÉÕÁ±”œìÑ½Á1•™Ğè¹Õµ‰•Èì‘¥¥ÑÌèÉ•…‘½¹±ä¹Õµ‰•Émtô(€ğìÑåÁ”è€±•ÑÑ•É•µÅÕ…‘ÉÕÁ±•Ìœì±Õ•ÌèÉ•…‘½¹±ä¥µÁ½ÉĞ œ¸½±•ÑÑ•É•µÅÕ…‘ÉÕÁ±•Ì¹ÑÌœ¤¹1•ÑÑ•É•‘EÕ…‘ÉÕÁ±•mtô(€ğìÑåÁ”è€ÅÕ…‘ÉÕÁ±”µÍÕ´œìÑ½Á1•™Ğè¹Õµ‰•Èì‘¥¥ÑÌèÉ•…‘½¹±ä¹Õµ‰•Émtô(€ğìÑåÁ”è€Á…É¥Ñäœì•±±ÌèÉ•…‘½¹±ä¹Õµ‰•ÉmtìÁ…É¥Ñäè€½‘œğ€•Ù•¸œô(€ğìÑåÁ”è€‘¥¥ĞµÉ•ÍÑÉ¥Ñ¥½¸œì•±±ÌèÉ•…‘½¹±ä¹Õµ‰•Émtì‘¥¥ÑÌèÉ•…‘½¹±ä¹Õµ‰•ÉmtìÍ¡…Á”è€¥É±”œğ€É½ÍÌœğ€ÍÅÕ…É”œô(€ğìÑåÁ”è€±½¹”œìÉ½ÕÁÌèÉ•…‘½¹±ä€¡É•…‘½¹±ä¹Õµ‰•Émt¥mtô(€ğìÑåÁ”è€…¹Ñ¤µ­¹¥¡Ğœğ€…¹Ñ¤µ­¥¹œœô(€ğìÑåÁ”è€¹½¸µ½¹Í•ÕÑ¥Ù”œì•á•ÁĞüèÉ•…‘½¹±ä€¡É•…‘½¹±äm¹Õµ‰•È°¹Õµ‰•Ét¥mtô(€ğìÑåÁ”è€¥¹•ÅÕ…±¥Ñäœì±•ÍÌè¹Õµ‰•ÈìÉ•…Ñ•Èè¹Õµ‰•Èô(€ğìÑåÁ”è€µ¥¹¥µÕ´œğ€µ…á¥µÕ´œì•±±ÌèÉ•…‘½¹±ä¹Õµ‰•Émtì¥¹½É•5…É­•‘9•¥¡‰½ÉÌüè‰½½±•…¸ô(€ğM¥é•‘1…‰•±•‘½ÑÍIÕ±”(€ğìÑåÁ”è€­É½Á­¤œì½¹Í•ÕÑ¥Ù”üè5…É­•‘A…¥ÉÌìÉ…Ñ¥½Qİ¼üè5…É­•‘A…¥ÉÌô(€ğìÑåÁ”è€áØœì™¥Ù”üè5…É­•‘A…¥ÉÌìÑ•¸üè5…É­•‘A…¥ÉÌô(€ğìÑåÁ”è€…‘©…•¹ĞµÑ½Ñ…°œì•±±ÌèÉ•…‘½¹±äm¹Õµ‰•È°¹Õµ‰•ÉtìÍÕ´è¹Õµ‰•Èô(€ğìÑåÁ”è€Ñ¡•Éµ½µ•Ñ•Èœì•±±ÌèÉ•…‘½¹±ä¹Õµ‰•Émtô(€ğìÑåÁ”è€‰•Ñİ••¸œì•±±ÌèÉ•…‘½¹±ä¹Õµ‰•Émtô(€ğìÑåÁ”è€±½­½ÕĞœì•±±ÌèÉ•…‘½¹±ä¹Õµ‰•Émtô(€ğìÑåÁ”è€Á…±¥¹‘É½µ”œì•±±ÌèÉ•…‘½¹±ä¹Õµ‰•ÉmtìÍ•µ•¹ÑÌüèÉ•…‘½¹±ä€¡É•…‘½¹±ä¹Õµ‰•Émt¥mtô(€ğìÑåÁ”è€É•¹‰…¸œì•±±ÌèÉ•…‘½¹±ä¹Õµ‰•ÉmtìÍ•µ•¹ÑÌüèÉ•…‘½¹±ä€¡É•…‘½¹±ä¹Õµ‰•Émt¥mtô(€ğìÑåÁ”è€•¹ÑÉ½Á¥Œœì•±±ÌèÉ•…‘½¹±ä¹Õµ‰•Émtô(€ğìÑåÁ”è€µ½‘Õ±…Èœì•±±ÌèÉ•…‘½¹±ä¹Õµ‰•Émtô(€ğìÑåÁ”è€±½‰…°µ•¹ÑÉ½ÁäœìÉ½ÕÁÌüèÉ•…‘½¹±ä€¡É•…‘½¹±ä¹Õµ‰•Émt¥mtô(€ğìÑåÁ”è€•¹ÑÉ½Áäµİ¥¹‘½ÜµÉ½ÕÀœì•±±ÌèÉ•…‘½¹±äm¹Õµ‰•È°¹Õµ‰•È°¹×]4ÖÚ$z{-®éÜj×™\Îˆ™XYÛ›Hİš[™Ö×Bˆ^ÛYOÎˆ™XYÛ›H˜\šX[^›V×BŸH	ˆ˜][™Õ\™Ù]‚™^Ü\H˜\šX[ÜÚ][ÛˆHÂˆ^›Nˆ˜\šX[^›Bˆ[šY\ÏÎˆİš[™Âˆ[[Z[˜][ÛœÏÎˆ™XYÛ›H[X™\–×BˆÚY\ÏÎˆİš[™ÂŸB‚™^Ü\H˜\šX[š\ÚXš[]HHÂˆÙ[Îˆ™XYÛ›H[X™\–×Bˆ[\Îˆ™XYÛ›H[X™\–×BˆÛÛ\]RÜ›ÜÚOÎˆ›ÛÛX[‚ˆÛÛ\]VÎˆ›ÛÛX[‚ˆÛ›İÛ”™[[İ˜[ÏÎˆ™XYÛ›H[X™\–×BŸB‚\H˜\šX[™\]Y\İHÂˆ\Nˆ	İ˜\šX[	ÂˆÜÚ][Ûˆ˜\šX[ÜÚ][Û‚ŸH	ˆ
+ˆÈÜ\˜][Ûˆ	Ø[˜[^™IÎÈX^›Ù\ÏÎˆ[X™\ˆBˆÈÜ\˜][Ûˆ	ÜÛÛ™IÎÈX^›Ù\ÏÎˆ[X™\ÈÙYYÎˆ[X™\ˆBˆÈÜ\˜][Ûˆ	ÜÛÛ™K][š\]YIÎÈX^›Ù\ÏÎˆ[X™\ˆBˆ
+Èš\ÚXš[]OÎˆ˜\šX[š\ÚXš[]HH	ˆ
+ˆÈÜ\˜][ÛÎˆ	Û›Ü›X[^™IÈBˆÈÜ\˜][Ûˆ	ØØ[™Y]\ÉÈBˆÈÜ\˜][Ûˆ	ÜÛÛ™K\Ú[™Û\ÉÎÈ\Ü^YYØ[™Y]\ÏÎˆ™XYÛ›H[X™\–×HBˆÈÜ\˜][Ûˆ	Ú[ÉÎÈÛÛXİ[ÛÎˆ[X™\ÈXÚš\]YSÜ™\Îˆ™XYÛ›Hİš[™Ö×NÈ[Z]Îˆ[X™\È™Y™\”›ÙÜ™\ÜÏÎˆ›ÛÛX[ÈY™šXİ[OÎˆY™šXİ[HBˆÈÜ\˜][Ûˆ	Ü˜]IÎÈXÚš\]YSÜ™\Îˆ™XYÛ›Hİš[™Ö×HBˆÈÜ\˜][Ûˆ	İ˜XÙIÎÈXÚš\]YSÜ™\Îˆ™XYÛ›Hİš[™Ö×NÈİÜY\”XÙ[Y[[Îˆ™XYÛ›H[X™\–×NÈ[˜ÛYTİ\ÏÎˆ›ÛÛX[ˆBˆÈÜ\˜][Ûˆ	Ü™\^K\İ\	ÎÈXÚš\]YSÜ™\Îˆ™XYÛ›Hİš[™Ö×NÈİ\[™^ˆ[X™\ˆBˆÈÜ\˜][Ûˆ	Ü˜XİXÙK\ÜÚ][Û‰ÎÈXÚš\]YSÜ™\Îˆ™XYÛ›Hİš[™Ö×NÈXÚš\]YNˆİš[™ÈBˆÈÜ\˜][Ûˆ	ØÚXÚË\˜XİXÙK[[İ™IÎÈXÚš\]YNˆİš[™ÎÈXİ[ÛˆYXİ[ÛXİ[ÛˆBˆ
+JBŠB‚™^Ü\HÚ^™YÛ\ÜÚXÔÜÚ][ÛˆHÂˆ™\œÚ[Ûˆ‚ˆÜšYˆÈÚ^™Nˆ[X™\È›Ş›İÜÎˆ[X™\È›ŞÛÛ[[œÎˆ[X™\ˆHÈÚ^™Nˆ[X™\È™YÚ[ÛœÎˆ™XYÛ›H
+™XYÛ›H[X™\–×JV×NÈÜ˜\\›İ[™ÎˆYHHÈÚ^™Nˆ[X™\È›Ô™YÚ[ÛœÎˆYHBˆYÚ]Îˆ™XYÛ›H[X™\–×BŸB‚\HÚ^™YÛ\ÜÚXÔ™\]Y\İHÈ\Nˆ	ÜÚ^™YXÛ\ÜÚXÉÎÈÜÚ][ÛˆÚ^™YÛ\ÜÚXÔÜÚ][ÛˆH	ˆ
+ˆÈÜ\˜][Ûˆ	Ø[˜[^™IÈBˆÈÜ\˜][Ûˆ	ØØ[™Y]\ÉÈBˆÈÜ\˜][Ûˆ	ÜÛÛ™IÈBˆÈÜ\˜][Ûˆ	Û™^YYXİ[Û‰ÎÈ[[Z[˜][ÛœÏÎˆ™XYÛ›H[X™\–×HBˆÈÜ\˜][Ûˆ	Ú[ÉÎÈ[[Z[˜][ÛœÏÎˆ™XYÛ›H[X™\–×NÈ[Z]Îˆ[X™\ˆBˆÈÜ\˜][Ûˆ	İ˜XÙIÎÈ[[Z[˜][ÛœÏÎˆ™XYÛ›H[X™\–×NÈÚ[™Û\ÓÛ›OÎˆ›ÛÛX[ˆBŠB‚™^Ü\HÚ^™YÛ\ÜÚXÑYXİ[ÛˆHÂˆXÚš\]YNˆ	Û˜ZÙY\Ú[™ÛIÈ	ÚY[‹\Ú[™ÛIÈ	ÛØÚÙYXØ[™Y]IÂˆİ\Ù\Îˆİ\ÙV×BˆØ[™Y]\ÎˆØ[™Y]V×BˆXİ[ÛœÎˆYXİ[ÛXİ[Û–×BŸB‚™^Ü\HÚ^™YÛ\ÜÚXÕ˜XÙTÜÚ][ÛˆHÂˆYÚ]Îˆ[X™\–×Bˆ[[Z[˜][ÛœÎˆ[X™\–×BˆØ[™Y]\Îˆ[X™\–×BˆYXİ[ÛˆÚ^™YÛ\ÜÚXÑYXİ[Ûˆ[ŸB‚™^Ü\HÚ^™Y˜\šX[ÜÚ][ÛˆHÚ^™YÛ\ÜÚXÔÜÚ][Ûˆ	ˆÂˆ[\Îˆ™XYÛ›HÂˆ\Nˆ	Ø[ÙXœ˜ZXËXØYÙIÂˆÙ[Îˆ™XYÛ›H[X™\–×Bˆİ[ˆÈ\Nˆ	Ùš^Y	ÎÈ˜[YNˆ[X™\ˆHÈ\Nˆ	İ˜\šXX›IÎÈ˜[YNˆİš[™ÎÈÙ™œÙ]ˆ[X™\ˆBˆX™[ˆİš[™ÂˆV×BŸB‚™^Ü\HÚ^ÜšYH^˜Xİ[\Ü
+	Ë‹ÙÜšYÉÊK”™Xİ[™İ[\‘ÜšYÈÚ^™NˆˆO‚™^Ü\HÚ^™YY™™\™[˜ÙT[HHÈ\Nˆ	ÙY™™\™[˜ÙIÎÈÙ[Îˆ™XYÛ›HÛ[X™\‹[X™\—NÈY™™\™[˜ÙNˆ[X™\ˆB™^Ü\HÚ^™YX™[YİÔ[HHÂˆ\Nˆ	ÛX™[YYİÉÎÈ™[][Ûˆ	ÙY™™\™[˜ÙIÈ	Ü˜][ÉÎÈX\šÜÎˆ™XYÛ›HÈÙ[Îˆ™XYÛ›HÛ[X™\‹[X™\—NÈ˜[YNˆ[X™\ˆV×NÈ™YØ]]™OÎˆ›ÛÛX[‚ŸB™^Ü\HÚ^™Yİ[Q[™H[X™\ˆÈ\™Xİ[Ûˆ	Û›Ü	È	ÙX\İ	È	ÜÛİ]	È	İÙ\İ	ÎÈ[™^ˆ[X™\ˆB™^Ü\HÚ^™Y[šÙYİX›P\œ›İÈHÈ\Nˆ	Û[šÙYYİX›KX\œ›İÉÎÈ[™Îˆ™XYÛ›HÔÚ^™Yİ[Q[™Ú^™Yİ[Q[™NÈÙ[Îˆ™XYÛ›H[X™\–×HB™^Ü\HÚ^™Yİ[QİHÈ\Nˆ	Ş\İ[KYİ	ÎÈ[™Îˆ™XYÛ›HÔÚ^™Yİ[Q[™Ú^™Yİ[Q[™NÈ™[][Ûˆ	ØÛÛœÙXİ]]™IÈ	Ü˜][ÉÈB™^Ü\HÚ^™Y›Û›ÙÜ˜[T[HHÈ\Nˆ	Û›Û›ÙÜ˜[IÎÈ^\Îˆ	Ü›İÉÈ	ØÛÛ[[‰ÎÈ[™^ˆ[X™\ÈYÚ]Îˆ™XYÛ›H[X™\–×NÈ[œÎˆ™XYÛ›H[X™\–×HB™^Ü\HÚ^™YÚŞ\ØÜ˜\\œÔ[HHÈ\Nˆ	ÜÚŞ\ØÜ˜\\œÉÎÈ\™Xİ[ÛˆÛYQ\™Xİ[ÛÈ[™^ˆ[X™\ÈÛİ[ˆ[X™\ˆB™^Ü\HÚ^™YÛÜ›™\’Ü›ÜÚT[HHÈ\Nˆ	ØÛÜ›™\‹ZÜ›ÜÚIÎÈÛÛœÙXİ]]™OÎˆ™XYÛ›H[X™\–×NÈ˜][ÕÛÏÎˆ™XYÛ›H[X™\–×HB™^Ü\HÚ^™Y›ÙXİØYÙT[HHÈ\Nˆ	Ü›ÙXİXØYÙIÎÈÙ[Îˆ™XYÛ›H[X™\–×NÈ›ÙXİˆ[X™\ÈÛÛÜÎˆİš[™ÈB™^Ü\HÚ^™YYÚ]Ûİ[[HHÈ\Nˆ	ÙYÚ]XÛİ[	ÎÈÙ[Îˆ™XYÛ›H[X™\–×NÈYÚ]ˆ[X™\ÈZ[š[][Nˆ[X™\ÈX^[][OÎˆ[X™\ˆB™^Ü\HÚ^™YÛÛœİ˜Z[[\›˜]]™\Ô[HHÂˆ\Nˆ	ØÛÛœİ˜Z[X[\›˜]]™\ÉÂˆ˜[Z[Nˆİš[™ÂˆÚÚXÙ\Îˆ™XYÛ›H
+™XYÛ›HÚ^™YÛÛœİ˜Z[[V×JV×BˆÚÚXÙSX™[ÏÎˆ™XYÛ›Hİš[™Ö×Bˆ\Ü^T[\ÏÎˆ™XYÛ›HÚ^™YÛÛœİ˜Z[[V×BŸB™^Ü\HÚ^™Yİ[S[Ù[Ô[HHÈ\Nˆ	Üİ[K[[Ù[ÉÎÈÙ[Îˆ™XYÛ›H[X™\–×NÈ[Ù[\Îˆ[X™\È™[XZ[™\ˆ[X™\ˆB™^Ü\HÚ^™Yİ]ÚYU^[HHÂˆ\Nˆ	Ûİ]ÚYVj¹âkºwµçhºÚn¶Šâ‚)Ú–Ú$zw(º{xÓMS¢Ö¥¢ëiºÙbë5-text'; direction: 'north-east' | 'south-east' | 'south-west' | 'north-west'; cells: readonly number[]; label: string
   firstThreeDigits?: readonly number[]
 }
 export type EquationOperator = 'join' | 'add' | 'subtract' | 'multiply' | 'divide' | 'equals'
@@ -281,496 +69,8 @@ export type AlgebraicBounds = {
 
 export type AlgebraicCageProof = {
   target: number
-  bounds: AlgebraicBounds
-  totalLower: number
-  totalUpper: number
-  actions: DeductionAction[]
-}
-
-export type AlgebraicStep = { type: 'house'; proof: SizedClassicDeduction } | { type: 'cage'; proof: AlgebraicCageProof }
-export type AlgebraicRating = { difficulty: 'easy' | 'medium'; points: number }
-
-export type AlgebraicTracePosition = {
-  digits: number[]
-  eliminations: number[]
-  candidates: number[]
-  step: AlgebraicStep | null
-}
-
-type SizedVariantRequest = { type: 'sized-variant'; position: SizedVariantPosition } & (
-  | { operation: 'analyze' }
-  | { operation: 'solve' | 'solve-unique' }
-  | { operation: 'rate' }
-  | { operation: 'bounds' }
-  | { operation: 'hints'; eliminations?: readonly number[]; limit: number }
-  | { operation: 'trace'; eliminations?: readonly number[] }
-  | { operation: 'cage-proof'; rule: number; eliminations?: readonly number[] }
-)
-
-export type EngineRequest =
-  | SizedClassicRequest
-  | SizedVariantRequest
-  | SizedConstraintRequest
-  | { type: 'generate-jigsaw'; seed: number; difficulty: 'easy' | 'medium'; grid: { size: number; regions: readonly (readonly number[])[] }; exclude?: readonly (readonly number[])[] }
-  | { type: 'generate-rectangular'; seed: number; difficulty: 'easy' | 'medium'; grid: import('./grid.ts').RectangularGrid; exclude?: readonly (readonly number[])[] }
-  | { type: 'generate-six'; seed: number; difficulty: 'easy' | 'medium'; grid: SixGrid; exclude?: readonly (readonly number[])[] }
-  | { type: 'generate-mini'; seed: number; difficulty: 'easy' | 'medium'; exclude?: readonly (readonly number[])[] }
-  | { type: 'generate-algebraic'; seed: number; difficulty?: AlgebraicRating['difficulty']; exclude?: readonly SizedVariantPosition[] }
-  | { type: 'capabilities' }
-  | VariantRequest
-  | { type: 'canonical-puzzles'; values: readonly string[] }
-  | { type: 'impossible-templates' }
-  | { type: 'analyze'; values: string }
-  | { type: 'notes'; values: string }
-  | { type: 'solve'; values: string }
-  | ({ type: 'solve-singles'; displayedCandidates?: readonly number[] } & CandidatePosition)
-  | { type: 'generate'; seed: number }
-  | ({ type: 'rate'; values: string } & SolverOptions)
-  | ({ type: 'logical-solve'; complete?: boolean; includePositions?: boolean; includeStepDetails?: boolean; includeMoveAvailability?: boolean } & StartingPosition & SolverOptions)
-  | ({ type: 'replay-eight-digit-overlay'; proof: EightDigitOverlayProof } & StartingPosition)
-  | ({ type: 'logical-solve-with-rank'; includePositions?: boolean; rankOptions?: Partial<RankFallbackOptions> } & StartingPosition & SolverOptions)
-  | ({ type: 'compare-solve-paths'; technique: string } & StartingPosition & SolverOptions)
-  | ({ type: 'alternate-solve-path'; technique: string; maxPositions: number } & StartingPosition & SolverOptions)
-  | ({ type: 'practice-position'; technique: string } & StartingPosition & SolverOptions)
-  | ({ type: 'check-practice-move'; technique: string; action: DeductionAction } & StartingPosition)
-  | ({ type: 'hints'; collection?: number; limit?: number | 'all'; includePatterns?: boolean; preferProgress?: boolean; difficulty?: Difficulty } & CandidatePosition & HintOptions)
-  | { type: 'hint-page'; collection: number; index: number; variant?: boolean }
-  | { type: 'release-hints'; collection: number }
-  | ({ type: 'next-deduction' } & CandidatePosition & HintOptions)
-  | ({ type: 'deductions' } & CandidatePosition & SolverOptions)
-  | ({ type: 'technique-count'; technique: string; techniqueOrder?: readonly string[] } & CandidatePosition)
-  | ({ type: 'prove-rank'; pattern: RankPattern; target: Candidate; nodeBudget: number } & StartingPosition)
-  | ({ type: 'discover-rank'; target: Candidate; nodeBudget: number } & StartingPosition)
-  | ({ type: 'discover-rank-deductions'; limit?: number; nodeBudget: number; maxNodesPerCandidate: number } & StartingPosition)
-  | ({ type: 'rank-deductions'; pattern: RankPattern; nodeBudget: number } & StartingPosition)
-  | ({ type: 'replay-rank-proof'; proof: RankProof } & StartingPosition)
-  | ({ type: 'rank-proof-effort'; proof: RankProof } & StartingPosition)
-  | ({ type: 'classify-actions'; actions: readonly DeductionAction[] } & CandidatePosition)
-  | { type: 'opening-techniques'; values: string }
-  | { type: 'techniques'; variant?: boolean }
-  | { type: 'lesson-examples' }
-  | { type: 'practice-examples'; technique: string; variant?: false }
-  | { type: 'practice-examples'; technique: string; variant: true }
-  | { type: 'generate-practice-example'; technique: string; seed: number; exclude: string; variant?: boolean }
-  | GenerationRequest
-  | GenerationCommand
-
-export type PuzzleRating = {
-  score: { points: number; hardest: string | null; counts: Record<string, number> }
-  status: { solved: Difficulty } | 'stalled'
-  techniqueOrder: string[]
-  scoringVersion: number
-}
-export type GeneratedPuzzle = { board: string; rating: PuzzleRating }
-export type GeneratedVariant = {
-  seed: number
-  puzzle: VariantPuzzle
-  solution: string
-  givens: number
-  variantClues: number
-  rating: VariantRating
-}
-type Generated = string | GeneratedPuzzle | GeneratedVariant
-type GenerationProgress<T> =
-  | { status: 'pending'; attempts: number }
-  | { status: 'matched'; attempts: number; puzzle: T }
-  | { status: 'exhausted' | 'cancelled'; attempts: number }
-
-export type GenerationOutcome<T> =
-  | Exclude<GenerationProgress<T>, { status: 'pending' }>
-  | { status: 'invalid'; attempts: 0; code: string; message: string }
-
-export type House = { row: number } | { column: number } | { box: number }
-export type Candidate = { cell: number; digit: number }
-export type RankConstraint = { cell: number } | { 'house-digit': { house: House; digit: number } }
-export type RankPattern = { bases: readonly RankConstraint[]; covers: readonly RankConstraint[] }
-export type RankProof = {
-  target: Candidate
-  pattern: RankPattern
-  nodes: readonly { base: number; cases: readonly Candidate[] }[]
-}
-export type RankProofEffort = {
-  version: number
-  constraints: number
-  cells: number
-  candidates: number
-  nodes: number
-  extraCases: number
-  score: number
-}
-export type RankFallbackOptions = {
-  maxSteps: number
-  nodeBudget: number
-  maxNodesPerScan: number
-  maxNodesPerCandidate: number
-}
-export type RankSolveSearch = {
-  nodeBudget: number
-  nodesVisited: number
-  candidatesExamined: number
-  candidatesLimited: number
-  complete: boolean
-}
-export type RankSolveStep =
-  | ({ type: 'technique' } & Deduction)
-  | { type: 'rank'; proof: RankProof; effort: RankProofEffort; search: RankSolveSearch; actions: [{ eliminate: Candidate }] }
-export type RankSolution = {
-  board: string
-  steps: RankSolveStep[]
-  status: 'solved' | 'stalled' | 'rank-step-limit' | 'rank-search-limit'
-  techniqueOrder: string[]
-  namedScore: PuzzleRating['score']
-  namedScoringVersion: number
-  rankOptions: RankFallbackOptions
-  rankNodesVisited: number
-  terminalRankSearch: RankSolveSearch | null
-  positions?: PositionSnapshot[]
-}
-export type RankOutcome = { status: 'proven'; proof: RankProof } | { status: 'compatible' | 'search-limit' }
-export type RankDiscovery = { outcome: RankOutcome; effort: RankProofEffort | null; nodesVisited: number }
-export type RankDiscoveryScan = RankScan & {
-  efforts: RankProofEffort[]
-  candidatesExamined: number
-  candidatesLimited: number
-}
-export type RankScan = { proofs: RankProof[]; nodesVisited: number; complete: boolean }
-type ConjugatePair = { house: House; cells: [number, number] }
-type CandidateLink = {
-  from: Candidate
-  to: Candidate
-  source: { cell: number } | { house: House }
-  strength: 'strong' | 'weak'
-}
-type ColoringReason =
-  | 'both-colors'
-  | { 'same-color-conflict': [Candidate, Candidate] }
-  | { 'emptied-cell': number }
-  | { 'emptied-house': { house: House; digit: number } }
-export type InferenceNode = { candidate: Candidate } | { group: { digit: number; cells: number[] } }
-  | { 'mixed-group': Candidate[] }
-type InferenceLink = {
-  from: InferenceNode
-  to: InferenceNode
-  source: CandidateLink['source'] | { firework: number } | { peers: Record<string, never> }
-    | { tridagon: { cells: [number, number, number][]; digits: [number, number, number] } }
-    | { 'unique-rectangle': { corners: [number, number, number, number]; digits: [number, number] } }
-    | { 'almost-locked-set': AlmostLockedSet }
-    | { 'almost-locked-set-cell': { set: AlmostLockedSet; cell: number; blocked: number } }
-  strength: CandidateLink['strength']
-}
-type RectangleSupport =
-  | { 'extra-candidates': Candidate[] }
-  | { subset: { houses: House[]; cells: number[]; digits: number[] } }
-  | { 'strong-links': { houses: House[]; digit: number } }
-type UniqueLoopSupport = RectangleSupport | { 'hidden-subset': { house: House; cells: number[]; digits: number[] } }
-type ForcingLiteral = { candidate: Candidate; truth: boolean }
-type ForcingScope =
-  | 'guardians'
-  | { candidate: Candidate }
-  | { cell: number }
-  | { house: { house: House; digit: number } }
-  | { intersection: { source: House; target: House; digit: number } }
-  | { 'naked-pair': { house: House; cells: [number, number]; digits: [number, number] } }
-  | { 'hidden-pair': { house: House; cells: [number, number]; digits: [number, number] } }
-  | { 'x-wing': { digit: number; bases: [House, House]; covers: [House, House] } }
-type ForcingBranch = {
-  assumption: ForcingLiteral
-  steps: { effect: ForcingLiteral; scope: ForcingScope; causes: number[] }[]
-  conflict:
-    | { opposite: [number, number] }
-    | { exhausted: { scope: ForcingScope; causes: number[] } }
-    | { cases: [ForcingCase, ForcingCase] }
-    | null
-}
-type ForcingCase = { premises: number[]; branch: ForcingBranch }
-type AlmostLockedSet = { cells: number[]; digits: number[] }
-type KrakenLink = {
-  from: InferenceNode
-  to: InferenceNode
-  reason: 'exclusion' | { cell: number } | { house: House } | { 'almost-locked-set': AlmostLockedSet }
-}
-type SectorSubset = { house: House; cells: number[]; digits: number[] }
-type SectorLink = { house: House; digits: number[] }
-type ExocetCover = { digit: number; cells: number[]; houses: House[] }
-type ExocetAssignment = { bases: [number, number]; targets: [number, number] }
-type ExocetComponent = { bases: [number, number]; targets: [number, number]; covers: ExocetCover[] }
-type ExocetTarget = { cell: number } | { 'conjugate-pair': { digit: number; link: ConjugatePair } }
-type GroupedExocetComponent = Omit<ExocetComponent, 'targets'> & { targets: [ExocetTarget, ExocetTarget] }
-export type HintTrace = { assumption: string; steps: string[]; conclusion: string }[]
-type Evidence =
-  | { 'pattern-overlay': {
-      digit: number
-      scopes: { digit: number; allowed: number[]; supported: number[] }[]
-      geometry?: { houses: number[][]; excludedPairs: [number, number][] }
-    } }
-  | { variant: {
-      description: string; reason: string
-      /** App display context; native proof data and worker responses stay unchanged. */
-      reasonSteps?: string[]
-      trace?: HintTrace
-      source?: { deduction: VariantDeduction; puzzle: VariantPuzzle }
-    } }
-  | { cell: number }
-  | { house: House }
-  | { 'direct-placement': { house: House; premise: Evidence; removed: number[] } }
-  | { intersection: { source: House; target: House; cells: number[] } }
-  | { pair: { house: House; cells: [number, number]; digits: [number, number] } }
-  | { subset: { house: House; cells: number[]; digits: number[]; lockedIn: House | null } }
-  | { 'x-wing': { digit: number; bases: [House, House]; covers: [House, House] } }
-  | { fish: { digit: number; bases: House[]; covers: House[]; fins: number[] } }
-  | { 'complex-fish': { digit: number; bases: House[]; covers: House[]; fins: number[] } }
-  | { 'kraken-fish': { digit: number; bases: House[]; covers: House[]; fins: number[]; cover: House | null; branches: KrakenLink[][] } }
-  | { wing: { pivot: number; pincers: [number, number]; digits: [number, number, number] } }
-  | { 'wxyz-wing': { cells: [number, number, number, number]; digits: [number, number, number, number]; unrestricted: number | null } }
-  | { 'w-wing': { wings: [number, number]; link: ConjugatePair; linkedDigit: number; digit: number } }
-  | { 'single-digit-chain': { digit: number; links: [ConjugatePair, ConjugatePair]; bridge: [number, number] } }
-  | { 'empty-rectangle': { digit: number; row: number; column: number; cells: number[]; link: ConjugatePair } }
-  | { chain: { links: CandidateLink[] } }
-  | { inference: { links: InferenceLink[] } }
-  | { 'unique-rectangle': { corners: [number, number, number, number]; digits: [number, number]; support: RectangleSupport } }
-  | { 'unique-loop': { sides: [number[], number[]]; digits: [number, number]; support: UniqueLoopSupport } }
-  | { 'bug-plus-one': { cell: number; candidates: [number, number, number]; houses: [House, House, House] } }
-  | { 'aligned-exclusion': { cells: number[]; cases: { digits: number[]; reason: { 'repeated-digit': [number, number] } | { 'empty-cell': number } }[] } }
-  | { firework: { wings: [number, number]; pivots: { cell: number; digits: number[] }[] } }
-  | { 'firework-w-wing': { pivot: number; digits: [number, number]; wings: [number[], number[]]; bivalue: [number, number] } }
-  | { 'firework-l-wing': { pivot: number; digits: [number, number]; wings: [number, number]; link: ConjugatePair; linked_digit: number } }
-  | { 'firework-als-wing': { pivots: [number, number]; digits: [number, number]; wings: [[number[], number[]], [number[], number[]]]; bivalue: number } }
-  | { tridagon: { cells: [number, number, number][]; digits: [number, number, number]; guardians: Candidate[]; branches: ForcingBranch[] } }
-  | { forcing: { scope: ForcingScope | null; branches: ForcingBranch[] } }
-  | { 'als-xz': { sets: [AlmostLockedSet, AlmostLockedSet]; links: number[] } }
-  | { 'als-chain': { sets: AlmostLockedSet[]; links: number[] } }
-  | { 'death-blossom': { stem: number; petals: { digit: number; set: AlmostLockedSet }[] } }
-  | { 'sue-de-coq': { intersection: number[]; digits: number[]; line: SectorSubset; block: SectorSubset } }
-  | { exocet: {
-      bases: [number, number]
-      targets: [number, number]
-      crossLines: [House, House, House]
-      covers: ExocetCover[]
-      assignments: ExocetAssignment[]
-    } }
-  | { 'grouped-exocet': {
-      bases: [number, number]
-      targets: [ExocetTarget, ExocetTarget]
-      crossLines: [House, House, House]
-      covers: ExocetCover[]
-    } }
-  | { 'double-exocet': {
-      components: [ExocetComponent, ExocetComponent]
-      crossLines: [House, House, House]
-      jointCrossLineSupport?: boolean
-      assignments: [ExocetAssignment, ExocetAssignment][]
-    } }
-  | { 'grouped-double-exocet': {
-      components: [GroupedExocetComponent, GroupedExocetComponent]
-      crossLines: [House, House, House]
-      rankPattern: RankPattern
-    } }
-  | { 'sk-loop': { anchors: [number, number, number, number]; arms: number[][]; links: SectorLink[] } }
-  | { 'multi-sector-locked-sets': { core: number[]; attachments: number[]; links: SectorLink[] } }
-  | { 'multi-coloring': {
-    groups: [[Candidate[], Candidate[]], [Candidate[], Candidate[]]]
-    links: CandidateLink[]
-    bridge: CandidateLink
-    other_bridge: CandidateLink | null
-  } }
-  | { coloring: { colors: [Candidate[], Candidate[]]; links: CandidateLink[]; reason: ColoringReason } }
-
-export type DeductionAction = { place: Candidate } | { eliminate: Candidate }
-
-export type Deduction = {
-  technique: string
-  evidence: Evidence
-  actions: DeductionAction[]
-}
-
-export type ProofPattern = { houses: House[]; cells: number[]; candidates: Candidate[] }
-export type DeductionProof = Pick<Deduction, 'technique' | 'evidence'> & { pattern: ProofPattern }
-export type DeductionMatch = Pick<Deduction, 'actions'> & {
-  affectedCells: number[]
-  affectedCandidates: Candidate[]
-  proofs: DeductionProof[]
-}
-
-export type PositionSnapshot = { givens: string; entries: string; eliminations: number[] }
-export type LessonPosition = PositionSnapshot & { candidates: number[]; pattern?: ProofPattern }
-
-export type LessonPractice = LessonPosition & { answers: DeductionAction[]; suggestion: DeductionAction }
-export type PracticeExercise = LessonPractice & { deduction: Deduction }
-
-export type LessonExample = LessonPosition & {
-  deduction: Deduction
-  practice: PracticeExercise
-}
-
-export type SolvePosition = PositionSnapshot & { candidates?: number[]; pattern?: ProofPattern }
-
-export type MoveAvailability = { easyMoves: number; bottleneck: boolean }
-export type EightDigitOverlayProof = {
-  omittedDigit: number
-  /** Eight layouts in digit order, skipping the omitted digit. */
-  layouts: number[][]
-}
-export type LogicalSolution = {
-  board: string
-  steps: Deduction[]
-  rating: PuzzleRating
-  positions?: SolvePosition[]
-  moveAvailability?: MoveAvailability[]
-  /** The final grid comes from exact verification when logical play has stalled. */
-  exact?: true
-  /** A verified completion shown separately from the last logical position. */
-  exactPosition?: SolvePosition
-  completionProof?: EightDigitOverlayProof
-  completionActions?: DeductionAction[]
-}
-export type PathComparison = { withTechnique: LogicalSolution; withoutTechnique: LogicalSolution }
-export type AlternatePath =
-  | { status: 'found'; positionsSearched: number; path: LogicalSolution }
-  | { status: 'no-path' | 'inconclusive'; positionsSearched: number; path: null }
-export type ReplayedStep = { before: SolvePosition; deduction: Deduction; after: SolvePosition }
-export type HintChoice = Deduction & { pattern?: ProofPattern }
-type HintPage<T> = { choices: T[]; available: number; offset: number; candidates?: number[] }
-export type HintChoices = { choices: HintChoice[]; available: number; candidates?: number[] }
-export type HintStages = { technique: string; pattern: ProofPattern; deduction: Deduction }
-export type TechniqueCatalog = {
-  defaultOrder: string[]
-  difficultyOrder: string[]
-  scoringVersion: number
-  techniques: { id: string; aliases: string[]; cost: number; difficulty: Difficulty; requiresUniqueSolution: boolean }[]
-}
-
-type VariantResult<T extends VariantRequest> =
-  T extends { operation: 'analyze' } ? Analysis :
-  T extends { operation: 'solve-unique' } ? { status: 'unique'; solution: string } | { status: Exclude<Analysis, 'unique'> } :
-  T extends { operation: 'solve' | 'solve-singles' } ? string :
-  T extends { operation: 'candidates' } ? number[] :
-  T extends { operation: 'hints'; collection: number } ? HintPage<VariantDeduction> :
-  T extends { operation: 'hints' } ? VariantDeduction[] :
-  T extends { operation: 'rate' } ? VariantRating :
-  T extends { operation: 'trace' } ? VariantTrace :
-  T extends { operation: 'replay-step' } ? VariantReplay | null :
-  T extends { operation: 'practice-position' } ? Required<VariantPosition> | null :
-  T extends { operation: 'check-practice-move' } ? VariantDeduction | null :
-  Required<VariantPosition>
-
-export type VariantHouse = { row: number } | { column: number } | { region: number }
-  | { diagonal: 'main' | 'anti' }
-  /** Index into the full puzzle rule list. */
-  | { extra: number }
-export type VariantExclusionPremise =
-  | { type: 'cell'; cell: number; domain: number }
-  | { type: 'house'; house: VariantHouse; digit: number; cells: number[] }
-export type VariantGroupSumLink = {
-  candidate: Candidate
-  domain: number
-  source:
-    | { type: 'line'; rule: number; anchor: [number, number] | null }
-    | { type: 'sum'; rule: number; total: number }
-    | { type: 'house'; house: VariantHouse }
-}
-type VariantRenbanGroupConflict = { house: VariantHouse; cells: number[]; digits: number }
-type VariantRenbanGroupProjection = { rule: number; cells: number[]; domains: number[]; supported: number[] }
-
-type VariantConstraintCheck = {
-  scope: { type: 'house'; house: VariantHouse } | { type: 'pair'; rules: number[] } | { type: 'line'; rule: number }
-  cells: number[]
-  domains: number[]
-  supported: number[]
-}
-type VariantMatchingDigitCheck = {
-  house: VariantHouse
-  forced: number[]
-  blocked: { cell: number; matched: number; placed: number; house: VariantHouse }[]
-}
-
-export type VariantDeduction = {
-  technique: string
-  actions: DeductionAction[]
-  evidence:
-    | { type: 'single'; candidate: Candidate; house: VariantHouse | null }
-    | { type: 'cage-sum'; house: VariantHouse | null; cages: [number, number][]; sum: number; cells: number[]; domains: number[] }
-    | { type: 'sum-pair'; rules: [number, number]; cells: [number, number, number, number]; totals: [number, number]; domains: [number, number, number, number]; house: VariantHouse; houses: VariantHouse[] }
-    | { type: 'group-line-phase-sum'; rules: [number, number]; cells: [number, number, number, number]; domains: [number, number, number, number]; total: number; house: VariantHouse }
-    | { type: 'group-sum-implication'; assumption: Candidate; links: VariantGroupSumLink[]; conflict: VariantHouse }
-    | { type: 'group-line-house-triplet'; rule: number; house: VariantHouse; cells: [number, number, number, number]; domains: [number, number, number, number] }
-    | { type: 'group-line-disjoint-sum'; rules: [number, number]; cells: [number, number, number, number]; domains: [number, number, number, number]; houses: VariantHouse[]; total: number }
-    | { type: 'group-line-sum-chain'; rules: [number, number, number]; house?: VariantHouse; houses?: VariantHouse[]; cells: [number, number, number, number]; domains: [number, number, number, number]; totals: [number, number]; supported: [number, number, number, number]; locked: number }
-    | { type: 'group-line-sum-house'; rules: [number, number]; house: VariantHouse; cells: [number, number, number]; domains: [number, number, number]; total: number }
-    | { type: 'group-line-house'; rule: number; house: VariantHouse; cells: [number, number]; domains: [number, number] }
-    | { type: 'group-line-house-support'; rule: number; lineCells: number[]; lineDomains: number[]; phases: number[];
-      house: VariantHouse; cells: number[]; domains: number[]; supported: number[];
-      cases: { groups: number[]; conflict: { cells: number[]; digits: number } | null }[] }
-    | { type: 'region-sum-distinct'; rule: number; parts: { cells: number[]; domains: number[]; totals: number[] }[];
-      commonTotals: number[] }
-    | { type: 'kropki-house'; rules: number[]; pair: [number, number]; house: VariantHouse;
-      cells: number[]; domains: number[]; tested: number; locked: number; rejected: number[] }
-    | { type: 'thermometer-house'; rule: number; house: VariantHouse; lineCells: number[]; lineDomains: number[];
-      cells: number[]; domains: number[]; tested: number; rejected: number[] }
-    | { type: 'region-sum-house'; house: VariantHouse;
-      lines: { rule: number; inRegion: number; parts: { cells: number[]; domains: number[]; totals: number[] }[];
-        commonTotals: number[]; remainingTotals: number[] }[];
-      remainder: number[]; remainderDomains: number[] }
-    | { type: 'linked-clue'; assumption: Candidate; checks: VariantConstraintCheck[]; conflict: VariantConstraintCheck;
-      houseConflict?: { cells: number[]; digits: number } }
-    | { type: 'matching-digit'; digit: number; assumed: number[]; initiallyPlaced: number[];
-      checks: VariantMatchingDigitCheck[]; conflict: VariantMatchingDigitCheck }
-    | { type: 'matching-layout'; digit: number; target: Candidate;
-      cases: { cells: number[]; contradicted: boolean; checks: VariantConstraintCheck[] }[] }
-    | { type: 'group-order'; rule: number; cells: number[]; domains: number[]; phases: number[];
-      remaining: number[][];
-      rejected: { groups: number[]; checks: VariantConstraintCheck[]; conflict: VariantConstraintCheck;
-        houseConflict?: { cells: number[]; digits: number } }[] }
-    | { type: 'group-order-elimination'; rule: number; cells: number[]; domains: number[]; phases: number[];
-      branches: { groups: number[]; checks: VariantConstraintCheck[] }[] }
-    | { type: 'line-houses'; rules: number[]; cells: number[]; domains: number[]; supported: number[]; houses: VariantHouse[]; assignments: number }
-    | { type: 'entropy-areas'; rules: number[]; windows: [number, number, number, number][]; cells: number[]; domains: number[]; supported: number[]; houses: VariantHouse[] }
-    | { type: 'ray-houses'; rules: number[]; cells: number[]; domains: number[]; houses: VariantHouse[]; supported: number[] }
-    | { type: 'renban-group-counts'; assumption: Candidate; initial: VariantRenbanGroupProjection[];
-      placement: { line: VariantRenbanGroupProjection; rejected: [number, VariantRenbanGroupConflict][]; candidate: Candidate } | null;
-      subsequent: VariantRenbanGroupProjection[]; conflict: VariantRenbanGroupConflict }
-    | { type: 'renban-house-support'; rule: number; lineLength: number; house: VariantHouse; cells: number[]; domains: number[];
-      supported: number[]; starts: number; pairedCell: number | null }
-    | { type: 'renban-sum'; rules: [number, number]; cells: number[]; domains: number[]; supported: number[]; starts: number }
-    | { type: 'renban-sum-house'; rules: [number, number, number]; cells: number[]; domains: number[];
-        house: VariantHouse; shared: number; restricted: number; supported: number[];
-        witness: { candidate: Candidate; sharedDigit: number; containedStart: number | null;
-          otherStart: number; restrictedDigits: number } | null }
-    | { type: 'constraint'; rules: number[]; cells: number[]; domains: number[] }
-    | { type: 'quadruple-lock'; clues: [{ rules: number[]; cells: number[] }, { rules: number[]; cells: number[] }]; houses: [VariantHouse, VariantHouse]; sites: [number[], number[]]; digit: number }
-    | { type: 'locked-digit'; clue: { rules: number[]; cells: number[] }; target: VariantHouse; cells: number[]; domains: number[]; digit: number }
-    | { type: 'intersection'; source: VariantHouse; target: VariantHouse; cells: number[]; digit: number }
-    | { type: 'rule-forcing'; assumption: Candidate; contradiction:
-        { type: 'empty-cell'; cell: number } | { type: 'missing-digit'; house: VariantHouse; digit: number } }
-    | { type: 'exclusion'; premise: VariantExclusionPremise; rules: number[]; houses: VariantHouse[] }
-    | { type: 'classic'; proof: Evidence; swapCells: number[] }
-}
-export type VariantRating = Pick<PuzzleRating, 'status' | 'techniqueOrder' | 'scoringVersion'> & {
-  regions: NonNullable<VariantPuzzle['regions']>
-  rules: VariantRule[]
-  points: number
-  counts: Record<string, number>
-  hardest: string | null
-}
-export type VariantTrace = {
-  start: Required<VariantPosition>
-  end: Required<VariantPosition>
-  rating: VariantRating
-  steps: VariantDeduction[]
-}
-export type VariantReplay = {
-  before: Required<VariantPosition>
-  after: Required<VariantPosition>
-  deduction: VariantDeduction
-}
-export type VariantPracticeExercise = {
-  position: Required<VariantPosition>
-  candidates: number[]
-  answers: DeductionAction[]
-  suggestion: DeductionAction
-  deduction: VariantDeduction
-}
-
-type SizedCompletion = { digits: number[]; variables: Record<string, number> }
+  bound×M5¶‰ËkºwµçF6öÆÆV7F–öãó¢çVÖ&W#²Æ–Ö—Có¢çVÖ&W"ÂvÆÂs²–æ6ÇVFUGFW&ç3ó¢&ööÆVã²&VfW%&öw&W73ó¢&ööÆVã²F–ff–7VÇG“ó¢F–ff–7VÇG’Òb6æF–FFU÷6—F–öâb†–çD÷F–öç2¢Â²G—S¢v†–çB×vRs²6öÆÆV7F–öã¢çVÖ&W#²–æFWƒ¢çVÖ&W#²f&–çCó¢&ööÆVâĞ¢Â²G—S¢w&VÆV6RÖ†–çG2s²6öÆÆV7F–öã¢çVÖ&W"Ğ¢Â‡²G—S¢væW‡BÖFVGV7F–öârÒb6æF–FFU÷6—F–öâb†–çD÷F–öç2¢Â‡²G—S¢vFVGV7F–öç2rÒb6æF–FFU÷6—F–öâb6öÇfW$÷F–öç2¢Â‡²G—S¢wFV6†æ—VRÖ6÷VçBs²FV6†æ—VS¢7G&–æs²FV6†æ—VT÷&FW#ó¢&VFöæÇ’7G&–æuµÒÒb6æF–FFU÷6—F–öâ¢Â‡²G—S¢w&÷fR×&æ²s²GFW&ã¢&æµGFW&ã²F&vWC¢6æF–FFS²æöFT'VFvWC¢çVÖ&W"Òb7F'F–æu÷6—F–öâ¢Â‡²G—S¢vF—66÷fW"×&æ²s²F&vWC¢6æF–FFS²æöFT'VFvWC¢çVÖ&W"Òb7F'F–æu÷6—F–öâ¢Â‡²G—S¢vF—66÷fW"×&æ²ÖFVGV7F–öç2s²Æ–Ö—Có¢çVÖ&W#²æöFT'VFvWC¢çVÖ&W#²Ö„æöFW5W$6æF–FFS¢çVÖ&W"Òb7F'F–æu÷6—F–öâ¢Â‡²G—S¢w&æ²ÖFVGV7F–öç2s²GFW&ã¢&æµGFW&ã²æöFT'VFvWC¢çVÖ&W"Òb7F'F–æu÷6—F–öâ¢Â‡²G—S¢w&WÆ’×&æ²×&ööbs²&ööc¢&æµ&ööbÒb7F'F–æu÷6—F–öâ¢Â‡²G—S¢w&æ²×&ööbÖVff÷'Bs²&ööc¢&æµ&ööbÒb7F'F–æu÷6—F–öâ¢Â‡²G—S¢v6Æ76–g’Ö7F–öç2s²7F–öç3¢&VFöæÇ’FVGV7F–öä7F–öåµÒÒb6æF–FFU÷6—F–öâ¢Â²G—S¢v÷Væ–ær×FV6†æ—VW2s²fÇVW3¢7G&–ærĞ¢Â²G—S¢wFV6†æ—VW2s²f&–çCó¢&ööÆVâĞ¢Â²G—S¢vÆW76öâÖW†×ÆW2rĞ¢Â²G—S¢w&7F–6RÖW†×ÆW2s²FV6†æ—VS¢7G&–æs²f&–çCó¢fÇ6RĞ¢Â²G—S¢w&7F–6RÖW†×ÆW2s²FV6†æ—VS¢7G&–æs²f&–çC¢G'VRĞ¢Â²G—S¢vvVæW&FR×&7F–6RÖW†×ÆRs²FV6†æ—VS¢7G&–æs²6VVC¢çVÖ&W#²W†6ÇVFS¢7G&–æs²f&–çCó¢&ööÆVâĞ¢ÂvVæW&F–öå&WVW7@¢ÂvVæW&F–öä6öÖÖæ@ ¦W‡÷'BG—RW§¦ÆU&F–ærÒ°¢66÷&S¢²ö–çG3¢çVÖ&W#²†&FW7C¢7G&–ærÂçVÆÃ²6÷VçG3¢&V6÷&CÇ7G&–ærÂçVÖ&W#âĞ¢7FGW3¢²6öÇfVC¢F–ff–7VÇG’ÒÂw7FÆÆVBp¢FV6†æ—VT÷&FW#¢7G&–æuµĞ¢66÷&–æufW'6–öã¢çVÖ&W §Ğ¦W‡÷'BG—RvVæW&FVEW§¦ÆRÒ²&ö&C¢7G&–æs²&F–æs¢W§¦ÆU&F–ærĞ¦W‡÷'BG—RvVæW&FVEf&–çBÒ°¢6VVC¢çVÖ&W ¢W§¦ÆS¢f&–çEW§¦ÆP¢6öÇWF–öã¢7G&–æp¢v—fVç3¢çVÖ&W ¢f&–çD6ÇVW3¢çVÖ&W ¢&F–æs¢f&–çE&F–æp§Ğ§G—RvVæW&FVBÒ7G&–ærÂvVæW&FVEW§¦ÆRÂvVæW&FVEf&–ç@§G—RvVæW&F–öå&öw&W73ÅCâĞ¢Â²7FGW3¢wVæF–ærs²GFV×G3¢çVÖ&W"Ğ¢Â²7FGW3¢vÖF6†VBs²GFV×G3¢çVÖ&W#²W§¦ÆS¢BĞ¢Â²7FGW3¢vW††W7FVBrÂv6æ6VÆÆVBs²GFV×G3¢çVÖ&W"Ğ ¦W‡÷'BG—RvVæW&F–öä÷WF6öÖSÅCâĞ¢ÂW†6ÇVFSÄvVæW&F–öå&öw&W73ÅCâÂ²7FGW3¢wVæF–ærrÓà¢Â²7FGW3¢v–çfÆ–Bs²GFV×G3¢²6öFS¢7G&–æs²ÖW76vS¢7G&–ærĞ ¦W‡÷'BG—R†÷W6RÒ²&÷s¢çVÖ&W"ÒÂ²6öÇVÖã¢çVÖ&W"ÒÂ²&÷ƒ¢çVÖ&W"Ğ¦W‡÷'BG—R6æF–FFRÒ²6VÆÃ¢çVÖ&W#²F–v—C¢çVÖ&W"Ğ¦W‡÷'BG—R&æ´6öç7G&–çBÒ²6VÆÃ¢çVÖ&W"ÒÂ²v†÷W6RÖF–v—Bs¢²†÷W6S¢†÷W6S²F–v—C¢çVÖ&W"ÒĞ¦W‡÷'BG—R&æµGFW&âÒ²&6W3¢&VFöæÇ’&æ´6öç7G&–çEµÓ²6÷fW'3¢&VFöæÇ’&æ´6öç7G&–çEµÒĞ¦W‡÷'BG—R&æµ&ööbÒ°¢F&vWC¢6æF–FFP¢GFW&ã¢&æµGFW&à¢æöFW3¢&VFöæÇ’²&6S¢çVÖ&W#²66W3¢&VFöæÇ’6æF–FFUµÒÕµĞ§Ğ¦W‡÷'BG—R&æµ&öödVff÷'BÒ°¢fW'6–öã¢çVÖ&W ¢6öç7G&–çG3¢çVÖ&W ¢6VÆÇ3¢çVÖ&W ¢6æF–FFW3¢çVÖ&W ¢æöFW3¢çVÖ&W ¢W‡G&66W3¢çVÖ&W ¢66÷&S¢çVÖ&W §Ğ¦W‡÷'BG—R&æ´fÆÆ&6´÷F–öç2Ò°¢Ö…7FW3¢çVÖ&W ¢æöFT'VFvWC¢çVÖ&W ¢Ö„æöFW5W%66ã¢çVÖ&W ¢Ö„æöFW5W$6æF–FFS¢çVÖ&W §Ğ¦W‡÷'BG—R&æµ6öÇfU6V&6‚Ò°¢æöFT'VFvWC¢çVÖ&W ¢æöFW5f—6—FVC¢çVÖ&W ¢6æF–FFW4W†Ö–æVC¢çVÖ&W ¢6æF–FFW4Æ–Ö—FVC¢çVÖ&W ¢6ö×ÆWFS¢&ööÆVà§Ğ¦W‡÷'BG—R&æµ6öÇfU7FWĞ¢Â‡²G—S¢wFV6†æ—VRrÒbFVGV7F–öâ¢Â²G—S¢w&æ²s²&ööc¢&æµ&ööc²Vff÷'C¢&æµ&öödVff÷'C²6V&6ƒ¢&æµ6öÇfU6V&6ƒ²7F–öç3¢·²VÆ–Ö–æFS¢6æF–FFRÕÒĞ¦W‡÷'BG—R&æµ6öÇWF–öâÒ°¢&ö&C¢7G&–æp¢7FW3¢&æµ6öÇfU7FWµĞ¢7FGW3¢w6öÇfVBrÂw7FÆÆVBrÂw&æ²×7FWÖÆ–Ö—BrÂw&æ²×6V&6‚ÖÆ–Ö—Bp¢FV6†æ—VT÷&FW#¢7G&–æuµĞ¢æÖVE66÷&S¢W§¦ÆU&F–æu²w66÷&RuĞ¢æÖVE66÷&–æufW'6–öã¢çVÖ&W ¢&æ´÷F–öç3¢&æ´fÆÆ&6´÷F–öç0¢&æ´æöFW5f—6—FVC¢çVÖ&W ¢FW&Ö–æÅ&æµ6V&6ƒ¢&æµ6öÇfU6V&6‚ÂçVÆÀ¢÷6—F–öç3ó¢÷6—F–öå6æ6†÷EµĞ§Ğ¦W‡÷'BG—R&æ´÷WF6öÖRÒ²7FGW3¢w&÷fVâs²&ööc¢&æµ&ööbÒÂ²7FGW3¢v6ö×F–&ÆRrÂw6V&6‚ÖÆ–Ö—BrĞ¦W‡÷'BG—R&æ´F—66÷fW'’Ò²÷WF6öÖS¢&æ´÷WF6öÖS²Vff÷'C¢&æµ&öödVff÷'BÂçVÆÃ²æöFW5f—6—FVC¢çVÖ&W"Ğ¦W‡÷'BG—R&æ´F—66÷fW'•66âÒ&æµ66âb°¢Vff÷'G3¢&æµ&öödVff÷'EµĞ¢6æF–FFW4W†Ö–æVC¢çVÖ&W ¢6æF–FFW4Æ–Ö—FVC¢çVÖ&W §Ğ¦W‡÷'BG—R&æµ66âÒ²&öög3¢&æµ&ööeµÓ²æöFW5f—6—FVC¢çVÖ&W#²6ö×ÆWFS¢&ööÆVâĞ§G—R6öæ§VvFU—"Ò²†÷W6S¢†÷W6S²6VÆÇ3¢¶çVÖ&W"ÂçVÖ&W%ÒĞ§G—R6æF–FFTÆ–æ²Ò°¢g&öÓ¢6æF–FFP¢š®x§‚ÚîÆ­yÚ.¶›­¢¸ Šv¥¶‰Ê.Ş4ÓTèµ©hºÚn¶X§zÍHÎˆØ[™Y]BˆÛİ\˜ÙNˆÈÙ[ˆ[X™\ˆHÈİ\ÙNˆİ\ÙHBˆİ™[™İˆ	Üİ›Û™ÉÈ	İÙXZÉÂŸB\HÛÛÜš[™Ô™X\ÛÛˆBˆ	Ø›İXÛÛÜœÉÂˆÈ	ÜØ[YKXÛÛÜ‹XÛÛ™›Xİ	ÎˆĞØ[™Y]KØ[™Y]WHBˆÈ	Ù[\YYXÙ[	Îˆ[X™\ˆBˆÈ	Ù[\YYZİ\ÙIÎˆÈİ\ÙNˆİ\ÙNÈYÚ]ˆ[X™\ˆHB™^Ü\H[™™\™[˜ÙS›ÙHHÈØ[™Y]NˆØ[™Y]HHÈÜ›İ\ˆÈYÚ]ˆ[X™\ÈÙ[Îˆ[X™\–×HHBˆÈ	ÛZ^YYÜ›İ\	ÎˆØ[™Y]V×HB\H[™™\™[˜ÙS[šÈHÂˆœ›ÛNˆ[™™\™[˜ÙS›ÙBˆÎˆ[™™\™[˜ÙS›ÙBˆÛİ\˜ÙNˆØ[™Y]S[šÖÉÜÛİ\˜ÙI×HÈš\™]ÛÜšÎˆ[X™\ˆHÈY\œÎˆ™XÛÜ™İš[™Ë™]™\ˆBˆÈšYYÛÛˆÈÙ[ÎˆÛ[X™\‹[X™\‹[X™\—V×NÈYÚ]ÎˆÛ[X™\‹[X™\‹[X™\—HHBˆÈ	İ[š\]YK\™Xİ[™ÛIÎˆÈÛÜ›™\œÎˆÛ[X™\‹[X™\‹[X™\‹[X™\—NÈYÚ]ÎˆÛ[X™\‹[X™\—HHBˆÈ	Ø[[Üİ[ØÚÙY\Ù]	Îˆ[[ÜİØÚÙYÙ]BˆÈ	Ø[[Üİ[ØÚÙY\Ù]XÙ[	ÎˆÈÙ]ˆ[[ÜİØÚÙYÙ]ÈÙ[ˆ[X™\È›ØÚÙYˆ[X™\ˆHBˆİ™[™İˆØ[™Y]S[šÖÉÜİ™[™İ	×BŸB\H™Xİ[™ÛTİ\ÜBˆÈ	Ù^˜KXØ[™Y]\ÉÎˆØ[™Y]V×HBˆÈİXœÙ]ˆÈİ\Ù\Îˆİ\ÙV×NÈÙ[Îˆ[X™\–×NÈYÚ]Îˆ[X™\–×HHBˆÈ	Üİ›Û™Ë[[šÜÉÎˆÈİ\Ù\Îˆİ\ÙV×NÈYÚ]ˆ[X™\ˆHB\H[š\]YSÛÜİ\ÜH™Xİ[™ÛTİ\ÜÈ	ÚY[‹\İXœÙ]	ÎˆÈİ\ÙNˆİ\ÙNÈÙ[Îˆ[X™\–×NÈYÚ]Îˆ[X™\–×HHB\H›Ü˜Ú[™Ó]\˜[HÈØ[™Y]NˆØ[™Y]NÈ]ˆ›ÛÛX[ˆB\H›Ü˜Ú[™ÔØÛÜHBˆ	ÙİX\™X[œÉÂˆÈØ[™Y]NˆØ[™Y]HBˆÈÙ[ˆ[X™\ˆBˆÈİ\ÙNˆÈİ\ÙNˆİ\ÙNÈYÚ]ˆ[X™\ˆHBˆÈ[\œÙXİ[ÛˆÈÛİ\˜ÙNˆİ\ÙNÈ\™Ù]ˆİ\ÙNÈYÚ]ˆ[X™\ˆHBˆÈ	Û˜ZÙY\Z\‰ÎˆÈİ\ÙNˆİ\ÙNÈÙ[ÎˆÛ[X™\‹[X™\—NÈYÚ]ÎˆÛ[X™\‹[X™\—HHBˆÈ	ÚY[‹\Z\‰ÎˆÈİ\ÙNˆİ\ÙNÈÙ[ÎˆÛ[X™\‹[X™\—NÈYÚ]ÎˆÛ[X™\‹[X™\—HHBˆÈ	Ş]Ú[™ÉÎˆÈYÚ]ˆ[X™\È˜\Ù\ÎˆÒİ\ÙKİ\ÙWNÈÛİ™\œÎˆÒİ\ÙKİ\ÙWHHB\H›Ü˜Ú[™Ğœ˜[˜ÚHÂˆ\Üİ[\[Ûˆ›Ü˜Ú[™Ó]\˜[ˆİ\ÎˆÈY™™Xİˆ›Ü˜Ú[™Ó]\˜[ÈØÛÜNˆ›Ü˜Ú[™ÔØÛÜNÈØ]\Ù\Îˆ[X™\–×HV×BˆÛÛ™›Xİ‚ˆÈÜÜÚ]NˆÛ[X™\‹[X™\—HBˆÈ^]\İYˆÈØÛÜNˆ›Ü˜Ú[™ÔØÛÜNÈØ]\Ù\Îˆ[X™\–×HHBˆÈØ\Ù\ÎˆÑ›Ü˜Ú[™ĞØ\ÙK›Ü˜Ú[™ĞØ\ÙWHBˆ[ŸB\H›Ü˜Ú[™ĞØ\ÙHHÈ™[Z\Ù\Îˆ[X™\–×NÈœ˜[˜Úˆ›Ü˜Ú[™Ğœ˜[˜ÚB\H[[ÜİØÚÙYÙ]HÈÙ[Îˆ[X™\–×NÈYÚ]Îˆ[X™\–×HB\HÜ˜ZÙ[“[šÈHÂˆœ›ÛNˆ[™™\™[˜ÙS›ÙBˆÎˆ[™™\™[˜ÙS›ÙBˆ™X\ÛÛˆ	Ù^Û\Ú[Û‰ÈÈÙ[ˆ[X™\ˆHÈİ\ÙNˆİ\ÙHHÈ	Ø[[Üİ[ØÚÙY\Ù]	Îˆ[[ÜİØÚÙYÙ]BŸB\HÙXİÜ”İXœÙ]HÈİ\ÙNˆİ\ÙNÈÙ[Îˆ[X™\–×NÈYÚ]Îˆ[X™\–×HB\HÙXİÜ“[šÈHÈİ\ÙNˆİ\ÙNÈYÚ]Îˆ[X™\–×HB\H^ØÙ]Ûİ™\ˆHÈYÚ]ˆ[X™\ÈÙ[Îˆ[X™\–×NÈİ\Ù\Îˆİ\ÙV×HB\H^ØÙ]\ÜÚYÛ›Y[HÈ˜\Ù\ÎˆÛ[X™\‹[X™\—NÈ\™Ù]ÎˆÛ[X™\‹[X™\—HB\H^ØÙ]ÛÛ\Û™[HÈ˜\Ù\ÎˆÛ[X™\‹[X™\—NÈ\™Ù]ÎˆÛ[X™\‹[X™\—NÈÛİ™\œÎˆ^ØÙ]Ûİ™\–×HB\H^ØÙ]\™Ù]HÈÙ[ˆ[X™\ˆHÈ	ØÛÛšYØ]K\Z\‰ÎˆÈYÚ]ˆ[X™\È[šÎˆÛÛšYØ]TZ\ˆHB\HÜ›İ\Y^ØÙ]ÛÛ\Û™[HÛZ]^ØÙ]ÛÛ\Û™[	İ\™Ù]ÉÏˆ	ˆÈ\™Ù]ÎˆÑ^ØÙ]\™Ù]^ØÙ]\™Ù]HB™^Ü\H[˜XÙHHÈ\Üİ[\[Ûˆİš[™ÎÈİ\Îˆİš[™Ö×NÈÛÛ˜Û\Ú[Ûˆİš[™ÈV×B\H]šY[˜ÙHBˆÈ	Ü]\›‹[İ™\›^IÎˆÂˆYÚ]ˆ[X™\‚ˆØÛÜ\ÎˆÈYÚ]ˆ[X™\È[İÙYˆ[X™\–×NÈİ\ÜYˆ[X™\–×HV×BˆÙ[ÛY]OÎˆÈİ\Ù\Îˆ[X™\–×V×NÈ^ÛYYZ\œÎˆÛ[X™\‹[X™\—V×HBˆHBˆÈ˜\šX[ˆÂˆ\ØÜš\[Ûˆİš[™ÎÈ™X\ÛÛˆİš[™ÂˆÊŠˆ\\Ü^HÛÛ^È˜]]™H›ÛÙˆ]H[™ÛÜšÙ\ˆ™\ÜÛœÙ\Èİ^H[˜Ú[™ÙYˆ
+‹Âˆ™X\ÛÛ”İ\ÏÎˆİš[™Ö×Bˆ˜XÙOÎˆ[˜XÙBˆÛİ\˜ÙOÎˆÈYXİ[Ûˆ˜\šX[YXİ[ÛÈ^›Nˆ˜\šX[^›HBˆHBˆÈÙ[ˆ[X™\ˆBˆÈİ\ÙNˆİ\ÙHBˆÈ	Ù\™Xİ\XÙ[Y[	ÎˆÈİ\ÙNˆİ\ÙNÈ™[Z\ÙNˆ]šY[˜ÙNÈ™[[İ™Yˆ[X™\–×HHBˆÈ[\œÙXİ[ÛˆÈÛİ\˜ÙNˆİ\ÙNÈ\™Ù]ˆİ\ÙNÈÙ[Îˆ[X™\–×HHBˆÈZ\ˆÈİ\ÙNˆİ\ÙNÈÙ[ÎˆÛ[X™\‹[X™\—NÈYÚ]ÎˆÛ[X™\‹[X™\—HHBˆÈİXœÙ]ˆÈİ\ÙNˆİ\ÙNÈÙ[Îˆ[X™\–×NÈYÚ]Îˆ[X™\–×NÈØÚÙY[ˆİ\ÙH[HBˆÈ	Ş]Ú[™ÉÎˆÈYÚ]ˆ[X™\È˜\Ù\ÎˆÒİ\ÙKİ\ÙWNÈÛİ™\œÎˆÒİ\ÙKİ\ÙWHHBˆÈš\ÚˆÈYÚ]ˆ[X™\È˜\Ù\Îˆİ\ÙV×NÈÛİ™\œÎˆİ\ÙV×NÈš[œÎˆ[X™\–×HHBˆÈ	ØÛÛ\^Yš\Ú	ÎˆÈYÚ]ˆ[X™\È˜\Ù\Îˆİ\ÙV×NÈÛİ™\œÎˆİ\ÙV×NÈš[œÎˆ[X™\–×HHBˆÈ	ÚÜ˜ZÙ[‹Yš\Ú	ÎˆÈYÚ]ˆ[X™\È˜\Ù\Îˆİ\ÙV×NÈÛİ™\œÎˆİ\ÙV×NÈš[œÎˆ[X™\–×NÈÛİ™\ˆİ\ÙH[Èœ˜[˜Ú\ÎˆÜ˜ZÙ[“[šÖ×V×HHBˆÈÚ[™ÎˆÈ]›İˆ[X™\È[˜Ù\œÎˆÛ[X™\‹[X™\—NÈYÚ]ÎˆÛ[X™\‹[X™\‹[X™\—HHBˆÈ	İŞ^‹]Ú[™ÉÎˆÈÙ[ÎˆÛ[X™\‹[X™\‹[X™\‹[X™\—NÈYÚ]ÎˆÛ[X™\‹[X™\‹[X™\‹[X™\—NõÓMm¢G§²ÚîÆ­yÑì€µÕ±Ñ¤µ½±½É¥¹œœèì(€€€É½ÕÁÌèmm…¹‘¥‘…Ñ•mt°…¹‘¥‘…Ñ•mut°m…¹‘¥‘…Ñ•mt°…¹‘¥‘…Ñ•muut(€€€±¥¹­Ìè…¹‘¥‘…Ñ•1¥¹­mt(€€€‰É¥‘”è…¹‘¥‘…Ñ•1¥¹¬(€€€½Ñ¡•É}‰É¥‘”è…¹‘¥‘…Ñ•1¥¹¬ğ¹Õ±°(€ôô(€ğì½±½É¥¹œèì½±½ÉÌèm…¹‘¥‘…Ñ•mt°…¹‘¥‘…Ñ•mutì±¥¹­Ìè…¹‘¥‘…Ñ•1¥¹­mtìÉ•…Í½¸è½±½É¥¹I•…Í½¸ôô()•áÁ½ÉĞÑåÁ”•‘ÕÑ¥½¹Ñ¥½¸€ôìÁ±…”è…¹‘¥‘…Ñ”ôğì•±¥µ¥¹…Ñ”è…¹‘¥‘…Ñ”ô()•áÁ½ÉĞÑåÁ”•‘ÕÑ¥½¸€ôì(€Ñ•¡¹¥ÅÕ”èÍÑÉ¥¹œ(€•Ù¥‘•¹”èÙ¥‘•¹”(€…Ñ¥½¹Ìè•‘ÕÑ¥½¹Ñ¥½¹mt)ô()•áÁ½ÉĞÑåÁ”AÉ½½™A…ÑÑ•É¸€ôì¡½ÕÍ•Ìè!½ÕÍ•mtì•±±Ìè¹Õµ‰•Émtì…¹‘¥‘…Ñ•Ìè…¹‘¥‘…Ñ•mtô)•áÁ½ÉĞÑåÁ”•‘ÕÑ¥½¹AÉ½½˜€ôA¥¬ñ•‘ÕÑ¥½¸°€Ñ•¡¹¥ÅÕ”œğ€•Ù¥‘•¹”œø€˜ìÁ…ÑÑ•É¸èAÉ½½™A…ÑÑ•É¸ô)•áÁ½ÉĞÑåÁ”•‘ÕÑ¥½¹5…Ñ €ôA¥¬ñ•‘ÕÑ¥½¸°€…Ñ¥½¹Ìœø€˜ì(€…™™•Ñ•‘•±±Ìè¹Õµ‰•Émt(€…™™•Ñ•‘…¹‘¥‘…Ñ•Ìè…¹‘¥‘…Ñ•mt(€ÁÉ½½™Ìè•‘ÕÑ¥½¹AÉ½½™mt)ô()•áÁ½ÉĞÑåÁ”A½Í¥Ñ¥½¹M¹…ÁÍ¡½Ğ€ôì¥Ù•¹ÌèÍÑÉ¥¹œì•¹ÑÉ¥•ÌèÍÑÉ¥¹œì•±¥µ¥¹…Ñ¥½¹Ìè¹Õµ‰•Émtô)•áÁ½ÉĞÑåÁ”1•ÍÍ½¹A½Í¥Ñ¥½¸€ôA½Í¥Ñ¥½¹M¹…ÁÍ¡½Ğ€˜ì…¹‘¥‘…Ñ•Ìè¹Õµ‰•ÉmtìÁ…ÑÑ•É¸üèAÉ½½™A…ÑÑ•É¸ô()•áÁ½ÉĞÑåÁ”1•ÍÍ½¹AÉ…Ñ¥”€ô1•ÍÍ½¹A½Í¥Ñ¥½¸€˜ì…¹Íİ•ÉÌè•‘ÕÑ¥½¹Ñ¥½¹mtìÍÕ•ÍÑ¥½¸è•‘ÕÑ¥½¹Ñ¥½¸ô)•áÁ½ÉĞÑåÁ”AÉ…Ñ¥•á•É¥Í”€ô1•ÍÍ½¹AÉ…Ñ¥”€˜ì‘•‘ÕÑ¥½¸è•‘ÕÑ¥½¸ô()•áÁ½ÉĞÑåÁ”1•ÍÍ½¹á…µÁ±”€ô1•ÍÍ½¹A½Í¥Ñ¥½¸€˜ì(€‘•‘ÕÑ¥½¸è•‘ÕÑ¥½¸(€ÁÉ…Ñ¥”èAÉ…Ñ¥•á•É¥Í”)ô()•áÁ½ÉĞÑåÁ”M½±Ù•A½Í¥Ñ¥½¸€ôA½Í¥Ñ¥½¹M¹…ÁÍ¡½Ğ€˜ì…¹‘¥‘…Ñ•Ìüè¹Õµ‰•ÉmtìÁ…ÑÑ•É¸üèAÉ½½™A…ÑÑ•É¸ô()•áÁ½ÉĞÑåÁ”5½Ù•Ù…¥±…‰¥±¥Ñä€ôì•…Íå5½Ù•Ìè¹Õµ‰•Èì‰½ÑÑ±•¹•¬è‰½½±•…¸ô)•áÁ½ÉĞÑåÁ”¥¡Ñ¥¥Ñ=Ù•É±…åAÉ½½˜€ôì(€½µ¥ÑÑ•‘¥¥Ğè¹Õµ‰•È(€€¼¨¨¥¡Ğ±…å½ÕÑÌ¥¸‘¥¥Ğ½É‘•È°Í­¥ÁÁ¥¹œÑ¡”½µ¥ÑÑ•‘¥¥Ğ¸€¨¼(€±…å½ÕÑÌè¹Õµ‰•Émumt)ô)•áÁ½ÉĞÑåÁ”1½¥…±M½±ÕÑ¥½¸€ôì(€‰½…ÉèÍÑÉ¥¹œ(€ÍÑ•ÁÌè•‘ÕÑ¥½¹mt(€É…Ñ¥¹œèAÕéé±•I…Ñ¥¹œ(€Á½Í¥Ñ¥½¹ÌüèM½±Ù•A½Í¥Ñ¥½¹mt(€µ½Ù•Ù…¥±…‰¥±¥Ñäüè5½Ù•Ù…¥±…‰¥±¥Ñåmt(€€¼¨¨Q¡”™¥¹…°É¥½µ•Ì™É½´•á…ĞÙ•É¥™¥…Ñ¥½¸İ¡•¸±½¥…°Á±…ä¡…ÌÍÑ…±±•¸€¨¼(€•á…ĞüèÑÉÕ”(€€¼¨¨Ù•É¥™¥•½µÁ±•Ñ¥½¸Í¡½İ¸Í•Á…É…Ñ•±ä™É½´Ñ¡”±…ÍĞ±½¥…°Á½Í¥Ñ¥½¸¸€¨¼(€•á…ÑA½Í¥Ñ¥½¸üèM½±Ù•A½Í¥Ñ¥½¸(€½µÁ±•Ñ¥½¹AÉ½½˜üè¥¡Ñ¥¥Ñ=Ù•É±…åAÉ½½˜(€½µÁ±•Ñ¥½¹Ñ¥½¹Ìüè•‘ÕÑ¥½¹Ñ¥½¹mt)ô)•áÁ½ÉĞÑåÁ”A…Ñ¡½µÁ…É¥Í½¸€ôìİ¥Ñ¡Q•¡¹¥ÅÕ”è1½¥…±M½±ÕÑ¥½¸ìİ¥Ñ¡½ÕÑQ•¡¹¥ÅÕ”è1½¥…±M½±ÕÑ¥½¸ô)•áÁ½ÉĞÑåÁ”±Ñ•É¹…Ñ•A…Ñ €ô(€ğìÍÑ…ÑÕÌè€™½Õ¹œìÁ½Í¥Ñ¥½¹ÍM•…É¡•è¹Õµ‰•ÈìÁ…Ñ è1½¥…±M½±ÕÑ¥½¸ô(€ğìÍÑ…ÑÕÌè€¹¼µÁ…Ñ œğ€¥¹½¹±ÕÍ¥Ù”œìÁ½Í¥Ñ¥½¹ÍM•…É¡•è¹Õµ‰•ÈìÁ…Ñ è¹Õ±°ô)•áÁ½ÉĞÑåÁ”I•Á±…å•‘MÑ•À€ôì‰•™½É”èM½±Ù•A½Í¥Ñ¥½¸ì‘•‘ÕÑ¥½¸è•‘ÕÑ¥½¸ì…™Ñ•ÈèM½±Ù•A½Í¥Ñ¥½¸ô)•áÁ½ÉĞÑåÁ”!¥¹Ñ¡½¥”€ô•‘ÕÑ¥½¸€˜ìÁ…ÑÑ•É¸üèAÉ½½™A…ÑÑ•É¸ô)ÑåÁ”!¥¹ÑA…”ñPø€ôì¡½¥•ÌèQmtì…Ù…¥±…‰±”è¹Õµ‰•Èì½™™Í•Ğè¹Õµ‰•Èì…¹‘¥‘…Ñ•Ìüè¹Õµ‰•Émtô)•áÁ½ÉĞÑåÁ”!¥¹Ñ¡½¥•Ì€ôì¡½¥•Ìè!¥¹Ñ¡½¥•mtì…Ù…¥±…‰±”è¹Õµ‰•Èì…¹‘¥‘…Ñ•Ìüè¹Õµ‰•Émtô)•áÁ½ÉĞÑåÁ”!¥¹ÑMÑ…•Ì€ôìÑ•¡¹¥ÅÕ”èÍÑÉ¥¹œìÁ…ÑÑ•É¸èAÉ½½™A…ÑÑ•É¸ì‘•‘ÕÑ¥½¸è•‘ÕÑ¥½¸ô)•áÁ½ÉĞÑåÁ”Q•¡¹¥ÅÕ•…Ñ…±½œ€ôì(€‘•™…Õ±Ñ=É‘•ÈèÍÑÉ¥¹mt(€‘¥™™¥Õ±Ñå=É‘•ÈèÍÑÉ¥¹mt(€Í½É¥¹Y•ÉÍ¥½¸è¹Õµ‰•È(€Ñ•¡¹¥ÅÕ•Ìèì¥èÍÑÉ¥¹œì…±¥…Í•ÌèÍÑÉ¥¹mtì½ÍĞè¹Õµ‰•Èì‘¥™™¥Õ±Ñäè¥™™¥Õ±ÑäìÉ•ÅÕ¥É•ÍU¹¥ÅÕ•M½±ÕÑ¥½¸è‰½½±•…¸õmt)ô()ÑåÁ”Y…É¥…¹ÑI•ÍÕ±ĞñP•áÑ•¹‘ÌY…É¥…¹ÑI•ÅÕ•ÍĞø€ô(€P•áÑ•¹‘Ìì½Á•É…Ñ¥½¸è€…¹…±åé”œô€ü¹…±åÍ¥Ì€è(€P•áÑ•¹‘Ìì½Á•É…Ñ¥½¸è€Í½±Ù”µÕ¹¥ÅÕ”œô€üìÍÑ…ÑÕÌè€Õ¹¥ÅÕ”œìÍ½±ÕÑ¥½¸èÍÑÉ¥¹œôğìÍÑ…ÑÕÌèá±Õ‘”ñ¹…±åÍ¥Ì°€Õ¹¥ÅÕ”œøô€è(€P•áÑ•¹‘Ìì½Á•É…Ñ¥½¸è€Í½±Ù”œğ€Í½±Ù”µÍ¥¹±•Ìœô€üÍÑÉ¥¹œ€è(€P•áÑ•¹‘Ìì½Á•É…Ñ¥½¸è€…¹‘¥‘…Ñ•Ìœô€ü¹Õµ‰•Émt€è(€P•áÑ•¹‘Ìì½Á•É…Ñ¥½¸è€¡¥¹ÑÌœì½±±•Ñ¥½¸è¹Õµ‰•Èô€ü!¥¹ÑA…”ñY…É¥…¹Ñ•‘ÕÑ¥½¸ø€è(€P•áÑ•¹‘Ìì½Á•É…Ñ¥½¸è€¡¥¹ÑÌœô€üY…É¥…¹Ñ•‘ÕÑ¥½¹mt€è(€P•áÑ•¹‘Ìì½Á•É…Ñ¥½¸è€É…Ñ”œô€üY…É¥…¹ÑI…Ñ¥¹œ€è(€P•áÑ•¹‘Ìì½Á•É…Ñ¥½¸è€ÑÉ…”œô€üY…É¥…¹ÑQÉ…”€è(€P•áÑ•¹‘Ìì½Á•É…Ñ¥½¸è€É•Á±…äµÍÑ•Àœô€üY…É¥…¹ÑI•Á±…äğ¹Õ±°€è(€P•áÑ•¹‘Ìì½Á•É…Ñ¥½¸è€ÁÉ…Ñ¥”µÁ½Í¥Ñ¥½¸œô€üI•ÅÕ¥É•ñY…É¥…¹ÑA½Í¥Ñ¥½¸øğ¹Õ±°€è(€P•áÑ•¹‘Ìì½Á•É…Ñ¥½¸è€¡•¬µÁÉ…Ñ¥”µµ½Ù”œô€üY…É¥…¹Ñ•‘ÕÑ¥½¸ğ¹Õ±°€è(€I•ÅÕ¥É•ñY…É¥…¹ÑA½Í¥Ñ¥½¸ø()•áÁ½ÉĞÑåÁ”Y…É¥…¹Ñ!½ÕÍ”€ôìÉ½Üè¹Õµ‰•Èôğì½±Õµ¸è¹Õµ‰•ÈôğìÉ•¥½¸è¹Õµ‰•Èô(€ğì‘¥…½¹…°è€µ…¥¸œğ€…¹Ñ¤œô(€€¼¨¨%¹‘•à¥¹Ñ¼Ñ¡”™Õ±°ÁÕéé±”ÉÕ±”±¥ÍĞ¸€¨¼(€ğì•áÑÉ„è¹Õµ‰•Èô)•áÁ½ÉĞÑåÁ”Y…É¥…¹Ñá±ÕÍ¥½¹AÉ•µ¥Í”€ô(€ğìÑåÁ”è€•±°œì•±°è¹Õµ‰•Èì‘½µ…¥¸è¹Õµ‰•Èô(€ğìÑåÁ”è€¡½ÕÍ”œì¡½ÕÍ”èY…É¥…¹Ñ!½ÕÍ”ì‘¥¥Ğè¹Õµ‰•Èì•±±Ìè¹Õµ‰•Émtô)•áÁ½ÉĞÑåÁ”Y…É¥…¹ÑÉ½ÕÁMÕµ1¥¹¬€ôì(€…¹‘¥‘…Ñ”è…¹‘¥‘…Ñ”(€‘½µ…¥¸è¹Õµ‰•È(€Í½ÕÉ”è(€€€ğìÑåÁ”è€±¥¹”œìÉÕ±”è¹Õµ‰•Èì…¹¡½Èèm¹Õµ‰•È°¹Õµ‰•Étğ¹Õ±°ô(€€€ğìÑåÁ”è€ÍÕ´œìÉÕ±”è¹Õµ‰•ÈìÑ½Ñ…°è¹Õµ‰•Èô(€€€ğìÑåÁ”è€¡½ÕÍ”œì¡½ÕÍ”èY…É¥…¹Ñ!½ÕÍ”ô)ô)ÑåÁ”Y…É¥…¹ÑI•¹‰…¹É½ÕÁf«)à¶»§q«^v‹­¦ëh®("©m¢G§r‹§·4Õ:-jZ.¶›­–)Ş³T6öæfÆ–7BÒ²†÷W6S¢f&–çD†÷W6S²6VÆÇ3¢çVÖ&W%µÓ²F–v—G3¢çVÖ&W"Ğ§G—Rf&–çE&Væ&äw&÷W&ö¦V7F–öâÒ²'VÆS¢çVÖ&W#²6VÆÇ3¢çVÖ&W%µÓ²FöÖ–ç3¢çVÖ&W%µÓ²7W÷'FVC¢çVÖ&W%µÒĞ §G—Rf&–çD6öç7G&–çD6†V6²Ò°¢66÷S¢²G—S¢v†÷W6Rs²†÷W6S¢f&–çD†÷W6RÒÂ²G—S¢w—"s²'VÆW3¢çVÖ&W%µÒÒÂ²G—S¢vÆ–æRs²'VÆS¢çVÖ&W"Ğ¢6VÆÇ3¢çVÖ&W%µĞ¢FöÖ–ç3¢çVÖ&W%µĞ¢7W÷'FVC¢çVÖ&W%µĞ§Ğ§G—Rf&–çDÖF6†–ætF–v—D6†V6²Ò°¢†÷W6S¢f&–çD†÷W6P¢f÷&6VC¢çVÖ&W%µĞ¢&Æö6¶VC¢²6VÆÃ¢çVÖ&W#²ÖF6†VC¢çVÖ&W#²Æ6VC¢çVÖ&W#²†÷W6S¢f&–çD†÷W6RÕµĞ§Ğ ¦W‡÷'BG—Rf&–çDFVGV7F–öâÒ°¢FV6†æ—VS¢7G&–æp¢7F–öç3¢FVGV7F–öä7F–öåµĞ¢Wf–FVæ6S ¢Â²G—S¢w6–ævÆRs²6æF–FFS¢6æF–FFS²†÷W6S¢f&–çD†÷W6RÂçVÆÂĞ¢Â²G—S¢v6vR×7VÒs²†÷W6S¢f&–çD†÷W6RÂçVÆÃ²6vW3¢¶çVÖ&W"ÂçVÖ&W%ÕµÓ²7VÓ¢çVÖ&W#²6VÆÇ3¢çVÖ&W%µÓ²FöÖ–ç3¢çVÖ&W%µÒĞ¢Â²G—S¢w7VÒ×—"s²'VÆW3¢¶çVÖ&W"ÂçVÖ&W%Ó²6VÆÇ3¢¶çVÖ&W"ÂçVÖ&W"ÂçVÖ&W"ÂçVÖ&W%Ó²F÷FÇ3¢¶çVÖ&W"ÂçVÖ&W%Ó²FöÖ–ç3¢¶çVÖ&W"ÂçVÖ&W"ÂçVÖ&W"ÂçVÖ&W%Ó²†÷W6S¢f&–çD†÷W6S²†÷W6W3¢f&–çD†÷W6UµÒĞ¢Â²G—S¢vw&÷WÖÆ–æR×†6R×7VÒs²'VÆW3¢¶çVÖ&W"ÂçVÖ&W%Ó²6VÆÇ3¢¶çVÖ&W"ÂçVÖ&W"ÂçVÖ&W"ÂçVÖ&W%Ó²FöÖ–ç3¢¶çVÖ&W"ÂçVÖ&W"ÂçVÖ&W"ÂçVÖ&W%Ó²F÷FÃ¢çVÖ&W#²†÷W6S¢f&–çD†÷W6RĞ¢Â²G—S¢vw&÷W×7VÒÖ–×Æ–6F–öâs²77V×F–öã¢6æF–FFS²Æ–æ·3¢f&–çDw&÷W7VÔÆ–æµµÓ²6öæfÆ–7C¢f&–çD†÷W6RĞ¢Â²G—S¢vw&÷WÖÆ–æRÖ†÷W6R×G&—ÆWBs²'VÆS¢çVÖ&W#²†÷W6S¢f&–çD†÷W6S²6VÆÇ3¢¶çVÖ&W"ÂçVÖ&W"ÂçVÖ&W"ÂçVÖ&W%Ó²FöÖ–ç3¢¶çVÖ&W"ÂçVÖ&W"ÂçVÖ&W"ÂçVÖ&W%ÒĞ¢Â²G—S¢vw&÷WÖÆ–æRÖF—6¦ö–çB×7VÒs²'VÆW3¢¶çVÖ&W"ÂçVÖ&W%Ó²6VÆÇ3¢¶çVÖ&W"ÂçVÖ&W"ÂçVÖ&W"ÂçVÖ&W%Ó²FöÖ–ç3¢¶çVÖ&W"ÂçVÖ&W"ÂçVÖ&W"ÂçVÖ&W%Ó²†÷W6W3¢f&–çD†÷W6UµÓ²F÷FÃ¢çVÖ&W"Ğ¢Â²G—S¢vw&÷WÖÆ–æR×7VÒÖ6†–âs²'VÆW3¢¶çVÖ&W"ÂçVÖ&W"ÂçVÖ&W%Ó²†÷W6Só¢f&–çD†÷W6S²†÷W6W3ó¢f&–çD†÷W6UµÓ²6VÆÇ3¢¶çVÖ&W"ÂçVÖ&W"ÂçVÖ&W"ÂçVÖ&W%Ó²FöÖ–ç3¢¶çVÖ&W"ÂçVÖ&W"ÂçVÖ&W"ÂçVÖ&W%Ó²F÷FÇ3¢¶çVÖ&W"ÂçVÖ&W%Ó²7W÷'FVC¢¶çVÖ&W"ÂçVÖ&W"ÂçVÖ&W"ÂçVÖ&W%Ó²Æö6¶VC¢çVÖ&W"Ğ¢Â²G—S¢vw&÷WÖÆ–æR×7VÒÖ†÷W6Rs²'VÆW3¢¶çVÖ&W"ÂçVÖ&W%Ó²†÷W6S¢f&–çD†÷W6S²6VÆÇ3¢¶çVÖ&W"ÂçVÖ&W"ÂçVÖ&W%Ó²FöÖ–ç3¢¶çVÖ&W"ÂçVÖ&W"ÂçVÖ&W%Ó²F÷FÃ¢çVÖ&W"Ğ¢Â²G—S¢vw&÷WÖÆ–æRÖ†÷W6Rs²'VÆS¢çVÖ&W#²†÷W6S¢f&–çD†÷W6S²6VÆÇ3¢¶çVÖ&W"ÂçVÖ&W%Ó²FöÖ–ç3¢¶çVÖ&W"ÂçVÖ&W%ÒĞ¢Â²G—S¢vw&÷WÖÆ–æRÖ†÷W6R×7W÷'Bs²'VÆS¢çVÖ&W#²Æ–æT6VÆÇ3¢çVÖ&W%µÓ²Æ–æTFöÖ–ç3¢çVÖ&W%µÓ²†6W3¢çVÖ&W%µÓ°¢†÷W6S¢f&–çD†÷W6S²6VÆÇ3¢çVÖ&W%µÓ²FöÖ–ç3¢çVÖ&W%µÓ²7W÷'FVC¢çVÖ&W%µÓ°¢66W3¢²w&÷W3¢çVÖ&W%µÓ²6öæfÆ–7C¢²6VÆÇ3¢çVÖ&W%µÓ²F–v—G3¢çVÖ&W"ÒÂçVÆÂÕµÒĞ¢Â²G—S¢w&Vv–öâ×7VÒÖF—7F–æ7Bs²'VÆS¢çVÖ&W#²'G3¢²6VÆÇ3¢çVÖ&W%µÓ²FöÖ–ç3¢çVÖ&W%µÓ²F÷FÇ3¢çVÖ&W%µÒÕµÓ°¢6öÖÖöåF÷FÇ3¢çVÖ&W%µÒĞ¢Â²G—S¢v·&÷¶’Ö†÷W6Rs²'VÆW3¢çVÖ&W%µÓ²—#¢¶çVÖ&W"ÂçVÖ&W%Ó²†÷W6S¢f&–çD†÷W6S°¢6VÆÇ3¢çVÖ&W%µÓ²FöÖ–ç3¢çVÖ&W%µÓ²FW7FVC¢çVÖ&W#²Æö6¶VC¢çVÖ&W#²&V¦V7FVC¢çVÖ&W%µÒĞ¢Â²G—S¢wF†W&ÖöÖWFW"Ö†÷W6Rs²'VÆS¢çVÖ&W#²†÷W6S¢f&–çD†÷W6S²Æ–æT6VÆÇ3¢çVÖ&W%µÓ²Æ–æTFöÖ–ç3¢çVÖ&W%µÓ°¢6VÆÇ3¢çVÖ&W%µÓ²FöÖ–ç3¢çVÖ&W%µÓ²FW7FVC¢çVÖ&W#²&V¦V7FVC¢çVÖ&W%µÒĞ¢Â²G—S¢w&Vv–öâ×7VÒÖ†÷W6Rs²†÷W6S¢f&–çD†÷W6S°¢Æ–æW3¢²'VÆS¢çVÖ&W#²–å&Vv–öã¢çVÖ&W#²'G3¢²6VÆÇ3¢çVÖ&W%µÓ²FöÖ–ç3¢çVÖ&W%µÓ²F÷FÇ3¢çVÖ&W%µÒÕµÓ°¢6öÖÖöåF÷FÇ3¢çVÖ&W%µÓ²&VÖ–æ–æuF÷FÇ3¢çVÖ&W%µÒÕµÓ°¢&VÖ–æFW#¢çVÖ&W%µÓ²&VÖ–æFW$FöÖ–ç3¢çVÖ&W%µÒĞ¢Â²G—S¢vÆ–æ¶VBÖ6ÇVRs²77V×F–öã¢6æF–FFS²6†V6·3¢f&–çD6öç7G&–çD6†V6µµÓ²6öæfÆ–7C¢f&–çD6öç7G&–çD6†V6³°¢†÷W6T6öæfÆ–7Có¢²6VÆÇ3¢çVÖ&W%µÓ²F–v—G3¢çVÖ&W"ÒĞ¢Â²G—S¢vÖF6†–ærÖF–v—Bs²F–v—C¢çVÖ&W#²77VÖVC¢çVÖ&W%µÓ²–æ—F–ÆÇ•Æ6VC¢çVÖ&W%µÓ°¢6†V6·3¢f&–çDÖF6†–ætF–v—D6†V6µµÓ²6öæfÆ–7C¢f&–çDÖF6†–ætF–v—D6†V6²Ğ¢Â²G—S¢vÖF6†–ærÖÆ–÷WBs²F–v—C¢çVÖ&W#²F&vWC¢6æF–FFS°¢66W3¢²6VÆÇ3¢çVÖ&W%µÓ²6öçG&F–7FVC¢&ööÆVã²6†V6·3¢f&–çD6öç7G&–çD6†V6µµÒÕµÒĞ¢Â²G—S¢vw&÷WÖ÷&FW"s²'VÆS¢çVÖ&W#²6VÆÇ3¢çVÖ&W%µÓ²FöÖ–ç3¢çVÖ&W%µÓ²†6W3¢çVÖ&W%µÓ°¢&VÖ–æ–æs¢çVÖ&W%µÕµÓ°¢&V¦V7FVC¢²w&÷W3¢çVÖ&W%µÓ²6†V6·3¢f&–çD6öç7G&–çD6†V6µµÓ²6öæfÆ–7C¢f&–çD6öç7G&–çD6†V6³°¢†÷W6T6öæfÆ–7Có¢²6VÆÇ3¢çVÖ&W%µÓ²F–v—G3¢çVÖ&W"ÒÕµÒĞ¢Â²G—S¢vw&÷WÖ÷&FW"ÖVÆ–Ö–æF–öâs²'VÆS¢çVÖ&W#²6VÆÇ3¢çVÖ&W%µÓ²FöÖ–ç3¢çVÖ&W%µÓ²†6W3¢çVÖ&W%µÓ°¢'&æ6†W3¢²w&÷W3¢çVÖ&W%µÓ²6†V6·3¢f&–çD6öç7G&–çD6†V6µµÒÕµÒĞ¢Â²G—S¢vÆ–æRÖ†÷W6W2s²'VÆW3¢çVÖ&W%µÓ²6VÆÇ3¢çVÖ&W%µÓ²FöÖ–ç3¢çVÖ&W%µÓ²7W÷'FVC¢çVÖ&W%µİtÓ[h‘éì¶»§q«^w]; variables: Record<string, number> }
 type SizedUniqueSolution = { status: 'unique'; solution: SizedCompletion } | { status: Exclude<Analysis, 'unique'> }
 
 export type EngineResult<T extends EngineRequest> =
@@ -846,328 +146,92 @@ export type EnginePayload = { value: EngineResult<EngineRequest> } | { error: st
 export type EngineResponse = { id: number } & EnginePayload
 
 export function replayStep<Step, Position extends PositionSnapshot>(
-  trace: { steps: readonly Step[]; positions?: readonly Position[] },
-  index: number,
-): { before: Position; deduction: Step; after: Position } | null {
-  if (!Number.isInteger(index) || index < 0) return null
-  const before = trace.positions?.[index]
-  const after = trace.positions?.[index + 1]
-  const deduction = trace.steps[index]
-  return before && after && deduction ? { before, deduction, after } : null
-}
+  traYªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éíãM5N‹Z–‹­¦ëeŠw¬Õ”èìÍÑ•ÁÌèÉ•…‘½¹±äMÑ•ÁmtìÁ½Í¥Ñ¥½¹ÌüèÉ•…‘½¹±äA½Í¥Ñ¥½¹mtô°(€¥¹‘•àè¹Õµ‰•È°(¤èì‰•™½É”èA½Í¥Ñ¥½¸ì‘•‘ÕÑ¥½¸èMÑ•Àì…™Ñ•ÈèA½Í¥Ñ¥½¸ôğ¹Õ±°ì(€¥˜€ …9Õµ‰•È¹¥Í%¹Ñ••È¡¥¹‘•à¤ñğ¥¹‘•à€ğ€À¤É•ÑÕÉ¸¹Õ±°(€½¹ÍĞ‰•™½É”€ôÑÉ…”¹Á½Í¥Ñ¥½¹Ìü¹m¥¹‘•át(€½¹ÍĞ…™Ñ•È€ôÑÉ…”¹Á½Í¥Ñ¥½¹Ìü¹m¥¹‘•à€¬€Åt(€½¹ÍĞ‘•‘ÕÑ¥½¸€ôÑÉ…”¹ÍÑ•ÁÍm¥¹‘•át(€É•ÑÕÉ¸‰•™½É”€˜˜…™Ñ•È€˜˜‘•‘ÕÑ¥½¸€üì‰•™½É”°‘•‘ÕÑ¥½¸°…™Ñ•Èô€è¹Õ±°)ô()•áÁ½ÉĞ±…ÍÌ¹¥¹•ÉÉ½È•áÑ•¹‘ÌÉÉ½Èì(€É•…‘½¹±ä½‘”üèÍÑÉ¥¹œ((€½¹ÍÑÉÕÑ½È¡µ•ÍÍ…”èÍÑÉ¥¹œ°½‘”üèÍÑÉ¥¹œ¤ì(€€€ÍÕÁ•È¡µ•ÍÍ…”¤(€€€Ñ¡¥Ì¹¹…µ”€ô€¹¥¹•ÉÉ½Èœ(€€€Ñ¡¥Ì¹½‘”€ô½‘”(€ô)ô()•áÁ½ÉĞÑåÁ”¹¥¹•IÕ¹=ÁÑ¥½¹Ì€ôì(€¥¹Ñ•É…Ñ¥Ù”üè‰½½±•…¸(€‰…­É½Õ¹üè‰½½±•…¸(€Í¥¹…°üè‰½ÉÑM¥¹…°(€€¼¨¨-••À½¹±äÑ¡”¹•İ•ÍĞİ…¥Ñ¥¹œÉ•ÅÕ•ÍĞ™½ÈÑ¡¥Ì…±±•È¸Ñ¥Ù”İ½É¬¥ÌÕ¹¡…¹•¸€¨¼(€±…Ñ•ÍÑ-•äüè½‰©•ĞğÍÑÉ¥¹œğÍåµ‰½°)ô()•áÁ½ÉĞÑåÁ”¹¥¹•IÕ¹¹•È€ô€ñP•áÑ•¹‘Ì¹¥¹•I•ÅÕ•ÍĞø¡É•ÅÕ•ÍĞèP°½ÁÑ¥½¹Ìüè¹¥¹•IÕ¹=ÁÑ¥½¹Ì¤€ôøAÉ½µ¥Í”ñ¹¥¹•I•ÍÕ±ĞñPøø()ÑåÁ”A•¹‘¥¹I•ÅÕ•ÍĞ€ôì(€É•ÅÕ•ÍĞè¹¥¹•I•ÅÕ•ÍĞ(€±…Ñ•ÍÑ-•äüè¹¥¹•IÕ¹=ÁÑ¥½¹Íl±…Ñ•ÍÑ-•ät(€É•Í½±Ù”è€¡Ù…±Õ”èÕ¹­¹½İ¸¤€ôøÙ½¥(€É•©•Ğè€¡•ÉÉ½ÈèÉÉ½È¤€ôøÙ½¥(€±•…¹ÕÀè€ ¤€ôøÙ½¥)ô()ÑåÁ”¹¥¹•½¹¹•Ñ¥½¸€ôì(€İ½É­•Èüè]½É­•È(€…Ñ¥Ù”üè¹Õµ‰•È(€Á•¹‘¥¹œè5…Àñ¹Õµ‰•È°A•¹‘¥¹I•ÅÕ•ÍĞø(€½İ¹•üè‰½½±•…¸(€±½Í•üèÉÉ½È(€ÁÉ•Á…É•üè‰½½±•…¸)ô)½¹ÍĞ…¹‘¥‘…Ñ•¹¥¹”è¹¥¹•½¹¹•Ñ¥½¸€ôìÁ•¹‘¥¹œè¹•Ü5…À ¤ô)½¹ÍĞµ•Ñ…‘…Ñ…¹¥¹”è¹¥¹•½¹¹•Ñ¥½¸€ôìÁ•¹‘¥¹œè¹•Ü5…À ¤ô)½¹ÍĞÁ±…å¹¥¹”è¹¥¹•½¹¹•Ñ¥½¸€ôìÁ•¹‘¥¹œè¹•Ü5…À ¤ô)½¹ÍĞ•¹•É…Ñ¥½¹¹¥¹”è¹¥¹•½¹¹•Ñ¥½¸€ôìÁ•¹‘¥¹œè¹•Ü5…À ¤ô)½¹ÍĞ¡¥ÍÑ½Éå¹¥¹”è¹¥¹•½¹¹•Ñ¥½¸€ôìÁ•¹‘¥¹œè¹•Ü5…À ¤ô)½¹ÍĞÑ•¡¹¥ÅÕ•¹¥¹”è¹¥¹•½¹¹•Ñ¥½¸€ôìÁ•¹‘¥¹œè¹•Ü5…À ¤ô)½¹ÍĞÑ•¡¹¥ÅÕ••Ñ…¥±¹¥¹”è¹¥¹•½¹¹•Ñ¥½¸€ôìÁ•¹‘¥¹œè¹•Ü5…À ¤ô)±•ĞÉ•ÅÕ•ÍÑ%€ô€À)±•Ğ•¹•É…Ñ¥½¹%€ô€À()™Õ¹Ñ¥½¸½¹¹•Ğ¡½¹¹•Ñ¥½¸è¹¥¹•½¹¹•Ñ¥½¸¤ì(€½¹ÍĞìÁ•¹‘¥¹œô€ô½¹¹•Ñ¥½¸(€½¹ÍĞ¥¹ÍÑ…¹”€ô¹•Ü]½É­•È¡¹•ÜUI0 œ¸½•¹¥¹”¹İ½É­•È¹ÑÌœ°¥µÁ½ÉĞ¹µ•Ñ„¹ÕÉ°¤°ìÑåÁ”è€µ½‘Õ±”œô¤(€¥¹ÍÑ…¹”¹½¹µ•ÍÍ…”€ô€¡ì‘…Ñ„ôè5•ÍÍ…•Ù•¹Ğñ¹¥¹•I•ÍÁ½¹Í”ø¤€ôøì(€€€¥˜€¡½¹¹•Ñ¥½¸¹İ½É­•È€„ôô¥¹ÍÑ…¹”ñğ½¹¹•Ñ¥½¸¹…Ñ¥Ù”€„ôô‘…Ñ„¹¥¤É•ÑÕÉ¸(€€€½¹ÍĞÉ•ÅÕ•ÍĞ€ôÁ•¹‘¥¹œ¹•Ğ¡‘…Ñ„¹¥¤(€€€½¹¹•Ñ¥½¸¹…Ñ¥Ù”€ôÕ¹‘•™¥¹•(€€€Á•¹‘¥¹œ¹‘•±•Ñ”¡‘…Ñ„¹¥¤(€€€¥˜€¡É•ÅÕ•ÍĞ¤ì(€€€€€É•ÅÕ•ÍĞ¹±•…¹ÕÀ ¤(€€€€€¥˜€ •ÉÉ½Èœ¥¸‘…Ñ„¤É•ÅÕ•ÍĞ¹É•©•Ğ¡¹•Ü¹¥¹•ÉÉ½È¡‘…Ñ„¹•ÉÉ½È°‘…Ñ„¹½‘”¤¤(€€€€€•±Í”É•ÅÕ•ÍĞ¹É•Í½±Ù”¡‘…Ñ„¹Ù…±Õ”¤(€€€ô(€€€‘¥ÍÁ…Ñ¡9•áĞ¡½¹¹•Ñ¥½¸¤(€ô(€¥¹ÍÑ…¹”¹½¹•ÉÉ½È€ô€ ¤€ôøì(€€€¥˜€¡½¹¹•Ñ¥½¸¹İ½É­•È€ôôô¥¹ÍÑ…¹”¤±½Í•½¹¹•Ñ¥½¸¡½¹¹•Ñ¥½¸°¹•ÜÉÉ½È Q¡”MÕ‘½­Ô•¹¥¹”½Õ±¹½ĞÍÑ…ÉĞ¸QÉä……¥¸¸œ¤¤(€ô(€É•ÑÕÉ¸¥¹ÍÑ…¹”)ô()™Õ¹Ñ¥½¸±½Í•½¹¹•Ñ¥½¸¡½¹¹•Ñ¥½¸è¹¥¹•½¹¹•Ñ¥½¸°•ÉÉ½ÈèÉÉ½È¤ì(€½¹¹•Ñ¥½¸¹İ½É­•Èü¹Ñ•Éµ¥¹…Ñ” ¤(€½¹¹•Ñ¥½¸¹İ½É­•È€ôÕ¹‘•™¥¹•(€½¹¹•Ñ¥½¸¹…Ñ¥Ù”€ôÕ¹‘•™¥¹•(€™½È€¡½¹ÍĞÉ•ÅÕ•ÍĞ½˜½¹¹•Ñ¥½¸¹Á•¹‘¥¹œ¹Ù…±Õ•Ì ¤¤ì(€€€É•ÅÕ•ÍĞ¹±•…¹ÕÀ ¤(€€€É•ÅÕ•ÍĞ¹É•©•Ğ¡•ÉÉ½È¤(€ô(€½¹¹•Ñ¥½¸¹Á•¹‘¥¹œ¹±•…È ¤)ô()™Õ¹Ñ¥½¸½¹¹•Ñ¥½¹½È¡É•ÅÕ•ÍĞè¹¥¹•I•ÅÕ•ÍĞ°½ÁÑ¥½¹Ìè¹¥¹•IÕ¹=ÁÑ¥½¹Ì¤ì(€€¼¼…¹‘¥‘…Ñ•ÌµÕÍĞ¹½ĞÅÕ•Õ”‰•¡¥¹„É…Ñ¥¹œ°¡¥¹ĞÍ•…É °½È™Õ±°Í½±Ù”¸(€¥˜€¡É•ÅÕ•ÍĞ¹ÑåÁ”€ôôô€¹½Ñ•ÌœñğÉ•ÅÕ•ÍĞ¹ÑåÁ”€ôôô€Í½±Ù”µÍ¥¹±•Ìœñğ(€€€€ ½Á•É…Ñ¥½¸œ¥¸É•ÅÕ•ÍĞ€˜˜€¡É•ÅÕ•ÍĞ¹½Á•É…Ñ¥½¸€ôôô€…¹‘¥‘…Ñ•ÌœñğÉ•ÅÕ•ÍĞ¹½Á•É…Ñ¥½¸€ôôô€Í½±Ù”µÍ¥¹±•Ìœ¤¤ñğ(€€€€¡É•ÅÕ•ÍĞ¹ÑåÁ”€ôôô€Í¥é•µÙ…É¥…¹Ğœ€˜˜É•ÅÕ•ÍĞ¹½Á•É…Ñ¥½¸€ôôô€¡¥¹ÑÌœ€˜˜É•ÅÕ•ÍĞ¹±¥µ¥Ğ€ôôô€À¤ñğ(€€€€ Í¥¹±•Í=¹±äœ¥¸É•ÅÕ•ÍĞ€˜˜É•ÅÕ•ÍĞ¹Í¥¹±•Í=¹±ä¤¤É•ÑÕÉ¸…¹‘¥‘…Ñ•¹¥¹”(€Íİ¥Ñ €¡É•ÅÕ•ÍĞ¹ÑåÁ”¤ì(€€€…Í”€Ñ•¡¹¥ÅÕ•Ìœè(€€€…Í”€…Á…‰¥±¥Ñ¥•Ìœè(€€€…Í”€±•ÍÍ½¸µ•á…µÁ±•Ìœè(€€€€€É•ÑÕÉ¸µ•Ñ…‘…Ñ…¹¥¹”(€€€…Í”€•¹•É…Ñ”œè(€€€…Í”€•¹•É…Ñ”µµ¥¹¤œè(€€€…Í”€•¹•É…Ñ”µÍ¥àœè(€€€…Í”€•¹•É…Ñ”µÉ•Ñ…¹Õ±…Èœè(€€€…Í”€•¹•É…Ñ”µ©¥Í…Üœè(€€€…Í”€•¹•É…Ñ”µ…±•‰É…¥Œœè(€€€…Í”€•¹•É…Ñ”µ½¹ÍÑÉ…¥¹•œè(€€€…Í”€•¹•É…Ñ”µÑ…É•Ñ•œè(€€€…Í”€•¹•É…Ñ”µ™É½´µÁ½½°œè(€€€…Í”€•¹•É…Ñ”µÙ…É¥…¹Ğœè(€€€…Í”€•¹•É…Ñ”µÁÉ…Ñ¥”µ•á…µÁ±”œè(€€€…Í”€•¹•É…Ñ¥½¸µÍÑ…ÉĞœè(€€€…Í”€•¹•É…Ñ¥½¸µ…‘Ù…¹”œè(€€€…Í”€•¹•É…Ñ¥½¸µ…¹•°œè(€€€…Í”€¥µÁ½ÍÍ¥‰±”µÑ•µÁ±…Ñ•Ìœè(€€€…Í”€…¹½¹¥…°µÁÕéé±•Ìœè(€€€€€É•ÑÕÉ¸•¹•É…Ñ¥½¹¹¥¹”(€€€…Í”€Ñ•¡¹¥ÅÕ”µ½Õ¹ĞœèÉ•ÑÕÉ¸Ñ•¡¹¥ÅÕ•¹¥¹”(€€€…Í”€‘•‘ÕÑ¥½¹ÌœèÉ•ÑÕÉ¸½ÁÑ¥½¹Ì¹¥¹Ñ•É…Ñ¥Ù”€üÑ•¡¹¥ÅÕ••Ñ…¥±¹¥¹”€è¡¥ÍÑ½Éå¹¥¹”(€€€…Í”€±…ÍÍ¥™äµ…Ñ¥½¹ÌœèÉ•ÑÕÉ¸¡¥ÍÑ½Éå¹¥¹”(€€€‘•™…Õ±ĞèÉ•ÑÕÉ¸½ÁÑ¥½¹Ì¹¥¹Ñ•É…Ñ¥Ù”€üÑ•¡¹¥ÅÕ••Ñ…¥±¹¥¹”€è½ÁÑ¥½¹Ì¹‰…­É½Õ¹€ü¡¥ÍÑ½Éå¹¥¹”€èÁ±…å¹¥¹”(€ô)ô()•áÁ½ÉĞ™Õ¹Ñ¥½¸ÉÕ¹¹¥¹”ñP•áÑ•¹‘Ì¹¥¹•I•ÅÕ•ÍĞø¡É•ÅÕ•ÍĞèP°½ÁÑ¥½¹Ìè¹¥¹•IÕ¹=ÁÑ¥½¹Ì€ôíô¤èAÉ½µ¥Í”ñ¹¥¹•I•ÍÕ±Ó]4ÖÚ$z{-®éÜj×İ
+ÛÛ›™Xİ[Û‹È\Nˆ	İ˜\šX[	ËÜ\˜][Ûˆ	Ú[ÉËˆÜÚ][ÛˆÈ‹‹œÜÚ][Û‹[[Z[˜][ÛœÈK‹‹Šš\ÚXš[]H	‰ˆÈš\ÚXš[]HJKˆXÚš\]YSÜ™\ˆ™Yš^[Z]ˆ™™™—Ù™™™‹ˆJK[Š
+[ÊHOˆÂˆÛÛœİÛİ™\™YH™]ÈÙ]İš[™ÏŠ
+BˆÛÛœİ\™Ù]ÈH™]ÈÙ]İš[™ÏŠ
+Bˆ›Üˆ
+ÛÛœİYÙˆ™Yš^
+HÂˆ›Üˆ
+ÛÛœİ[Ùˆ[ÊHÂˆYˆ
+[XÚš\]YHOOHY
+HÛÛ[YBˆ›Üˆ
+ÛÛœİXİ[ÛˆÙˆ[˜Xİ[ÛœÊHÂˆÛÛœİÈÙ[YÚ]HH	ÜXÙIÈ[ˆXİ[ÛˆÈXİ[Û‹œXÙHˆXİ[Û‹™[[Z[˜]BˆÛÛœİ\™Ù]H	ØÙ[N‰ÙYÚ]XˆYˆ
+YOOHXÚš\]YH	‰ˆXÛİ™\™Yš\Ê\™Ù]
+JH\™Ù]Ë˜Y
+\™Ù]
+BˆÛİ™\™Y˜Y
+\™Ù]
+BˆBˆBˆBˆ™]\›ˆ\™Ù]ËœÚ^™BˆJBˆKˆÛÜÙJ
+HÂˆYˆ
+XÛÛ›™Xİ[ÛŠH™]\›‚ˆYˆ
+XÛÛ›™Xİ[Û‹œ[™[™ËœÚ^™H	‰ˆZYPÛİ[ÛÛ›™Xİ[ÛŠHYPÛİ[ÛÛ›™Xİ[ÛˆHÛÛ›™Xİ[Û‚ˆ[ÙHÛÜÙPÛÛ›™Xİ[ÛŠÛÛ›™Xİ[Û‹™]ÈÓQ^Ù\[ÛŠ	ÕXÚš\]YHØØ[ˆÛÜÙY‰Ë	ĞX›Ü\œ›Ü‰ÊJBˆÛÛ›™Xİ[ÛˆH[™Yš[™YˆKˆBŸB‚™[˜İ[Ûˆ\Ü]Ú™^
+ÛÛ›™Xİ[Ûˆ[™Ú[™PÛÛ›™Xİ[ÛŠHÂˆYˆ
+ÛÛ›™Xİ[Û‹˜Xİ]™HOOH[™Yš[™YÛÛ›™Xİ[Û‹˜ÛÜÙY
+H™]\›‚ˆÛÛœİ™^HÛÛ›™Xİ[Û‹œ[™[™Ë™[šY\Ê
+K›™^
 
-export class EngineError extends Error {
-  readonly code?: string
+K˜[YBˆYˆ
+[™^
+H™]\›‚ˆÛÛœİÚY[™[™×HH™^ˆHÂˆÛÛ›™Xİ[Û‹ÛÜšÙ\ˆÏÏHÛÛ›™Xİ
+ÛÛ›™Xİ[ÛŠBˆÛÛ›™Xİ[Û‹˜Xİ]™HHYˆÛÛ›™Xİ[Û‹ÛÜšÙ\‹œÜİY\ÜØYÙJÈY™\]Y\İˆÛZ]™\Ù[][Û“Y]Y]J[™[™Ëœ™\]Y\İ
+HJBˆHØ]Ú
+\œ›ÜŠHÂˆÛÜÙPÛÛ›™Xİ[ÛŠÛÛ›™Xİ[Û‹\œ›Üˆ[œİ[˜Ù[Ùˆ\œ›ÜˆÈ\œ›Üˆˆ™]È\œ›ÜŠİš[™Ê\œ›ÜŠJJBˆBŸB‚‹ËÈ™\Ù[][Û‹[Û›H[\ÜY]Y]H\È™]Z[™YHH\]]\İ›İ™B‹ËÈÙ[ÈHİšXİ\İ^›HØÚ[XK‚™[˜İ[ÛˆÛZ]™\Ù[][Û“Y]Y]J˜[YNˆ[šÛ›İÛŠNˆ[šÛ›İÛˆÂˆYˆ
+\œ˜^Kš\Ğ\œ˜^J˜[YJJH™]\›ˆ˜[YK›X\
+ÛZ]™\Ù[][Û“Y]Y]JBˆYˆ
+]˜[YH\[Ùˆ˜[YHOOH	ÛØš™Xİ	ÊH™]\›ˆ˜[YBˆ™]\›ˆØš™Xİ™œ›ÛQ[šY\ÊØš™Xİ™[šY\Ê˜[YJBˆ™š[\Š
+ÚÙ^WJHOˆÙ^HOOH	ÜÚİÔİ[IÊBˆ›X\
 
-  constructor(message: string, code?: string) {
-    super(message)
-    this.name = 'EngineError'
-    this.code = code
-  }
-}
+ÚÙ^K™\İYJHOˆÚÙ^KÛZ]™\Ù[][Û“Y]Y]J™\İY
+WJJBŸB‚™[˜İ[ÛˆÙ[™™\]Y\İ^[™È[™Ú[™T™\]Y\İŠÛÛ›™Xİ[Ûˆ[™Ú[™PÛÛ›™Xİ[Û‹™\]Y\İˆÈÚYÛ˜[]\İÙ^HNˆ[™Ú[™T[“Ü[ÛœÈHßJNˆ›ÛZ\ÙO[™Ú[™T™\İ[ˆÂˆ™]\›ˆ™]È›ÛZ\ÙJ
+™\ÛÛ™K™Z™Xİ
+HOˆÂˆYˆ
+ÛÛ›™Xİ[Û‹˜ÛÜÙYÚYÛ˜[Ë˜X›ÜY
+HÂˆ™Z™Xİ
+ÛÛ›™Xİ[Û‹˜ÛÜÙYÏÈ™]ÈÓQ^Ù\[ÛŠ	Ñ[™Ú[™H™\]Y\İØ[˜Ù[Y‰Ë	ĞX›Ü\œ›Ü‰ÊJBˆ™]\›‚ˆBˆYˆ
+]\İÙ^HOOH[™Yš[™Y
+HÂˆ›Üˆ
+ÛÛœİÚY[™[™×HÙˆÛÛ›™Xİ[Û‹œ[™[™ÊHÂˆYˆ
+YOOHÛÛ›™Xİ[Û‹˜Xİ]™H[™[™Ë›]\İÙ^HOOH]\İÙ^JHÛÛ[YBˆ[™[™Ë˜ÛX[\
 
-export type EngineRunOptions = {
-  interactive?: boolean
-  background?: boolean
-  signal?: AbortSignal
-  /** Keep only the newest waiting request for this caller. Active work is unchanged. */
-  latestKey?: object | string | symbol
-}
+Bˆ[™[™Ëœ™Z™Xİ
+™]ÈÓQ^Ù\[ÛŠ	Ñ[™Ú[™H™\]Y\İİ\\œÙYY‰Ë	ĞX›Ü\œ›Ü‰ÊJBˆÛÛ›™Xİ[Û‹œ[™[™Ë™[]JY
+BˆBˆBˆÛÛœİYH
+ÊÜ™\]Y\İYˆÛÛœİX›ÜH
 
-export type EngineRunner = <T extends EngineRequest>(request: T, options?: EngineRunOptions) => Promise<EngineResult<T>>
+HOˆÂˆÛÛœİ\œ›ÜˆH™]ÈÓQ^Ù\[ÛŠ	Ñ[™Ú[™H™\]Y\İØ[˜Ù[Y‰Ë	ĞX›Ü\œ›Ü‰ÊBˆYˆ
+ÛÛ›™Xİ[Û‹›İÛ™Y	‰ˆÛÛ›™Xİ[Û‹˜Xİ]™HOOHY
+HÂˆËÈØ\ÛH\ÈŞ[˜Ú›Û›İ\ÎˆÛ›H\›Z[˜][™È]ÈİÛ™YÛÜšÙ\ˆØ[ˆ[\œ\]‚ˆÛÛ›™Xİ[Û‹˜ÛÜÙYH\œ›Ü‚ˆÛÜÙPÛÛ›™Xİ[ÛŠÛÛ›™Xİ[Û‹\œ›ÜŠBˆ™]\›‚ˆBˆÛÛœİ[™[™ÈHÛÛ›™Xİ[Û‹œ[™[™Ë™Ù]
+Y
+BˆYˆ
+\[™[™ÊH™]\›‚ˆ[™[™Ë˜ÛX[\
 
-type PendingRequest = {
-  request: EngineRequest
-  latestKey?: EngineRunOptions['latestKey']
-  resolve: (value: unknown) => void
-  reject: (error: Error) => void
-  cleanup: () => void
-}
+Bˆ[™[™Ëœ™Z™Xİ
+\œ›ÜŠBˆÛÛ›™Xİ[Û‹œ[™[™Ë™[]JY
+BˆËÈ[ˆXİ]™HÚ\™Y™\]Y\İİ[ØØİ\Y\ÈHÛÜšÙ\ˆ[[]È™\ÜÛœÙK‚ˆ\Ü]Ú™^
+ÛÛ›™Xİ[ÛŠBˆBˆÛÛ›™Xİ[Û‹œ[™[™ËœÙ]
+YÂˆ™\]Y\İˆÛÛ›™Xİ[Û‹œ™\\™YÈ™\]Y\İˆÚ][™Y™\™[˜Ù\ÊÚ]ÛÛ™\”›Ùš[J™\]Y\İ
+JK]\İÙ^Kˆ™\ÛÛ™Nˆ
+˜[YJHOˆ™\ÛÛ™J˜[YH\È[™Ú[™T™\İ[ŠK™Z™XİˆÛX[\ˆ
 
-type EngineConnection = {
-  worker?: Worker
-  active?: number
-  pending: Map<number, PendingRequest>
-  owned?: boolean
-  closed?: Error
-  prepared?: boolean
-}
-const candidateEngine: EngineConnection = { pending: new Map() }
-const metadataEngine: EngineConnection = { pending: new Map() }
-const playEngine: EngineConnection = { pending: new Map() }
-const generationEngine: EngineConnection = { pending: new Map() }
-const historyEngine: EngineConnection = { pending: new Map() }
-const techniqueEngine: EngineConnection = { pending: new Map() }
-const techniqueDetailEngine: EngineConnection = { pending: new Map() }
-let requestId = 0
-let generationId = 0
+HOˆÚYÛ˜[Ëœ™[[İ™Q]™[\İ[™\Š	ØX›Ü	ËX›Ü
+KˆJBˆÚYÛ˜[Ë˜Y]™[\İ[™\Š	ØX›Ü	ËX›ÜÈÛ˜ÙNˆYHJBˆ\Ü]Ú™^
+ÛÛ›™Xİ[ÛŠBˆJBŸB‚‹ÊŠˆ[ˆH\™Ù]YÙX\˜ÚÚ][ˆ][\Ûİ[[™[ˆ[\œ\X›HİÛ™YÛÜšÙ\‹ˆ
+‹Â™^Ü\Ş[˜È[˜İ[Ûˆ[‘Ù[™\˜][Û^[™ÈÙ[™\˜][Û”™\]Y\İŠˆ™\]Y\İˆˆÈÚYÛ˜[Û”›ÙÜ™\ÜÈNˆÈÚYÛ˜[ÎˆX›ÜÚYÛ˜[ÈÛ”›ÙÜ™\ÜÏÎˆ
+][\Îˆ[X™\ŠHOˆ›ÚYHHßKŠNˆ›ÛZ\ÙOÙ[™\˜][Û“İ]ÛÛYO[™Ú[™T™\İ[ˆÂˆYˆ
+ÚYÛ˜[Ë˜X›ÜY
+H™]\›ˆÈİ]\Îˆ	ØØ[˜Ù[Y	Ë][\ÎˆBˆÛÛœİÙ\ÜÚ[ÛˆHÜ™X]Q[™Ú[™TÙ\ÜÚ[ÛŠ
+BˆÛÛœİ›ØˆH
+ÊÙÙ[™\˜][Û’Yˆ]İ\œ™[ˆÙ[™\˜][Û”›ÙÜ™\ÜÏÙ[™\˜]Yˆ[™Yš[™YˆHÂˆİ\œ™[H]ØZ]Ù\ÜÚ[Û‹œ[ŠÈ\Nˆ	ÙÙ[™\˜][Û‹\İ\	Ë›Ø‹™\]Y\İKÈÚYÛ˜[JBˆÚ[H
+İ\œ™[œİ]\ÈOOH	Ü[™[™ÉÊHÂˆÛÛœİ™]š[İ\ÈHİ\œ™[˜][\Âˆİ\œ™[HÚYÛ˜[Ë˜X›ÜYˆÈ]ØZ]Ù\ÜÚ[Û‹œ[ŠÈ\Nˆ	ÙÙ[™\˜][Û‹XØ[˜Ù[	Ë›ØˆJBˆˆ]ØZ]Ù\ÜÚ[Û‹œ[ŠÈ\Nˆ	ÙÙ[™\˜][Û‹XY˜[˜ÙIË›ØˆKÈÚYÛ˜[JBˆYˆ
+İ\œ™[˜][\Èˆ™]š[İ\ÊHÛ”›ÙÜ™\ÜÏËŠİ\œ™[˜][\ÊBˆBˆYˆ
+ÚYÛ˜[Ë˜X›ÜY
+H™]\›ˆÈİ]\Îˆ	ØØ[˜Ù[Y	Ë][\Îˆİ\œ™[˜][\ÈBˆ™]\›ˆİ\œ™[\ÈÙ[™\˜][Û“İ]ÛÛYO[™Ú[™T™\İ[‚ˆHØ]Ú
+\œ›ÜŠHÂˆYˆ
+\œ›Üˆ[œİ[˜Ù[Ùˆ\œ›Üˆ	‰ˆ\œ›Ü‹›˜[YHOOH	ĞX›Ü\œ›Ü‰ÊH™]\›ˆÈİ]\Îˆ	ØØ[˜Ù[Y	Ë][\Îˆİ\œ™[Ë˜][\ÈÏÈBˆYˆ
+Xİ\œ™[	‰ˆ\œ›Üˆ[œİ[˜Ù[Ùˆ[™Ú[™Q\œ›Üˆ	‰ˆ\œ›Ü‹˜ÛÙH	‰ˆ\œ›Ü‹˜ÛÙHOOH	ÙÙ[™\˜][Û‹XXİ]™IÊHÂˆ™]\›ˆÈİ]\Îˆ	Ú[˜[Y	Ë][\ÎˆÛÙNˆ\œ›Ü‹˜ÛÙKY\ÜØYÙNˆ\œ›Ü‹›Y\ÜØYÙHBˆBˆ›İÈ\œ›Ü‚ˆHš[˜[HÂˆYˆ
+İ\œ™[Ëœİ]\ÈOOH	Ü[™[™ÉÊHÂˆ]ØZ]Ù\ÜÚ[Û‹œ[ŠÈ\Nˆ	ÙÙ[™\˜][Û‹XØ[˜Ù[	Ë›ØˆJK˜Ø]Ú
 
-function connect(connection: EngineConnection) {
-  const { pending } = connection
-  const instance = new Worker(new URL('./engine.worker.ts', import.meta.url), { type: 'module' })
-  instance.onmessage = ({ data }: MessageEvent<EngineResponse>) => {
-    if (connection.worker !== instance || connection.active !== data.id) return
-    const request = pending.get(data.id)
-    connection.active = undefined
-    pending.delete(data.id)
-    if (request) {
-      request.cleanup()
-      if ('error' in data) request.reject(new EngineError(data.error, data.code))
-      else request.resolve(data.value)
-    }
-    dispatchNext(connection)
-  }
-  instance.onerror = () => {
-    if (connection.worker === instance) closeConnection(connection, new Error('The Sudoku engine could not start. Try again.'))
-  }
-  return instance
-}
 
-function closeConnection(connection: EngineConnection, error: Error) {
-  connection.worker?.terminate()
-  connection.worker = undefined
-  connection.active = undefined
-  for (const request of connection.pending.values()) {
-    request.cleanup()
-    request.reject(error)
-  }
-  connection.pending.clear()
-}
-
-function connectionFor(request: EngineRequest, options: EngineRunOptions) {
-  // Candidates must not queue behind a rating, hint search, or full solve.
-  if (request.type === 'notes' || request.type === 'solve-singles' ||
-    ('operation' in request && (request.operation === 'candidates' || request.operation === 'solve-singles')) ||
-    (request.type === 'sized-variant' && request.operation === 'hints' && request.limit === 0) ||
-    ('singlesOnly' in request && request.singlesOnly)) return candidateEngine
-  switch (request.type) {
-    case 'techniques':
-    case 'capabilities':
-    case 'lesson-examples':
-      return metadataEngine
-    case 'generate':
-    case 'generate-mini':
-    case 'generate-six':
-    case 'generate-rectangular':
-    case 'generate-jigsaw':
-    case 'generate-algebraic':
-    case 'generate-constrained':
-    case 'generate-targeted':
-    case 'generate-from-pool':
-    case 'generate-variant':
-    case 'generate-practice-example':
-    case 'generation-start':
-    case 'generation-advance':
-    case 'generation-cancel':
-    case 'impossible-templates':
-    case 'canonical-puzzles':
-      return generationEngine
-    case 'technique-count': return techniqueEngine
-    case 'deductions': return options.interactive ? techniqueDetailEngine : historyEngine
-    case 'classify-actions': return historyEngine
-    default: return options.interactive ? techniqueDetailEngine : options.background ? historyEngine : playEngine
-  }
-}
-
-export function runEngine<T extends EngineRequest>(request: T, options: EngineRunOptions = {}): Promise<EngineResult<T>> {
-  return sendRequest(connectionFor(request, options), request, options)
-}
-
-let idleGenerationConnection: EngineConnection | undefined
-
-/** Give a search exclusive use of a worker so cancellation can stop active Wasm. */
-export async function withGenerationWorker<Result>(
-  signal: AbortSignal,
-  search: (run: <T extends EngineRequest>(request: T) => Promise<EngineResult<T>>) => Promise<Result>,
-): Promise<Result> {
-  signal.throwIfAborted()
-  const connection: EngineConnection = idleGenerationConnection ?? { pending: new Map() }
-  idleGenerationConnection = undefined
-  let cancel!: () => void
-  const cancelled = new Promise<never>((_, reject) => {
-    cancel = () => {
-      closeConnection(connection, signal.reason)
-      reject(signal.reason)
-    }
-  })
-  signal.addEventListener('abort', cancel, { once: true })
-  try {
-    const result = await Promise.race([search(request => {
-      signal.throwIfAborted()
-      return sendRequest(connection, request)
-    }), cancelled])
-    signal.throwIfAborted()
-    return result
-  } finally {
-    signal.removeEventListener('abort', cancel)
-    if (connection.worker) {
-      if (!connection.pending.size && !idleGenerationConnection) idleGenerationConnection = connection
-      else closeConnection(connection, new DOMException('Generation worker closed.', 'AbortError'))
-    }
-  }
-}
-
-/** Own a worker for a cancelable workflow. Keep paged hint calls in the same session. */
-export function createEngineSession({ prepared = false }: { prepared?: boolean } = {}) {
-  const connection: EngineConnection = { pending: new Map(), owned: true, prepared }
-  const run: EngineRunner = (request, options) => sendRequest(connection, request, options)
-  return {
-    run,
-    close() {
-      connection.closed ??= new DOMException('Engine session closed.', 'AbortError')
-      closeConnection(connection, connection.closed)
-    },
-  }
-}
-
-export type EngineSession = ReturnType<typeof createEngineSession>
-
-// Each visible board owns its synchronous Wasm work. Closing it interrupts even
-// an in-flight forcing search without cancelling another board or action history.
-let idleCountConnection: EngineConnection | undefined
-
-export function createCountWorker(values: string, eliminations: readonly number[] | undefined,
-  position?: VariantPosition, visibility?: VariantVisibility, techniqueOrder?: readonly string[],
-) {
-  let connection: EngineConnection | undefined
-  return {
-    count(technique: string) {
-      if (!connection) {
-        connection = idleCountConnection ?? { pending: new Map() }
-        idleCountConnection = undefined
-      }
-      if (!position) return sendRequest(connection, {
-        type: 'technique-count', values, eliminations, technique,
-        ...(techniqueOrder && { techniqueOrder }),
-      })
-      const order = [...(techniqueOrder ?? [])]
-      if (!order.includes(technique)) order.push(technique)
-      const end = order.indexOf(technique)
-      const prefix = order.slice(0, end + 1)
-      return sendRequest(connection, { type: 'variant', operation: 'hints',
-        position: { ...position, eliminations }, ...(visibility && { visibility }),
-        techniqueOrder: prefix, limit: 0xffff_ffff,
-      }).then((hints) => {
-        const covered = new Set<string>()
-        const targets = new Set<string>()
-        for (const id of prefix) {
-          for (const hint of hints) {
-            if (hint.technique !== id) continue
-            for (const action of hint.actions) {
-              const { cell, digit } = 'place' in action ? action.place : action.eliminate
-              const target = `${cell}:${digit}`
-              if (id === technique && !covered.has(target)) targets.add(target)
-              covered.add(target)
-            }
-          }
-        }
-        return targets.size
-      })
-    },
-    close() {
-      if (!connection) return
-      if (!connection.pending.size && !idleCountConnection) idleCountConnection = connection
-      else closeConnection(connection, new DOMException('Technique scan closed.', 'AbortError'))
-      connection = undefined
-    },
-  }
-}
-
-function dispatchNext(connection: EngineConnection) {
-  if (connection.active !== undefined || connection.closed) return
-  const next = connection.pending.entries().next().value
-  if (!next) return
-  const [id, pending] = next
-  try {
-    connection.worker ??= connect(connection)
-    connection.active = id
-    connection.worker.postMessage({ id, request: omitPresentationMetadata(pending.request) })
-  } catch (error) {
-    closeConnection(connection, error instanceof Error ? error : new Error(String(error)))
-  }
-}
-
-// Presentation-only import metadata is retained by the app but must not be
-// sent to the strict Rust puzzle schema.
-function omitPresentationMetadata(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(omitPresentationMetadata)
-  if (!value || typeof value !== 'object') return value
-  return Object.fromEntries(Object.entries(value)
-    .filter(([key]) => key !== 'showSum')
-    .map(([key, nested]) => [key, omitPresentationMetadata(nested)]))
-}
-
-function sendRequest<T extends EngineRequest>(connection: EngineConnection, request: T, { signal, latestKey }: EngineRunOptions = {}): Promise<EngineResult<T>> {
-  return new Promise((resolve, reject) => {
-    if (connection.closed || signal?.aborted) {
-      reject(connection.closed ?? new DOMException('Engine request cancelled.', 'AbortError'))
-      return
-    }
-    if (latestKey !== undefined) {
-      for (const [id, pending] of connection.pending) {
-        if (id === connection.active || pending.latestKey !== latestKey) continue
-        pending.cleanup()
-        pending.reject(new DOMException('Engine request superseded.', 'AbortError'))
-        connection.pending.delete(id)
-      }
-    }
-    const id = ++requestId
-    const abort = () => {
-      const error = new DOMException('Engine request cancelled.', 'AbortError')
-      if (connection.owned && connection.active === id) {
-        // Wasm is synchronous: only terminating its owned worker can interrupt it.
-        connection.closed = error
-        closeConnection(connection, error)
-        return
-      }
-      const pending = connection.pending.get(id)
-      if (!pending) return
-      pending.cleanup()
-      pending.reject(error)
-      connection.pending.delete(id)
-      // An active shared request still occupies the worker until its response.
-      dispatchNext(connection)
-    }
-    connection.pending.set(id, {
-      request: connection.prepared ? request : withHintPreferences(withSolverProfile(request)), latestKey,
-      resolve: (value) => resolve(value as EngineResult<T>), reject,
-      cleanup: () => signal?.removeEventListener('abort', abort),
-    })
-    signal?.addEventListener('abort', abort, { once: true })
-    dispatchNext(connection)
-  })
-}
-
-/** Run a targeted search with an attempt count and an interruptible owned worker. */
-export async function runGeneration<T extends GenerationRequest>(
-  request: T,
-  { signal, onProgress }: { signal?: AbortSignal; onProgress?: (attempts: number) => void } = {},
-): Promise<GenerationOutcome<EngineResult<T>>> {
-  if (signal?.aborted) return { status: 'cancelled', attempts: 0 }
-  const session = createEngineSession()
-  const job = ++generationId
-  let current: GenerationProgress<Generated> | undefined
-  try {
-    current = await session.run({ type: 'generation-start', job, request }, { signal })
-    while (current.status === 'pending') {
-      const previous = current.attempts
-      current = signal?.aborted
-        ? await session.run({ type: 'generation-cancel', job })
-        : await session.run({ type: 'generation-advance', job }, { signal })
-      if (current.attempts > previous) onProgress?.(current.attempts)
-    }
-    if (signal?.aborted) return { status: 'cancelled', attempts: current.attempts }
-    return current as GenerationOutcome<EngineResult<T>>
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') return { status: 'cancelled', attempts: current?.attempts ?? 0 }
-    if (!current && error instanceof EngineError && error.code && error.code !== 'generation-active') {
-      return { status: 'invalid', attempts: 0, code: error.code, message: error.message }
-    }
-    throw error
-  } finally {
-    if (current?.status === 'pending') {
-      await session.run({ type: 'generation-cancel', job }).catch(() => {})
-    }
-    session.close()
-  }
-}
+HOˆßJBˆBˆÙ\ÜÚ[Û‹˜ÛÜÙJ
+BˆBŸB

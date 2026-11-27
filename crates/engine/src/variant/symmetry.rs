@@ -1,404 +1,108 @@
-#[cfg(all(
-    feature = "teaching",
-    feature = "wasm-api",
-    any(target_arch = "wasm32", test, feature = "cli")
-))]
-use super::VariantPosition;
-use super::{
-    ClueDirection, MarkedPairs, PuzzleRule, RegionLayout, VariantDefinitionError, VariantPuzzle,
-};
-use crate::CELLS;
+YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éíãM5N‹Z–‹­¦ëeŠw¬Ôm™œ¡…±° (€€€™•…ÑÕÉ”€ô€‰Ñ•…¡¥¹œˆ°(€€€™•…ÑÕÉ”€ô€‰İ…Í´µ…Á¤ˆ°(€€€…¹ä¡Ñ…É•Ñ}…É €ô€‰İ…Í´ÌÈˆ°Ñ•ÍĞ°™•…ÑÕÉ”€ô€‰±¤ˆ¤(¤¥t)ÕÍ”ÍÕÁ•ÈèéY…É¥…¹ÑA½Í¥Ñ¥½¸ì)ÕÍ”ÍÕÁ•Èèéì(€€€±Õ•¥É•Ñ¥½¸°5…É­•‘A…¥ÉÌ°AÕéé±•IÕ±”°I•¥½¹1…å½ÕĞ°Y…É¥…¹Ñ•™¥¹¥Ñ¥½¹ÉÉ½È°Y…É¥…¹ÑAÕéé±”°)ôì)ÕÍ”É…Ñ”èé11Lì((¼¼¼…¹½¹¥…°™½É´Õ¹‘•ÈÉ½Ñ…Ñ¥½¹Ì…¹É•™±•Ñ¥½¹Ì½˜Ñ¡”É¥…¹•Ù•ÉäÉÕ±”Ñ½•Ñ¡•È¸(¼¼¼(¼¼¼¥Ù•¹Ìµ…ä…±Í¼‰”É•¹…µ•¥˜•Ù•ÉäÉÕ±”¥Ì¥¹Ù…É¥…¹ĞÕ¹‘•È‘¥¥ĞÉ•¹…µ¥¹œ¸(¼¼¼½È¹Õµ•É¥ŒÉÕ±•Ì°Ñ¡”­•ä­••ÁÌÑ¡”‘¥¥ĞÙ…±Õ•Ì°ÍÕµÌ°…¹É…Ñ¥½Ì¸)ÁÕˆ™¸…¹½¹¥…±}Ù…É¥…¹Ğ¡ÁÕéé±”è€™Y…É¥…¹ÑAÕéé±”¤€´øI•ÍÕ±ĞñY…É¥…¹ÑAÕéé±”°Y…É¥…¹Ñ•™¥¹¥Ñ¥½¹ÉÉ½Èøì(€€€ÁÕéé±”¹½µÁ¥±” ¤üì(€€€=¬¡­•ä¡ÁÕéé±”¤¤)ô((¼¼A±…å•µÁÕéé±”­•åÌµ…ä¹½Éµ…±¥é”•ÅÕ¥Ù…±•¹ĞÉÕ±”‘•ÍÉ¥ÁÑ¥½¹Ì¸AÕ‰±¥Œ(¼¼…¹½¹¥…°‘•™¥¹¥Ñ¥½¹Ì­••ÀÑ¡•¥È…ÕÑ¡½É•Á…Ñ¡Ì…¹É½ÕÀÍÑÉÕÑÕÉ”¸(m™œ¡…¹ä¡™•…ÑÕÉ”€ô€‰•¹•É…Ñ¥½¸ˆ°Ñ•ÍĞ¤¥t)µ½Á±…å•ì((m™œ¡…¹ä¡™•…ÑÕÉ”€ô€‰•¹•É…Ñ¥½¸ˆ°Ñ•ÍĞ¤¥t)ÁÕˆ¡ÍÕÁ•È¤™¸•¹•É…Ñ¥½¹}­•ä¡ÁÕéé±”è€™Y…É¥…¹ÑAÕéé±”¤€´øY…É¥…¹ÑAÕéé±”ì(€€€Á±…å•èé­•ä¡ÁÕéé±”¤)ô()ÁÕˆ¡ÍÕÁ•È¤™¸­•ä¡ÁÕéé±”è€™Y…É¥…¹ÑAÕéé±”¤€´øY…É¥…¹ÑAÕéé±”ì(€€€­•å}¥µÁ°¡ÁÕéé±”°™…±Í”°ñ}ğíô¤)ô()™¸‘¥¥Ñ}¥¹Ù…É¥…¹Ğ¡ÉÕ±”è€™AÕéé±•IÕ±”¤€´ø‰½½°ì(€€€µ…Ñ¡•Ì„ (€€€€€€€ÉÕ±”°(€€€€€€€AÕéé±•IÕ±”èé¥…½¹…°ì€¸¸ô(€€€€€€€€€€€ğAÕéé±•IÕ±”èéáÑÉ…!½ÕÍ”ì€¸¸ô(€€€€€€€€€€€ğAÕéé±•IÕ±”èé¹Ñ¥-¹¥¡Ğíô(€€€€€€€€€€€ğAÕéé±•IÕ±”èé¹Ñ¥-¥¹œíô(€€€€€€€€€€€ğAÕéé±•IÕ±”èéA…±¥¹‘É½µ”ì€¸¸ô(€€€€€€€€€€€ğAÕéé±•IÕ±”èé±½¹”ì€¸¸ô(€€€€¤)ô()™¸­•å}¥µÁ° (€€€ÁÕéé±”è€™Y…É¥…¹ÑAÕéé±”°(€€€•¹•É…Ñ¥½¹}•‘•Ìè‰½½°°(€€€¹½Éµ…±¥é”è¥µÁ°¸ ™µÕĞY…É¥…¹ÑAÕéé±”¤°(¤€´øY…É¥…¹ÑAÕéé±”ì(€€€±•ĞÉ•¹…µ•}‘¥¥ÑÌ€ôÁÕéé±”¹ÉÕ±•Ì¹¥Ñ•È ¤¹…±°¡‘¥¥Ñ}¥¹Ù…É¥…¹Ğ¤ì(€€€MÅÕ…É•QÉ…¹Í™½É´èé10(€€€€€€€€¹¥¹Ñ½}¥Ñ•È ¤(€€€€€€€€¹µ…À¡ñÑÉ…¹Í™½Éµğì(€€€€€€€€€€€±•ĞµÕĞ½Áä€ôÁÕéé±”¹±½¹” ¤ì(€€€€€€€€€€€ÑÉ…¹Í™½É´¹ÁÕéé±” ™µÕĞ½Áä¤ì(€€€€€€€€€€€¥˜•¹•É…Ñ¥½¹}•‘•Ìì(€€€€€€€€€€€€€€€™½ÈÉÕ±”¥¸€™µÕĞ½Áä¹ÉÕ±•Ìì(€€€€€€€€€€€€€€€€€€€¥˜±•ĞAÕéé±•IÕ±”èé]¡¥ÍÁ•ÉÌì•±±Ì°€¸¸ô(€€€€€€€€€€€€€€€€€€€ğAÕéé±•IÕ±”èé¹ÑÉ½Á¥Œì•±±Ìô(€€€€€€€€€€€€€€€€€€€ğAÕéé±•IÕ±”èé5½‘Õ±…Èì•±±Ìô(€€€€€€€€€€€€€€€€€€€ğAÕéé±•IÕ±”èéI•¹‰…¸ì•±±Ì°€¸¸ô€ôÉÕ±”(€€€€€€€€€€€€€€€€€€€ì(€€€€€€€€€€€€€€€€€€€€€€€•±±Ì¹Í½ÉÑ}Õ¹ÍÑ…‰±” ¤ì(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€ô(€€€€€€€€€€€¥˜É•¹…µ•}‘¥¥ÑÌì(€€€€€€€€€€€€€€€±•ĞµÕĞÉ•¹…µ•€ôlÀì€ÄÁtì(€€€€€€€€€€€€€€€±•ĞµÕĞ¹•áĞ€ô€Äì(€€€€€€€€€€€€€€€™½È¥Ù•¸¥¸€™µÕĞ½Áä¹¥Ù•¹Ìì(€€€€€€€€€€€€€€€€€€€¥˜€©¥Ù•¸€ôô€Àì(€€€€€€€€€€€€€€€€€€€€€€€½¹Ñ¥¹Õ”ì(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€±•Ğ•¹ÑÉä€ô€™µÕĞÉ•¹…µ•‘mÕÍ¥é”èé™É½´ ©¥Ù•¸¥tì(€€€€€€€€€€€€€€€€€€€¥˜€©•¹ÑÉä€ôô€Àì(€€€€€€€€€€€€€€€€€€€€€€€€©•¹ÑÉä€ô¹•áĞì(€€€€€€€€€€€€€€€€€€€€€€€¹•áĞ€¬ô€Äì(€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€€©¥Ù•¸€ô€©•¹ÑÉäì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€ô(€€€€€€€€€€€¹½Éµ…±¥é” ™µÕĞ½Áä¤ì(€€€€€€€€€€€½Áä¹ÉÕ±•Ì¹Í½ÉÑ}Õ¹ÍÑ…‰±” ¤ì(€€€€€€€€€€€½Áä(€€€€€€€ô¤(€€€€€€€€¹µ¥¸ ¤(€€€€€€€€¹•áÁ•Ğ ‰Ñ¡•É”…É”•¥¡ĞÉ¥Íåµµ•ÑÉ¥•Ìˆ¤)ô((m‘•É¥Ù”¡±½¹”°½Áä¥t)ÁÕˆ¡É…Ñ”¤ÍÑÉÕĞMÅÕ…É•QÉ…¹Í™½É´¡ÕÍ¥é”¤ì()¥µÁ°MÅÕ…É•QÉ…¹Í™½É´ì(€€€ÁÕˆ½¹ÍĞ10èmM•±˜ì€át€ôl(€€€€€€€M•±˜ À¤°(€€€€€€€M•±˜ Ä¤°(€€€€€€€M•±˜ È¤°(€€€€€€€M•±˜ Ì¤°(€€€€€€€M•±˜ Ğ¤°(€€€€€€€M•±˜ Ô¤°(€€€€€€€M•±˜ Ø¤°(€€€€€€€M•±˜ Ü¤°(€€€tì((€€€ÁÕˆ™¸•±°¡Í•±˜°•±°èÕÍ¥é”¤€´øÕÍ¥é”ì(€€€€€€€‘•‰Õ}…ÍÍ•ÉĞ„¡•±°€ğ11L¤ì(€€€€€€€±•Ğ€¡É½Ü°½±Õµ¸¤€ô€¡•±°€¼€ä°•±°€”€ä¤ì(€€€€€€€±•Ğ€¡É½Ü°½±Õµ¸¤€ô¥˜Í•±˜¸À€˜€Ä€„ô€Àì(€€€€€€€€€€€€¡½±Õµ¸°É½Ü¤(€€€€€€€ô•±Í”ì(€€€€€€€€€€€€¡É½Ü°½±Õµ¸¤(€€€€€€€ôì(€€€€€€€±•ĞÉ½Ü€ô¥˜Í•±˜¸À€˜€È€„ô€Àì€à€´É½Üô•±Í”ìÉ½Üôì(€€€€€€€±•Ğ½±Õµ¸€ô¥˜Í•±˜¸À€˜€Ğ€„ô€Àì€à€´½±Õµ¸ô•±Í”ì½±Õµ¸ôì(€€€€€€€€ä€¨É½Ü€¬½±Õµ¸(€€€ô((€€€€m™œ¡…±° (€€€€€€€™•…ÑÕÉ”€ô€‰Ñ•…¡¥¹œˆ°(€€€€€€€™•…ÑÕÉ”€ô€‰İ…Í´µ…Á¤ˆ°(€€€€€€€…¹ä¡Ñ…É•Ñ}…É €ô€‰İ…Í´ÌÈˆ°Ñ•ÍĞ°™•…ÑÕÉ”€ô€‰±¤ˆ¤(€€€€¤¥t(€€€ÁÕˆ™¸Á½Í¥Ñ¥½¸¡Í•±˜°Á½Í¥Ñ¥½¸è€™µÕĞY…É¥…¹ÑA½Í¥Ñ¥½¸¤ì(€€€€€€€Í•±˜¹ÁÕéé±” ™µÕĞÁ½Í¥Ñ¥½¸¹ÁÕéé±”¤ì(€€€€€€€Á½Í¥Ñ¥½¸¹•¹ÑÉ¥•Ì€ôÍ•±˜¹É¥¡Á½Í¥Ñ¥½¸¹•¹ÑÉ¥•Ì¤ì(€€€€€€€Á½Í¥Ñ¥½¸¹•±¥µ¥¹…Ñ¥½¹Ì€ôÍ•±˜¹É¥¡Á½Í¥Ñ¥½¸¹•±¥µ¥¹…Ñ¥½¹Ì¤ì(€€€ô((€€€ÁÕˆ¡É…Ñ”¤™¸É¥ñPè½Áäø¡Í•±˜°½É¥¥¹…°èmPì11Mt¤€´ømPì11Mtì(€€€€€€€±•ĞµÕĞÉ•ÍÕ±Ğ€ô½É¥¥¹…°ì(€€€€€€€™½È€¡•±°°Ù…±Õ”¤¥¸½É¥¥¹…°¹¥¹Ñ½}¥Ñ•È ¤¹•¹Õµ•É…Ñ” ¤ì(€€€€€€€€€€€É•ÍÕ±ÑmÍ•±˜¹•±°¡•±°¥t€ôÙ…±Õ”ì(€€€€€€€ô(€€€€€€€É•ÍÕ±Ğ(€€€ô((€€€™¸ÁÕéé±”¡Í•±˜°ÁÕéé±”è€™µÕĞY…É¥…¹ÑAÕéé±”¤ì(€€€€€€€ÁÕéé±”¹¥Ù•¹Ì€ôÍ•±˜¹É¥¡ÁÕéé±”¹¥Ù•¹Ì¤ì(€€€€€€€¥˜±•ĞI•¥½¹1…å½ÕĞèé)¥Í…ÜìÉ•¥½¹ÌôğI•¥½¹1…å½ÕĞèéA…ÉÑ¥…°ìÉ•¥½¹Ìô€ô(€€€€€€€€€€€€™µÕĞÁÕéé±”¹É•¥½¹Ì(€€€€€€€ì(€€€€€€€€€€€™½ÈÉ•¥½¸¥¸€™µÕĞ€©Ë]4ÖÚ$z{-®éÜj×
+ÛÛ[[‹›İÊNÈBˆYˆÙ[‹Œ	ˆˆOHÈ›İÈH\›İÎÈBˆYˆÙ[‹Œ	ˆOHÈÛÛ[[ˆHXÛÛ[[ÈBˆ[\›˜]]™Kœ›İ×ÛÙ™œÙ]H›İÎÂˆ[\›˜]]™K˜ÛÛ[[—ÛÙ™œÙ]HÛÛ[[ÂˆBˆ[\›˜]]™\ËœÛÜİ[œİX›J
+NÂˆBˆXYÚXÔÜ]X\™HÈÙ[ÈHOˆÙ[‹[›Ü™\™Y
+Ù[ÊKˆ\İ[™ZYÚ›ÜœÈÈX\šÙYØÙ[ÈHOˆÙ[‹[›Ü™\™Y
+X\šÙYØÙ[ÊKˆÛÛœÙXİ]]™T[ˆÂˆÙ[ËˆÛÛÜ‹ˆœ›ÛWØ[‹ˆHOˆÂˆÙ[‹œ]
+Ù[ÊNÂˆYˆJ™œ›ÛWØ[ˆ	‰ˆÙ[ÖÌHˆÙ[ÖØÙ[Ë›[Š
+HHWHÂˆÙ[Ëœ™]™\œÙJ
+NÂˆBˆ
+˜ÛÛÜˆH›Û™NÂˆBˆ[œÚYQÜšYÈ›İÜÈHOˆÂˆ›Üˆ›İÈ[ˆ›İÜËš]\—Û]]
 
-/// Canonical form under rotations and reflections of the grid and every rule together.
-///
-/// Givens may also be renamed if every rule is invariant under digit renaming.
-/// For numeric rules, the key keeps the digit values, sums, and ratios.
-pub fn canonical_variant(puzzle: &VariantPuzzle) -> Result<VariantPuzzle, VariantDefinitionError> {
-    puzzle.compile()?;
-    Ok(key(puzzle))
-}
+HÂˆÙ[‹œ]
+›İÊNÂˆBˆËÈHİÙ\İZ[™^ÛÜ›™\ˆÛÛY\Èš\œİˆİØ\[™ÈH[›™\‚ˆËÈ›İÜÈ[™ÛÛ[[œÈX]™\ÈZ\ˆÛÛ[[Û‹\Ù][H[˜Ú[™ÙY‚ˆ]\İH›İÜË›[Š
+HHNÂˆYˆ›İÜÖÛ\İVÌK›Z[Š›İÜÖÛ\İVÛ\İJH›İÜÖÌVÌK›Z[Š›İÜÖÌVÛ\İJHÂˆ›İÜËœ™]™\œÙJ
+NÂˆBˆYˆ›İÜÖÌVÛ\İH›İÜÖÌVÌHÂˆ›Üˆ›İÈ[ˆ›İÜËš]\—Û]]
 
-// Played-puzzle keys may normalize equivalent rule descriptions. Public
-// canonical definitions keep their authored paths and group structure.
-#[cfg(any(feature = "generation", test))]
-mod played;
+HÂˆ›İËœ™]™\œÙJ
+NÂˆBˆBˆYˆ›İÜÖÌWVÌH›İÜÖÌVÌWHÂˆ›ÜˆH[ˆK‹œ›İÜË›[Š
+HÂˆ]
+Ü›İÛJHH›İÜËœÜ]Ø]Û]]
+JNÂˆ›Üˆ
+‹›İÊH[ˆÜš]\—Û]]
 
-#[cfg(any(feature = "generation", test))]
-pub(super) fn generation_key(puzzle: &VariantPuzzle) -> VariantPuzzle {
-    played::key(puzzle)
-}
+K™[[Y\˜]J
+HÂˆİ›Y[NœİØ\
+	›]]›İÖÚWK	›]]›İÛVÌVÚ—JNÂˆBˆBˆBˆBˆÚ[\ØYÙ\ÈÈØYÙ\Ë‹ˆHOˆÂˆ›ÜˆØYÙH[ˆ	›]]
+˜ØYÙ\ÈÂˆÙ[‹[›Ü™\™Y
+	›]]ØYÙK˜Ù[ÊNÂˆBˆØYÙ\ËœÛÜİ[œİX›J
+NÂˆBˆ[šÛ›İÛØYÙTİ[\ÈÂˆØYÙ\ËˆÛÛœÙXİ]]™WÜZ\œËˆHOˆÂˆ]]]Ü™\ˆ™XÏÏˆH
+‹˜ØYÙ\Ë›[Š
+JK˜ÛÛXİ
 
-pub(super) fn key(puzzle: &VariantPuzzle) -> VariantPuzzle {
-    key_impl(puzzle, false, |_| {})
-}
+NÂˆ›ÜˆØYÙH[ˆØYÙ\Ëš]\—Û]]
 
-fn digit_invariant(rule: &PuzzleRule) -> bool {
-    matches!(
-        rule,
-        PuzzleRule::Diagonal { .. }
-            | PuzzleRule::ExtraHouse { .. }
-            | PuzzleRule::AntiKnight {}
-            | PuzzleRule::AntiKing {}
-            | PuzzleRule::Palindrome { .. }
-            | PuzzleRule::Clone { .. }
-    )
-}
+HÂˆÙ[‹[›Ü™\™Y
+ØYÙJNÂˆBˆÜ™\‹œÛÜØWÚÙ^J	š[™^ØYÙ\ÖÚ[™^K˜ÛÛ™J
+JNÂˆ]]]Ûİ×Û™]ÈH™XÈVÌÈØYÙ\Ë›[Š
+WNÂˆ›Üˆ
+™]Ë	›Û
+H[ˆÜ™\‹š]\Š
+K™[[Y\˜]J
+HÂˆÛİ×Û™]ÖÛÛHH™]ÎÂˆBˆ]™[Ü™\™YHÜ™\‚ˆš[×Ú]\Š
+Bˆ›X\
+[™^ØYÙ\ÖÚ[™^K˜ÛÛ™J
+JBˆ˜ÛÛXİ
 
-fn key_impl(
-    puzzle: &VariantPuzzle,
-    generation_edges: bool,
-    normalize: impl Fn(&mut VariantPuzzle),
-) -> VariantPuzzle {
-    let rename_digits = puzzle.rules.iter().all(digit_invariant);
-    SquareTransform::ALL
-        .into_iter()
-        .map(|transform| {
-            let mut copy = puzzle.clone();
-            transform.puzzle(&mut copy);
-            if generation_edges {
-                for rule in &mut copy.rules {
-                    if let PuzzleRule::Whispers { cells, .. }
-                    | PuzzleRule::Entropic { cells }
-                    | PuzzleRule::Modular { cells }
-                    | PuzzleRule::Renban { cells, .. } = rule
-                    {
-                        cells.sort_unstable();
-                    }
-                }
-            }
-            if rename_digits {
-                let mut renamed = [0; 10];
-                let mut next = 1;
-                for given in &mut copy.givens {
-                    if *given == 0 {
-                        continue;
-                    }
-                    let entry = &mut renamed[usize::from(*given)];
-                    if *entry == 0 {
-                        *entry = next;
-                        next += 1;
-                    }
-                    *given = *entry;
-                }
-            }
-            normalize(&mut copy);
-            copy.rules.sort_unstable();
-            copy
-        })
-        .min()
-        .expect("there are eight grid symmetries")
-}
+NÂˆ
+˜ØYÙ\ÈH™[Ü™\™YÂˆ›ÜˆZ\ˆ[ˆÛÛœÙXİ]]™WÜZ\œËš]\—Û]]
 
-#[derive(Clone, Copy)]
-pub(crate) struct SquareTransform(usize);
+HÂˆZ\–ÌHHÛİ×Û™]ÖÜZ\–ÌWNÂˆZ\–ÌWHHÛİ×Û™]ÖÜZ\–ÌWWNÂˆZ\‹œÛÜİ[œİX›J
+NÂˆBˆÛÛœÙXİ]]™WÜZ\œËœÛÜİ[œİX›J
+NÂˆBˆ]\™Y]XY\\ÈÈÛY\ÈHOˆÂˆ›ÜˆÛYH[ˆÛY\Ëš]\—Û]]
 
-impl SquareTransform {
-    pub const ALL: [Self; 8] = [
-        Self(0),
-        Self(1),
-        Self(2),
-        Self(3),
-        Self(4),
-        Self(5),
-        Self(6),
-        Self(7),
-    ];
+HÂˆ]]]Ù[ÈBˆİ\\œ]XY\N˜Ù[ÊÛYKÜÛY
+K™^Xİ
+˜[Y]YÚ\˜ÛHŠNÂˆÙ[‹[›Ü™\™Y
+	›]]Ù[ÊNÂˆÛYKÜÛYHÙ[ÖÌNÂˆ]]]]\œÎˆ™XÏÏˆHÛYK›]\œË˜]\Ê
+K˜ÛÛXİ
 
-    pub fn cell(self, cell: usize) -> usize {
-        debug_assert!(cell < CELLS);
-        let (row, column) = (cell / 9, cell % 9);
-        let (row, column) = if self.0 & 1 != 0 {
-            (column, row)
-        } else {
-            (row, column)
-        };
-        let row = if self.0 & 2 != 0 { 8 - row } else { row };
-        let column = if self.0 & 4 != 0 { 8 - column } else { column };
-        9 * row + column
-    }
+NÂˆ]\œËœÛÜİ[œİX›J
+NÂˆÛYK›]\œÈHİš[™Î™œ›ÛWİ]
+]\œÊK™^Xİ
+˜[Y]Y]\œÈŠNÂˆBˆÛY\ËœÛÜİ[œİX›J
+NÂˆBˆ]XY\HÈÜÛYYÚ]ÈH]XY\Tİ[HÈÜÛYYÚ]ÈHOˆÂˆ]]]Ù[ÈHİ\\œ]XY\N˜Ù[Ê
+ÜÛY
+K™^Xİ
+˜[Y]Y]XY\HŠNÂˆÙ[‹[›Ü™\™Y
+	›]]Ù[ÊNÂˆ
+ÜÛYHÙ[ÖÌNÂˆYÚ]ËœÛÜİ[œİX›J
+NÂˆBˆÛÛ™HÈÜ›İ\ÈHOˆÂˆ›ÜˆÜ›İ\[ˆ	›]]
+™Ü›İ\ÈÂˆÙ[‹[›Ü™\™Y
+Ü›İ\
+NÂˆBˆÜ›İ\ËœÛÜİ[œİX›J
+NÂˆBˆ[RÛšYÚßH[RÚ[™ÈßHOˆßBˆÛØ˜[[›ÜHÈÜ›İ\ÈHOˆÂˆ›ÜˆÜ›İ\[ˆ	›]]
+™Ü›İ\ÈÂˆÜ›İ\œÛÜİ[œİX›J
+NÂˆBˆÜ›İ\ËœÛÜİ[œİX›J
+NÂˆBˆ[›ÜUÚ[™İÑÜ›İ\ÈÙ[Ë‹ˆHOˆÙ[‹[›Ü™\™Y
+Ù[ÊKˆ›ÛÛÛœÙXİ]]™HÈ^Ù\HOˆÂˆ›ÜˆÙ[È[ˆ	›]]
+™^Ù\ÂˆÙ[‹[›Ü™\™Y
+Ù[ÊNÂˆBˆ^Ù\œÛÜİ[œİX›J
+NÂˆ^Ù\™Y\
 
-    #[cfg(all(
-        feature = "teaching",
-        feature = "wasm-api",
-        any(target_arch = "wasm32", test, feature = "cli")
-    ))]
-    pub fn position(self, position: &mut VariantPosition) {
-        self.puzzle(&mut position.puzzle);
-        position.entries = self.grid(position.entries);
-        position.eliminations = self.grid(position.eliminations);
-    }
+NÂˆBˆ[™\]X[]HÈ\ÜËÜ™X]\ˆHOˆÂˆ
+›\ÜÈHÙ[‹˜Ù[
 
-    pub(crate) fn grid<T: Copy>(self, original: [T; CELLS]) -> [T; CELLS] {
-        let mut result = original;
-        for (cell, value) in original.into_iter().enumerate() {
-            result[self.cell(cell)] = value;
-        }
-        result
-    }
+›\ÜÊNÂˆ
+™Ü™X]\ˆHÙ[‹˜Ù[
 
-    fn puzzle(self, puzzle: &mut VariantPuzzle) {
-        puzzle.givens = self.grid(puzzle.givens);
-        if let RegionLayout::Jigsaw { regions } | RegionLayout::Partial { regions } =
-            &mut puzzle.regions
-        {
-            for region in &mut *regions {
-                self.unordered(region);
-            }
-            regions.sort_unstable();
-        }
-        for rule in &mut puzzle.rules {
-            self.rule(rule);
-        }
-    }
+™Ü™X]\ŠNÂˆBˆÜ›ÜÚHÂˆÛÛœÙXİ]]™Kˆ˜][×İÛËˆHOˆÂˆÙ[‹›X\šÙ\œÊÛÛœÙXİ]]™JNÂˆÙ[‹›X\šÙ\œÊ˜][×İÛÊNÂˆBˆZ[š[][HÈÙ[Ë‹ˆHX^[][HÈÙ[Ë‹ˆHOˆÙ[‹[›Ü™\™Y
+Ù[ÊKˆX™[YİÈÈX\šÜË‹ˆHOˆÂˆ›ÜˆX\šÈ[ˆ	›]]
+›X\šÜÈÂˆÙ[‹[›Ü™\™Y
+	›]]X\šË˜Ù[ÊNÂˆBˆX\šÜËœÛÜİ[œİX›J
+NÂˆBˆˆÈš]™K[ˆHOˆÂˆÙ[‹›X\šÙ\œÊš]™JNÂˆÙ[‹›X\šÙ\œÊ[ŠNÂˆBˆY˜XÙ[İ[ÈÙ[Ë‹ˆHOˆÙ[‹[›Ü™\™Y
+Ù[ÊKˆ\œ›İÈÈÚ\˜ÛKÙ[ÈHOˆÂˆ
+˜Ú\˜ÛHHÙ[‹˜Ù[
 
-    fn direction(self, direction: ClueDirection) -> ClueDirection {
-        let (dr, dc) = direction.delta();
-        let endpoint = self.cell((40 + 9 * dr + dc) as usize);
-        let delta = (endpoint as i8 / 9 - 4, endpoint as i8 % 9 - 4);
-        ClueDirection::ALL
-            .into_iter()
-            .find(|direction| direction.delta() == delta)
-            .expect("a square symmetry preserves compass directions")
-    }
-
-    fn path(self, cells: &mut [usize]) {
-        for cell in cells {
-            *cell = self.cell(*cell);
-        }
-    }
-
-    fn unordered(self, cells: &mut [usize]) {
-        self.path(cells);
-        cells.sort_unstable();
-    }
-
-    fn markers(self, markers: &mut MarkedPairs) {
-        for pair in &mut markers.pairs {
-            self.unordered(pair);
-        }
-        markers.pairs.sort_unstable();
-    }
-
-    fn rule(self, rule: &mut PuzzleRule) {
-        use PuzzleRule::*;
-        match rule {
-            Diagonal { diagonal } => {
-                let end = match diagonal {
-                    super::Diagonal::Main => 0,
-                    super::Diagonal::Anti => 8,
-                };
-                *diagonal = if matches!(self.cell(end), 0 | 80) {
-                    super::Diagonal::Main
-                } else {
-                    super::Diagonal::Anti
-                };
-            }
-            ExtraHouse { cells } | Parity { cells, .. } | DigitRestriction { cells, .. } => {
-                self.unordered(cells)
-            }
-            DistinctCells { cells, color } => {
-                self.unordered(cells);
-                *color = None;
-            }
-            Aqre {
-                regions,
-                given_shades,
-                ..
-            } => {
-                for region in regions.iter_mut() {
-                    self.unordered(&mut region.cells);
-                    if let Some(super::AqreCount::DigitCell { cell }) = &mut region.count {
-                        *cell = self.cell(*cell);
-                    }
-                }
-                regions.sort_by(|left, right| left.cells.cmp(&right.cells));
-                for given in given_shades.iter_mut() {
-                    given.cell = self.cell(given.cell);
-                }
-                given_shades.sort_by_key(|given| given.cell);
-            }
-            NeighborMatch { clues } => {
-                for clue in clues.iter_mut() {
-                    clue.cell = self.cell(clue.cell);
-                }
-                clues.sort_by_key(|clue| clue.cell);
-            }
-            MagicSquare { cells } => self.unordered(cells),
-            DistantNeighbors { marked_cells } => self.unordered(marked_cells),
-            ConsecutiveRun {
-                cells,
-                color,
-                from_bulb,
-            } => {
-                self.path(cells);
-                if !*from_bulb && cells[0] > cells[cells.len() - 1] {
-                    cells.reverse();
-                }
-                *color = None;
-            }
-            InsideGrid { rows } => {
-                for row in rows.iter_mut() {
-                    self.path(row);
-                }
-                // The lowest-index corner comes first. Swapping the inner
-                // rows and columns leaves their common-set rule unchanged.
-                let last = rows.len() - 1;
-                if rows[last][0].min(rows[last][last]) < rows[0][0].min(rows[0][last]) {
-                    rows.reverse();
-                }
-                if rows[0][last] < rows[0][0] {
-                    for row in rows.iter_mut() {
-                        row.reverse();
-                    }
-                }
-                if rows[1][0] < rows[0][1] {
-                    for i in 1..rows.len() {
-                        let (top, bottom) = rows.split_at_mut(i);
-                        for (j, row) in top.iter_mut().enumerate() {
-                            std::mem::swap(&mut row[i], &mut bottom[0][j]);
-                        }
-                    }
-                }
-            }
-            KillerCages { cages, .. } => {
-                for cage in &mut *cages {
-                    self.unordered(&mut cage.cells);
-                }
-                cages.sort_unstable();
-            }
-            UnknownCageSums {
-                cages,
-                consecutive_pairs,
-            } => {
-                let mut order: Vec<_> = (0..cages.len()).collect();
-                for cage in cages.iter_mut() {
-                    self.unordered(cage);
-                }
-                order.sort_by_key(|&index| cages[index].clone());
-                let mut old_to_new = vec![0; cages.len()];
-                for (new, &old) in order.iter().enumerate() {
-                    old_to_new[old] = new;
-                }
-                let reordered = order
-                    .into_iter()
-                    .map(|index| cages[index].clone())
-                    .collect();
-                *cages = reordered;
-                for pair in consecutive_pairs.iter_mut() {
-                    pair[0] = old_to_new[pair[0]];
-                    pair[1] = old_to_new[pair[1]];
-                    pair.sort_unstable();
-                }
-                consecutive_pairs.sort_unstable();
-            }
-            LetteredQuadruples { clues } => {
-                for clue in clues.iter_mut() {
-                    let mut cells =
-                        super::quadruple::cells(clue.top_left).expect("validated circle");
-                    self.unordered(&mut cells);
-                    clue.top_left = cells[0];
-                    let mut letters: Vec<_> = clue.letters.bytes().collect();
-                    letters.sort_unstable();
-                    clue.letters = String::from_utf8(letters).expect("validated letters");
-                }
-                clues.sort_unstable();
-            }
-            Quadruple { top_left, digits } | QuadrupleSum { top_left, digits } => {
-                let mut cells = super::quadruple::cells(*top_left).expect("validated Quadruple");
-                self.unordered(&mut cells);
-                *top_left = cells[0];
-                digits.sort_unstable();
-            }
-            Clone { groups } => {
-                for group in &mut *groups {
-                    self.unordered(group);
-                }
-                groups.sort_unstable();
-            }
-            AntiKnight {} | AntiKing {} => {}
-            GlobalEntropy { groups } => {
-                for group in &mut *groups {
-                    group.sort_unstable();
-                }
-                groups.sort_unstable();
-            }
-            EntropyWindowGroup { cells, .. } => self.unordered(cells),
-            NonConsecutive { except } => {
-                for cells in &mut *except {
-                    self.unordered(cells);
-                }
-                except.sort_unstable();
-                except.dedup();
-            }
-            Inequality { less, greater } => {
-                *less = self.cell(*less);
-                *greater = self.cell(*greater);
-            }
-            Kropki {
-                consecutive,
-                ratio_two,
-            } => {
-                self.markers(consecutive);
-                self.markers(ratio_two);
-            }
-            Minimum { cells, .. } | Maximum { cells, .. } => self.unordered(cells),
-            LabeledDots { marks, .. } => {
-                for mark in &mut *marks {
-                    self.unordered(&mut mark.cells);
-                }
-                marks.sort_unstable();
-            }
-            Xv { five, ten } => {
-                self.markers(five);
-                self.markers(ten);
-            }
-            AdjacentTotal { cells, .. } => self.unordered(cells),
-            Arrow { circle, cells } => {
-                *circle = self.cell(*circle);
-                self.path(cells);
-            }
-            PillArrow { pill, cells, .. } => {
-                self.path(pill);
-                self.path(cells);
-            }
-            Palindrome { cells, segments }
-            | Renban { cells, segments }
-            | RegionSum {
-                cells, segments, ..
-            } => {
-                self.path(cells);
-                if let Some(segments) = segments {
-                    for segment in segments {
-                        self.path(segment);
-                    }
-                }
-            }
-            Thermometer { cells }
-            | Entropic { cells }
-            | Modular { cells }
-            | Whispers { cells, .. }
-            | DigitOrder { cells, .. }
-            | Lockout { cells }
-            | Between { cells } => self.path(cells),
-            ForbiddenEntropicConnection { cells } => self.path(cells),
-            Sandwich {
-                cells, direction, ..
-            }
-            | TerrainSandwich {
-                cells, direction, ..
-            }
-            | LittleKiller {
-                cells, direction, ..
-            }
-            | XSum {
-                cells, direction, ..
-            }
-            | Skyscrapers {
-                cells, direction, ..
-            } => {
-                self.path(cells);
-                *direction = self.direction(*direction);
-            }
-        }
-    }
-}
+˜Ú\˜ÛJNÂˆÙ[‹œ]
+Ù[ÊNÂˆBˆ[\œ›İÈÈ[Ù[Ë‹ˆHOˆÂˆÙ[‹œ]
+[
+NÂˆÙ[‹œ]
+Ù[ÊNÂˆBˆ[[™›ÛYHÈÙ[ËÙYÛY[ÈBˆ™[˜˜[ˆÈÙ[ËÙYÛY[ÈBˆ™YÚ[Û”İ[HÂˆÙ[ËÙYÛY[Ë‹‚ˆHOˆÂˆÙ[‹œ]
+Ù[ÊNÂˆYˆ]ÛÛYJÙYÛY[ÊHHÙYÛY[ÈÂˆ›ÜˆÙYÛY[[ˆÙYÛY[ÈÂˆÙ[‹œ]
+ÙYÛY[
+NÂˆBˆBˆBˆ\›[ÛY]\ˆÈÙ[ÈBˆ[›ÜXÈÈÙ[ÈBˆ[Ù[\ˆÈÙ[ÈBˆÚ\Ü\œÈÈÙ[Ë‹ˆBˆYÚ]Ü™\ˆÈÙ[Ë‹ˆBˆØÚÛİ]ÈÙ[ÈBˆ™]ÙY[ˆÈÙ[ÈHOˆÙ[‹œ]
+Ù[ÊKˆ›Ü˜šY[‘[›ÜXĞÛÛ›™Xİ[ÛˆÈÙ[ÈHOˆÙ[‹œ]
+Ù[ÊKˆØ[™ÚXÚÂˆÙ[Ë\™Xİ[Û‹‹‚ˆBˆ\œ˜Z[”Ø[™ÚXÚÂˆÙ[Ë\™Xİ[Û‹‹‚ˆBˆ]RÚ[\ˆÂˆÙ[Ë\™Xİ[Û‹‹‚ˆBˆİ[HÂˆÙ[Ë\™Xİ[Û‹‹‚ˆBˆÚŞ\ØÜ˜\\œÈÂˆÙ[Ë\™Xİ[Û‹‹‚ˆHOˆÂˆÙ[‹œ]
+Ù[ÊNÂˆ
+™\™Xİ[ÛˆHÙ[‹™\™Xİ[ÛŠ
+™\™Xİ[ÛŠNÂˆBˆBˆBŸB

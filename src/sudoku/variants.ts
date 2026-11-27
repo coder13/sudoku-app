@@ -1,238 +1,35 @@
-import { validLetteredQuadruples } from './lettered-quadruples.ts'
-import { insideGridColumns, validInsideGridRows } from './inside-grid.ts'
-import { isHexColor } from './imported-colors.ts'
-import { isFogDefinition, FOG_RULE, type FogDefinition } from './fog.ts'
-import { DIFFICULTY_OPTIONS, currentDifficulty, difficultyIndex, difficultyOptionLabel, type DifficultyPreference } from './difficulty.ts'
-import type { Difficulty, VariantClueLayout, VariantHouse, VariantPuzzle, VariantRule } from './engine.ts'
-import { lineGroupMask } from './line-groups.ts'
-import { lineSkipsCells } from './line-geometry.ts'
-import { regionSumParts } from './region-sum.ts'
-import { validOutsideRay, outsideClueLabel } from './outside-clues.ts'
-import { cloneLayout } from './clone.ts'
-import { connectedGridCells, gridDiagonalCells, kropkiDigitExclusions } from './grid.ts'
-import seedBank from './variant-seeds.json' with { type: 'json' }
+YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éíãM5N‹Z–‹­¦ëeŠw¬Õ¥µÁ½ÉĞìÙ…±¥‘1•ÑÑ•É•‘EÕ…‘ÉÕÁ±•Ìô™É½´€œ¸½±•ÑÑ•É•µÅÕ…‘ÉÕÁ±•Ì¹ÑÌœ)¥µÁ½ÉĞì¥¹Í¥‘•É¥‘½±Õµ¹Ì°Ù…±¥‘%¹Í¥‘•É¥‘I½İÌô™É½´€œ¸½¥¹Í¥‘”µÉ¥¹ÑÌœ)¥µÁ½ÉĞì¥Í!•á½±½Èô™É½´€œ¸½¥µÁ½ÉÑ•µ½±½ÉÌ¹ÑÌœ)¥µÁ½ÉĞì¥Í½•™¥¹¥Ñ¥½¸°=}IU1°ÑåÁ”½•™¥¹¥Ñ¥½¸ô™É½´€œ¸½™½œ¹ÑÌœ)¥µÁ½ÉĞì%%U1Qe}=AQ%=9L°ÕÉÉ•¹Ñ¥™™¥Õ±Ñä°‘¥™™¥Õ±Ñå%¹‘•à°‘¥™™¥Õ±Ñå=ÁÑ¥½¹1…‰•°°ÑåÁ”¥™™¥Õ±ÑåAÉ•™•É•¹”ô™É½´€œ¸½‘¥™™¥Õ±Ñä¹ÑÌœ)¥µÁ½ÉĞÑåÁ”ì¥™™¥Õ±Ñä°Y…É¥…¹Ñ±Õ•1…å½ÕĞ°Y…É¥…¹Ñ!½ÕÍ”°Y…É¥…¹ÑAÕéé±”°Y…É¥…¹ÑIÕ±”ô™É½´€œ¸½•¹¥¹”¹ÑÌœ)¥µÁ½ÉĞì±¥¹•É½ÕÁ5…Í¬ô™É½´€œ¸½±¥¹”µÉ½ÕÁÌ¹ÑÌœ)¥µÁ½ÉĞì±¥¹•M­¥ÁÍ•±±Ìô™É½´€œ¸½±¥¹”µ•½µ•ÑÉä¹ÑÌœ)¥µÁ½ÉĞìÉ•¥½¹MÕµA…ÉÑÌô™É½´€œ¸½É•¥½¸µÍÕ´¹ÑÌœ)¥µÁ½ÉĞìÙ…±¥‘=ÕÑÍ¥‘•I…ä°½ÕÑÍ¥‘•±Õ•1…‰•°ô™É½´€œ¸½½ÕÑÍ¥‘”µ±Õ•Ì¹ÑÌœ)¥µÁ½ÉĞì±½¹•1…å½ÕĞô™É½´€œ¸½±½¹”¹ÑÌœ)¥µÁ½ÉĞì½¹¹•Ñ•‘É¥‘•±±Ì°É¥‘¥…½¹…±•±±Ì°­É½Á­¥¥¥Ñá±ÕÍ¥½¹Ìô™É½´€œ¸½É¥¹ÑÌœ)¥µÁ½ÉĞÍ••‘	…¹¬™É½´€œ¸½Ù…É¥…¹ĞµÍ••‘Ì¹©Í½¸œİ¥Ñ ìÑåÁ”è€©Í½¸œô()•áÁ½ÉĞ½¹ÍĞYI%9QL€ôì(€±…ÍÍ¥Œèì(€€€¹…µ”è€±…ÍÍ¥Œœ°(€€€ÉÕ±”è€¥±°•… É½Ü°½±Õµ¸°…¹‰½àİ¥Ñ Ñ¡”‘¥¥ÑÌ€ÇŠLä½¹”•… ¸œ°(€ô°(€€­¥±±•Èµ…•Ìœèì(€€€¹…µ”è€-¥±±•Èœ°(€€€ÉÕ±”è€¥¥ÑÌ¥¸•… ‘…Í¡•…”µÕÍĞ…‘Ñ¼Ñ¡”Íµ…±°Ñ½Ñ…°¥¸¥ÑÌ½É¹•È¸¥¥ÑÌ…¹¹½ĞÉ•Á•…Ğ¥¸„…”¸œ°(€ô°(€İ¥¹‘½­Ôèì(€€€¹…µ”è€]¥¹‘½­Ôœ°(€€€ÉÕ±”è€… ½˜Ñ¡”™½ÕÈÍ¡…‘•€Ìƒ\€ÌÉ•¥½¹ÌµÕÍĞ…±Í¼½¹Ñ…¥¸Ñ¡”‘¥¥ÑÌ€ÇŠLä½¹”•… ¸œ°(€ô°(€‘¥…½¹…°èì(€€€¹…µ”è€¥…½¹…°œ°(€€€ÉÕ±”è€… ½˜Ñ¡”Ñİ¼µ…É­•‘¥…½¹…±ÌµÕÍĞ…±Í¼½¹Ñ…¥¸Ñ¡”‘¥¥ÑÌ€ÇŠLä½¹”•… ¸œ°(€ô°(€©¥Í…Üèì(€€€¹…µ”è€)¥Í…Üœ°(€€€ÉÕ±”è€¥±°•… É½Ü°½±Õµ¸°…¹½ÕÑ±¥¹•É•¥½¸İ¥Ñ Ñ¡”‘¥¥ÑÌ€ÇŠLä½¹”•… ¸œ°(€ô°(€€…¹Ñ¤µ­¹¥¡Ğœèì(€€€¹…µ”è€¹Ñ¤µ-¹¥¡Ğœ°(€€€ÉÕ±”è€•±±Ì„¡•ÍÌ­¹¥¡ÓŠeÌµ½Ù”…Á…ÉĞ…¹¹½ĞÍ¡…É”„‘¥¥Ğ¸­¹¥¡Ğµ½Ù•ÌÑİ¼•±±Ì¥¸½¹”‘¥É•Ñ¥½¸…¹½¹”•±°…É½ÍÌ¸œ°(€ô°(€€…¹Ñ¤µ­¥¹œœèì(€€€¹…µ”è€¹Ñ¤µ-¥¹œœ°(€€€ÉÕ±”è€•±±ÌÑ½Õ¡¥¹œ…Ğ„½É¹•È…¹¹½ĞÍ¡…É”„‘¥¥Ğ¸¡•¬•±±Ì½¹”É½Ü…¹½¹”½±Õµ¸…Á…ÉĞ°¥¹±Õ‘¥¹œ…É½ÍÌ‰½à½ÈÉ•¥½¸‰½É‘•ÉÌ¸œ°(€ô°(€€¹½¸µ½¹Í•ÕÑ¥Ù”œèì(€€€¹…µ”è€9½¸µ½¹Í•ÕÑ¥Ù”œ°(€€€ÉÕ±”è€•±±ÌÍ¡…É¥¹œ…¸•‘”…¹¹½Ğ½¹Ñ…¥¸½¹Í•ÕÑ¥Ù”‘¥¥ÑÌ¸¥…½¹…°¹•¥¡‰½ÉÌ…É”Õ¹É•ÍÑÉ¥Ñ•‰äÑ¡¥ÌÉÕ±”°…¹€Ä…¹€ä…É”¹½Ğ½¹Í•ÕÑ¥Ù”¸œ°(€ô°(€İ¡¥ÍÁ•ÉÌèì(€€€¹…µ”è€]¡¥ÍÁ•ÉÌœ°(€€€ÉÕ±”è€¥¥ÑÌ¥¸¹•¥¡‰½É¥¹œ•±±Ì…±½¹œ„±¥¹”µÕÍĞ‘¥™™•È‰ä…Ğ±•…ÍĞÑ¡”±¥¹—ŠeÌµ¥¹¥µÕ´¸•Éµ…¸]¡¥ÍÁ•ÉÌÕÍ•Ì„µ¥¹¥µÕ´½˜€ÔìÕÑ ]¡¥ÍÁ•ÉÌÕÍ•Ì€Ğ¸œ°(€ô°(€€±½‰…°µ•¹ÑÉ½Áäœèì(€€€¹…µ”è€±½‰…°¹ÑÉ½Áäœ°(€€€ÉÕ±”è€Ù•Éä€Èƒ\€È…É•„½¹Ñ…¥¹Ì„±½Ü‘¥¥Ğ€ ÇŠLÌ¤°„µ•‘¥Õ´‘¥¥Ğ€ ÓŠLØ¤…¹„¡¥ ‘¥¥Ğ€ ßŠLä¤¸Q¡¥Ì¥¹±Õ‘•Ì…É•…Ì…É½ÍÌ‰½à½ÈÉ•¥½¸‰½É‘•ÉÌ¸=¹”É½ÕÀ…ÁÁ•…ÉÌÑİ¥”¸ÅÕ…°‘¥¥ÑÌ…¸É•Á•…Ğ‘¥…½¹…±±ä¥˜…±°½Ñ¡•ÈÁÕéé±”ÉÕ±•Ì…±±½Ü¥Ğ¸œ°(€ô°(€•¹ÑÉ½Á¥Œèì(€€€¹…µ”è€¹ÑÉ½Á¥Œ1¥¹•Ìœ°(€€€ÉÕ±”è€… Ñ¡É•”ÍÕ•ÍÍ¥Ù”Á½Í¥Ñ¥½¹Ì½¸…¸¹ÑÉ½Á¥Œ±¥¹”½¹Ñ…¥¸½¹”±½Ü‘¥¥Ğ€ ÇŠLÌ¤°½¹”µ•‘¥Õ´‘¥¥Ğ€ ÓŠLØ¤…¹½¹”¡¥ ‘¥¥Ğ€ ßŠLä¤¸Q¡”É½ÕÁÌÉ•Á•…Ğ•Ù•ÉäÑ¡É•”Á½Í¥Ñ¥½¹Ì¸Qİ¼µ•±°±¥¹•ÌÕÍ”‘¥™™•É•¹ĞÉ½ÕÁÌ¸Q½Õ¡¥¹œÁ…Ñ¡ÌÍÑ…ä¥¹‘•Á•¹‘•¹Ğ¸œ°(€ô°(€µ½‘Õ±…Èèì(€€€¹…µ”è€5½‘Õ±…È1¥¹•Ìœ°(€€€ÉÕ±”è€… Ñ¡É•”ÍÕ•ÍÍ¥Ù”Á½Í¥Ñ¥½¹Ì½¸„5½‘Õ±…È±¥¹”½¹Ñ…¥¸½¹”‘¥¥Ğ™É½´ìÄ°€Ğ°€İô°½¹”™É½´ìÈ°€Ô°€áô…¹½¹”™É½´ìÌ°€Ø°€åô¸Q¡•Í”É½ÕÁÌ¡…Ù”‘¥™™•É•¹ĞÉ•µ…¥¹‘•ÉÌİ¡•¸‘¥Ù¥‘•‰ä€Ì¸Q¡”É½ÕÁÌÉ•Á•…Ğ•Ù•ÉäÑ¡É•”Á½Í¥Ñ¥½¹Ì¸Qİ¼µ•±°±¥¹•ÌÕÍ”‘¥™™•É•¹ĞÉ½ÕÁÌ¸Q½Õ¡¥¹œÁ…Ñ¡ÌÍÑ…ä¥¹‘•Á•¹‘•¹Ğ¸¥¥ÑÌµ…äÉ•Á•…Ğ¥˜…±°½Ñ¡•ÈÁÕéé±”ÉÕ±•Ì…±±½Ü¥Ğ¸œ°(€ô°(€É•¹‰…¸èì(€€€¹…µ”è€I•¹‰…¸œ°(€€€ÉÕ±”è€… I•¹‰…¸±¥¹”½¹Ñ…¥¹Ì„Í•Ğ½˜½¹Í•ÕÑ¥Ù”‘¥¥ÑÌ¥¸…¹ä½É‘•È°İ¥Ñ¡½ÕĞÉ•Á•Ñ¥Ñ¥½¸¸½¹¹•Ñ•‰É…¹¡•Ì½˜½¹”±Õ”™½É´½¹”Í•Ğ¸=Ù•É±…ÁÁ¥¹œ±Õ•ÌÍÑ…ä¥¹‘•Á•¹‘•¹Ğ¸œ°(€ô°(€¥¹•ÅÕ…±¥Ñäèì(€€€¹…µ”è€%¹•ÅÕ…±¥Ñäœ°(€€€ÉÕ±”è€Q¡”Á½¥¹Ñ••¹½˜•… ¥¹•ÅÕ…±¥ÑäÍ¥¸™…•ÌÑ¡”Íµ…±±•È‘¥¥Ğ¸Q¡”½Á•¸•¹™…•ÌÑ¡”±…É•È‘¥¥Ğ¸½¹¹•Ñ¥¹œ±¥¹”¥‘•¹Ñ¥™¥•ÌÑ¡”Ñİ¼•±±Ìİ¡•¸Ñ¡•ä…É”™…ÉÑ¡•È…Á…ÉĞ¸œ°(€ô°(€Á…±¥¹‘É½µ”èì(€€€¹…µ”è€A…±¥¹‘É½µ”œ°(€€€ÉÕ±”è€… A…±¥¹‘É½µ”±¥¹”É•…‘ÌÑ¡”Í…µ”¥¸‰½Ñ ‘¥É•Ñ¥½¹Ì¸•±±Ì…Ğµ…Ñ¡¥¹œ‘¥ÍÑ…¹•Ì™É½´¥ÑÌ•¹‘Ì½¹Ñ…¥¸Ñ¡”Í…µ”‘¥¥Ğ¸Q¡”µ¥‘‘±”•±°½˜…¸½‘µ±•¹Ñ ±¥¹”¡…Ì¹¼µ…Ñ¡¥¹œÁ…ÉÑ¹•È¸œ°(€ô°(€Á…É¥Ñäèì(€€€¹…µ”è€=‘½Ù•¸œ°(€€€ÉÕ±”è€•±±Ìİ¥Ñ „¥É±”½¹Ñ…¥¸…¸½‘‘¥¥Ğ€ Ä°€Ì°€Ô°€Ü°½È€ä¤¸•±±Ìİ¥Ñ „ÍÅÕ…É”½¹Ñ…¥¸…¸•Ù•¸‘¥¥Ğ€ È°€Ğ°€Ø°½È€à¤¸U¹µ…É­••±±Ì…±±½Ü•¥Ñ¡•È¸œ°(€ô°(€‰•Ñİ••¸èì(€€€¹…µ”è€	•Ñİ••¸1¥¹•Ìœ°(€€€ÉÕ±”è€Q¡”‘¥¥ÑÌ¥¹Í¥‘”•… 	•Ñİ••¸±¥¹”µÕÍĞ±¥”ÍÑÉ¥Ñ±ä‰•Ñİ••¸Ñ¡”‘¥¥ÑÌ¥¸¥ÑÌÑİ¼¥É±•Ì¸Q¡”Íµ…±±•È•¹‘Á½¥¹Ğ…¸‹]4ÖÚ$z{-®éÜj×\™Ù\ˆ[ˆ›İ‰ËˆKŸH\ÈÛÛœİ‚™^Ü[˜İ[Ûˆ\Ô]XY\T[J[Nˆ˜\šX[[H[™Yš[™Y
+Nˆ[H\È^˜Xİ˜\šX[[KÈ\Nˆ	Ü]XY\IÈ	Ü]XY\K\İ[IÈOˆÂˆ™]\›ˆ[OË\HOOH	Ü]XY\IÈ[OË\HOOH	Ü]XY\K\İ[IÂŸB‚™^ÜÛÛœİUPQ•TWÔÕSWÔ•SHH	ÕH\™Ù\İYÚ]\›İ[™H]XYP\œ›İÜÈÚ\˜ÛH\]X[ÈHİ[HÙˆHİ\ˆ™YK‰Â‚™^Ü[˜İ[Ûˆ]XY\PÙ[ÊÜYˆ[X™\‹Ú^™HHJNˆ™XYÛ›HÛ[X™\‹[X™\‹[X™\‹[X™\—HÂˆ™]\›ˆİÜYÜY
+ÈKÜY
+ÈÚ^™KÜY
+ÈÚ^™H
+ÈWBŸB‚™^ÜÛÛœİÒS‘ÒÕWÔ‘QÒSÓ”ÈHÌLM‹LK›X\
 
-export const VARIANTS = {
-  classic: {
-    name: 'Classic',
-    rule: 'Fill each row, column, and box with the digits 1â€“9 once each.',
-  },
-  'killer-cages': {
-    name: 'Killer',
-    rule: 'Digits in each dashed cage must add to the small total in its corner. Digits cannot repeat in a cage.',
-  },
-  windoku: {
-    name: 'Windoku',
-    rule: 'Each of the four shaded 3 Ã— 3 regions must also contain the digits 1â€“9 once each.',
-  },
-  diagonal: {
-    name: 'Diagonal',
-    rule: 'Each of the two marked diagonals must also contain the digits 1â€“9 once each.',
-  },
-  jigsaw: {
-    name: 'Jigsaw',
-    rule: 'Fill each row, column, and outlined region with the digits 1â€“9 once each.',
-  },
-  'anti-knight': {
-    name: 'Anti-Knight',
-    rule: 'Cells a chess knightâ€™s move apart cannot share a digit. A knight moves two cells in one direction and one cell across.',
-  },
-  'anti-king': {
-    name: 'Anti-King',
-    rule: 'Cells touching at a corner cannot share a digit. Check cells one row and one column apart, including across box or region borders.',
-  },
-  'non-consecutive': {
-    name: 'Non-Consecutive',
-    rule: 'Cells sharing an edge cannot contain consecutive digits. Diagonal neighbors are unrestricted by this rule, and 1 and 9 are not consecutive.',
-  },
-  whispers: {
-    name: 'Whispers',
-    rule: 'Digits in neighboring cells along a line must differ by at least the lineâ€™s minimum. German Whispers uses a minimum of 5; Dutch Whispers uses 4.',
-  },
-  'global-entropy': {
-    name: 'Global Entropy',
-    rule: 'Every 2 Ã— 2 area contains a low digit (1â€“3), a medium digit (4â€“6) and a high digit (7â€“9). This includes areas across box or region borders. One group appears twice. Equal digits can repeat diagonally if all other puzzle rules allow it.',
-  },
-  entropic: {
-    name: 'Entropic Lines',
-    rule: 'Each three successive positions on an Entropic line contain one low digit (1â€“3), one medium digit (4â€“6) and one high digit (7â€“9). The groups repeat every three positions. Two-cell lines use different groups. Touching paths stay independent.',
-  },
-  modular: {
-    name: 'Modular Lines',
-    rule: 'Each three successive positions on a Modular line contain one digit from {1, 4, 7}, one from {2, 5, 8} and one from {3, 6, 9}. These groups have different remainders when divided by 3. The groups repeat every three positions. Two-cell lines use different groups. Touching paths stay independent. Digits may repeat if all other puzzle rules allow it.',
-  },
-  renban: {
-    name: 'Renban',
-    rule: 'Each Renban line contains a set of consecutive digits in any order, without repetition. Connected branches of one clue form one set. Overlapping clues stay independent.',
-  },
-  inequality: {
-    name: 'Inequality',
-    rule: 'The pointed end of each inequality sign faces the smaller digit. The open end faces the larger digit. A connecting line identifies the two cells when they are farther apart.',
-  },
-  palindrome: {
-    name: 'Palindrome',
-    rule: 'Each Palindrome line reads the same in both directions. Cells at matching distances from its ends contain the same digit. The middle cell of an odd-length line has no matching partner.',
-  },
-  parity: {
-    name: 'Odd/Even',
-    rule: 'Cells with a circle contain an odd digit (1, 3, 5, 7, or 9). Cells with a square contain an even digit (2, 4, 6, or 8). Unmarked cells allow either.',
-  },
-  between: {
-    name: 'Between Lines',
-    rule: 'The digits inside each Between line must lie strictly between the digits in its two circles. The smaller endpoint can be at either end. Interior digits can repeat if the other puzzle rules allow it. Touching lines stay independent.',
-  },
-  'region-sum': {
-    name: 'Region Sum Lines',
-    rule: 'Each blue line has parts with the same total. Region borders divide the line unless its listed groups say otherwise. Different lines can have different totals.',
-  },
-  'little-killer': {
-    name: 'Little Killer',
-    rule: 'Digits along each indicated diagonal must add to its outside total. Follow the arrow through the whole diagonal. Digits may repeat along a diagonal if the other puzzle rules allow it.',
-  },
-  sandwich: {
-    name: 'Sandwich',
-    rule: 'An outside clue gives the sum of the digits strictly between 1 and 9 in its row or column. Do not include 1 or 9 in the total. A zero means 1 and 9 are next to each other. Unmarked rows and columns have no Sandwich total.',
-  },
-  'x-sum': {
-    name: 'X-Sums',
-    rule: 'An outside clue gives the sum of the first X digits in its direction. The first digit is X and counts toward the sum. For example, a first digit of 3 means the first three cells add to the clue. Unmarked directions have no X-Sum total.',
-  },
-  skyscrapers: {
-    name: 'Skyscrapers',
-    rule: 'Each digit is the height of a building. An outside clue counts the buildings visible from that direction. Count the first building and each new tallest building; taller buildings hide shorter ones behind them. Unmarked directions have no visibility clue.',
-  },
-  clone: {
-    name: 'Clone',
-    rule: 'Cells with the same Clone letter must contain the same digit. Different letters can contain the same digit if the other puzzle rules allow it.',
-  },
-  thermometer: {
-    name: 'Thermometer',
-    rule: 'Digits must increase along each thermometer from the bulb to the tip.',
-  },
-  arrow: {
-    name: 'Arrow',
-    rule: 'The digits along each arrow must add to the digit in its circle.',
-  },
-  kropki: {
-    name: 'Kropki',
-    rule: 'Digits separated by a white dot are consecutive. Across a black dot, one digit is double the other. Unmarked pairs have no extra rule.',
-  },
-  xv: {
-    name: 'XV',
-    rule: 'Digits joined by a V sum to 5. Digits joined by an X sum to 10. Unmarked pairs can have any sum unless a negative rule is stated.',
-  },
-  'adjacent-total': {
-    name: 'Two-cell sums',
-    rule: 'Digits joined by a Roman numeral have that total. For example, XV means 15. Unmarked pairs can have any total unless a negative V or X rule is stated.',
-  },
-  quadruple: {
-    name: 'Quadruple',
-    rule: 'Each digit printed in a circle must appear in the four surrounding cells. A repeated printed digit needs that many separate cells.',
-  },
-} as const
+İ\
+HO‚ˆ\œ˜^K™œ›ÛJÈ[™İˆHK
+Ë[™^
+HOˆİ\
+ÈX]™›ÛÜŠ[™^ÈÊH
+ˆH
+È[™^	HÊJB‚™^Ü[˜İ[Ûˆ˜\šX[İ\ÙQš[Ù[Ê[Nˆ˜\šX[[JNˆ™XYÛ›H[X™\–×HÂˆYˆ
+[K\HOOH	ÙXYÛÛ˜[	ÊH™]\›ˆÜšYXYÛÛ˜[Ù[ÊK[K™XYÛÛ˜[
+BˆYˆ
+[K\HOOH	Ù^˜KZİ\ÙIÈ	‰ˆÒS‘ÒÕWÔ‘QÒSÓ”ËœÛÛYJ™YÚ[ÛˆO‚ˆ™YÚ[Û‹›[™İOOH[K˜Ù[Ë›[™İ	‰ˆ™YÚ[Û‹™]™\JÙ[Oˆ[K˜Ù[Ëš[˜ÛY\ÊÙ[
+JJJH™]\›ˆ[K˜Ù[Âˆ™]\›ˆ×BŸB‚™^Ü\H˜\šX[YHÙ^[Ùˆ\[ÙˆT’PS•Â™^Ü\H^XX›U˜\šX[H^ÛYO˜\šX[Y	ØÛ\ÜÚXÉÏ‚™^Ü\H^›U˜\šX[YHÙ^[Ùˆ\[ÙˆV–“WÕT’PS•È	ÛZ^Y	Â™^Ü\H˜\šX[Ø[YHHÈYˆ^ÛYO^›U˜\šX[Y	ØÛ\ÜÚXÉÏÈ^›Nˆ˜\šX[^›NÈÛÛ][Ûˆİš[™ÎÈ›ÙÏÎˆ›ÙÑYš[š][ÛˆB‚‹ÊŠˆ˜\šX[[\È]]]ÛX]XÈÛÛš[™ÈÛÛÈØ[ˆ[˜ÛYKˆ[\HÙ[Xİ[ÛœÈ\ÙHÛ\ÜÚXÈİYÚİH[\Ëˆ
+‹Â™^ÜÛÛœİT’PS•ÕÓÓÓÔSÓ”ÈHÂˆÈYˆ	ÚÚ[\‹XØYÙ\ÉËX™[ˆ	ÒÚ[\ˆØYÙ\ÉÈKˆÈYˆ	İÚ[™ÚİIËX™[ˆ	ÕÚ[™ÚİH™YÚ[ÛœÉÈKˆÈYˆ	Ù^˜K\™YÚ[ÛœÉËX™[ˆ	Óİ\ˆ^˜H™YÚ[ÛœÉÈKˆÈYˆ	ÙXYÛÛ˜[	ËX™[ˆ	ÑXYÛÛ˜[	ÈKˆÈYˆ	ÚšYÜØ]ÉËX™[ˆ	ÒšYÜØ]È™YÚ[ÛœÉÈKˆÈYˆ	Û][‹\Ü]X\™IËX™[ˆ	Ó][ˆÜ]X\™IÈKˆÈYˆ	Ú[œÚYKYÜšY	ËX™[ˆ	Ò[œÚYHÜšY	ÈKˆÈYˆ	Ø[KZÛšYÚ	ËX™[ˆ	Ğ[KRÛšYÚ	ÈKˆÈYˆ	Ø[KZÚ[™ÉËX™[ˆ	Ğ[KRÚ[™ÉÈKˆÈYˆ	Û›Û‹XÛÛœÙXİ]]™IËX™[ˆ	Ó›Û‹PÛÛœÙXİ]]™IÈKˆÈYˆ	İ\›[ÛY]\‰ËX™[ˆ	Õ\›[ÛY]\‰ÈKˆÈYˆ	Ø\œ›İÉËX™[ˆ	Ğ\œ›İÉÈKˆÈYˆ	Ü[X\œ›İÉËX™[ˆ	Ô[\œ›İÜÉÈKˆÈYˆ	ÚÜ›ÜÚIËX™[ˆ	ÒÜ›ÜÚIÈKˆÈYˆ	Û[X™\™YYİÉËX™[ˆ	Ó[X™\™YİÉÈKˆÈYˆ	Ş‰ËX™[ˆ	Ö‰ÈKˆÈYˆ	ØY˜XÙ[]İ[	ËX™[ˆ	ÕÛËXÙ[İ[\ÉÈKˆÈYˆ	İÚ\Ü\œÉËX™[ˆ	ÕÚ\Ü\œÉÈKˆÈYˆ	Ø™]ÙY[‰ËX™[ˆ	Ğ™]ÙY[ˆ[™\ÉÈKˆÈYˆ	ÛØÚÛİ]	ËX™[ˆ	ÓØÚÛİ][™\ÉÈKˆÈYˆ	ØÛÛœÙXİ]]™K\[‰ËX™[ˆ	ĞÛÛœÙXİ]]™H[™\ÉÈKˆÈYˆ	Ù[›ÜXÉËX™[ˆ	Ñ[›ÜXÈ[™\ÉÈKˆÈYˆ	Û[Ù[\‰ËX™[ˆ	Ó[Ù[\ˆ[™\ÉÈKˆÈYˆ	Ü[[™›ÛYIËX™[ˆ	Ô[[™›ÛYIÈKˆÈYˆ	Ü™[˜˜[‰ËX™[ˆ	Ô™[˜˜[‰ÈKˆÈYˆ	Ü™YÚ[Û‹\İ[IËX™[ˆ	Ô™YÚ[Ûˆİ[H[™\ÉÈKˆÈYˆ	Ú[™\]X[]IËX™[ˆ	Ò[™\]X[]IÈKˆÈYˆ	ÛZ[š[][K[X^[][IËX™[ˆ	ÓZ[š[][H[™X^[][IÈKˆÈYˆ	Ü\š]IËX™[ˆ	ÓÙÑ]™[‰ÈKˆÈYˆ	ÙYÚ]\™\İšXİ[Û‰ËX™[ˆ	ÑYÚ]™\İšXİ[ÛœÉÈKˆÈYˆ	Ù\İ[˜İXÙ[ÉËX™[ˆ	ÑY™™\™[YÚ]ÉÈKˆÈYˆ	ØÛÛ™IËX™[ˆ	ĞÛÛ™IÈKˆÈYˆ	Ü]XY\IËX™[ˆ	Ô]XY\IÈKˆÈYˆ	Ü]XY\K\İ[IËX™[ˆ	Ô]XYP\œ›İÜÉÈKˆÈYˆ	Û]\™Y\]XY\\ÉËX™[ˆ	Ó]\™Y]XY\\ÉÈKˆÈYˆ	ÙÛØ˜[Y[›ÜIËX™[ˆ	ÑÛØ˜[[›ÜIÈKˆÈYˆ	ÜØ[™ÚXÚ	ËX™[ˆ	ÔØ[™ÚXÚ	ÈKˆÈYˆ	Ş\İ[IËX™[ˆ	ÖTİ[\ÉÈKˆÈYˆ	Û]KZÚ[\‰ËX™[ˆ	Ó]HÚ[\‰ÈKˆÈYˆ	ÜÚŞ\ØÜ˜\\œÉËX™[ˆ	ÔÚŞ\ØÜ˜\\œÉÈK—H\ÈÛÛœİ™^Ü\H˜\šX[ÛÛYH\[ÙˆT’PS•ÕÓÓÓÔSÓ”ÖÛ[X™\—VÉÚY	×B˜ÛÛœİ˜\šX[ÛÛYÈH™]ÈÙ]İš[™ÏŠT’PS•ÕÓÓÓÔSÓ”Ë›X\
 
-export const PUZZLE_VARIANTS = {
-  ...VARIANTS,
-  'pill-arrow': {
-    name: 'Pill Arrows',
-    rule: 'The digits on the arrow add to the two-digit number in the pill.',
-  },
-  lockout: {
-    name: 'Lockout Lines',
-    rule: 'The two diamonds differ by at least 4. Every interior digit is smaller than both diamonds or larger than both.',
-  },
-} as const
-
-export function isQuadrupleRule(rule: VariantRule | undefined): rule is Extract<VariantRule, { type: 'quadruple' | 'quadruple-sum' }> {
-  return rule?.type === 'quadruple' || rule?.type === 'quadruple-sum'
-}
-
-export const QUADRUPLE_SUM_RULE = 'The largest digit around a Quad-Arrows circle equals the sum of the other three.'
-
-export function quadrupleCells(topLeft: number, size = 9): readonly [number, number, number, number] {
-  return [topLeft, topLeft + 1, topLeft + size, topLeft + size + 1]
-}
-
-export const WINDOKU_REGIONS = [10, 14, 46, 50].map((start) =>
-  Array.from({ length: 9 }, (_, index) => start + Math.floor(index / 3) * 9 + index % 3))
-
-export function variantHouseFillCells(rule: VariantRule): readonly number[] {
-  if (rule.type === 'diagonal') return gridDiagonalCells(9, rule.diagonal)
-  if (rule.type === 'extra-house' && WINDOKU_REGIONS.some(region =>
-    region.length === rule.cells.length && region.every(cell => rule.cells.includes(cell)))) return rule.cells
-  return []
-}
-
-export type VariantId = keyof typeof VARIANTS
-export type PlayableVariant = Exclude<VariantId, 'classic'>
-export type PuzzleVariantId = keyof typeof PUZZLE_VARIANTS | 'mixed'
-export type VariantGame = { id: Exclude<PuzzleVariantId, 'classic'>; puzzle: VariantPuzzle; solution: string; fog?: FogDefinition }
-
-/** Variant rules that automatic solving tools can include. Empty selections use classic Sudoku rules. */
-export const VARIANT_TOOL_OPTIONS = [
-  { id: 'killer-cages', label: 'Killer cages' },
-  { id: 'windoku', label: 'Windoku regions' },
-  { id: 'extra-regions', label: 'Other extra regions' },
-  { id: 'diagonal', label: 'Diagonal' },
-  { id: 'jigsaw', label: 'Jigsaw regions' },
-  { id: 'latin-square', label: 'Latin Square' },
-  { id: 'inside-grid', label: 'Inside Grid' },
-  { id: 'anti-knight', label: 'Anti-Knight' },
-  { id: 'anti-king', label: 'Anti-King' },
-  { id: 'non-consecutive', label: 'Non-Consecutive' },
-  { id: 'thermometer', label: 'Thermometer' },
-  { id: 'arrow', label: 'Arrow' },
-  { id: 'pill-arrow', label: 'Pill Arrows' },
-  { id: 'kropki', label: 'Kropki' },
-  { id: 'numbered-dots', label: 'Numbered dots' },
-  { id: 'xv', label: 'XV' },
-  { id: 'adjacent-total', label: 'Two-cell sums' },
-  { id: 'whispers', label: 'Whispers' },
-  { id: 'between', label: 'Between Lines' },
-  { id: 'lockout', label: 'Lockout Lines' },
-  { id: 'consecutive-run', label: 'Consecutive Lines' },
-  { id: 'entropic', label: 'Entropic Lines' },
-  { id: 'modular', label: 'Modular Lines' },
-  { id: 'palindrome', label: 'Palindrome' },
-  { id: 'renban', label: 'Renban' },
-  { id: 'region-sum', label: 'Region Sum Lines' },
-  { id: 'inequality', label: 'Inequality' },
-  { id: 'minimum-maximum', label: 'Minimum and Maximum' },
-  { id: 'parity', label: 'Odd/Even' },
-  { id: 'digit-restriction', label: 'Digit restrictions' },
-  { id: 'distinct-cells', label: 'Different digits' },
-  { id: 'clone', label: 'Clone' },
-  { id: 'quadruple', label: 'Quadruple' },
-  { id: 'quadruple-sum', label: 'Quad-Arrows' },
-  { id: 'lettered-quadruples', label: 'Lettered Quadruples' },
-  { id: 'global-entropy', label: 'Global Entropy' },
-  { id: 'sandwich', label: 'Sandwich' },
-  { id: 'x-sum', label: 'X-Sums' },
-  { id: 'little-killer', label: 'Little Killer' },
-  { id: 'skyscrapers', label: 'Skyscrapers' },
-] as const
-export type VariantToolId = typeof VARIANT_TOOL_OPTIONS[number]['id']
-const variantToolIds = new Set<string>(VARIANT_TOOL_OPTIONS.map(({ id }) => id))
-export function isVariantToolId(value: unknown): value is VariantToolId {
-  return typeof value === 'string' && variantToolIds.has(value)
-}
-
-function toolForRule(rule: VariantRule): VariantToolId | null {
-  if (rule.type === 'extra-house') {
-    return WINDOKU_REGIONS.some(region => region.length === rule.cells.length && region.every(cell => rule.cells.includes(cell)))
-      ? 'windoku' : 'extra-regions'
-  }
-  if (rule.type === 'inside-grid') return 'inside-grid'
-  if (rule.type === 'minimum' || rule.type === 'maximum') return 'minimum-maximum'
-  if (rule.type === 'labeled-dots') return 'numbered-dots'
-  if (rule.type === 'terrain-sandwich') return 'sandwich'
-  return variantToolIds.has(rule.type) ? rule.type as VariantToolId : null
-}
-
-/** Keep classic Sudoku rules and only the selected variant rules. */
-export function puzzleForVariantTools(puzzle: VariantPuzzle, enabled: readonly VariantToolId[] = []): VariantPuzzle {
-  const selected = new Set(enabled)
-  const rules = (puzzle.rules ?? []).filter(rule => {
+ÈYJHOˆY
+JB™^Ü[˜İ[Ûˆ\Õ˜\šX[ÛÛY
+˜[YNˆ[šÛ›İÛŠNˆ˜[YH\È˜\šX[ÛÛYÂˆ™]\›ˆ\[Ùˆ˜[YHOOH	Üİš[™ÉÈ	‰ˆ˜\šX[ÛÛYËš\Ê˜[YJBŸB‚™[˜İ[ÛˆÛÛ›Ü”[J[Nˆ˜\šX[[JNˆ˜\šX[ÛÛY[ÂˆYˆ
+[K\HOOH	Ù^˜KZİ\ÙIÊHÂˆ™]\›ˆÒS‘ÒÕWÔ‘QÒSÓ”ËœÛÛYJ™YÚ[ÛˆOˆ™YÚ[Û‹›[™İOOH[K˜Ù[Ë›[™İ	‰ˆ™YÚ[Û‹™]™\JÙ[Oˆ[K˜Ù[Ëš[˜ÛY\ÊÙ[
+JJBˆÈ	İÚ[™ÚİIÈˆ	Ù^˜K\™YÚ[ÛœÉÂˆBˆYˆ
+[K\HOOH	Ú[œÚYKYÜšY	ÊH™]\›ˆ	Ú[œÚYKYÜšY	ÂˆYˆ
+[K\HOOH	ÛZ[š[][IÈ[K\HOOH	ÛX^[][IÊH™]\›ˆ	ÛZ[š[][K[X^[][IÂˆYˆ
+[K\HOOH	ÛX™[YYİÉÊH™]\›ˆ	Û[X™\™YYİÉÂˆYˆ
+[K\HOOH	İ\œ˜Z[‹\Ø[™ÚXÚ	ÊH™]\›ˆ	ÜØ[™ÚXÚ	Âˆ™]\›ˆ˜\šX[ÛÛYËš\Ê[K\JHÈ[K\H\È˜\šX[ÛÛYˆ[ŸB‚‹ÊŠˆÙY\Û\ÜÚXÈİYÚİH[\È[™Û›HHÙ[XİY˜\šX[[\Ëˆ
+‹Â™^Ü[˜İ[Ûˆ^›Q›Ü•˜\šX[ÛÛÊ^›Nˆ˜\šX[^›K[˜X›Yˆ™XYÛ›H˜\šX[ÛÛY×HH×JNˆ˜\šX[^›HÂˆÛÛœİÙ[XİYH™]ÈÙ]
+[˜X›Y
+BˆÛÛœİ[j¹âkºwµçhºÚn¶Šâ‚)Ú–Ú$zw(º{xÓMS¢Ö¥¢ëiºÙbë5es = (puzzle.rules ?? []).filter(rule => {
     const tool = toolForRule(rule)
     return tool !== null && selected.has(tool)
   })
@@ -317,431 +114,86 @@ function disjointGroupPosition(rule: VariantRule): number | undefined {
 export const DISJOINT_GROUPS_RULE = 'Disjoint Groups: cells in the same relative position within each of the nine 3 Ã— 3 blocks also contain the digits 1â€“9 once each.'
 
 /** Recognize the complete layout without changing its nine typed house rules. */
-export function disjointGroupRuleIndices(rules: readonly VariantRule[]): ReadonlySet<number> {
-  const groups = rules.flatMap((rule, index) => {
-    const position = disjointGroupPosition(rule)
-    return position === undefined ? [] : [{ index, position }]
-  })
-  return new Set(new Set(groups.map(group => group.position)).size === 9 ? groups.map(group => group.index) : [])
-}
+export fun×M5¶‰ËkºwµçW2‚’’–b‡fÇVW5¶g&öÕÒÓÒsr’°¢f÷"†6öç7B¶¢ÂFõÒöb'VÆRæ6VÆÇ2æVçG&–W2‚’’–b†’R2ÓÒ¢R2’Ö6·5·FõÒcÒâƒÃÂ„çVÖ&W"‡fÇVW5¶g&öÕÒ’Ò’¢Ğ¢Ğ¢–b‡'VÆRçG—RÓÓÒw&Væ&âr’°¢6öç7BW6VBÒ'VÆRæ6VÆÇ2ç&VGV6R‚†Ö6²Â6VÆÂ’ÓâÖ6²Â‡fÇVW5¶6VÆÅÒÓÓÒsrò¢ÃÂ„çVÖ&W"‡fÇVW5¶6VÆÅÒ’Ò’’Â¢f÷"†6öç7B6VÆÂöb'VÆRæ6VÆÇ2’Ö6·5¶6VÆÅÒcÒçW6V@¢Ğ¢Ğ¢&WGW&âÖ6·0§Ğ ¦W‡÷'BgVæ7F–öâf&–çEVW'2‡W§¦ÆS¢f&–çEW§¦ÆRÂVæFVf–æVBÂ¢çVÖ&W"Â#¢çVÖ&W"“¢&ööÆVâ°¢–b‚W§¦ÆRÇÂÓÓÒ"’&WGW&âfÇ6P¢&WGW&â‡W§¦ÆRç'VÆW2óòµÒ’ç6öÖR‚‡'VÆR’Óâ°¢–b‡'VÆRçG—RÓÓÒv–æWVÆ—G’r’&WGW&âÓÓÒ'VÆRæÆW72bb"ÓÓÒ'VÆRæw&VFW"ÇÂÓÓÒ'VÆRæw&VFW"bb"ÓÓÒ'VÆRæÆW70¢–b‡'VÆRçG—RÓÓÒvF–vöæÂr’°¢6öç7BÆ–æRÒ'VÆRæF–vöæÂÓÓÒvÖ–âròÖ–äF–vöæÂ¢çF”F–vöæÀ¢&WGW&âÆ–æRæ–æ6ÇVFW2†’bbÆ–æRæ–æ6ÇVFW2†"¢Ğ¢–b‡'VÆRçG—RÓÓÒvçF’Ö¶æ–v‡Br’°¢6öç7B&÷w2ÒÖF‚æ'2„ÖF‚æfÆö÷"†ò’’ÒÖF‚æfÆö÷"†"ò’’¢6öç7B6öÇVÖç2ÒÖF‚æ'2†R’Ò"R’¢&WGW&â&÷w2¢6öÇVÖç2ÓÓÒ ¢Ğ¢–b‡'VÆRçG—RÓÓÒvçF’Ö¶–ærr’°¢&WGW&âÖF‚æ'2„ÖF‚æfÆö÷"†ò’’ÒÖF‚æfÆö÷"†"ò’’’ÓÓÒbbÖF‚æ'2†R’Ò"R’’ÓÓÒ¢Ğ¢–b‡'VÆRçG—RÓÓÒv¶–ÆÆW"Ö6vW2r’&WGW&â'VÆRæ6vW2ç6öÖR‚‡²6VÆÇ2Ò’Óâ6VÆÇ2æ–æ6ÇVFW2†’bb6VÆÇ2æ–æ6ÇVFW2†"’¢–b‡'VÆRçG—RÓÓÒvW‡G&Ö†÷W6RrÇÂ'VÆRçG—RÓÓÒvF—7F–æ7BÖ6VÆÇ2r’&WGW&â'VÆRæ6VÆÇ2æ–æ6ÇVFW2†’bb'VÆRæ6VÆÇ2æ–æ6ÇVFW2†"¢–b‡'VÆRçG—RÓÓÒv–ç6–FRÖw&–Br’°¢6öç7B&÷rÒ'VÆRç&÷w2æf–æB‡&÷rÓâ&÷ræ–æ6ÇVFW2†’¢&WGW&â&÷rÓÒVæFVf–æVBbb‡&÷ræ–æ6ÇVFW2†"’ÇÂ'VÆRç&÷w2ç6öÖR†÷F†W"Óâ÷F†W%·&÷ræ–æFW„öb†•ÒÓÓÒ"’¢Ğ¢–b‡'VÆRçG—RÓÓÒwv†—7W'2r’&WGW&â'VÆRæ6VÆÇ2ç6öÖR‚†6VÆÂÂ’’Óâ’âb`¢†6VÆÂÓÓÒbb'VÆRæ6VÆÇ5¶’ÒÒÓÓÒ"ÇÂ6VÆÂÓÓÒ"bb'VÆRæ6VÆÇ5¶’ÒÒÓÓÒ’¢–b‡'VÆRçG—RÓÓÒvVçG&÷–2rÇÂ'VÆRçG—RÓÓÒvÖöGVÆ"r’&WGW&â'VÆRæ6VÆÇ2æ–æ6ÇVFW2†’bb'VÆRæ6VÆÇ2æ–æ6ÇVFW2†"’bb'VÆRæ6VÆÇ2æ–æFW„öb†’R2ÓÒ'VÆRæ6VÆÇ2æ–æFW„öb†"’R0¢–b‚‡'VÆRçG—RÓÓÒv&WGvVVârÇÂ'VÆRçG—RÓÓÒvÆö6¶÷WBr’bb'VÆRæ6VÆÇ2æ–æ6ÇVFW2†’bb'VÆRæ6VÆÇ2æ–æ6ÇVFW2†"’’°¢6öç7BVæG2Ò·'VÆRæ6VÆÇ5³ÒÂ'VÆRæ6VÆÇ5·'VÆRæ6VÆÇ2æÆVæwF‚ÒÕĞ¢&WGW&âVæG2æ–æ6ÇVFW2†’ÇÂVæG2æ–æ6ÇVFW2†"¢Ğ¢–b‡'VÆRçG—RÓÓÒwF†W&ÖöÖWFW"rÇÂ'VÆRçG—RÓÓÒw&Væ&ârÇÂ'VÆRçG—RÓÓÒv6öç6V7WF—fR×'Vâr’&WGW&â'VÆRæ6VÆÇ2æ–æ6ÇVFW2†’bb'VÆRæ6VÆÇ2æ–æ6ÇVFW2†"¢&WGW&âfÇ6P¢Ò§Ğ ¦W‡÷'BgVæ7F–öâ†4Ö&¶VE—"‡—'3¢&VFöæÇ’‡&VFöæÇ’¶çVÖ&W"ÂçVÖ&W%Ò•µÒÂVæFVf–æVBÂ¢çVÖ&W"Â#¢çVÖ&W"’°¢&WGW&â—'3òç6öÖR‚…¶ÆVgBÂ&–v‡EÒ’Óâ†ÆVgBÓÓÒbb&–v‡BÓÓÒ"’ÇÂ†ÆVgBÓÓÒ"bb&–v‡BÓÓÒ’’óòfÇ6P§Ğ ¦W‡÷'BgVæ7F–öâ6VÆÇ56†&TVFvR†¢çVÖ&W"Â#¢çVÖ&W"’°¢&WGW&âÖF‚æ'2„ÖF‚æfÆö÷"†ò’’ÒÖF‚æfÆö÷"†"ò’’’²ÖF‚æ'2†R’Ò"R’’ÓÓÒ§Ğ ¦W‡÷'BgVæ7F–öâÆ–æG&öÖU'FæW"†6VÆÇ3¢&VFöæÇ’çVÖ&W%µÒÂ6VÆÃ¢çVÖ&W"’°¢6öç7B–æFW‚Ò6VÆÇ2æ–æFW„öb†6VÆÂ¢–b†–æFW‚ÂÇÂ–æFW‚ÓÓÒ6VÆÇ2æÆVæwF‚ÒÒ–æFW‚’&WGW&âVæFVf–æV@¢&WGW&â6VÆÇ5¶6VÆÇ2æÆVæwF‚ÒÒ–æFW…Ğ§Ğ ¦6öç7B$ôÔåõDõDÅ2Ò²t””’rÂt•brÂubrÂud’rÂud”’rÂud””’rÂt•‚rÂu‚rÂu„’rÂu„”’rÂu„””’rÂu„•brÂu…brÂu…d’rÂu…d”’uĞ ¢ò¢¢&öÖâçVÖW&Ç2W6VB'’F†R6ö6‚GvòÖ6VÆÂ×7VÒ6öç7G'V7F÷"â¢ğ¦W‡÷'BgVæ7F–öâ7VÔÆ&VÂ‡7VÓ¢çVÖ&W"’°¢&WGW&â$ôÔåõDõDÅ5·7VÒÒ5Òóò7G&–ær‡7VÒ§Ğ §G—R6VÆÄW†6ÇW6–öå'VÆRÒW‡G&7CÅf&–çE'VÆRÂ²G—S¢vVçG&÷–2rÂvÖöGVÆ"rÂw&Væ&ârÂv6öç6V7WF—fR×'VârÂvF¦6VçB×F÷FÂrÂv–æWVÆ—G’rÂwÆ–æG&öÖRrÂwv†—7W'2rÓà§G—RVFvTW†6ÇW6–öå'VÆRÒW‡G&7CÅf&–çE'VÆRÂ²G—S¢væöâÖ6öç6V7WF—fRrÂw‡brÂvÖ–æ–×VÒrÂvÖ†–×VÒrÓà¦6öç7Bæô6VÆÄW†6ÇW6–öç3¢&VFöæÇ’6VÆÄW†6ÇW6–öå'VÆUµÒÒµĞ¦6öç7BW†6ÇW6–öä–æFW†W2ÒæWrvV´ÖÇ&VFöæÇ’f&–çE'VÆUµÒÂ&WGW&åG—SÇG—Vöb–æFW„W†6ÇW6–öç3ãâ‚ ¢òòW§¦ÆRFVf–æ—F–öç26†&Râ–Ö×WF&ÆR'VÆRÆ—7B7&÷72Æ’÷6—F–öç2à¦gVæ7F–öâ–æFW„W†6ÇW6–öç2‡'VÆW3¢&VFöæÇ’f&–çE'VÆUµÒ’°¢6öç7B'”6VÆÂÒ'&“Ä6VÆÄW†6ÇW6–öå'VÆUµÒÂVæFVf–æVCâƒƒ¢6öç7BVFvU'VÆW3¢VFvTW†6ÇW6–öå'VÆUµÒÒµĞ¢6öç7B·&÷¶“¢W‡G&7CÅf&–çE'VÆRÂ²G—S¢v·&÷¶’rÂvÆ&VÆVBÖF÷G2rÓåµÒÒµĞ¢ÆWB6ÆöæW3¢&WGW&åG—SÇG—Vöb6ÆöæTÆ–÷WCå²vBuÒÂVæFVf–æV@¢f÷"†6öç7B'VÆRöb'VÆW2’°¢7v—F6‚‡'VÆRçG—R’°¢66Rv·&÷¶’s¢66RvÆ&VÆVBÖF÷G2s¢·&÷¶’çW6‚‡'VÆR“²6öçF–çVP¢66Rw‡bs¢66RvæöâÖ6öç6V7WF—fRs¢66RvÖ–æ–×VÒs¢66RvÖ†–×VÒs¢VFvU'VÆW2çW6‚‡'VÆR“²6öçF–çVP¢66Rv6ÆöæRs¢6ÆöæW2óóÒ6ÆöæTÆ–÷WB‡'VÆW2’æC²6öçF–çVP¢66RvVçG&÷–2s¢66RvÖöGVÆ"s¢66Rw&Væ&âs¢66Rv6öç6V7WF—fR×'Vâs¥š®x§‚ÚîÆ­yÚ.¶›­¢¸ Šv¥¶‰Ê.Ş4ÓTèµ©hºÚn¶X§zÍHØ\ÙH	ØY˜XÙ[]İ[	ÎˆØ\ÙH	Ü[[™›ÛYIÎˆØ\ÙH	İÚ\Ü\œÉÎ‚ˆØ\ÙH	Ú[™\]X[]IÎˆÂˆÛÛœİÙ[ÈH[K\HOOH	Ú[™\]X[]IÈÈÜ[K›\ÜË[K™Ü™X]\—Hˆ™]ÈÙ]
+[K˜Ù[ÊBˆ›Üˆ
+ÛÛœİÙ[ÙˆÙ[ÊH
+PÙ[ØÙ[HÏÏH×JKœ\Ú
+[JBˆBˆBˆBˆÛÛœİ[™^HÈPÙ[ˆPÙ[›X\
+ØØ[OˆØØ[ËœÛXÙJ
+JKYÙT[\ËÜ›ÜÚKÛÛ™\ÈBˆ^Û\Ú[Û’[™^\ËœÙ]
+[\Ë[™^
+Bˆ™]\›ˆ[™^ŸB‚‹ÊŠˆ^˜HZ\Ú\ÙH^Û\Ú[ÛœÈ™^[Û™HØ[YKYYÚ]Y\œÈ\ÙYHH^Y\‹ˆ
+‹Â™^Ü[˜İ[Ûˆ˜\šX[YÚ]^Û\Ú[ÛœÊ^›Nˆ˜\šX[^›H[™Yš[™Yœ›ÛNˆ[X™\‹Îˆ[X™\‹YÚ]ˆ[X™\ŠHÂˆÛÛœİ[\ÈH^›OËœ[\ÂˆYˆ
+\[\ÏË›[™İ
+H™]\›ˆˆÛÛœİÈPÙ[YÙT[\ËÜ›ÜÚKÛÛ™\ÈHH^Û\Ú[Û’[™^\Ë™Ù]
+[\ÊHÏÈ[™^^Û\Ú[ÛœÊ[\ÊBˆ]^ÛYYHÜ›ÜÚK›[™İÈÜ›ÜÚQYÚ]^Û\Ú[ÛœÊÜ›ÜÚKœ›ÛKËYÚ]JHˆˆÛÛœİÛÛ™HHÛÛ™\ÏË–Ùœ›ÛWBˆYˆ
+ÛÛ™H	‰ˆÛÛ™HOOHÛÛ™\ÏË–İ×JH^ÛYYHLLH	ˆŠH
+YÚ]HJJBˆ]ˆH˜[ÙKH˜[ÙK™YØ]]™UˆH˜[ÙK™YØ]]™VH˜[ÙBˆ›Üˆ
+ÛÛœİ[HÙˆPÙ[Ùœ›ÛWHÏÈ›ĞÙ[^Û\Ú[ÛœÊHÂˆYˆ
 
-export function extraRegionName(rules: readonly VariantRule[], index: number): string {
-  if (rules[index]?.type !== 'extra-house') return 'extra region'
-  const position = disjointGroupPosition(rules[index])
-  if (position !== undefined) return `disjoint group at row ${Math.floor(position / 3) + 1}, column ${position % 3 + 1} within each 3 Ã— 3 block`
-  return `extra region ${rules.slice(0, index + 1).filter(rule => rule.type === 'extra-house').length}`
-}
-
-export function variantHouseName(house: VariantHouse, puzzle: VariantPuzzle) {
-  if ('row' in house) return `row ${house.row + 1}`
-  if ('column' in house) return `column ${house.column + 1}`
-  if ('diagonal' in house) return house.diagonal === 'main' ? 'top-left to bottom-right diagonal' : 'top-right to bottom-left diagonal'
-  if ('region' in house) return `${hasAuthoredRegions(puzzle.regions) ? 'region' : 'box'} ${house.region + 1}`
-  return extraRegionName(puzzle.rules ?? [], house.extra)
-}
-
-/** Candidate masks for logical deductions, before repeating lines or Renbans. */
-export function variantLogicalMasks(puzzle: VariantPuzzle, values: string, eliminations?: readonly number[]) {
-  const masks = [...values].map((digit, cell) => digit === '0' ? 511 & ~(eliminations?.[cell] ?? 0) : 0)
-  const houses: VariantHouse[] = cells.flatMap(i => [{ row: i }, { column: i }])
-  const regionCount = hasAuthoredRegions(puzzle.regions) ? puzzle.regions.regions.length : 9
-  for (let i = 0; i < regionCount; i++) houses.push({ region: i })
-  for (const [index, rule] of (puzzle.rules ?? []).entries()) {
-    if (rule.type === 'diagonal') houses.push({ diagonal: rule.diagonal })
-    if (rule.type === 'extra-house') houses.push({ extra: index })
-  }
-  for (const house of houses) {
-    const indices = variantHouseCells(house, puzzle)
-    let used = 0
-    for (const cell of indices) {
-      if (values[cell] !== '0') used |= 1 << (Number(values[cell]) - 1)
-    }
-    for (const cell of indices) masks[cell] &= ~used
-  }
-  return masks
-}
-
-export function variantHouseMasks(puzzle: VariantPuzzle, values: string, eliminations?: readonly number[]) {
-  const masks = variantLogicalMasks(puzzle, values, eliminations)
-  for (const rule of puzzle.rules ?? []) {
-    if (rule.type === 'inside-grid') {
-      for (const line of [...rule.rows, ...insideGridColumns(rule.rows)]) {
-        const used = line.reduce((mask, cell) => mask | (values[cell] === '0' ? 0 : 1 << (Number(values[cell]) - 1)), 0)
-        for (const cell of line) masks[cell] &= ~used
-      }
-    }
-    if (rule.type === 'entropic' || rule.type === 'modular') {
-      for (const [i, from] of rule.cells.entries()) if (values[from] !== '0') {
-        for (const [j, to] of rule.cells.entries()) if (i % 3 !== j % 3) masks[to] &= ~(1 << (Number(values[from]) - 1))
-      }
-    }
-    if (rule.type === 'renban') {
-      const used = rule.cells.reduce((mask, cell) => mask | (values[cell] === '0' ? 0 : 1 << (Number(values[cell]) - 1)), 0)
-      for (const cell of rule.cells) masks[cell] &= ~used
-    }
-  }
-  return masks
-}
-
-export function variantPeers(puzzle: VariantPuzzle | undefined, a: number, b: number): boolean {
-  if (!puzzle || a === b) return false
-  return (puzzle.rules ?? []).some((rule) => {
-    if (rule.type === 'inequality') return a === rule.less && b === rule.greater || a === rule.greater && b === rule.less
-    if (rule.type === 'diagonal') {
-      const line = rule.diagonal === 'main' ? mainDiagonal : antiDiagonal
-      return line.includes(a) && line.includes(b)
-    }
-    if (rule.type === 'anti-knight') {
-      const rows = Math.abs(Math.floor(a / 9) - Math.floor(b / 9))
-      const columns = Math.abs(a % 9 - b % 9)
-      return rows * columns === 2
-    }
-    if (rule.type === 'anti-king') {
-      return Math.abs(Math.floor(a / 9) - Math.floor(b / 9)) === 1 && Math.abs(a % 9 - b % 9) === 1
-    }
-    if (rule.type === 'killer-cages') return rule.cages.some(({ cells }) => cells.includes(a) && cells.includes(b))
-    if (rule.type === 'extra-house' || rule.type === 'distinct-cells') return rule.cells.includes(a) && rule.cells.includes(b)
-    if (rule.type === 'inside-grid') {
-      const row = rule.rows.find(row => row.includes(a))
-      return row !== undefined && (row.includes(b) || rule.rows.some(other => other[row.indexOf(a)] === b))
-    }
-    if (rule.type === 'whispers') return rule.cells.some((cell, i) => i > 0 &&
-      (cell === a && rule.cells[i - 1] === b || cell === b && rule.cells[i - 1] === a))
-    if (rule.type === 'entropic' || rule.type === 'modular') return rule.cells.includes(a) && rule.cells.includes(b) && rule.cells.indexOf(a) % 3 !== rule.cells.indexOf(b) % 3
-    if ((rule.type === 'between' || rule.type === 'lockout') && rule.cells.includes(a) && rule.cells.includes(b)) {
-      const ends = [rule.cells[0], rule.cells[rule.cells.length - 1]]
-      return ends.includes(a) || ends.includes(b)
-    }
-    if (rule.type === 'thermometer' || rule.type === 'renban' || rule.type === 'consecutive-run') return rule.cells.includes(a) && rule.cells.includes(b)
-    return false
-  })
-}
-
-export function hasMarkedPair(pairs: readonly (readonly [number, number])[] | undefined, a: number, b: number) {
-  return pairs?.some(([left, right]) => (left === a && right === b) || (left === b && right === a)) ?? false
-}
-
-export function cellsShareEdge(a: number, b: number) {
-  return Math.abs(Math.floor(a / 9) - Math.floor(b / 9)) + Math.abs(a % 9 - b % 9) === 1
-}
-
-export function palindromePartner(cells: readonly number[], cell: number) {
-  const index = cells.indexOf(cell)
-  if (index < 0 || index === cells.length - 1 - index) return undefined
-  return cells[cells.length - 1 - index]
-}
-
-const ROMAN_TOTALS = ['III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII']
-
-/** Roman numerals used by the Coach two-cell-sum constructor. */
-export function sumLabel(sum: number) {
-  return ROMAN_TOTALS[sum - 3] ?? String(sum)
-}
-
-type CellExclusionRule = Extract<VariantRule, { type: 'entropic' | 'modular' | 'renban' | 'consecutive-run' | 'adjacent-total' | 'inequality' | 'palindrome' | 'whispers' }>
-type EdgeExclusionRule = Extract<VariantRule, { type: 'non-consecutive' | 'xv' | 'minimum' | 'maximum' }>
-const noCellExclusions: readonly CellExclusionRule[] = []
-const exclusionIndexes = new WeakMap<readonly VariantRule[], ReturnType<typeof indexExclusions>>()
-
-// Puzzle definitions share an immutable rule list across Play positions.
-function indexExclusions(rules: readonly VariantRule[]) {
-  const byCell = Array<CellExclusionRule[] | undefined>(81)
-  const edgeRules: EdgeExclusionRule[] = []
-  const kropki: Extract<VariantRule, { type: 'kropki' | 'labeled-dots' }>[] = []
-  let clones: ReturnType<typeof cloneLayout>['at'] | undefined
-  for (const rule of rules) {
-    switch (rule.type) {
-      case 'kropki': case 'labeled-dots': kropki.push(rule); continue
-      case 'xv': case 'non-consecutive': case 'minimum': case 'maximum': edgeRules.push(rule); continue
-      case 'clone': clones ??= cloneLayout(rules).at; continue
-      case 'entropic': case 'modular': case 'renban': case 'consecutive-run': case 'adjacent-total': case 'palindrome': case 'whispers':
-      case 'inequality': {
-        const cells = rule.type === 'inequality' ? [rule.less, rule.greater] : new Set(rule.cells)
-        for (const cell of cells) (byCell[cell] ??= []).push(rule)
-      }
-    }
-  }
-  const index = { byCell: byCell.map(local => local?.slice()), edgeRules, kropki, clones }
-  exclusionIndexes.set(rules, index)
-  return index
-}
-
-/** Extra pairwise exclusions beyond the same-digit peers used by the player. */
-export function variantDigitExclusions(puzzle: VariantPuzzle | undefined, from: number, to: number, digit: number) {
-  const rules = puzzle?.rules
-  if (!rules?.length) return 0
-  const { byCell, edgeRules, kropki, clones } = exclusionIndexes.get(rules) ?? indexExclusions(rules)
-  let excluded = kropki.length ? kropkiDigitExclusions(kropki, from, to, digit, 9) : 0
-  const clone = clones?.[from]
-  if (clone && clone === clones?.[to]) excluded |= 511 & ~(1 << (digit - 1))
-  let v = false, x = false, negativeV = false, negativeX = false
-  for (const rule of byCell[from] ?? noCellExclusions) {
-    if ((rule.type === 'entropic' || rule.type === 'modular') && rule.cells.includes(to)) {
-      const samePhase = rule.cells.indexOf(from) % 3 === rule.cells.indexOf(to) % 3
-      const group = lineGroupMask(rule.type, digit)
-      excluded |= samePhase ? 511 & ~group : group
-    }
-    if (rule.type === 'renban' && rule.cells.includes(to)) {
-      for (let other = 1; other <= 9; other++) if (Math.abs(digit - other) >= rule.cells.length) excluded |= 1 << (other - 1)
-    }
-    if (rule.type === 'consecutive-run' && rule.cells.includes(to)) {
-      const gap = rule.cells.indexOf(to) - rule.cells.indexOf(from)
-      if (rule.fromBulb) {
-        const expected = digit + gap
-        excluded |= expected >= 1 && expected <= 9 ? 511 & ~(1 << (expected - 1)) : 511
-      } else {
-        for (let other = 1; other <= 9; other++) if (Math.abs(digit - other) !== Math.abs(gap)) excluded |= 1 << (other - 1)
-      }
-    }
-    if (rule.type === 'adjacent-total' && (rule.cells[0] === from && rule.cells[1] === to || rule.cells[1] === from && rule.cells[0] === to)) {
-      v ||= rule.sum === 5
-      x ||= rule.sum === 10
-      for (let other = 1; other <= 9; other++) if (digit + other !== rule.sum) excluded |= 1 << (other - 1)
-    }
-    if (rule.type === 'inequality' && (from === rule.less && to === rule.greater || from === rule.greater && to === rule.less)) {
-      for (let other = 1; other <= 9; other++) {
-        if (from === rule.less ? other <= digit : other >= digit) excluded |= 1 << (other - 1)
-      }
-    }
-    if (rule.type === 'palindrome' && palindromePartner(rule.cells, from) === to) {
-      excluded |= 511 & ~(1 << (digit - 1))
-    }
-    if (rule.type === 'whispers' && rule.cells.some((cell, i) => i > 0 &&
-      (cell === from && rule.cells[i - 1] === to || cell === to && rule.cells[i - 1] === from))) {
-      for (let other = 1; other <= 9; other++) if (Math.abs(digit - other) < rule.minDifference) excluded |= 1 << (other - 1)
-    }
-  }
-  if (edgeRules.length && cellsShareEdge(from, to)) for (const rule of edgeRules) {
-    if (rule.type === 'xv') {
-      v ||= hasMarkedPair(rule.five?.pairs, from, to)
-      x ||= hasMarkedPair(rule.ten?.pairs, from, to)
-      negativeV ||= rule.five?.negative === true
-      negativeX ||= rule.ten?.negative === true
-    } else if (rule.type === 'minimum' || rule.type === 'maximum') {
-      const fromMarked = rule.cells.includes(from)
-      const toMarked = rule.cells.includes(to)
-      if (fromMarked && toMarked && !rule.ignoreMarkedNeighbors) return 511
-      if (fromMarked === toMarked) continue
-      const fromIsSmaller = fromMarked === (rule.type === 'minimum')
-      excluded |= fromIsSmaller ? (1 << digit) - 1 : 511 & ~((1 << (digit - 1)) - 1)
-    } else if (rule.type === 'non-consecutive' && !hasMarkedPair(rule.except, from, to)) {
-      excluded |= (digit > 1 ? 1 << (digit - 2) : 0) | (digit < 9 ? 1 << digit : 0)
-    }
-  }
-  if (v || x || negativeV || negativeX) for (let other = 1; other <= 9; other++) {
-    const sum = digit + other
-    if (v && sum !== 5 || x && sum !== 10 ||
-      !v && !x && (negativeV && sum === 5 || negativeX && sum === 10)) excluded |= 1 << (other - 1)
-  }
-  return excluded
-}
-
-export function nonConsecutiveDescription(puzzle: VariantPuzzle, rule: Extract<VariantRule, { type: 'non-consecutive' }>) {
-  const exceptions = rule.except ?? []
-  if (!exceptions.length) return PUZZLE_VARIANTS['non-consecutive'].rule
-  const marked = exceptions.every(([a, b]) => puzzle.rules?.some(other =>
-    other.type === 'kropki' && hasMarkedPair(other.consecutive?.pairs, a, b) ||
-    other.type === 'labeled-dots' && other.relation === 'difference' &&
-      other.marks.some(({ cells: [left, right] }) => left === a && right === b || left === b && right === a)))
-  const reference = (cell: number) => `r${Math.floor(cell / 9) + 1}c${cell % 9 + 1}`
-  const detail = marked ? 'The white-dot pairs are exempt from this rule.' :
-    `These pairs are exempt: ${exceptions.map(([a, b]) => `${reference(a)} and ${reference(b)}`).join('; ')}.`
-  return `${PUZZLE_VARIANTS['non-consecutive'].rule} ${detail}`
-}
-
-function validCells(list: unknown, min: number) {
-  return Array.isArray(list) && list.length >= min && list.length <= 81 &&
-    new Set(list).size === list.length && list.every((cell) => Number.isInteger(cell) && cell >= 0 && cell < 81)
-}
-
-function validMagicSquareCells(cells: unknown) {
-  if (!validCells(cells, 9)) return false
-  const indices = cells as number[]
-  if (indices.length !== 9) return false
-  const rows = indices.map(cell => Math.floor(cell / 9))
-  const columns = indices.map(cell => cell % 9)
-  const minRow = Math.min(...rows), minColumn = Math.min(...columns)
-  return Math.max(...rows) - minRow === 2 && Math.max(...columns) - minColumn === 2 &&
-    Array.from({ length: 3 }, (_, row) => Array.from({ length: 3 }, (_, column) =>
-      (minRow + row) * 9 + minColumn + column)).flat().every(cell => indices.includes(cell))
-}
-
-function validAuthoredRegions(regions: unknown, partial: boolean): boolean {
-  if (!Array.isArray(regions) || regions.length > 9 || !partial && regions.length !== 9 ||
-    !regions.every((region) => validCells(region, 9) && region.length === 9) ||
-    new Set(regions.flat()).size !== 9 * regions.length) return false
-  return !partial || regions.every(region => connectedGridCells(region, 9))
-}
-
-const PLAYABLE_RULE_KEYS: Record<VariantRule['type'], readonly string[]> = {
-  'little-killer': ['type', 'cells', 'direction', 'sum'],
-  sandwich: ['type', 'cells', 'direction', 'sum'],
-  'terrain-sandwich': ['type', 'cells', 'direction', 'maximum', 'transforms'],
-  'x-sum': ['type', 'cells', 'direction', 'sum'],
-  skyscrapers: ['type', 'cells', 'direction', 'count'],
-  clone: ['type', 'groups'],
-  minimum: ['type', 'cells', 'ignoreMarkedNeighbors'],
-  maximum: ['type', 'cells', 'ignoreMarkedNeighbors'],
-  inequality: ['type', 'less', 'greater'],
-  parity: ['type', 'cells', 'parity'],
-  'digit-restriction': ['type', 'cells', 'digits', 'shape'],
-  quadruple: ['type', 'topLeft', 'digits'],
-  'quadruple-sum': ['type', 'topLeft', 'digits'],
-  'lettered-quadruples': ['type', 'clues'],
-  'global-entropy': ['type', 'groups'],
-  'entropy-window-group': ['type', 'cells', 'group'],
-  'digit-order': ['type', 'cells', 'digits'],
-  'forbidden-entropic-connection': ['type', 'cells'],
-  aqre: ['type', 'kind', 'regions', 'givenShades'],
-  'neighbor-match': ['type', 'clues'],
-  'magic-square': ['type', 'cells'],
-  'unknown-cage-sums': ['type', 'cages', 'consecutivePairs'],
-  'distant-neighbors': ['type', 'markedCells'],
-  'anti-knight': ['type'],
-  'anti-king': ['type'],
-  'non-consecutive': ['type', 'except'],
-  diagonal: ['type', 'diagonal'],
-  'extra-house': ['type', 'cells'],
-  'inside-grid': ['type', 'rows'],
-  'consecutive-run': ['type', 'cells', 'color', 'fromBulb'],
-  'distinct-cells': ['type', 'cells', 'color'],
-  entropic: ['type', 'cells'],
-  modular: ['type', 'cells'],
-  whispers: ['type', 'cells', 'minDifference'],
-  thermometer: ['type', 'cells'],
-  between: ['type', 'cells'],
-  lockout: ['type', 'cells'],
-  'region-sum': ['type', 'cells', 'groupByRegion', 'segments'],
-  palindrome: ['type', 'cells', 'segments'],
-  renban: ['type', 'cells', 'segments'],
-  arrow: ['type', 'circle', 'cells'],
-  'pill-arrow': ['type', 'pill', 'cells', 'fromTens'],
-  'killer-cages': ['type', 'cages', 'coverGrid'],
-  'labeled-dots': ['type', 'relation', 'negative', 'marks'],
-  kropki: ['type', 'consecutive', 'ratioTwo'],
-  'adjacent-total': ['type', 'cells', 'sum'],
-  xv: ['type', 'five', 'ten'],
-}
-
-function isPlayableRule(rule: VariantRule): boolean {
-  if (!rule || typeof rule !== 'object') return false
-  if (!Object.hasOwn(PLAYABLE_RULE_KEYS, rule.type) ||
-    Object.keys(rule).some(key => !PLAYABLE_RULE_KEYS[rule.type].includes(key))) return false
-  switch (rule.type) {
-    case 'little-killer': return Object.keys(rule).every(key => ['type', 'cells', 'direction', 'sum'].includes(key)) &&
-      Number.isInteger(rule.sum) && validOutsideRay(rule.cells, rule.direction, true) && rule.sum >= rule.cells.length && rule.sum <= rule.cells.length * 9
-    case 'sandwich': return Object.keys(rule).every(key => ['type', 'cells', 'direction', 'sum'].includes(key)) &&
-      Number.isInteger(rule.sum) && rule.sum >= 0 && rule.sum <= 35 && validOutsideRay(rule.cells, rule.direction)
-    case 'terrain-sandwich': return Object.keys(rule).every(key => ['type', 'cells', 'direction', 'maximum', 'transforms'].includes(key)) &&
-      Number.isInteger(rule.maximum) && rule.maximum >= -14 && rule.maximum <= 126 &&
-      validOutsideRay(rule.cells, rule.direction) && Array.isArray(rule.transforms) && rule.transforms.length === 9 &&
-      rule.transforms.every(transform => transform && typeof transform === 'object' &&
-        Object.keys(transform).every(key => key === 'multiplier' || key === 'offset') &&
-        Number.isInteger(transform.multiplier) && Number.isInteger(transform.offset) &&
-        (transform.multiplier === 1 && [-3, 0, 3].includes(transform.offset) || transform.multiplier === 2 && transform.offset === 0))
-    case 'x-sum': return Object.keys(rule).every(key => ['type', 'cells', 'direction', 'sum'].includes(key)) &&
-      Number.isInteger(rule.sum) && rule.sum >= 1 && rule.sum <= 45 && validOutsideRay(rule.cells, rule.direction)
-    case 'skyscrapers': return Object.keys(rule).every(key => ['type', 'cells', 'direction', 'count'].includes(key)) &&
-      Number.isInteger(rule.count) && rule.count >= 1 && rule.count <= 9 && validOutsideRay(rule.cells, rule.direction)
-    case 'clone': return Object.keys(rule).every(key => key === 'type' || key === 'groups') &&
-      Array.isArray(rule.groups) && rule.groups.length > 0 && rule.groups.every(group => validCells(group, 2))
-    case 'minimum': case 'maximum': return validCells(rule.cells, 1) &&
-      (rule.ignoreMarkedNeighbors === undefined || typeof rule.ignoreMarkedNeighbors === 'boolean')
-    case 'inequality': return validCells([rule.less, rule.greater], 2)
-    case 'parity': return validCells(rule.cells, 1) && (rule.parity === 'odd' || rule.parity === 'even')
-    case 'digit-restriction': return Object.keys(rule).every(key => ['type', 'cells', 'digits', 'shape'].includes(key)) &&
-      validCells(rule.cells, 1) && Array.isArray(rule.digits) && rule.digits.length > 0 &&
-      rule.digits.every(digit => Number.isInteger(digit) && digit >= 1 && digit <= 9) && new Set(rule.digits).size === rule.digits.length &&
-      ['circle', 'cross', 'square'].includes(rule.shape)
-    case 'quadruple': case 'quadruple-sum': return Number.isInteger(rule.topLeft) && rule.topLeft >= 0 && rule.topLeft < 72 && rule.topLeft % 9 < 8 &&
-      Array.isArray(rule.digits) && rule.digits.length >= 1 && rule.digits.length <= 4 &&
-      rule.digits.every(digit => Number.isInteger(digit) && digit >= 1 && digit <= 9)
-    case 'lettered-quadruples': return Object.keys(rule).length === 2 && validLetteredQuadruples(rule.clues)
-    case 'global-entropy': {
-      if (Object.keys(rule).some(key => key !== 'type' && key !== 'groups')) return false
-      if (rule.groups === undefined) return true
-      if (!Array.isArray(rule.groups) || rule.groups.length !== 3 ||
-        !rule.groups.every(group => Array.isArray(group) && group.length > 0 &&
-          group.every(digit => Number.isInteger(digit) && digit >= 1 && digit <= 9))) return false
-      const digits = rule.groups.flat()
-      return digits.length === 9 && new Set(digits).size === 9 &&
-        digits.every(digit => Number.isInteger(digit) && digit >= 1 && digit <= 9) &&
-        rule.groups.map(group => [...group].sort((a, b) => a - b).join(','))
-          .sort().join('|') === '1,2,3|4,5,6|7,8,9'
-    }
-    case 'entropy-window-group': {
-      if (Object.keys(rule).some(key => !['type', 'cells', 'group'].includes(key)) ||
-        !Array.isArray(rule.cells) || rule.cells.length !== 4 || !['low', 'middle', 'high'].includes(rule.group)) return false
-      const [topLeft, topRight, bottomLeft, bottomRight] = rule.cells
-      return Number.isInteger(topLeft) && topLeft >= 0 && topLeft < 72 && topLeft % 9 < 8 &&
-        topRight === topLeft + 1 && bottomLeft === topLeft + 9 && bottomRight === topLeft + 10
-    }
-    case 'digit-order': {
-      if (Object.keys(rule).some(key => !['type', 'cells', 'digits'].includes(key)) ||
-        !Array.isArray(rule.cells) || rule.cells.length !== 9 || !validCells(rule.cells, 9) ||
-        !Array.isArray(rule.digits) || rule.digits.length !== 3 || ![[1, 2, 3], [4, 5, 6], [7, 8, 9]].some(group =>
-          group.every((digit, index) => rule.digits[index] === digit))) return false
-      const row = Math.floor(rule.cells[0] / 9), column = rule.cells[0] % 9
-      return rule.cells.every((cell, index) => cell === row * 9 + index) ||
-        rule.cells.every((cell, index) => cell === row * 9 + 8 - index) ||
-        rule.cells.every((cell, index) => cell === index * 9 + column) ||
-        rule.cells.every((cell, index) => cell === (8 - index) * 9 + column)
-    }
-    case 'forbidden-entropic-connection': return Object.keys(rule).every(key => key === 'type' || key === 'cells') &&
-      Array.isArray(rule.cells) && rule.cells.length === 4 && validCells(rule.cells, 4) &&
-      rule.cells.slice(1).every((cell, index) => cellsShareEdge(rule.cells[index], cell))
-    case 'aqre': {
-      if (Object.keys(rule).some(key => !['type', 'kind', 'regions', 'givenShades'].includes(key)) ||
-        rule.kind !== 'snake' && rule.kind !== 'plus' || !Array.isArray(rule.regions) || rule.regions.length === 0 ||
-        !Array.isArray(rule.givenShades)) return false
-      const cells = rule.regions.flatMap(region => region?.cells ?? [])
-      if (cells.length !== 81 || new Set(cells).size !== 81 || !cells.every(cell => Number.isInteger(cell) && cell >= 0 && cell < 81)) return false
-      if (!rule.regions.every(region => region && Object.keys(region).every(key => ['cells', 'count'].includes(key)) &&
-        validCells(region.cells, 1) && connectedGridCells(region.cells, 9) &&
-        (region.count === undefined || region.count?.type === 'fixed' && Object.keys(region.count).every(key => ['type', 'value'].includes(key)) &&
-          Number.isInteger(region.count.value) && region.count.value >= 0 && region.count.value <= region.cells.length ||
-          region.count?.type === 'digit-cell' && Object.keys(region.count).every(key => ['type', 'cell'].includes(key)) &&
-          Number.isInteger(region.count.cell) && region.cells.includes(region.count.cell)) &&
-        (rule.kind !== 'plus' || region.count?.type === 'digit-cell'))) return false
-      const shadeCells = rule.givenShades.map(given => given?.cell)
-      return rule.givenShades.every(given => given && Object.keys(given).length === 2 &&
-        Number.isInteger(given.cell) && given.cell >= 0 && given.cell < 81 &&
-        (given.shade === 'unshaded' || given.shade === 'shaded')) && new Set(shadeCells).size === shadeCells.length
-    }
-    case 'neighbor-match': return Object.keys(rule).every(key => key === 'type' || key === 'clues') &&
-      Array.isArray(rule.clues) && rule.clues.length > 0 && rule.clues.every(clue => clue &&
-        Object.keys(clue).every(key => key === 'cell' || key === 'digit') && Number.isInteger(clue.cell) &&
-        clue.cell >= 0 && clue.cell < 81 && Number.isInteger(clue.digit) && clue.digit >= 1 && clue.digit <= 9) &&
-      new Set(rule.clues.map(clue => clue.cell)).size === rule.clues.length
-    case 'magic-square': return Object.keys(rule).every(key => key === 'type' || key === 'cells') && validMagicSquareCells(rule.cells)
-    case 'unknown-cage-sums': {
-      if (Object.keys(rule).some(key => !['type', 'cages', 'consecutivePairs'].includes(key)) ||
-        !Array.isArray(rule.cages) || rule.cages.length !== 15 || !Array.isArray(rule.consecutivePairs)) return false
-      const cells = rule.cages.flat()
-      return rule.cages.every(cage => validCells(cage, 1) && cage.length <= 9) &&
-        cells.length === 81 && new Set(cells).size === 81 &&
-        rule.consecutivePairs.every(pair => Array.isArray(pair) && pair.length === 2 &&
-          Number.isInteger(pair[0]) && Number.isInteger(pair[1]) && pair[0] >= 0 && pair[0] < 15 &&
-          pair[1] >= 0 && pair[1] < 15 && pair[0] !== pair[1]) &&
-        new Set(rule.consecutivePairs.map(pair => [...pair].sort((a, b) => a - b).join(':'))).size === rule.consecutivePairs.length
-    }
-    case 'distant-neighbors': {
-      const boxes = Array.from({ length: 9 }, () => 0)
-      return Object.keys(rule).every(key => key === 'type' || key === 'markedCells') &&
-        Array.isArray(rule.markedCells) && rule.markedCells.length === 9 &&
-        rule.markedCells.every(cell => Number.isInteger(cell) && cell >= 0 && cell < 81 &&
-          (boxes[Math.floor(cell / 27) * 3 + Math.floor(cell % 9 / 3)]++ === 0)) &&
-        boxes.every(count => count === 1)
-    }
-    case 'anti-knight': case 'anti-king': return true
-    case 'non-consecutive': return rule.except === undefined || Array.isArray(rule.except) && rule.except.every(pair =>
-      validCells(pair, 2) && pair.length === 2 && cellsShareEdge(pair[0], pair[1]))
-    case 'diagonal': return rule.diagonal === 'main' || rule.diagonal === 'anti'
-    case 'extra-house': return validCells(rule.cells, 9) && rule.cells.length === 9
-    case 'inside-grid': return Object.keys(rule).length === 2 && validInsideGridRows(rule.rows)
-    case 'consecutive-run':
-      if (rule.fromBulb !== undefined && typeof rule.fromBulb !== 'boolean') return false
-      return Object.keys(rule).every(key => ['type', 'cells', 'color', 'fromBulb'].includes(key)) &&
+[K\HOOH	Ù[›ÜXÉÈ[K\HOOH	Û[Ù[\‰ÊH	‰ˆ[K˜Ù[Ëš[˜ÛY\ÊÊJHÂˆÛÛœİØ[YT\ÙHH[K˜Ù[Ëš[™^ÙŠœ›ÛJH	HÈOOH[K˜Ù[Ëš[™^ÙŠÊH	HÂˆÛÛœİÜ›İ\H[™QÜ›İ\X\ÚÊ[K\KYÚ]
+Bˆ^ÛYYHØ[YT\ÙHÈLLH	ˆ™Ü›İ\ˆÜ›İ\ˆBˆYˆ
+[K\HOOH	Ü™[˜˜[‰È	‰ˆ[K˜Ù[Ëš[˜ÛY\ÊÊJHÂˆ›Üˆ
+]İ\ˆHNÈİ\ˆHNÈİ\ŠÊÊHYˆ
+X]˜XœÊYÚ]Hİ\ŠHH[K˜Ù[Ë›[™İ
+H^ÛYYHH
+İ\ˆHJBˆBˆYˆ
+[K\HOOH	ØÛÛœÙXİ]]™K\[‰È	‰ˆ[K˜Ù[Ëš[˜ÛY\ÊÊJHÂˆÛÛœİØ\H[K˜Ù[Ëš[™^ÙŠÊHH[K˜Ù[Ëš[™^ÙŠœ›ÛJBˆYˆ
+[K™œ›ÛP[ŠHÂˆÛÛœİ^XİYHYÚ]
+ÈØ\ˆ^ÛYYH^XİYHH	‰ˆ^XİYHHÈLLH	ˆŠH
+^XİYHJJHˆLLBˆH[ÙHÂˆ›Üˆ
+]İ\ˆHNÈİ\ˆHNÈİ\ŠÊÊHYˆ
+X]˜XœÊYÚ]Hİ\ŠHOOHX]˜XœÊØ\
+JH^ÛYYHH
+İ\ˆHJBˆBˆBˆYˆ
+[K\HOOH	ØY˜XÙ[]İ[	È	‰ˆ
+[K˜Ù[ÖÌHOOHœ›ÛH	‰ˆ[K˜Ù[ÖÌWHOOHÈ[K˜Ù[ÖÌWHOOHœ›ÛH	‰ˆ[K˜Ù[ÖÌHOOHÊJHÂˆˆH[Kœİ[HOOHBˆH[Kœİ[HOOHLˆ›Üˆ
+]İ\ˆHNÈİ\ˆHNÈİ\ŠÊÊHYˆ
+YÚ]
+Èİ\ˆOOH[Kœİ[JH^ÛYYHH
+İ\ˆHJBˆBˆYˆ
+[K\HOOH	Ú[™\]X[]IÈ	‰ˆ
+œ›ÛHOOH[K›\ÜÈ	‰ˆÈOOH[K™Ü™X]\ˆœ›ÛHOOH[K™Ü™X]\ˆ	‰ˆÈOOH[K›\ÜÊJHÂˆ›Üˆ
+]İ\ˆHNÈİ\ˆHNÈİ\ŠÊÊHÂˆYˆ
+œ›ÛHOOH[K›\ÜÈÈİ\ˆHYÚ]ˆİ\ˆHYÚ]
+H^ÛYYHH
+İ\ˆHJBˆBˆBˆYˆ
+[K\HOOH	Ü[[™›ÛYIÈ	‰ˆ[[™›ÛYT\™\Š[K˜Ù[Ëœ›ÛJHOOHÊHÂˆ^ÛYYHLLH	ˆŠH
+YÚ]HJJBˆBˆYˆ
+[K\HOOH	İÚ\Ü\œÉÈ	‰ˆ[K˜Ù[ËœÛÛYJ
+Ù[JHOˆHˆ	‰‚ˆ
+Ù[OOHœ›ÛH	‰ˆ[K˜Ù[ÖÚHHWHOOHÈÙ[OOHÈ	‰ˆ[K˜Ù[ÖÚHHWHOOHœ›ÛJJJHÂˆ›Üˆ
+]İ\ˆHNÈİ\ˆHNÈİ\ŠÊÊHYˆ
+X]˜XœÊYÚ]Hİ\ŠH[K›Z[‘Y™™\™[˜ÙJH^ÛYYHH
+İ\ˆHJBˆBˆBˆYˆ
+YÙT[\Ë›[™İ	‰ˆÙ[ÔÚ\™QYÙJœ›ÛKÊJH›Üˆ
+ÛÛœİ[HÙˆYÙT[\ÊHÂˆYˆ
+[K\HOOH	Ş‰ÊHÂˆˆH\ÓX\šÙYZ\Š[K™š]™OËœZ\œËœ›ÛKÊBˆH\ÓX\šÙYZ\Š[K[ËœZ\œËœ›ÛKÊBˆ™YØ]]™UˆH[K™š]™OË›™YØ]]™HOOHYBˆ™YØ]]™VH[K[Ë›™YØ]]™HOOHYBˆH[ÙHYˆ
+[K\HOOH	ÛZ[š[][IÈ[K\HOOH	ÛX^[][IÊHÂˆÛÛœİœ›ÛSX\šÙYH[K˜Ù[Ëš[˜ÛY\Êœ›ÛJBˆÛÛœİÓX\šÙYH[K˜Ù[Ëš[˜ÛY\ÊÊBˆYˆ
+œ›ÛSX\šÙY	‰ˆÓX\šÙY	‰ˆ\[KšYÛ›Ü™SX\šÙY™ZYÚ›ÜœÊH™]\›ˆLLBˆYˆ
+œ›ÛSX\šÙYOOHÓX\šÙY
+HÛÛ[YBˆÛÛœİœ›ÛR\ÔÛX[\ˆHœ›ÛSX\šÙYOOH
+[K\HOOH	ÛZ[š[][IÊBˆ^ÛYYHœ›ÛR\ÔÛX[\ˆÈ
+HYÚ]
+HHHˆLLH	ˆŠ
+H
+YÚ]HJJHHJBˆH[ÙHYˆ
+[K\HOOH	Û›Û‹XÛÛœÙXİ]]™IÈ	‰ˆZ\ÓX\šÙYZ\Š[K™^Ù\œ›ÛKÊJHÂˆ^ÛYYH
+YÚ]ˆHÈH
+YÚ]HŠHˆ
+H
+YÚ]HÈHYÚ]ˆ
+BˆBˆBˆYˆ
+ˆ™YØ]]™Uˆ™YØ]]™V
+H›Üˆ
+]İ\ˆHNÈİ\ˆHNÈİ\ŠÊÊHÂˆÛÛœİİ[HHYÚ]
+Èİ\‚ˆYˆ
+ˆ	‰ˆİ[HOOHH	‰ˆİ[HOOHLˆ]ˆ	‰ˆ^	‰ˆ
+™YØ]]™Uˆ	‰ˆİ[HOOHH™YØ]]™V	‰ˆİ[HOOHL
+JH^ÛYYHH
+İ\ˆHJBˆBˆ™]\›ˆ^ÛYYŸB‚™^Ü[˜İ[Ûˆ›ÛÛÛœÙXİ]]™Q\ØÜš\[ÛŠ^›Nˆ˜\šX[^›K[Nˆ^˜Xİ˜\šX[[KÈ\Nˆ	Û›Û‹XÛÛœÙXİ]]™IÈOŠHÂˆÛÛœİ^Ù\[ÛœÈH[K™^Ù\ÏÈ×BˆYˆ
+Y^Ù\[ÛœË›[™İ
+H™]\›ˆV–“WÕT’PS•ÖõÓMm¢G§²ÚîÆ­yĞœèlÑåÁ”œ°€±Õ•Ìt°(€€½¹‘¥Ñ¥½¹…°µ¹•¥¡‰½ÈœèlÑåÁ”œ°€ÑÉ¥•É¥¥Ğœ°€…±Ñ•É¹…Ñ¥Ù•Ìt°(€€µ…¥ŒµÍÅÕ…É”œèlÑåÁ”œ°€•±±Ìt°(€€Õ¹­¹½İ¸µ…”µÍÕµÌœèlÑåÁ”œ°€…•Ìœ°€½¹Í•ÕÑ¥Ù•A…¥ÉÌt°(€€‘¥ÍÑ…¹Ğµ¹•¥¡‰½ÉÌœèlÑåÁ”œ°€µ…É­•‘•±±Ìt°(€€…¹Ñ¤µ­¹¥¡ĞœèlÑåÁ”t°(€€…¹Ñ¤µ­¥¹œœèlÑåÁ”t°(€€¹½¸µ½¹Í•ÕÑ¥Ù”œèlÑåÁ”œ°€•á•ÁĞt°(€‘¥…½¹…°èlÑåÁ”œ°€‘¥…½¹…°t°(€€•áÑÉ„µ¡½ÕÍ”œèlÑåÁ”œ°€•±±Ìt°(€€¥¹Í¥‘”µÉ¥œèlÑåÁ”œ°€É½İÌt°(€€½¹Í•ÕÑ¥Ù”µÉÕ¸œèlÑåÁ”œ°€•±±Ìœ°€½±½Èœ°€™É½µ	Õ±ˆt°(€€‘¥ÍÑ¥¹Ğµ•±±ÌœèlÑåÁ”œ°€•±±Ìœ°€½±½Èt°(€•¹ÑÉ½Á¥ŒèlÑåÁ”œ°€•±±Ìt°(€µ½‘Õ±…ÈèlÑåÁ”œ°€•±±Ìt°(€İ¡¥ÍÁ•ÉÌèlÑåÁ”œ°€•±±Ìœ°€µ¥¹¥™™•É•¹”t°(€Ñ¡•Éµ½µ•Ñ•ÈèlÑåÁ”œ°€•±±Ìt°(€‰•Ñİ••¸èlÑåÁ”œ°€•±±Ìt°(€±½­½ÕĞèlÑåÁ”œ°€•±±Ìt°(€€É•¥½¸µÍÕ´œèlÑåÁ”œ°€•±±Ìœ°€É½ÕÁ	åI•¥½¸œ°€Í•µ•¹ÑÌt°(€Á…±¥¹‘É½µ”èlÑåÁ”œ°€•±±Ìœ°€Í•µ•¹ÑÌt°(€É•¹‰…¸èlÑåÁ”œ°€•±±Ìœ°€Í•µ•¹ÑÌt°(€…ÉÉ½ÜèlÑåÁ”œ°€¥É±”œ°€•±±Ìt°(€€Á¥±°µ…ÉÉ½ÜœèlÑåÁ”œ°€Á¥±°œ°€•±±Ìœ°€™É½µQ•¹Ìt°(€€­¥±±•Èµ…•ÌœèlÑåÁ”œ°€…•Ìœ°€½Ù•ÉÉ¥t°(€€±…‰•±•µ‘½ÑÌœèlÑåÁ”œ°€É•±…Ñ¥½¸œ°€¹•…Ñ¥Ù”œ°€µ…É­Ìt°(€­É½Á­¤èlÑåÁ”œ°€½¹Í•ÕÑ¥Ù”œ°€É…Ñ¥½Qİ¼t°(€€…‘©…•¹ĞµÑ½Ñ…°œèlÑåÁ”œ°€•±±Ìœ°€ÍÕ´t°(€áØèlÑåÁ”œ°€™¥Ù”œ°€Ñ•¸t°)ô()™Õ¹Ñ¥½¸¥ÍA±…å…‰±•IÕ±”¡ÉÕ±”èY…É¥…¹ÑIÕ±”¤è‰½½±•…¸ì(€¥˜€ …ÉÕ±”ñğÑåÁ•½˜ÉÕ±”€„ôô€½‰©•Ğœ¤É•ÑÕÉ¸™…±Í”(€¥˜€ …=‰©•Ğ¹¡…Í=İ¸¡A1e	1}IU1}-eL°ÉÕ±”¹ÑåÁ”¤ñğ(€€€=‰©•Ğ¹­•åÌ¡ÉÕ±”¤¹Í½µ”¡­•ä€ôø€…A1e	1}IU1}-eMmÉÕ±”¹ÑåÁ•t¹¥¹±Õ‘•Ì¡­•ä¤¤¤É•ÑÕÉ¸™…±Í”(€Íİ¥Ñ €¡ÉÕ±”¹ÑåÁ”¤ì(€€€…Í”€±¥ÑÑ±”µ­¥±±•ÈœèÉ•ÑÕÉ¸=‰©•Ğ¹­•åÌ¡ÉÕ±”¤¹•Ù•Éä¡­•ä€ôølÑåÁ”œ°€•±±Ìœ°€‘¥É•Ñ¥½¸œ°€ÍÕ´t¹¥¹±Õ‘•Ì¡­•ä¤¤€˜˜(€€€€€9Õµ‰•È¹¥Í%¹Ñ••È¡ÉÕ±”¹ÍÕ´¤€˜˜Ù…±¥‘=ÕÑÍ¥‘•I…ä¡ÉÕ±”¹•±±Ì°ÉÕ±”¹‘¥É•Ñ¥½¸°ÑÉÕ”¤€˜˜ÉÕ±”¹ÍÕ´€øôÉÕ±”¹•±±Ì¹±•¹Ñ €˜˜ÉÕ±”¹ÍÕ´€ğôÉÕ±”¹•±±Ì¹±•¹Ñ €¨€ä(€€€…Í”€Í…¹‘İ¥ œèÉ•ÑÕÉ¸=‰©•Ğ¹­•åÌ¡ÉÕ±”¤¹•Ù•Éä¡­•ä€ôølÑåÁ”œ°€•±±Ìœ°€‘¥É•Ñ¥½¸œ°€ÍÕ´t¹¥¹±Õ‘•Ì¡­•ä¤¤€˜˜(€€€€€9Õµ‰•È¹¥Í%¹Ñ••È¡ÉÕ±”¹ÍÕ´¤€˜˜ÉÕ±”¹ÍÕ´€øô€À€˜˜ÉÕ±”¹ÍÕ´€ğô€ÌÔ€˜˜Ù…±¥‘=ÕÑÍ¥‘•I…ä¡ÉÕ±”¹•±±Ì°ÉÕ±”¹‘¥É•Ñ¥½¸¤(€€€…Í”€Ñ•ÉÉ…¥¸µÍ…¹‘İ¥ œèÉ•ÑÕÉ¸=‰©•Ğ¹­•åÌ¡ÉÕ±”¤¹•Ù•Éä¡­•ä€ôølÑåÁ”œ°€•±±Ìœ°€‘¥É•Ñ¥½¸œ°€µ…á¥µÕ´œ°€ÑÉ…¹Í™½ÉµÌt¹¥¹±Õ‘•Ì¡­•ä¤¤€˜˜(€€€€€9Õµ‰•È¹¥Í%¹Ñ••È¡ÉÕ±”¹µ…á¥µÕ´¤€˜˜ÉÕ±”¹µ…á¥µÕ´€øô€´ÄĞ€˜˜ÉÕ±”¹µ…á¥µÕ´€ğô€ÄÈØ€˜˜(€€€€€Ù…±¥‘=ÕÑÍ¥‘•I…ä¡ÉÕ±”¹•±±Ì°ÉÕ±”¹‘¥É•Ñ¥½¸¤€˜˜ÉÉ…ä¹¥ÍÉÉ…ä¡ÉÕ±”¹ÑÉ…¹Í™½ÉµÌ¤€˜˜ÉÕ±”¹ÑÉ…¹Í™½ÉµÌ¹±•¹Ñ €ôôô€ä€˜˜(€€€€€ÉÕ±”¹ÑÉ…¹Í™½ÉµÌ¹•Ù•Éä¡ÑÉ…¹Í™½É´€ôøÑÉ…¹Í™½É´€˜˜ÑåÁ•½˜ÑÉ…¹Í™½É´€ôôô€½‰©•Ğœ€˜˜(€€€€€€€=‰©•Ğ¹­•åÌ¡ÑÉ…¹Í™½É´¤¹•Ù•Éä¡­•ä€ôø­•ä€ôôô€µÕ±Ñ¥Á±¥•Èœñğ­•ä€ôôô€½™™Í•Ğœ¤€˜˜(€€€€€€€9Õµ‰•È¹¥Í%¹Ñ••È¡ÑÉ…¹Í™½É´¹µÕ±Ñ¥Á±¥•È¤€˜˜9Õµ‰•È¹¥Í%¹Ñ••È¡ÑÉ…¹Í™½É´¹½™™Í•Ğ¤€˜˜(€€€€€€€€¡ÑÉ…¹Í™½É´¹µÕ±Ñ¥Á±¥•È€ôôô€Ä€˜˜l´Ì°€À°€Ít¹¥¹±Õ‘•Ì¡ÑÉ…¹Í™½É´¹½™™Í•Ğ¤ñğÑÉ…¹Í™½É´¹µÕ±Ñ¥Á±¥•È€ôôô€È€˜˜ÑÉ…¹Í™½É´¹½™™Í•Ğ€ôôô€À¤¤(€€€…Í”€àµÍÕ´œèÉ•ÑÕÉ¸=‰©•Ğ¹­•åÌ¡ÉÕ±”¤¹•Ù•Éä¡­•ä€ôølÑåÁ”œ°€•±±Ìœ°€‘¥É•Ñ¥½¸œ°€ÍÕ´t¹¥¹±Õ‘•Ì¡­•ä¤¤€˜˜(€€€€€9Õµ‰•È¹¥Í%¹Ñ••È¡ÉÕ±”¹ÍÕ´¤€˜˜ÉÕ±”¹ÍÕ´€øô€Ä€˜˜ÉÕ±”¹ÍÕ´€ğô€ĞÔ€˜˜Ù…±¥‘=ÕÑÍ¥‘•I…ä¡ÉÕ±”¹•±±Ì°ÉÕ±”¹‘¥É•Ñ¥½¸¤(€€€…Í”€Í­åÍÉ…Á•ÉÌœèÉ•ÑÕÉ¸=‰©•Ğ¹­•åÌ¡ÉÕ±”¤¹•Ù•Éä¡­•ä€ôølÑåÁ”œ°€•±±Ìœ°€‘¥É•Ñ¥½¸œ°€½Õ¹Ğt¹¥¹±Õ‘•Ì¡­•ä¤¤€˜˜(€€€€€9Õµ‰•È¹¥Í%¹Ñ••È¡ÉÕ±”¹½Õ¹Ğ¤€˜˜ÉÕ±”¹½Õ¹Ğ€øô€Ä€˜˜ÉÕ±”¹½Õ¹Ğ€ğô€ä€˜˜Ù…±¥‘=ÕÑÍ¥‘•I…ä¡ÉÕ±”¹•±±Ì°ÉÕ±”¹‘¥É•Ñ¥½¸¤(€€€…Í”€±½¹”œèÉ•ÑÕÉ¸=‰©•Ğ¹­•åÌ¡ÉÕ±”¤¹•Ù•Éä¡­•ä€ôø­•ä€ôôô€ÑåÁ”œñğ­•ä€ôôô€É½ÕÁÌœ¤€˜˜(€€€€€ÉÉ…ä¹¥ÍÉÉ…ä¡ÉÕ±”¹É½ÕÁÌ¤€˜˜ÉÕ±”¹É½ÕÁÌ¹±•¹Ñ €ø€À€˜˜ÉÕ±”¹É½ÕÁÌ¹•Ù•Éä¡É½ÕÀ€ôøÙ…±¥‘•±±Ì¡É½ÕÀ°€È¤¤(€€€…Í”€µ¥¹¥µÕ´œè…Í”€µ…á¥µÕ´œèÉ•ÑÕÉ¸Ù…±¥‘•±±Ì¡ÉÕ±”¹•±±Ì°€Ä¤€˜˜(€€€€€€¡ÉÕ±”¹¥¹½É•5…É­•‘9•¥¡‰½ÉÌ€ôôôÕ¹‘•™¥¹•ñğÑåÁ•½˜ÉÕ±”¹¥¹½É•5…É­•‘9•¥¡‰½ÉÌ€ôôô€‰½½±•…¸œ¤(€€€…Í”€¥¹•ÅÕ…±¥ÑäœèÉ•ÑÕÉ¸Ù…±¥‘•±±Ì¡mÉÕ±”¹±•ÍÌ°ÉÕ±”¹É•…Ñ•Ét°€È¤(€€€…Í”€Á…É¥ÑäœèÉ•ÑÕÉ¸Ù…±¥‘•±±Ì¡ÉÕ±”¹•±±Ì°€Ä¤€˜˜€¡ÉÕ±”¹Á…É¥Ñä€ôôô€½‘œñğÉÕ±”¹Á…É¥Ñä€ôôô€•Ù•¸œ¤(€€€…Í”€‘¥¥ĞµÉ•ÍÑÉ¥Ñ¥½¸œèÉ•ÑÕÉ¸=‰©•Ğ¹­•åÌ¡ÉÕ±”¤¹•Ù•Éä¡­•ä€ôølÑåÁ”œ°€•±±Ìœ°€‘¥¥ÑÌœ°€Í¡…Á”t¹¥¹±Õ‘•Ì¡­•ä¤¤€˜˜(€€€€€Ù…±¥‘•±±Ì¡ÉÕ±”¹•±±Ì°€Ä¤€˜˜ÉÉ…ä¹¥ÍÉÉ…ä¡ÉÕ±”¹‘¥¥ÑÌ¤€˜˜ÉÕ±”¹‘¥¥ÑÌ¹±•¹Ñ €ø€À€˜˜(€€€€€ÉÕ±”¹‘¥¥ÑÌ¹•Ù•Éä¡‘¥¥Ğ€ôø9Õµ‰•È¹¥Í%¹Ñ••È¡‘¥¥Ğ¤€˜˜‘¥¥Ğ€øô€Ä€˜˜‘¥¥Ğ€ğô€ä¤€˜˜¹•ÜM•Ğ¡ÉÕ±”¹‘¥¥ÑÌ¤¹Í¥é”€ôôôÉÕ±”¹‘¥¥ÑÌ¹±•¹Ñ €˜˜(€€€€€l¥É±”œ°€É½ÍÌœ°€ÍÅÕ…É”t¹¥¹±Õ‘•Ì¡ÉÕ±”¹Í¡…Á”¤(€€€…Í”€ÅÕ…‘ÉÕÁ±”œè…Í”€ÅÕ…‘ÉÕÁ±”µÍÕ´œèÉ•ÑÕÉ¸9Õµ‰•È¹¥Í%¹Ñ••È¡ÉÕ±”¹Ñ½Á1•™Ğ¤€˜˜ÉÕ±”¹Ñ½Á1•™Ğ€øô€À€˜˜ÉÕ±”¹Ñ½Á1•™Ğ€ğ€ÜÈ€˜˜ÉÕ±”¹Ñ½Á1•™Ğ€”€ä€ğ€à€˜˜(€€€€€ÉÉ…ä¹¥ÍÉÉ…ä¡ÉÕ±”¹‘¥¥ÑÌ¤€˜˜ÉÕ±”¹‘¥¥ÑÌ¹±•¹Ñ €øô€Ä€˜˜ÉÕ±”¹‘¥¥ÑÌ¹±•¹Ñ €ğô€Ğ€˜˜(€€€€€ÉÕ±”¹‘¥¥ÑÌ¹•Ù•Éä¡‘¥¥Ğ€ôø9Õµ‰•È¹¥Í%¹Ñ••È¡‘¥¥Ğ¤€˜˜‘¥¥Ğf«)à¶»§q«^v‹­¦ëh®("©m¢G§r‹§·4Õ:-jZ.¶›­–)Ş³SãÒbbF–v—BÃÒ’¢66RvÆWGFW&VB×VG'WÆW2s¢&WGW&âö&¦V7Bæ¶W—2‡'VÆR’æÆVæwF‚ÓÓÒ"bbfÆ–DÆWGFW&VEVG'WÆW2‡'VÆRæ6ÇVW2¢66RvvÆö&ÂÖVçG&÷’s¢°¢–b„ö&¦V7Bæ¶W—2‡'VÆR’ç6öÖR†¶W’Óâ¶W’ÓÒwG—Rrbb¶W’ÓÒvw&÷W2r’’&WGW&âfÇ6P¢–b‡'VÆRæw&÷W2ÓÓÒVæFVf–æVB’&WGW&âG'VP¢–b‚'&’æ—4'&’‡'VÆRæw&÷W2’ÇÂ'VÆRæw&÷W2æÆVæwF‚ÓÒ2ÇÀ¢'VÆRæw&÷W2æWfW'’†w&÷WÓâ'&’æ—4'&’†w&÷W’bbw&÷WæÆVæwF‚âb`¢w&÷WæWfW'’†F–v—BÓâçVÖ&W"æ—4–çFVvW"†F–v—B’bbF–v—BãÒbbF–v—BÃÒ’’’’&WGW&âfÇ6P¢6öç7BF–v—G2Ò'VÆRæw&÷W2æfÆB‚¢&WGW&âF–v—G2æÆVæwF‚ÓÓÒ’bbæWr6WB†F–v—G2’ç6—¦RÓÓÒ’b`¢F–v—G2æWfW'’†F–v—BÓâçVÖ&W"æ—4–çFVvW"†F–v—B’bbF–v—BãÒbbF–v—BÃÒ’’b`¢'VÆRæw&÷W2æÖ†w&÷WÓâ²ââæw&÷WÒç6÷'B‚†Â"’ÓâÒ"’æ¦ö–â‚rÂr’¢ç6÷'B‚’æ¦ö–â‚wÂr’ÓÓÒsÃ"Ã7ÃBÃRÃgÃrÃ‚Ã’p¢Ğ¢66RvVçG&÷’×v–æF÷rÖw&÷Ws¢°¢–b„ö&¦V7Bæ¶W—2‡'VÆR’ç6öÖR†¶W’Óâ²wG—RrÂv6VÆÇ2rÂvw&÷WuÒæ–æ6ÇVFW2†¶W’’’ÇÀ¢'&’æ—4'&’‡'VÆRæ6VÆÇ2’ÇÂ'VÆRæ6VÆÇ2æÆVæwF‚ÓÒBÇÂ²vÆ÷rrÂvÖ–FFÆRrÂv†–v‚uÒæ–æ6ÇVFW2‡'VÆRæw&÷W’’&WGW&âfÇ6P¢6öç7B·F÷ÆVgBÂF÷&–v‡BÂ&÷GFöÔÆVgBÂ&÷GFöÕ&–v‡EÒÒ'VÆRæ6VÆÇ0¢&WGW&âçVÖ&W"æ—4–çFVvW"‡F÷ÆVgB’bbF÷ÆVgBãÒbbF÷ÆVgBÂs"bbF÷ÆVgBR’Â‚b`¢F÷&–v‡BÓÓÒF÷ÆVgB²bb&÷GFöÔÆVgBÓÓÒF÷ÆVgB²’bb&÷GFöÕ&–v‡BÓÓÒF÷ÆVgB² ¢Ğ¢66RvF–v—BÖ÷&FW"s¢°¢–b„ö&¦V7Bæ¶W—2‡'VÆR’ç6öÖR†¶W’Óâ²wG—RrÂv6VÆÇ2rÂvF–v—G2uÒæ–æ6ÇVFW2†¶W’’’ÇÀ¢'&’æ—4'&’‡'VÆRæ6VÆÇ2’ÇÂ'VÆRæ6VÆÇ2æÆVæwF‚ÓÒ’ÇÂfÆ–D6VÆÇ2‡'VÆRæ6VÆÇ2Â’’ÇÀ¢'&’æ—4'&’‡'VÆRæF–v—G2’ÇÂ'VÆRæF–v—G2æÆVæwF‚ÓÒ2ÇÂµ³Â"Â5ÒÂ³BÂRÂeÒÂ³rÂ‚Â•ÕÒç6öÖR†w&÷WÓà¢w&÷WæWfW'’‚†F–v—BÂ–æFW‚’Óâ'VÆRæF–v—G5¶–æFW…ÒÓÓÒF–v—B’’’&WGW&âfÇ6P¢6öç7B&÷rÒÖF‚æfÆö÷"‡'VÆRæ6VÆÇ5³Òò’’Â6öÇVÖâÒ'VÆRæ6VÆÇ5³ÒR¢&WGW&â'VÆRæ6VÆÇ2æWfW'’‚†6VÆÂÂ–æFW‚’Óâ6VÆÂÓÓÒ&÷r¢’²–æFW‚’ÇÀ¢'VÆRæ6VÆÇ2æWfW'’‚†6VÆÂÂ–æFW‚’Óâ6VÆÂÓÓÒ&÷r¢’²‚Ò–æFW‚’ÇÀ¢'VÆRæ6VÆÇ2æWfW'’‚†6VÆÂÂ–æFW‚’Óâ6VÆÂÓÓÒ–æFW‚¢’²6öÇVÖâ’ÇÀ¢'VÆRæ6VÆÇ2æWfW'’‚†6VÆÂÂ–æFW‚’Óâ6VÆÂÓÓÒƒ‚Ò–æFW‚’¢’²6öÇVÖâ¢Ğ¢66Rvf÷&&–FFVâÖVçG&÷–2Ö6öææV7F–öâs¢&WGW&âö&¦V7Bæ¶W—2‡'VÆR’æWfW'’†¶W’Óâ¶W’ÓÓÒwG—RrÇÂ¶W’ÓÓÒv6VÆÇ2r’b`¢'&’æ—4'&’‡'VÆRæ6VÆÇ2’bb'VÆRæ6VÆÇ2æÆVæwF‚ÓÓÒBbbfÆ–D6VÆÇ2‡'VÆRæ6VÆÇ2ÂB’b`¢'VÆRæ6VÆÇ2ç6Æ–6Rƒ’æWfW'’‚†6VÆÂÂ–æFW‚’Óâ6VÆÇ56†&TVFvR‡'VÆRæ6VÆÇ5¶–æFW…ÒÂ6VÆÂ’¢66Rv&Rs¢°¢–b„ö&¦V7Bæ¶W—2‡'VÆR’ç6öÖR†¶W’Óâ²wG—RrÂv¶–æBrÂw&Vv–öç2rÂvv—fVå6†FW2uÒæ–æ6ÇVFW2†¶W’’’ÇÀ¢'VÆRæ¶–æBÓÒw6æ¶Rrbb'VÆRæ¶–æBÓÒwÇW2rÇÂ'&’æ—4'&’‡'VÆRç&Vv–öç2’ÇÂ'VÆRç&Vv–öç2æÆVæwF‚ÓÓÒÇÀ¢'&’æ—4'&’‡'VÆRæv—fVå6†FW2’’&WGW&âfÇ6P¢6öç7B6VÆÇ2Ò'VÆRç&Vv–öç2æfÆDÖ‡&Vv–öâÓâ&Vv–öãòæ6VÆÇ2óòµÒ¢–b†6VÆÇ2æÆVæwF‚ÓÒƒÇÂæWr6WB†6VÆÇ2’ç6—¦RÓÒƒÇÂ6VÆÇ2æWfW'’†6VÆÂÓâçVÖ&W"æ—4–çFVvW"†6VÆÂ’bb6VÆÂãÒbb6VÆÂÂƒ’’&WGW&âfÇ6P¢–b‚'VÆRç&Vv–öç2æWfW'’‡&Vv–öâÓâ&Vv–öâbbö&¦V7Bæ¶W—2‡&Vv–öâ’æWfW'’†¶W’Óâ²v6VÆÇ2rÂv6÷VçBuÒæ–æ6ÇVFW2†¶W’’’b`¢fÆ–D6VÆÇ2‡&Vv–öâæ6VÆÇ2Â’bb6öææV7FVDw&–D6VÆÇ2‡&Vv–öâæ6VÆÇ2Â’’b`¢‡&Vv–öâæ6÷VçBÓÓÒVæFVf–æVBÇÂ&Vv–öâæ6÷VçCòçG—RÓÓÒvf—†VBrbbö&¦V7Bæ¶W—2‡&Vv–öâæ6÷VçB’æWfW'’†¶W’Óâ²wG—RrÂwfÇVRuÒæ–æ6ÇVFW2†¶W’’’b`¢çVÖ&W"æ—4–çFVvW"‡&Vv–öâæ6÷VçBçfÇVR’bb&Vv–öâæ6÷VçBçfÇVRãÒbb&Vv–öâæ6÷VçBçfÇVRÃÒ&Vv–öâæ6VÆÇ2æÆVæwF‚ÇÀ¢&Vv–öâæ6÷VçCòçG—RÓÓÒvF–v—BÖ6VÆÂrbbö&¦V7Bæ¶W—2‡&Vv–öâæ6÷VçB’æWfW'’†¶W’Óâ²wG—RrÂv6VÆÂuÒæ–æ6ÇVFW2†¶W’’’b`¢çVÖ&W"æ—4–çFVvW"‡&Vv–öâæ6÷VçBæ6VÆÂ’bb&Vv–öâæ6VÆÇ2æ–æ6ÇVFW2‡&Vv–öâæ6÷VçBæ6VÆÂ’’b`¢‡'VÆRæ¶–æBÓÒwÇW2rÇÂ&Vv–öâæ6÷VçCòçG—RÓÓÒvF–v—BÖ6VÆÂr’’’&WGW&âfÇ6P¢6öç7B6†FT6VÆÇ2Ò'VÆRæv—fVå6†FW2æÖ†v—fVâÓâv—fVãòæ6VÆÂ¢&WGW&â'VÆRæv—fVå6†FW2æWfW'’†v—fVâÓâv—fVâbbö&¦V7Bæ¶W—2†v—fVâ’æÆVæwF‚ÓÓÒ"b`¢çVÖ&W"æ—4–çFVvW"†v—fVâæ6VÆÂ’bbv—fVâæ6VÆÂãÒbbv—fVâæ6VÆÂÂƒb`¢†v—fVâç6†FRÓÓÒwVç6†FVBrÇÂv—fVâç6†FRÓÓÒw6†FVBr’’bbæWr6WB‡6†FT6VÆÇ2’ç6—¦RÓÓÒ6†FT6VÆÇ2æÆVæwF€¢Ğ¢66RvæV–v†&÷"ÖÖF6‚s¢&WGW&âö&¦V7Bæ¶W—2‡'VÆR’æWfW'’†¶W’Óâ¶W’ÓÓÒwG—RrÇÂ¶W’ÓÓÒv6ÇVW2r’b`¢'&’æ—4'&’‡'VÆRæ6ÇVW2’bb'VÆRæ6ÇVW2æÆVæwF‚âbb'VÆRæ6ÇVW2æWfW'’†6ÇVRÓâ6ÇVRb`¢ö&¦V7Bæ¶W—2†6ÇVR’æWfW'’†¶W’Óâ¶W’ÓÓÒv6VÆÂrÇÂ¶W’ÓÓÒvF–v—Br’bbçVÖ&W"æ—4–çFVvW"†6ÇVRæ6VÆÂ’b`¢6ÇVRæ6VÆÂãÒbb6ÇVRæ6VÆÂÂƒbbçVÖ&W"æ—4–çFVvW"†6ÇVRæF–v—B’bb6Ç]tÓ[h‘éì¶»§q«^t return Object.keys(rule).every(key => ['type', 'cells', 'color', 'fromBulb'].includes(key)) &&
         validCells(rule.cells, 2) && rule.cells.length <= 9 && (rule.color === undefined || isHexColor(rule.color))
     case 'distinct-cells':
       return Object.keys(rule).every(key => ['type', 'cells', 'color'].includes(key)) &&
@@ -788,230 +240,66 @@ function isPlayableRule(rule: VariantRule): boolean {
       marks && Object.keys(marks).every(key => ['negative', 'pairs'].includes(key)) &&
       (marks.negative === undefined || typeof marks.negative === 'boolean') &&
       (marks.pairs === undefined || Array.isArray(marks.pairs) &&
-        marks.pairs.every((pair) => validCells(pair, 2) && pair.length === 2)))
-    case 'adjacent-total': return validCells(rule.cells, 2) && rule.cells.length === 2 && cellsShareEdge(rule.cells[0], rule.cells[1]) &&
-      Number.isInteger(rule.sum) && rule.sum >= 3 && rule.sum <= 17
-    case 'xv': return [rule.five, rule.ten].every(marks => marks === undefined ||
-      marks && Object.keys(marks).every(key => ['negative', 'pairs'].includes(key)) &&
-      (marks.negative === undefined || typeof marks.negative === 'boolean') &&
-      (marks.pairs === undefined || Array.isArray(marks.pairs) && marks.pairs.every(pair =>
-        validCells(pair, 2) && pair.length === 2 && cellsShareEdge(pair[0], pair[1]))))
-    default: return false
-  }
-}
+        marks.pairs.every((pair) => validCells(pair, 2) && pair.length =YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éíãM5N‹Z–‹­¦ëeŠw¬Ôôô€È¤¤¤(€€€…Í”€…‘©…•¹ĞµÑ½Ñ…°œèÉ•ÑÕÉ¸Ù…±¥‘•±±Ì¡ÉÕ±”¹•±±Ì°€È¤€˜˜ÉÕ±”¹•±±Ì¹±•¹Ñ €ôôô€È€˜˜•±±ÍM¡…É•‘”¡ÉÕ±”¹•±±ÍlÁt°ÉÕ±”¹•±±ÍlÅt¤€˜˜(€€€€€9Õµ‰•È¹¥Í%¹Ñ••È¡ÉÕ±”¹ÍÕ´¤€˜˜ÉÕ±”¹ÍÕ´€øô€Ì€˜˜ÉÕ±”¹ÍÕ´€ğô€ÄÜ(€€€…Í”€áØœèÉ•ÑÕÉ¸mÉÕ±”¹™¥Ù”°ÉÕ±”¹Ñ•¹t¹•Ù•Éä¡µ…É­Ì€ôøµ…É­Ì€ôôôÕ¹‘•™¥¹•ñğ(€€€€€µ…É­Ì€˜˜=‰©•Ğ¹­•åÌ¡µ…É­Ì¤¹•Ù•Éä¡­•ä€ôøl¹•…Ñ¥Ù”œ°€Á…¥ÉÌt¹¥¹±Õ‘•Ì¡­•ä¤¤€˜˜(€€€€€€¡µ…É­Ì¹¹•…Ñ¥Ù”€ôôôÕ¹‘•™¥¹•ñğÑåÁ•½˜µ…É­Ì¹¹•…Ñ¥Ù”€ôôô€‰½½±•…¸œ¤€˜˜(€€€€€€¡µ…É­Ì¹Á…¥ÉÌ€ôôôÕ¹‘•™¥¹•ñğÉÉ…ä¹¥ÍÉÉ…ä¡µ…É­Ì¹Á…¥ÉÌ¤€˜˜µ…É­Ì¹Á…¥ÉÌ¹•Ù•Éä¡Á…¥È€ôø(€€€€€€€Ù…±¥‘•±±Ì¡Á…¥È°€È¤€˜˜Á…¥È¹±•¹Ñ €ôôô€È€˜˜•±±ÍM¡…É•‘”¡Á…¥ÉlÁt°Á…¥ÉlÅt¤¤¤¤(€€€‘•™…Õ±ĞèÉ•ÑÕÉ¸™…±Í”(€ô)ô((¼¨¨%‘•¹Ñ¥™ä„¹…µ•É•¥Á”İ¡•¸…±°ÉÕ±•Ì‰•±½¹œÑ¼Ñ¡…ĞÙ…É¥…¹Ğ¸€¨¼)•áÁ½ÉĞ™Õ¹Ñ¥½¸Ù…É¥…¹Ñ%‘½ÉAÕéé±”¡ÁÕéé±”èY…É¥…¹ÑAÕéé±”¤èAÕéé±•Y…É¥…¹Ñ%ì(€½¹ÍĞÉÕ±•Ì€ôÁÕéé±”¹ÉÕ±•Ì€üümt(€¥˜€¡ÁÕéé±”¹É•¥½¹Ìü¹ÑåÁ”€ôôô€Á…ÉÑ¥…°œ¤É•ÑÕÉ¸€µ¥á•œ(€¥˜€¡ÁÕéé±”¹É•¥½¹Ìü¹ÑåÁ”€ôôô€©¥Í…Üœ¤É•ÑÕÉ¸ÉÕ±•Ì¹±•¹Ñ €ü€µ¥á•œ€è€©¥Í…Üœ(€¥˜€ …ÉÕ±•Ì¹±•¹Ñ ¤É•ÑÕÉ¸€±…ÍÍ¥Œœ(€½¹ÍĞ™¥ÉÍĞ€ôÉÕ±•ÍlÁt¹ÑåÁ”(€¥˜€¡™¥ÉÍĞ€ôôô€•áÑÉ„µ¡½ÕÍ”œ¤ì(€€€É•ÑÕÉ¸ÉÕ±•Ì¹±•¹Ñ €ôôô]%9=-U}I%=9L¹±•¹Ñ €˜˜(€€€€€ÉÕ±•Ì¹•Ù•Éä¡ÉÕ±”€ôøÉÕ±”¹ÑåÁ”€ôôô€•áÑÉ„µ¡½ÕÍ”œ¤€˜˜(€€€€€]%9=-U}I%=9L¹•Ù•Éä¡É•¥½¸€ôøÉÕ±•Ì¹Í½µ”¡ÉÕ±”€ôø(€€€€€€€ÉÕ±”¹ÑåÁ”€ôôô€•áÑÉ„µ¡½ÕÍ”œ€˜˜ÉÕ±”¹•±±Ì¹±•¹Ñ €ôôô€ä€˜˜É•¥½¸¹•Ù•Éä¡•±°€ôøÉÕ±”¹•±±Ì¹¥¹±Õ‘•Ì¡•±°¤¤¤¤(€€€€€€ü€İ¥¹‘½­Ôœ€è€µ¥á•œ(€ô(€É•ÑÕÉ¸¥ÍAÕéé±•Y…É¥…¹Ñ%¡™¥ÉÍĞ¤€˜˜ÉÕ±•Ì¹•Ù•Éä¡ÉÕ±”€ôøÉÕ±”¹ÑåÁ”€ôôô™¥ÉÍĞ¤€ü™¥ÉÍĞ€è€µ¥á•œ)ô()•áÁ½ÉĞ™Õ¹Ñ¥½¸¥ÍA±…å…‰±•AÕéé±”¡¥èÕ¹­¹½İ¸°ÁÕéé±”èÕ¹­¹½İ¸°™½œüèÕ¹­¹½İ¸¤èÁÕéé±”¥ÌY…É¥…¹ÑAÕéé±”ì(€¥˜€  …¥ÍAÕéé±•Y…É¥…¹Ñ%¡¥¤ñğ¥€ôôô€±…ÍÍ¥Œœ¤ñğ(€€€€…ÁÕéé±”ñğÑåÁ•½˜ÁÕéé±”€„ôô€½‰©•Ğœ¤É•ÑÕÉ¸™…±Í”(€¥˜€¡=‰©•Ğ¹­•åÌ¡ÁÕéé±”¤¹Í½µ”¡­•ä€ôø€…lÙ•ÉÍ¥½¸œ°€¥Ù•¹Ìœ°€ÉÕ±•Ìœ°€É•¥½¹Ìt¹¥¹±Õ‘•Ì¡­•ä¤¤¤É•ÑÕÉ¸™…±Í”(€½¹ÍĞìÙ•ÉÍ¥½¸°¥Ù•¹Ì°ÉÕ±•Ì°É•¥½¹Ìô€ôÁÕéé±”…ÌY…É¥…¹ÑAÕéé±”(€¥˜€¡Ù•ÉÍ¥½¸€„ôô€ÄñğÑåÁ•½˜¥Ù•¹Ì€„ôô€ÍÑÉ¥¹œœñğ€„½ylÀ´åuìàÅô¼¹Ñ•ÍĞ¡¥Ù•¹Ì¤¤É•ÑÕÉ¸™…±Í”(€¥˜€¡É•¥½¹Ì€„ôôÕ¹‘•™¥¹•€˜˜€ …É•¥½¹ÌñğÑåÁ•½˜É•¥½¹Ì€„ôô€½‰©•ĞœñğÉÉ…ä¹¥ÍÉÉ…ä¡É•¥½¹Ì¤ñğ(€€€=‰©•Ğ¹­•åÌ¡É•¥½¹Ì¤¹Í½µ”¡­•ä€ôø­•ä€„ôô€ÑåÁ”œ€˜˜€„¡É•¥½¹Ì¹ÑåÁ”€„ôô€‰½á•Ìœ€˜˜­•ä€ôôô€É•¥½¹Ìœ¤¤¤¤É•ÑÕÉ¸™…±Í”(€¥˜€¡É•¥½¹Ì€„ôôÕ¹‘•™¥¹•€˜˜É•¥½¹Ìü¹ÑåÁ”€„ôô€‰½á•Ìœ€˜˜(€€€€„¡¡…ÍÕÑ¡½É•‘I•¥½¹Ì¡É•¥½¹Ì¤€˜˜Ù…±¥‘ÕÑ¡½É•‘I•¥½¹Ì¡É•¥½¹Ì¹É•¥½¹Ì°É•¥½¹Ì¹ÑåÁ”€ôôô€Á…ÉÑ¥…°œ¤¤¤É•ÑÕÉ¸™…±Í”(€€¼¼€ç\äÉ¥¡…Ì€ÄĞĞÍ¡…É••‘•Ì°Í¼Ñ¡”•±°½Õ¹Ğ…¹¹½Ğ…À¥ÑÌ±Õ•Ì¸(€€¼¼Q¡”¥¹Ñ•É¡…¹”‘•½‘•ÉÌ‰½Õ¹Ñ¡”•¹½‘•…¹‘•½‘•¥¹ÁÕĞÍ¥é•Ì¸(€¥˜€¡ÉÕ±•Ì€„ôôÕ¹‘•™¥¹•€˜˜€ …ÉÉ…ä¹¥ÍÉÉ…ä¡ÉÕ±•Ì¤ñğ€…ÉÕ±•Ì¹•Ù•Éä¡¥ÍA±…å…‰±•IÕ±”¤ñğ(€€€ÉÕ±•Ì¹™¥±Ñ•È¡ÉÕ±”€ôøÉÕ±”¹ÑåÁ”€ôôô€±•ÑÑ•É•µÅÕ…‘ÉÕÁ±•Ìœ¤¹±•¹Ñ €ø€Ä¤¤É•ÑÕÉ¸™…±Í”(€¥˜€¡É•¥½¹Ìü¹ÑåÁ”€ôôô€Á…ÉÑ¥…°œ€˜˜ÉÕ±•Ìü¹Í½µ”¡ÉÕ±”€ôøÉÕ±”¹ÑåÁ”€ôôô€É•¥½¸µÍÕ´œ€˜˜(€€€ÉÕ±”¹•±±Ì¹Í½µ” ¡•±°è¹Õµ‰•È¤€ôø€…É•¥½¹Ì¹É•¥½¹Ì¹Í½µ”¡É•¥½¸€ôøÉ•¥½¸¹¥¹±Õ‘•Ì¡•±°¤¤¤¤¤É•ÑÕÉ¸™…±Í”(€½¹ÍĞ­¥¹€ôÙ…É¥…¹Ñ%‘½ÉAÕéé±”¡ÁÕéé±”…ÌY…É¥…¹ÑAÕéé±”¤(€É•ÑÕÉ¸™½œ€ôôôÕ¹‘•™¥¹•€ü­¥¹€„ôô€±…ÍÍ¥Œœ€˜˜€¡¥€ôôô€µ¥á•œñğ­¥¹€ôôô¥¤€è¥€ôôô€µ¥á•œ€˜˜¥Í½•™¥¹¥Ñ¥½¸¡™½œ¤)ô()½¹ÍĞIU1}95LèI•½ÉñY…É¥…¹ÑIÕ±•lÑåÁ”t°ÍÑÉ¥¹œø€ôì(€±½¹”èYI%9QL¹±½¹”¹¹…µ”°(€€É•¥½¸µÍÕ´œèYI%9QMlÉ•¥½¸µÍÕ´t¹¹…µ”°(€•¹ÑÉ½Á¥ŒèAUii1}YI%9QL¹•¹ÑÉ½Á¥Œ¹¹…µ”°(€µ½‘Õ±…ÈèAUii1}YI%9QL¹µ½‘Õ±…È¹¹…µ”°(€€±¥ÑÑ±”µ­¥±±•ÈœèYI%9QMl±¥ÑÑ±”µ­¥±±•Èt¹¹…µ”°(€Í…¹‘İ¥ èYI%9QL¹Í…¹‘İ¥ ¹¹…µ”°(€€Ñ•ÉÉ…¥¸µÍ…¹‘İ¥ œè€Q•ÉÉ…¥¸M…¹‘İ¥ œ°(€€àµÍÕ´œèYI%9QMlàµÍÕ´t¹¹…µ”°(€Í­åÍÉ…Á•ÉÌèYI%9QL¹Í­åÍÉ…Á•ÉÌ¹¹…µ”°(€€±½‰…°µ•¹ÑÉ½ÁäœèAUii1}YI%9QMl±½‰…°µ•¹ÑÉ½Áät¹¹…µ”°(€€•¹ÑÉ½Áäµİ¥¹‘½ÜµÉ½ÕÀœè€±½‰…°¹ÑÉ½ÁäÍ¡…Á”œ°(€€‘¥¥Ğµ½É‘•Èœè€¥¥Ğ½É‘•Èœ°(€€™½É‰¥‘‘•¸µ•¹ÑÉ½Á¥Œµ½¹¹•Ñ¥½¸œè€	É½­•¸¹ÑÉ½Á¥Œ½¹¹•Ñ¥½¸œ°(€…ÅÉ”è€ÅÉ”œ°(€€¹•¥¡‰½Èµµ…Ñ œè€9•¥¡‰½È5…Ñ œ°(€€½¹‘¥Ñ¥½¹…°µ¹•¥¡‰½Èœè€½¹‘¥Ñ¥½¹…°9•¥¡‰½ÉÌœ°(€€µ…¥ŒµÍÅÕ…É”œè€5…¥ŒMÅÕ…É”œ°(€€Õ¹­¹½İ¸µ…”µÍÕµÌœè€U¹¥ÅÕ”…•Ìœ°(€€‘¥ÍÑ…¹Ğµ¹•¥¡‰½ÉÌœè€¥ÍÑ…¹Ğ9•¥¡‰½ÉÌœ°(€É•¹‰…¸èAUii1}YI%9QL¹É•¹‰…¸¹¹…µ”°(€€…‘©…•¹ĞµÑ½Ñ…°œèAUii1}YI%9QMl…‘©…•¹ĞµÑ½Ñ…°t¹¹…µ”°(€áØèAUii1}YI%9QL¹áØ¹¹…µ”°(€¥¹•ÅÕ…±¥ÑäèAUii1}YI%9QL¹¥¹•ÅÕ…±¥Ñä¹¹…µ”°(€µ¥¹¥µÕ´è€5¥¹¥µÕ´œ°(€µ…á¥µÕ´è€5…á¥µÕ´œ°(€€±…‰•±•µ‘½ÑÌœè€9Õµ‰•É•‘½ÑÌœ°(€€•áÑÉ„µ¡½ÕÍ”œè€áÑÉ„É•¥½¹Ìœ°(€€‘¥ÍÑ¥¹Ğµ•±±Ìœè€M¡…‘•É½ÕÁÌœ°(€€¥¹Í¥‘”µÉ¥œè€%¹Í¥‘”É¥œ°(€€±•ÑÑ•É•µÅÕ…‘ÉÕÁ±•Ìœè€1•ÑÑ•É•EÕ…‘ÉÕÁ±•Ìœ°(€€½¹Í•ÕÑ¥Ù”µÉÕ¸œè€½¹Í•ÕÑ¥Ù”1¥¹•Ìœ°(€‘¥…½¹…°èYI%9QL¹‘¥…½¹…°¹¹…µ”°(€€­¥±±•Èµ…•ÌœèYI%9QMl­¥±±•Èµ…•Ìt¹¹…µ”°(€€Ÿ]4ÖÚ$z{-®éÜj×˜[œÙ›Ü›YYH[™H[™Ú[È[™YH˜[œÙ›Ü›YY˜[Y\È™]ÙY[ˆ[KˆYˆÙ]™\˜[[™Ú[Z\œÈ]X[YK\ÙHH\™Ù\İİ[K‰Ëİ]ÚYPÛYSX™[
+[JJBˆœ™XZÂˆØ\ÙH	Ş\İ[IÎ‚ˆ\ØÜš\[ÛœËœ\Ú
+T’PS•ÖÉŞ\İ[I×Kœ[Kİ]ÚYPÛYSX™[
+[JJBˆœ™XZÂˆØ\ÙH	ÜÚŞ\ØÜ˜\\œÉÎ‚ˆ\ØÜš\[ÛœËœ\Ú
+T’PS•ËœÚŞ\ØÜ˜\\œËœ[Kİ]ÚYPÛYSX™[
+[JJBˆœ™XZÂˆØ\ÙH	ØÛÛ™IÎ‚ˆ\ØÜš\[ÛœËœ\Ú
+T’PS•Ë˜ÛÛ™Kœ[JBˆ›Üˆ
+ÛÛœİÙ]ÙˆÛÛ™S^[İ]
+^›Kœ[\ÊKœÙ]ÊH\ØÜš\[ÛœËœ\Ú
+ÛÛ™H	ÜÙ]›X™[Nˆ	ÜÙ]˜Ù[Âˆ›X\
+Ù[Oˆ‰ÓX]™›ÛÜŠÙ[ÈJH
+È_PÉØÙ[	HH
+È_X
+Kš›Ú[Š	Ë	Ê_H]\İÛÛZ[ˆHØ[YHYÚ]˜
+Bˆœ™XZÂˆØ\ÙH	ÙÛØ˜[Y[›ÜIÎ‚ˆ\ØÜš\[ÛœËœ\Ú
+V–“WÕT’PS•ÖÉÙÛØ˜[Y[›ÜI×Kœ[JBˆœ™XZÂˆØ\ÙH	Ù[›ÜK]Ú[™İËYÜ›İ\	ÎˆÂˆÛÛœİÜ›İ\H[K™Ü›İ\OOH	ÛİÉÈÈ	ÛİÈ
+x $ÌÊIÈˆ[K™Ü›İ\OOH	ÛZYIÈÈ	ÛZYH
+8 $ÍŠIÈˆ	ÚYÚ
+ø $ÎJIÂˆ\ØÜš\[ÛœËœ\Ú
+[ˆXXÚX\šÙYˆ0åÈˆÚ[™İËH›İ\ˆÙ[ÈÛÛZ[ˆ]X\İÛ™HİËZYK[™YÚYÚ]ˆH	ÙÜ›İ\HÚ\HÚİÜÈÚXÚYÚ]Ü›İ\\X\œÈÚXÙK˜
+Bˆœ™XZÂˆBˆØ\ÙH	ÙYÚ][Ü™\‰ÎˆÂˆÛÛœİš\œİH[K˜Ù[ÖÌK\İH[K˜Ù[Ë˜]
+LJHBˆÛÛœİİ\H[K˜Ù[ÖÌWHHš\œİˆÛÛœİÚYHHİ\OOHHÈ	İÜ	Èˆİ\OOHNHÈ	Ø›İÛIÈˆİ\OOHHÈ	ÛY	Èˆ	ÜšYÚ	ÂˆÛÛœİİ\ÙHHš\œİ	HHOOH\İ	HBˆÈÛÛ[[ˆ	Ùš\œİ	HH
+È_Xˆ›İÈ	ÓX]™›ÛÜŠš\œİÈJH
+È_Xˆ\ØÜš\[ÛœËœ\Ú
+H	Ü[K™YÚ]Ëš›Ú[Š	Ë	Ê_H[ˆ	Úİ\Ù_H\X\ˆ[ˆ\ØÙ[™[™ÈÜ™\ˆœ›ÛHH	ÜÚY_K˜
+Bˆœ™XZÂˆBˆØ\ÙH	Ù›Ü˜šY[‹Y[›ÜXËXÛÛ›™Xİ[Û‰Î‚ˆ\ØÜš\[ÛœËœ\Ú
+	ĞXÜ›ÜÜÈ\Èœ›ÚÙ[ˆÛÛ›™Xİ[Û‹]X\İÛ™HÙˆHÛÈš\\ÈØ[››İÛÛZ[ˆÛ™HİËÛ™HZYK[™Û™HYÚYÚ]‰ÊBˆœ™XZÂˆØ\ÙH	Ù[›ÜXÉÎ‚ˆ\ØÜš\[ÛœËœ\Ú
+V–“WÕT’PS•Ë™[›ÜXËœ[JBˆœ™XZÂˆØ\ÙH	Û[Ù[\‰Î‚ˆ\ØÜš\[ÛœËœ\Ú
+V–“WÕT’PS•Ë›[Ù[\‹œ[JBˆœ™XZÂˆØ\ÙH	Ø™]ÙY[‰Î‚ˆ\ØÜš\[ÛœËœ\Ú
+V–“WÕT’PS•Ë˜™]ÙY[‹œ[JBˆYˆ
+[™TÚÚ\ĞÙ[Ê[K˜Ù[ÊJHÂˆ\ØÜš\[ÛœËœ\Ú
+	ĞH\ÚY™]ÙY[ˆÛÛ›™XİÜˆÚÚ\ÈÙ[ËˆÛ›HH[™Ú[Ú\˜Û\È[™Ù[ÈÚ]HÛX[İ™[Û™ÈÈ][™K‰ÊBˆBˆœ™XZÂˆØ\ÙH	Ü[X\œ›İÉÎ‚ˆ\ØÜš\[ÛœËœ\Ú
+V–“WÕT’PS•ÖÉÜ[X\œ›İÉ×Kœ[JBˆœ™XZÂˆØ\ÙH	ÛØÚÛİ]	Î‚ˆ\ØÜš\[ÛœËœ\Ú
+V–“WÕT’PS•Ë›ØÚÛİ]œ[JBˆYˆ
+[™TÚÚ\ĞÙ[Ê[K˜Ù[ÊJHÂˆ\ØÜš\[ÛœËœ\Ú
+	ĞH\ÚYØÚÛİ]ÛÛ›™XİÜˆÚÚ\ÈÙ[ËˆÛ›HH[™Ú[X[[Û™È[™Ù[ÈÚ]HÛX[İ™[Û™ÈÈ][™K‰ÊBˆBˆœ™XZÂˆØ\ÙH	Ü™YÚ[Û‹\İ[IÎˆÂˆ\ØÜš\[ÛœËœ\Ú
+T’PS•ÖÉÜ™YÚ[Û‹\İ[I×Kœ[JBˆÛÛœİ[X™\ˆH^›Kœ[\ÈKœÛXÙJ[™^
+ÈJK™š[\Š[HOˆ[K\HOOH	Ü™YÚ[Û‹\İ[IÊK›[™İˆYˆ
+™YÚ[Û”İ[T\Ê[K^›Kœ™YÚ[ÛœÊK›[™İOOHJHÂˆ\ØÜš\[ÛœËœ\Ú
+	Õ\È[™Hİ^\È[ˆÛ™H™YÚ[Û‹ÛÈ\™H\ÈÛ›HÛ™Hİ[‰ÊBˆH[ÙHYˆ
+[KœÙYÛY[ÊHÂˆÛÛœİ]H
+Ù[ˆ[X™\ŠHOˆ‰ÓX]™›ÛÜŠÙ[ÈJH
+È_PÉØÙ[	HH
+È_Xˆ\ØÜš\[ÛœËœ\Ú
+™YÚ[Ûˆİ[H[™H	Û[X™\ŸNˆ	Ü™YÚ[Û”İ[T\Ê[K^›Kœ™YÚ[ÛœÊBˆ›X\
+\Oˆ\›X\
+]
+Kš›Ú[Š	È
+È	ÊJKš›Ú[Š	ÈH	Ê_KˆXXÚ\İYÜ›İ\\ÈHØ[YHİ[˜
+BˆH[ÙH\ØÜš\[ÛœËœ\Ú
+™YÚ[Ûˆİ[H[™H	Û[X™\ŸNˆ	Ü[K™Ü›İ\T™YÚ[Û‚ˆÈ	ØÛÛXš[™H[š\Ú]ÈÈHØ[YH™YÚ[Ûˆ[ÈÛ™Hİ[ÈXXÚš\Ú]Y™YÚ[Ûˆ\ÈHØ[YHİ[‰Âˆˆ	ÙXXÚÙ\\˜]Hš\Ú]ÈH™YÚ[Ûˆ\ÈHØ[YHİ[‰ßX
+BˆYˆ
 
-/** Identify a named recipe when all rules belong to that variant. */
-export function variantIdForPuzzle(puzzle: VariantPuzzle): PuzzleVariantId {
-  const rules = puzzle.rules ?? []
-  if (puzzle.regions?.type === 'partial') return 'mixed'
-  if (puzzle.regions?.type === 'jigsaw') return rules.length ? 'mixed' : 'jigsaw'
-  if (!rules.length) return 'classic'
-  const first = rules[0].type
-  if (first === 'extra-house') {
-    return rules.length === WINDOKU_REGIONS.length &&
-      rules.every(rule => rule.type === 'extra-house') &&
-      WINDOKU_REGIONS.every(region => rules.some(rule =>
-        rule.type === 'extra-house' && rule.cells.length === 9 && region.every(cell => rule.cells.includes(cell))))
-      ? 'windoku' : 'mixed'
-  }
-  return isPuzzleVariantId(first) && rules.every(rule => rule.type === first) ? first : 'mixed'
-}
-
-export function isPlayablePuzzle(id: unknown, puzzle: unknown, fog?: unknown): puzzle is VariantPuzzle {
-  if ((!isPuzzleVariantId(id) || id === 'classic') ||
-    !puzzle || typeof puzzle !== 'object') return false
-  if (Object.keys(puzzle).some(key => !['version', 'givens', 'rules', 'regions'].includes(key))) return false
-  const { version, givens, rules, regions } = puzzle as VariantPuzzle
-  if (version !== 1 || typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens)) return false
-  if (regions !== undefined && (!regions || typeof regions !== 'object' || Array.isArray(regions) ||
-    Object.keys(regions).some(key => key !== 'type' && !(regions.type !== 'boxes' && key === 'regions')))) return false
-  if (regions !== undefined && regions?.type !== 'boxes' &&
-    !(hasAuthoredRegions(regions) && validAuthoredRegions(regions.regions, regions.type === 'partial'))) return false
-  // A 9Ã—9 grid has 144 shared edges, so the cell count cannot cap its clues.
-  // The interchange decoders bound the encoded and decoded input sizes.
-  if (rules !== undefined && (!Array.isArray(rules) || !rules.every(isPlayableRule) ||
-    rules.filter(rule => rule.type === 'lettered-quadruples').length > 1)) return false
-  if (regions?.type === 'partial' && rules?.some(rule => rule.type === 'region-sum' &&
-    rule.cells.some((cell: number) => !regions.regions.some(region => region.includes(cell))))) return false
-  const kind = variantIdForPuzzle(puzzle as VariantPuzzle)
-  return fog === undefined ? kind !== 'classic' && (id === 'mixed' || kind === id) : id === 'mixed' && isFogDefinition(fog)
-}
-
-const RULE_NAMES: Record<VariantRule['type'], string> = {
-  clone: VARIANTS.clone.name,
-  'region-sum': VARIANTS['region-sum'].name,
-  entropic: PUZZLE_VARIANTS.entropic.name,
-  modular: PUZZLE_VARIANTS.modular.name,
-  'little-killer': VARIANTS['little-killer'].name,
-  sandwich: VARIANTS.sandwich.name,
-  'terrain-sandwich': 'Terrain Sandwich',
-  'x-sum': VARIANTS['x-sum'].name,
-  skyscrapers: VARIANTS.skyscrapers.name,
-  'global-entropy': PUZZLE_VARIANTS['global-entropy'].name,
-  'entropy-window-group': 'Global Entropy shape',
-  'digit-order': 'Digit order',
-  'forbidden-entropic-connection': 'Broken Entropic connection',
-  aqre: 'Aqre',
-  'neighbor-match': 'Neighbor Match',
-  'magic-square': 'Magic Square',
-  'unknown-cage-sums': 'Unique Cages',
-  'distant-neighbors': 'Distant Neighbors',
-  renban: PUZZLE_VARIANTS.renban.name,
-  'adjacent-total': PUZZLE_VARIANTS['adjacent-total'].name,
-  xv: PUZZLE_VARIANTS.xv.name,
-  inequality: PUZZLE_VARIANTS.inequality.name,
-  minimum: 'Minimum',
-  maximum: 'Maximum',
-  'labeled-dots': 'Numbered dots',
-  'extra-house': 'Extra regions',
-  'distinct-cells': 'Shaded groups',
-  'inside-grid': 'Inside Grid',
-  'lettered-quadruples': 'Lettered Quadruples',
-  'consecutive-run': 'Consecutive Lines',
-  diagonal: VARIANTS.diagonal.name,
-  'killer-cages': VARIANTS['killer-cages'].name,
-  'anti-knight': VARIANTS['anti-knight'].name,
-  thermometer: VARIANTS.thermometer.name,
-  arrow: VARIANTS.arrow.name,
-  'pill-arrow': PUZZLE_VARIANTS['pill-arrow'].name,
-  kropki: VARIANTS.kropki.name,
-  whispers: PUZZLE_VARIANTS.whispers.name,
-  palindrome: PUZZLE_VARIANTS.palindrome.name,
-  between: PUZZLE_VARIANTS.between.name,
-  lockout: PUZZLE_VARIANTS.lockout.name,
-  quadruple: PUZZLE_VARIANTS.quadruple.name,
-  'quadruple-sum': 'Quad-Arrows',
-  parity: PUZZLE_VARIANTS.parity.name,
-  'digit-restriction': 'Digit Restrictions',
-  'anti-king': PUZZLE_VARIANTS['anti-king'].name,
-  'non-consecutive': PUZZLE_VARIANTS['non-consecutive'].name,
-}
-
-/** Describe the active puzzle independently of its generation recipe. */
-export function variantName(variant?: Pick<VariantGame, 'id' | 'puzzle' | 'fog'>): string {
-  if (!variant) return VARIANTS.classic.name
-  if (variant.fog) return 'Fog of War'
-  if (variant.id !== 'mixed') return PUZZLE_VARIANTS[variant.id].name
-  const { rules, regions } = variant.puzzle
-  const names = [
-    ...(regions?.type === 'jigsaw' ? [VARIANTS.jigsaw.name] : regions?.type === 'partial' ? ['Latin square'] : []),
-    ...(rules?.map(rule => RULE_NAMES[rule.type]) ?? []),
-  ]
-  return [...new Set(names)].filter(Boolean).join(' + ')
-}
-
-export type VariantRuleSectionId = 'classic' | 'jigsaw' | 'partial-regions' | VariantRule['type']
-export type VariantRuleSection = { id: VariantRuleSectionId; title: string; descriptions: string[] }
-
-function baseRuleSection(puzzle: VariantPuzzle): VariantRuleSection {
-  if (puzzle.regions?.type === 'partial') {
-    const descriptions = ['Each row and column contains the digits 1â€“9 once each.']
-    if (puzzle.regions.regions.length) descriptions.push('Each marked region also contains the digits 1â€“9 once each.')
-    return { id: 'partial-regions', title: 'Latin Square', descriptions }
-  }
-  if (puzzle.regions?.type === 'jigsaw') {
-    const descriptions: string[] = [VARIANTS.jigsaw.rule]
-    if (puzzle.regions.regions.some(region => !connectedGridCells(region, 9))) {
-      descriptions.push('Pieces with the same region color belong to one region.')
-    }
-    return { id: 'jigsaw', title: 'Jigsaw Sudoku', descriptions }
-  }
-  return { id: 'classic', title: 'Normal Sudoku', descriptions: [VARIANTS.classic.rule] }
-}
-
-function describedVariantRules(puzzle: VariantPuzzle) {
-  const rules = puzzle.rules ?? []
-  const disjoint = disjointGroupRuleIndices(rules)
-  return rules.map((rule, index) => {
-    const descriptions: string[] = []
-    switch (rule.type) {
-      case 'little-killer':
-        descriptions.push(VARIANTS['little-killer'].rule, outsideClueLabel(rule))
-        break
-      case 'sandwich':
-        descriptions.push(VARIANTS.sandwich.rule, outsideClueLabel(rule))
-        break
-      case 'terrain-sandwich':
-        descriptions.push('Each cell has a transformed value: yellow doubles its digit, green adds 3, purple subtracts 3, and uncolored cells keep their digit. For each outside clue, use transformed 1 and 9 endpoints and add the transformed values between them. If several endpoint pairs qualify, use the largest sum.', outsideClueLabel(rule))
-        break
-      case 'x-sum':
-        descriptions.push(VARIANTS['x-sum'].rule, outsideClueLabel(rule))
-        break
-      case 'skyscrapers':
-        descriptions.push(VARIANTS.skyscrapers.rule, outsideClueLabel(rule))
-        break
-      case 'clone':
-        descriptions.push(VARIANTS.clone.rule)
-        for (const set of cloneLayout(puzzle.rules).sets) descriptions.push(`Clone ${set.label}: ${set.cells
-          .map(cell => `R${Math.floor(cell / 9) + 1}C${cell % 9 + 1}`).join(', ')} must contain the same digit.`)
-        break
-      case 'global-entropy':
-        descriptions.push(PUZZLE_VARIANTS['global-entropy'].rule)
-        break
-      case 'entropy-window-group': {
-        const group = rule.group === 'low' ? 'low (1â€“3)' : rule.group === 'middle' ? 'middle (4â€“6)' : 'high (7â€“9)'
-        descriptions.push(`In each marked 2 Ã— 2 window, the four cells contain at least one low, middle, and high digit. The ${group} shape shows which digit group appears twice.`)
-        break
-      }
-      case 'digit-order': {
-        const first = rule.cells[0], last = rule.cells.at(-1)!
-        const step = rule.cells[1] - first
-        const side = step === 9 ? 'top' : step === -9 ? 'bottom' : step === 1 ? 'left' : 'right'
-        const house = first % 9 === last % 9
-          ? `column ${first % 9 + 1}` : `row ${Math.floor(first / 9) + 1}`
-        descriptions.push(`The ${rule.digits.join(', ')} in ${house} appear in ascending order from the ${side}.`)
-        break
-      }
-      case 'forbidden-entropic-connection':
-        descriptions.push('Across this broken connection, at least one of the two triples cannot contain one low, one middle, and one high digit.')
-        break
-      case 'entropic':
-        descriptions.push(PUZZLE_VARIANTS.entropic.rule)
-        break
-      case 'modular':
-        descriptions.push(PUZZLE_VARIANTS.modular.rule)
-        break
-      case 'between':
-        descriptions.push(PUZZLE_VARIANTS.between.rule)
-        if (lineSkipsCells(rule.cells)) {
-          descriptions.push('A dashed Between connector skips cells. Only the endpoint circles and cells with a small dot belong to that line.')
-        }
-        break
-      case 'pill-arrow':
-        descriptions.push(PUZZLE_VARIANTS['pill-arrow'].rule)
-        break
-      case 'lockout':
-        descriptions.push(PUZZLE_VARIANTS.lockout.rule)
-        if (lineSkipsCells(rule.cells)) {
-          descriptions.push('A dashed Lockout connector skips cells. Only the endpoint diamonds and cells with a small dot belong to that line.')
-        }
-        break
-      case 'region-sum': {
-        descriptions.push(VARIANTS['region-sum'].rule)
-        const number = puzzle.rules!.slice(0, index + 1).filter(rule => rule.type === 'region-sum').length
-        if (regionSumParts(rule, puzzle.regions).length === 1) {
-          descriptions.push('This line stays in one region, so there is only one total.')
-        } else if (rule.segments) {
-          const at = (cell: number) => `R${Math.floor(cell / 9) + 1}C${cell % 9 + 1}`
-          descriptions.push(`Region Sum line ${number}: ${regionSumParts(rule, puzzle.regions)
-            .map(part => part.map(at).join(' + ')).join(' = ')}. Each listed group has the same total.`)
-        } else descriptions.push(`Region Sum line ${number}: ${rule.groupByRegion
-          ? 'combine all visits to the same region into one total; each visited region has the same total.'
-          : 'each separate visit to a region has the same total.'}`)
-        if ((rule.segments ?? [rule.cells]).some(path => lineSkipsCells(path))) descriptions.push(
-          'A dashed Region Sum connector skips cells. Only cells with a small dot belong to that line.')
-        break
-      }
-      case 'consecutive-run':
-        descriptions.push(rule.fromBulb
-          ? 'Digits along a Consecutive Thermometer increase by one at each step from the bulb to the tip.'
-          : 'Digits along a Consecutive Line increase by one from one end to the other.')
-        break
-      case 'inside-grid':
-        descriptions.push(`The diamonds form a rotated ${rule.rows.length} Ã— ${rule.rows.length} grid. Every row and column of that grid uses the same set of ${rule.rows.length} different digits.`)
-        break
-      case 'distinct-cells':
-        descriptions.push('The cells in each shaded group contain different digits.')
+[KœÙYÛY[ÈÏÈÜ[K˜Ù[×JKœÛÛYJ]Oˆ[™TÚÚ\ĞÙ[Ê]
+JJH\ØÜš\[ÛœËœ\Ú
+ˆ	ĞH\ÚY™YÚ[Ûˆİ[HÛÛ›™XİÜˆÚÚ\ÈÙ[ËˆÛ›HÙ[ÈÚ]HÛX[İ™[Û™ÈÈ][™K‰ÊBˆœ™XZÂˆBˆØ\ÙH	ØÛÛœÙXİ]]™K\[‰Î‚ˆ\ØÜš\[ÛœËœ\Ú
+[K™œ›ÛP[‚ˆÈ	ÑYÚ]È[Û™ÈHÛÛœÙXİ]]™H\›[ÛY]\ˆ[˜Ü™X\ÙHHÛ™H]XXÚİ\œ›ÛHH[ˆÈH\‰Âˆˆ	ÑYÚ]È[Û™ÈHÛÛœÙXİ]]™H[™H[˜Ü™X\ÙHHÛ™Hœ›ÛHÛ™H[™ÈHİ\‹‰ÊBˆœ™XZÂˆØ\ÙH	Ú[œÚYKYÜšY	Î‚ˆ\ØÜš\[ÛœËœ\Ú
+HX[[Û™È›Ü›HH›İ]Y	Ü[Kœ›İÜË›[™İH0åÈ	Ü[Kœ›İÜË›[™İHÜšYˆ]™\H›İÈ[™ÛÛ[[ˆÙˆ]ÜšY\Ù\ÈHØ[YHÙ]Ùˆ	Ü[Kœ›İÜË›[™İHY™™\™[YÚ]Ë˜
+Bˆœ™XZÂˆØ\ÙH	Ù\İ[˜İXÙ[ÉÎ‚ˆ\ØÜš\[ÛœËœ\Ú
+	ÕHÙ[È[ˆXXÚÚYYÜ›İ\ÛÛZ[ˆY–j¹âkºwµçhºÚn¶Šâ‚)Ú–Ú$zw(º{wÓ“¢Ö¥¢ëiºÙbë5ferent digits.')
         break
       case 'renban':
         descriptions.push(PUZZLE_VARIANTS.renban.rule)
@@ -1070,6 +358,13 @@ function describedVariantRules(puzzle: VariantPuzzle) {
         descriptions.push(...rule.clues.map(({ cell, digit }) =>
           `Neighbor-match clue ${digit} in R${Math.floor(cell / 9) + 1}C${cell % 9 + 1}: at least one orthogonally adjacent cell contains ${digit}.`))
         break
+      case 'conditional-neighbor': {
+        const names = rule.alternatives.map(({ rowOffset, columnOffset, digit }) =>
+          `a ${digit} directly ${rowOffset < 0 ? 'above it' : rowOffset > 0 ? 'below it' : columnOffset < 0 ? 'to its left' : 'to its right'}`)
+        const choices = new Intl.ListFormat('en', { type: 'disjunction' }).format(names)
+        descriptions.push(`Every ${rule.triggerDigit} must have ${choices}. It may have both.`)
+        break
+      }
       case 'magic-square':
         descriptions.push('The three rows, three columns, and two diagonals in the marked 3 Ã— 3 area each sum to 15.')
         break
@@ -1080,9 +375,7 @@ function describedVariantRules(puzzle: VariantPuzzle) {
         descriptions.push('The digit in each marked cell gives the identity of its 3 Ã— 3 box.')
         descriptions.push('Boxes that share an edge cannot have consecutive identities.')
         descriptions.push('Digits in cells orthogonally next to a marked cell cannot be consecutive.')
-        descriptions.push('For boxes that share an edge, the three cells along each facing border cannot contain a digit equal to, one below, or one above the neighboring boxâ€™s identity.')
-        break
-      case 'quadruple': case 'quadruple-sum':
+        descriptions.push('For boxes that share an edgeçkh‘éì¶»§q«^t  case 'quadruple': case 'quadruple-sum':
         descriptions.push(PUZZLE_VARIANTS.quadruple.rule)
         if (rule.type === 'quadruple-sum') descriptions.push(QUADRUPLE_SUM_RULE)
         break

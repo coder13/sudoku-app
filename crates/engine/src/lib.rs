@@ -1,299 +1,68 @@
-#![cfg_attr(all(feature = "variants", feature = "generation", feature = "teaching"), doc = include_str!("../README.md"))]
-#![cfg_attr(not(all(feature = "variants", feature = "generation", feature = "teaching")), doc = include_str!("../BUILD_FEATURES.md"))]
+YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éíãM5N‹Z–‹­¦ëeŠw¬ÔŒ…m™}…ÑÑÈ¡…±°¡™•…ÑÕÉ”€ô€‰Ù…É¥…¹ÑÌˆ°™•…ÑÕÉ”€ô€‰•¹•É…Ñ¥½¸ˆ°™•…ÑÕÉ”€ô€‰Ñ•…¡¥¹œˆ¤°‘½Œ€ô¥¹±Õ‘•}ÍÑÈ„ ˆ¸¸½I5¹µˆ¤¥t(Œ…m™}…ÑÑÈ¡¹½Ð¡…±°¡™•…ÑÕÉ”€ô€‰Ù…É¥…¹ÑÌˆ°™•…ÑÕÉ”€ô€‰•¹•É…Ñ¥½¸ˆ°™•…ÑÕÉ”€ô€‰Ñ•…¡¥¹œˆ¤¤°‘½Œ€ô¥¹±Õ‘•}ÍÑÈ„ ˆ¸¸½	U%1}QUIL¹µˆ¤¥t((m™œ¡…¹ä¡™•…ÑÕÉ”€ô€‰•¹•É…Ñ¥½¸ˆ°Ñ•ÍÐ¤¥t)µ½•¹•É…Ñ¥½¸ì)µ½¡¥¹ÑÌì)µ½±½¥…°ì(m™œ¡…¹ä¡™•…ÑÕÉ”€ô€‰•¹•É…Ñ¥½¸ˆ°™•…ÑÕÉ”€ô€‰Ñ•…¡¥¹œˆ°Ñ•ÍÐ¤¥t)µ½Á•ÉµÕÑ…Ñ¥½¸ì)µ½Á½Í¥Ñ¥½¸ì(m™œ¡…¹ä¡™•…ÑÕÉ”€ô€‰Ñ•…¡¥¹œˆ°Ñ•ÍÐ¤¥t)µ½ÁÉ…Ñ¥”ì(m™œ¡…±° (€€€™•…ÑÕÉ”€ô€‰Ý…Í´µ…Á¤ˆ°(€€€…¹ä¡Ñ…É•Ñ}…É €ô€‰Ý…Í´ÌÈˆ°Ñ•ÍÐ°™•…ÑÕÉ”€ô€‰±¤ˆ¤(¤¥t)µ½ÁÉ½Ñ½½°ì)µ½É…¹¬ì)µ½Í¥é•ì)µ½Ñ•¡¹¥ÅÕ”ì(m™œ¡™•…ÑÕÉ”€ô€‰Ù…É¥…¹ÑÌˆ¥t)µ½Ù…É¥…¹Ðì((m™œ¡…¹ä¡™•…ÑÕÉ”€ô€‰•¹•É…Ñ¥½¸ˆ°Ñ•ÍÐ¤¥t)ÁÕˆÕÍ”•¹•É…Ñ¥½¸èéì(€€€•¹•É…Ñ•‘AÕéé±”°•¹•É…Ñ¥½¹½¹™±¥Ð°•¹•É…Ñ¥½¹½¹ÍÑÉ…¥¹ÑÌ°•¹•É…Ñ¥½¹É¥Ñ•É¥„°(€€€•¹•É…Ñ¥½¹I…Ñ¥¹œ°•¹•É…Ñ¥½¹M•…É °•¹•É…Ñ¥½¹MÑ•À°Q•¡¹¥ÅÕ•Q…É•Ñ5½‘”°Y•É¥™¥•‘Q•µÁ±…Ñ”°(€€€…•ÁÑÍ}‘¥™™¥Õ±Ñä°‰Õ¥±Ñ¥¹}Ñ•µÁ±…Ñ•Ì°…¹½¹¥…±}ÁÕéé±”°•¹•É…Ñ•}½¹ÍÑÉ…¥¹•°(€€€•¹•É…Ñ•}™É½µ}Á½½°°•¹•É…Ñ•}µ…Ñ¡¥¹œ°•¹•É…Ñ•}µ…Ñ¡¥¹}Ý¥Ñ¡}µ½‘”°¥µÁ½ÍÍ¥‰±•}Ñ•µÁ±…Ñ•Ì°(€€€ÍÑ…ÉÑ}™É½µ}Á½½°°ÍÑ…ÉÑ}µ…Ñ¡¥¹œ°ÍÑ…ÉÑ}Ñ…É•Ñ•°)ôì)ÁÕˆÕÍ”¡¥¹ÑÌèéì(€€€±¥¹•‘á±ÕÍ¥½¹…Í”°±¥¹•‘á±ÕÍ¥½¹I•…Í½¸°±µ½ÍÑ1½­•‘M•Ð°±µ½ÍÑ1½­•‘M•Ñ1¥¹¬°(€€€	±½ÍÍ½µA•Ñ…°°…¹‘¥‘…Ñ”°…¹‘¥‘…Ñ•1¥¹¬°½±½É¥¹I•…Í½¸°½¹©Õ…Ñ•A…¥È°U1Q}!%9Q}1%5%P°(€€€•‘ÕÑ¥½¹5…Ñ °•‘ÕÑ¥½¹AÉ½½˜°½Õ‰±•á½•ÑAÉ½½˜°á½•ÑÍÍ¥¹µ•¹Ð°á½•Ñ½µÁ½¹•¹Ð°(€€€á½•Ñ½Ù•È°á½•ÑQ…É•Ð°¥É•Ý½É­A¥Ù½Ð°½É¥¹	É…¹ °½É¥¹…Í”°½É¥¹½¹™±¥Ð°(€€€½É¥¹%¹™•É•¹”°½É¥¹1¥Ñ•É…°°½É¥¹M½Á”°É½ÕÁ•‘½Õ‰±•á½•ÑAÉ½½˜°(€€€É½ÕÁ•‘á½•Ñ½µÁ½¹•¹Ð°!¥¹Ð°!¥¹ÑÑ¥½¸°!¥¹Ñ¡½¥•Ì°!¥¹ÑÉÉ½È°!¥¹ÑÙ¥‘•¹”°!¥¹ÑMÑ…•Ì°(€€€!½ÕÍ”°%¹™•É•¹•1¥¹¬°%¹™•É•¹•9½‘”°-É…­•¹1¥¹¬°-É…­•¹1¥¹­I•…Í½¸°1¥¹­M½ÕÉ”°1¥¹­MÑÉ•¹Ñ °(€€€A…ÑÑ•É¹=Ù•É±…å¥¥Ð°A…ÑÑ•É¹=Ù•É±…å•½µ•ÑÉä°A…ÑÑ•É¹=Ù•É±…åAÉ½½˜°AÉ½½™A…ÑÑ•É¸°(€€€I•Ñ…¹±•MÕÁÁ½ÉÐ°M•Ñ½É1¥¹¬°M•Ñ½ÉMÕ‰Í•Ð°M­1½½ÁAÉ½½˜°U¹¥ÅÕ•¹•ÍÍMÕÁÁ½ÉÐ°‘•‘ÕÑ¥½¹Ì°(€€€‘•‘ÕÑ¥½¹Í}…Ð°¡¥¹Ñ}¡½¥•Ì°¡¥¹ÑÍ}…Ð°¹•áÑ}‘•‘ÕÑ¥½¸°¹•áÑ}‘•‘ÕÑ¥½¹}…Ð°(€€€¹•áÑ}•¹…‰±•‘}‘•‘ÕÑ¥½¸°É…¹­•‘}¡¥¹ÑÌ°Ñ•¡¹¥ÅÕ•}‘•‘ÕÑ¥½¹Ì°Ñ•¡¹¥ÅÕ•}‘•‘ÕÑ¥½¹Í}…Ð°)ôì)ÁÕˆÕÍ”±½¥…°èéì(€€€±Ñ•É¹…Ñ•A…Ñ °±Ñ•É¹…Ñ•A…Ñ¡MÑ…ÑÕÌ°½µÁ±•Ñ•±…ÍÍ¥M½±Ù”°¥™™¥Õ±Ñä°(€€€¥¡Ñ¥¥Ñ=Ù•É±…å½µÁ±•Ñ¥½¸°¥¡Ñ¥¥Ñ=Ù•É±…åAÉ½½˜°1½¥…±M½±Ù”°5½Ù•Ù…¥±…‰¥±¥Ñä°(€€€A…Ñ¡½µÁ…É¥Í½¸°AÕéé±•I…Ñ¥¹œ°I…¹­…±±‰…­=ÁÑ¥½¹Ì°I…¹­M½±Ù”°I…¹­M½±Ù•I•Á±…ä°I…¹­M½±Ù•M•…É °(€€€I…¹­M½±Ù•MÑ…ÑÕÌ°I…¹­M½±Ù•MÑ•À°I•Á±…å•‘MÑ•À°M=I%9}YIM%=8°M½±Ù•M½É”°M½±Ù•MÑ…ÑÕÌ°(€€€½µÁ…É•}Á…Ñ¡Ì°½Á•¹¥¹}Ñ•¡¹¥ÅÕ•Ì°É…Ñ•}ÁÕéé±”°É•Á±…å}•¥¡Ñ}‘¥¥Ñ}½Ù•É±…å}…Ð°(€€€Í•…É¡}…±Ñ•É¹…Ñ•}Á…Ñ °Í½±Ù•}±½¥…±±ä°Í½±Ù•}Á½Í¥Ñ¥½¸°Í½±Ù•}Á½Í¥Ñ¥½¹}½µÁ±•Ñ•±ä°(€€€Í½±Ù•}Á½Í¥Ñ¥½¹}Ý¥Ñ¡}É…¹¬°)ôì)ÁÕˆÕÍ”Á½Í¥Ñ¥½¸èéA½Í¥Ñ¥½¹M¹…ÁÍ¡½Ðì(m™œ¡…¹ä¡™•…ÑÕÉ”€ô€‰Ñ•…¡¥¹œˆ°Ñ•ÍÐ¤¥t)ÁÕˆÕÍ”ÁÉ…Ñ¥”èéíAÉ…Ñ¥•á…µÁ±”°¡•­}ÁÉ…Ñ¥•}µ½Ù•ôì(m™œ¡™•…ÑÕÉ”€ô€‰±¤ˆ¥t)ÁÕˆÕÍ”ÁÉ½Ñ½½°èé‰…Ñ èéí	…Ñ¡½µµ…¹°ÉÕ¹}‰…Ñ¡ôì)ÁÕˆÕÍ”É…¹¬èéì(€€€I9-}AI==}=IQ}YIM%=8°I…¹­½¹ÍÑÉ…¥¹Ð°I…¹­¥Í½Ù•Éä°I…¹­¥Í½Ù•ÉåM…¸°I…¹­ÉÉ½È°(€€€I…¹­=ÕÑ½µ”°I…¹­A…ÑÑ•É¸°I…¹­AÉ½½˜°I…¹­AÉ½½™™™½ÉÐ°I…¹­AÉ½½™9½‘”°I…¹­M…¸°(€€€‘¥Í½Ù•É}É…¹­}…Ð°‘¥Í½Ù•É}É…¹­}‘•‘ÕÑ¥½¹Í}…Ð°ÁÉ½Ù•}É…¹­}…Ð°É…¹­}‘•‘ÕÑ¥½¹Í}…Ð°(€€€É…¹­}ÁÉ½½™}•™™½ÉÑ}…Ð°É•Á±…å}É…¹­}ÁÉ½½™}…Ð°)ôì(m™œ¡™•…ÑÕÉ”€ô€‰Ù…É¥…¹ÑÌˆ¥t)ÁÕˆÕÍ”Í¥é•èéì(€€€±•‰É…¥	½Õ¹‘Ì°±•‰É…¥…”°±•‰É…¥…•	½Õ¹°±•‰É…¥…•AÉ½½˜°±•‰É…¥½µÁ±•Ñ¥½¸°(€€€±•‰É…¥¥™™¥Õ±Ñä°±•‰É…¥!¥¹ÑÌ°±•‰É…¥I…Ñ¥¹œ°±•‰É…¥MÑ•À°±•‰É…¥QÉ…•A½Í¥Ñ¥½¸°(€€€…•Q½Ñ…°°M¥é•‘±•‰É…¥…•Ì°)ôì(m™œ¡™•…ÑÕÉ”€ô€‰Ù…É¥…¹ÑÌˆ¥t)ÁÕˆÕÍ”Í¥é•èéì(€€€ÉÕÍÑ±Õ”°ÅÕ…Ñ¥½¹=Á•É…Ñ½È°IÕ¹á¥Ì°M¥é•‘½¹ÍÑÉ…¥¹Ð°M¥é•‘½¹ÍÑÉ…¥¹Ñ…¥±ÕÉ”°(€€€M¥é•‘½¹ÍÑÉ…¥¹ÑÉ¥°M¥é•‘½¹ÍÑÉ…¥¹Ñ!¥¹ÑÌ°M¥é•‘½¹ÍÑÉ…¥¹ÑMÑ•À°M¥é•‘½¹ÍÑÉ…¥¹ÑQÉ…•A½Í¥Ñ¥½¸°(€€€M¥é•‘¥…½¹…°°M¥é•‘½ÑI•±…Ñ¥½¸°M¥é•‘-É½Á­¥A…¥È°M¥é•‘-É½Á­¥I•±…Ñ¥½¸°M¥é•‘1…‰•±•‘½Ð°(€€€M¥é•‘1¥¹•QåÁ”°M¥é•‘A…É¥Ñä°M¥é•‘MÕµ¹°aMÕµ½ÑI•±…Ñ¥½¸°)ôì(m™œ¡…±°¡™•…ÑÕÉ”€ô€‰•¹•É…Ñ¥½¸ˆ°™•…ÑÕÉ”€ô€‰Ù…É¥…¹ÑÌˆ¤¥t)ÁÕˆÕÍ”Í¥é•èéí•¹•É…Ñ•‘±•‰É…¥Œ°•¹•É…Ñ•}…±•‰É…¥ôì)ÁÕˆÕÍ”Í¥é•èéì(€€€É¥‘MÁ•Œ°M%i}I%}YIM%=8°M¥é•‘•‘ÕÑ¥½¸°M¥é•‘É¥°M¥é•‘!¥¹ÑÌ°M¥é•‘Q•¡¹¥ÅÕ”°(€€€M¥é•‘QÉ…•A½Í¥Ñ¥½¸°)ôì(m™œ¡™•…ÑÕÉ”€ô€‰•¹•É…Ñ¥½¸ˆ¥t)ÁÕˆÕÍ”Í¥é•èéì(€€€5¥¹¥¥™™¥Õ±Ñä°•¹•É…Ñ•}•¥¡Ð°•¹•É…Ñ•}™¥Ù•}©¥Í…Ü°•¹•É…Ñ•}©¥Í…Ü°•¹•É…Ñ•}µ¥¹¤°(€€€•¹•É…Ñ•}Í¥à°)ôì)ÁÕˆÕÍ”Ñ•¡¹¥ÅÕ”èéíAÉ½™¥±•ÉÉ½È°M½±Ù•ÉAÉ½™¥±”°Q•¡¹¥ÅÕ•ôì(m™œ¡™•…ÑÕÉ”€ô€‰Ù…É¥…¹ÑÌˆ¥t)ÁÕˆÕÍ”Ù…É¥…¹Ðèéì(€€€ÅÉ•½Õ¹Ð°ÅÉ•¥Ù•¹M¡…‘”°ÅÉ•-¥¹°ÅÉ•A½Í¥Ñ¥½¹]4ÖÚ$z{-®éÜj×Âˆ›ÝÜÎˆÝLMŽÈWKˆÛÛ[[œÎˆÝLMŽÈWKˆ›Þ\ÎˆÝLMŽÈWKŸB‚˜ÛÛœÝ›ˆÛÛÜ™[˜]\Ê[™^ˆ\Ú^™JHOˆ
+\Ú^™K\Ú^™K\Ú^™JHÂˆ]
+›ÝËÛÛ[[ŠHH
+[™^ÈK[™^	HJNÂˆ
+›ÝËÛÛ[[‹
+›ÝÈÈÊH
+ˆÈ
+ÈÛÛ[[ˆÈÊBŸB‚š[\[š]ÈÂˆ›ˆœ›ÛWØ›Ø\™
+›Ø\™ˆ	›Ø\™
+HOˆÜ[ÛÙ[ˆÂˆ]]][š]ÈHÙ[ŽŽ™Y˜][
 
-#[cfg(any(feature = "generation", test))]
-mod generation;
-mod hints;
-mod logical;
-#[cfg(any(feature = "generation", feature = "teaching", test))]
-mod permutation;
-mod position;
-#[cfg(any(feature = "teaching", test))]
-mod practice;
-#[cfg(all(
-    feature = "wasm-api",
-    any(target_arch = "wasm32", test, feature = "cli")
-))]
-mod protocol;
-mod rank;
-mod sized;
-mod technique;
-#[cfg(feature = "variants")]
-mod variant;
-
-#[cfg(any(feature = "generation", test))]
-pub use generation::{
-    GeneratedPuzzle, GenerationConflict, GenerationConstraints, GenerationCriteria,
-    GenerationRating, GenerationSearch, GenerationStep, TechniqueTargetMode, VerifiedTemplate,
-    accepts_difficulty, builtin_templates, canonical_puzzle, generate_constrained,
-    generate_from_pool, generate_matching, generate_matching_with_mode, impossible_templates,
-    start_from_pool, start_matching, start_targeted,
-};
-pub use hints::{
-    AlignedExclusionCase, AlignedExclusionReason, AlmostLockedSet, AlmostLockedSetLink,
-    BlossomPetal, Candidate, CandidateLink, ColoringReason, ConjugatePair, DEFAULT_HINT_LIMIT,
-    DeductionMatch, DeductionProof, DoubleExocetProof, ExocetAssignment, ExocetComponent,
-    ExocetCover, ExocetTarget, FireworkPivot, ForcingBranch, ForcingCase, ForcingConflict,
-    ForcingInference, ForcingLiteral, ForcingScope, GroupedDoubleExocetProof,
-    GroupedExocetComponent, Hint, HintAction, HintChoices, HintError, HintEvidence, HintStages,
-    House, InferenceLink, InferenceNode, KrakenLink, KrakenLinkReason, LinkSource, LinkStrength,
-    PatternOverlayDigit, PatternOverlayGeometry, PatternOverlayProof, ProofPattern,
-    RectangleSupport, SectorLink, SectorSubset, SkLoopProof, UniquenessSupport, deductions,
-    deductions_at, hint_choices, hints_at, next_deduction, next_deduction_at,
-    next_enabled_deduction, ranked_hints, technique_deductions, technique_deductions_at,
-};
-pub use logical::{
-    AlternatePath, AlternatePathStatus, CompleteClassicSolve, Difficulty,
-    EightDigitOverlayCompletion, EightDigitOverlayProof, LogicalSolve, MoveAvailability,
-    PathComparison, PuzzleRating, RankFallbackOptions, RankSolve, RankSolveReplay, RankSolveSearch,
-    RankSolveStatus, RankSolveStep, ReplayedStep, SCORING_VERSION, SolveScore, SolveStatus,
-    compare_paths, opening_techniques, rate_puzzle, replay_eight_digit_overlay_at,
-    search_alternate_path, solve_logically, solve_position, solve_position_completely,
-    solve_position_with_rank,
-};
-pub use position::PositionSnapshot;
-#[cfg(any(feature = "teaching", test))]
-pub use practice::{PracticeExample, check_practice_move};
-#[cfg(feature = "cli")]
-pub use protocol::batch::{BatchCommand, run_batch};
-pub use rank::{
-    RANK_PROOF_EFFORT_VERSION, RankConstraint, RankDiscovery, RankDiscoveryScan, RankError,
-    RankOutcome, RankPattern, RankProof, RankProofEffort, RankProofNode, RankScan,
-    discover_rank_at, discover_rank_deductions_at, prove_rank_at, rank_deductions_at,
-    rank_proof_effort_at, replay_rank_proof_at,
-};
-#[cfg(feature = "variants")]
-pub use sized::{
-    AlgebraicBounds, AlgebraicCage, AlgebraicCageBound, AlgebraicCageProof, AlgebraicCompletion,
-    AlgebraicDifficulty, AlgebraicHints, AlgebraicRating, AlgebraicStep, AlgebraicTracePosition,
-    CageTotal, SizedAlgebraicCages,
-};
-#[cfg(feature = "variants")]
-pub use sized::{
-    CrustClue, EquationOperator, RunAxis, SizedConstraint, SizedConstraintFailure,
-    SizedConstraintGrid, SizedConstraintHints, SizedConstraintStep, SizedConstraintTracePosition,
-    SizedDiagonal, SizedDotRelation, SizedKropkiPair, SizedKropkiRelation, SizedLabeledDot,
-    SizedLineType, SizedParity, SizedSumEnd, XSumDotRelation,
-};
-#[cfg(all(feature = "generation", feature = "variants"))]
-pub use sized::{GeneratedAlgebraic, generate_algebraic};
-pub use sized::{
-    GridSpec, SIZED_GRID_VERSION, SizedDeduction, SizedGrid, SizedHints, SizedTechnique,
-    SizedTracePosition,
-};
-#[cfg(feature = "generation")]
-pub use sized::{
-    MiniDifficulty, generate_eight, generate_five_jigsaw, generate_jigsaw, generate_mini,
-    generate_six,
-};
-pub use technique::{ProfileError, SolverProfile, Technique};
-#[cfg(feature = "variants")]
-pub use variant::{
-    AqreCount, AqreGivenShade, AqreKind, AqrePositionError, AqreRegion, AqreShade, ClueDirection,
-    CompiledVariant, DEFAULT_VARIANT_SEARCH_NODES, Diagonal, EntropyGroup, KillerCage,
-    LetteredQuadruple, MarkedPairs, NeighborMatchClue, Parity, PuzzleRule, RegionLayout,
-    VARIANT_FORMAT_VERSION, VARIANT_SCORING_VERSION, VariantClueScope, VariantConstraintCheck,
-    VariantConstraintScope, VariantDeduction, VariantDefinitionError, VariantEntropyAreaProof,
-    VariantEvidence, VariantExclusionPremise, VariantGroupLineHouseCase,
-    VariantGroupLineHouseConflict, VariantGroupLineHouseProof, VariantGroupOrderBranch,
-    VariantGroupOrderCheck, VariantGroupOrderEliminationProof, VariantGroupOrderProof,
-    VariantGroupOrderRefutation, VariantGroupOrderScope, VariantGroupSumChainProof,
-    VariantGroupSumLink, VariantGroupSumLinkSource, VariantHouse, VariantHouseKind,
-    VariantKropkiHouseProof, VariantLineHouseProof, VariantLinkedClueProof, VariantLogicalError,
-    VariantMatchingDigitBlock, VariantMatchingDigitCheck, VariantMatchingDigitProof,
-    VariantMatchingLayoutCase, VariantMatchingLayoutProof, VariantPosition, VariantPositionError,
-    VariantPuzzle, VariantRating, VariantRayHouseProof, VariantRegionSumHouseLine,
-    VariantRegionSumHouseProof, VariantRegionSumPart, VariantRegionSumProof,
-    VariantRenbanGroupConflict, VariantRenbanGroupPlacement, VariantRenbanGroupProjection,
-    VariantRenbanGroupProof, VariantRenbanHouseProof, VariantRenbanSumHouseProof,
-    VariantRenbanSumHouseWitness, VariantRenbanSumProof, VariantReplay, VariantSumPairProof,
-    VariantTechnique, VariantThermometerHouseProof, VariantTrace, VariantTrialFailure,
-    VariantVisibility, VariantVisibilityError, canonical_variant,
-};
-#[cfg(all(feature = "variants", any(feature = "generation", test)))]
-pub use variant::{
-    GeneratedVariant, MarkerFamily, OutsideClueKind, VariantClueLayout, VariantGenerationError,
-    VariantGenerationOptions, start_variant_generation,
-};
-#[cfg(all(feature = "variants", any(feature = "teaching", test)))]
-pub use variant::{VariantPracticeError, VariantPracticeExercise, variant_practice_examples};
-
-const CELLS: usize = 81;
-const DIGITS: u16 = 0x1ff;
-const SEARCH_LIMIT: u32 = 1_000_000;
-const EXACT_PROBE_NODES: u32 = 256;
-#[cfg(any(feature = "generation", test))]
-const DEFAULT_CLUES: usize = 34;
-
-/// A classic 9 Ã— 9 grid in row-major order. Digits are 1â€“9 and 0 marks an empty cell.
-pub type Board = [u8; CELLS];
-
-/// The outcome of checking a grid for conflicts and counting up to two solutions.
-#[repr(u32)]
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Analysis {
-    /// A digit is out of range or appears twice in a row, column, or box.
-    Conflict,
-    /// The grid has no completion.
-    Unsolvable,
-    /// The grid has exactly one completion.
-    Unique,
-    /// The grid has at least two completions.
-    Multiple,
-    /// The exact-search budget ran out before the engine could classify the grid.
-    SearchLimit,
-}
-
-#[derive(Default)]
-struct Units {
-    rows: [u16; 9],
-    columns: [u16; 9],
-    boxes: [u16; 9],
-}
-
-const fn coordinates(index: usize) -> (usize, usize, usize) {
-    let (row, column) = (index / 9, index % 9);
-    (row, column, (row / 3) * 3 + column / 3)
-}
-
-impl Units {
-    fn from_board(board: &Board) -> Option<Self> {
-        let mut units = Self::default();
-        for (index, &digit) in board.iter().enumerate() {
-            if digit == 0 {
-                continue;
-            }
-            if digit > 9 {
-                return None;
-            }
-            let bit = 1 << (digit - 1);
-            if units.available(index) & bit == 0 {
-                return None;
-            }
-            units.toggle(index, bit);
-        }
-        Some(units)
-    }
-
-    fn available(&self, index: usize) -> u16 {
-        let (row, column, group) = coordinates(index);
-        DIGITS & !(self.rows[row] | self.columns[column] | self.boxes[group])
-    }
-
-    fn toggle(&mut self, index: usize, bit: u16) {
-        let (row, column, group) = coordinates(index);
-        self.rows[row] ^= bit;
-        self.columns[column] ^= bit;
-        self.boxes[group] ^= bit;
-    }
-
-    fn next_cell(&self, board: &Board) -> Option<(usize, u16)> {
-        let mut best = None;
-        let mut fewest = 10;
-        for (index, &digit) in board.iter().enumerate() {
-            if digit != 0 {
-                continue;
-            }
-            let choices = self.available(index);
-            let count = choices.count_ones();
-            if count < fewest {
-                best = Some((index, choices));
-                fewest = count;
-            }
-            if count == 0 {
-                break;
-            }
-        }
-        best
-    }
-}
-
-/// Parse 81 ASCII cells in row order. Both `0` and `.` represent empty cells.
-///
-/// Use [`analyze`] to check whether the parsed grid has a unique solution.
-pub fn parse_givens(text: &str) -> Option<Board> {
-    if text.len() != CELLS {
-        return None;
-    }
-    let mut board = [0; CELLS];
-    for (index, byte) in text.bytes().enumerate() {
-        board[index] = match byte {
-            b'.' => 0,
-            b'0'..=b'9' => byte - b'0',
-            _ => return None,
-        };
-    }
-    Some(board)
-}
-
-/// Validate a grid and classify its number of solutions using bounded exact search.
-pub fn analyze(board: &Board) -> Analysis {
-    // Most grids finish in the first probe. Forced placements preserve every
-    // completion and make the remaining budget useful on sparse grids.
-    match analyze_with_budget(board, EXACT_PROBE_NODES) {
-        Analysis::SearchLimit => {
-            let reduced = classic_singles(*board, &[DIGITS; CELLS]);
-            reduced.map_or(Analysis::Unsolvable, |grid| {
-                analyze_with_budget(&grid, SEARCH_LIMIT - EXACT_PROBE_NODES)
-            })
-        }
-        result => result,
-    }
-}
-
-fn analyze_with_budget(board: &Board, mut budget: u32) -> Analysis {
-    let Some(mut units) = Units::from_board(board) else {
-        return Analysis::Conflict;
-    };
-    let mut work = *board;
-    match count_solutions(&mut work, &mut units, &mut budget, 2) {
-        None => Analysis::SearchLimit,
-        Some(0) => Analysis::Unsolvable,
-        Some(1) => Analysis::Unique,
-        Some(_) => Analysis::Multiple,
-    }
-}
-
-fn count_solutions(
-    board: &mut Board,
-    units: &mut Units,
-    budget: &mut u32,
-    limit: u8,
-) -> Option<u8> {
-    *budget = budget.checked_sub(1)?;
-    let Some((index, mut choices)) = units.next_cell(board) else {
-        return Some(1);
-    };
-    let mut count = 0;
-    while choices != 0 && count < limit {
-        let offset = choices.trailing_zeros();
-        let bit = 1 << offset;
-        choices ^= bit;
-        board[index] = offset as u8 + 1;
-        units.toggle(index, bit);
-        let found = count_solutions(board, units, budget, limit - count);
-        units.toggle(index, bit);
-        board[index] = 0;
-        count += found?;
-    }
-    Some(count)
-}
-
-/// Find one completion by exact search.
-///
-/// Returns `None` on conflict, impossibility, or budget exhaustion. Use [`analyze`]
-/// for uniqueness and [`solve_logically`] for a human-style deduction trace.
-pub fn solve(board: &Board) -> Option<Board> {
-    let mut units = Units::from_board(board)?;
-    let mut work = *board;
-    let mut budget = EXACT_PROBE_NODES;
-    if solve_one(&mut work, &mut units, &mut budget) {
-        return Some(work);
-    }
-    if budget != 0 {
-        return None;
-    }
-    work = classic_singles(*board, &[DIGITS; CELLS])?;
+NÂˆ›Üˆ
+[™^	™YÚ]
+H[ˆ›Ø\™š]\Š
+K™[[Y\˜]J
+HÂˆYˆYÚ]OHÂˆÛÛ[YNÂˆBˆYˆYÚ]ˆHÂˆ™]\›ˆ›Û™NÂˆBˆ]š]HH
+YÚ]HJNÂˆYˆ[š]Ë˜]˜Z[X›J[™^
+H	ˆš]OHÂˆ™]\›ˆ›Û™NÂˆBˆ[š]ËÙÙÛJ[™^š]
+NÂˆBˆÛÛYJ[š]ÊBˆB‚ˆ›ˆ]˜Z[X›J	œÙ[‹[™^ˆ\Ú^™JHOˆLMˆÂˆ]
+›ÝËÛÛ[[‹Ü›Ý\
+HHÛÛÜ™[˜]\Ê[™^
+NÂˆQÒUÈ	ˆJÙ[‹œ›ÝÜÖÜ›Ý×HÙ[‹˜ÛÛ[[œÖØÛÛ[[—HÙ[‹˜›Þ\ÖÙÜ›Ý\JBˆB‚ˆ›ˆÙÙÛJ	›]]Ù[‹[™^ˆ\Ú^™Kš]ˆLMŠHÂˆ]
+›ÝËÛÛ[[‹Ü›Ý\
+HHÛÛÜ™[˜]\Ê[™^
+NÂˆÙ[‹œ›ÝÜÖÜ›Ý×HHš]ÂˆÙ[‹˜ÛÛ[[œÖØÛÛ[[—HHš]ÂˆÙ[‹˜›Þ\ÖÙÜ›Ý\HHš]ÂˆB‚ˆ›ˆ™^ØÙ[
+	œÙ[‹›Ø\™ˆ	›Ø\™
+HOˆÜ[Û
+\Ú^™KLMŠOˆÂˆ]]]™\ÝH›Û™NÂˆ]]]™]Ù\ÝHLÂˆ›Üˆ
+[™^	™YÚ]
+H[ˆ›Ø\™š]\Š
+K™[[Y\˜]J
+HÂˆYˆYÚ]OHÂˆÛÛ[YNÂˆBˆ]ÚÚXÙ\ÈHÙ[‹˜]˜Z[X›J[™^
+NÂˆ]ÛÝ[HÚÚXÙ\Ë˜ÛÝ[ÛÛ™\Ê
+NÂˆYˆÛÝ[™]Ù\ÝÂˆ™\ÝHÛÛYJ
+[™^ÚÚXÙ\ÊJNÂˆ™]Ù\ÝHÛÝ[ÂˆBˆYˆÛÝ[OHÂˆœ™XZÎÂˆBˆBˆ™\ÝˆBŸB‚‹ËËÈ\œÙHHTÐÒRHÙ[È[ˆ›ÝÈÜ™\‹ˆ›Ý[™˜™\™\Ù[[\HÙ[Ë‚‹ËËÂ‹ËËÈ\ÙHØ[˜[^™XHÈÚXÚÈÚ]\ˆH\œÙYÜšY\ÈH[š\]YHÛÛ][Û‹‚œXˆ›ˆ\œÙWÙÚ]™[œÊ^ˆ	œÝŠHOˆÜ[Û›Ø\™ˆÂˆYˆ^›[Š
+HOHÑSÈÂˆ™]\›ˆ›Û™NÂˆBˆ]]]›Ø\™HÌÈÑS×NÂˆ›Üˆ
+[™^ž]JH[ˆ^˜ž]\Ê
+K™[[Y\˜]J
+HÂˆ›Ø\™Ú[™^HHX]Úž]HÂˆ‰Ë‰ÈOˆˆ‰Ì	Ë‹X‰ÎIÈOˆž]HH‰Ì	ËˆÈOˆ™]\›ˆ›Û™KˆNÂˆBˆÛÛYJ›Ø\™
+BŸB‚‹ËËÈ˜[Y]HHÜšY[™Û\ÜÚYžH]È[X™\ˆÙˆÛÛ][ÛœÈ\Ú[™È›Ý[™Y^XÝÙX\˜Ú‚œXˆ›ˆ[˜[^™J›Ø\™ˆ	›Ø\™
+HOˆ[˜[\Ú\ÈÂˆËÈ[ÜÝÜšYÈš[š\Ú[ˆHš\œÝ›Ø™Kˆ›Ü˜ÙYXÙ[Y[È™\Ù\™H]™\žBˆËÈÛÛ\][Ûˆ[™XZÙHH™[XZ[š[™ÈYÙ]\ÙY[ÛˆÜ\œÙHÜšYË‚ˆX]Ú[˜[^™WÝÚ]ØYÙ]
+›Ø\™VPÕÔ“Ð‘WÓ“ÑTÊHÂˆ[˜[\Ú\ÎŽ”ÙX\˜Ú[Z]OˆÂˆ]™YXÙYHÛ\ÜÚX×ÜÚ[™Û\Ê
+˜›Ø\™	–ÑQÒUÎÈÑS×JNÂˆ™YXÙY›X\ÛÜŠ[˜[\Ú\ÎŽ•[œÛÛ˜X›KÜšYÂˆ[˜[^™WÝÚ]ØYÙ]
+	™ÜšYÑPTÒÓSRUHVPÕÔ“Ð‘WÓ“ÑTÊBˆJBˆBˆ™\Ý[Oˆ™\Ý[ˆBŸB‚™›ˆ[˜[^™WÝÚ]ØYÙ]
+›Ø\™ˆ	›Ø\™]]YÙ]ˆLÌŠHOˆ[˜[\Ú\ÈÂˆ]ÛÛYJ]][š]ÊHH[š]ÎŽ™œ›ÛWØ›Ø\™
+›Ø\™
+H[ÙHÂˆ™]\›ˆ[˜[\Ú\ÎŽÛÛ™›XÝÂˆNÂˆ]]]ÛÜšÈH
+˜›Ø\™ÂˆX]ÚÛÝ[ÜÛÛ][ÛœÊ	›]]ÛÜšË	›]][š]Ë	›]]YÙ]ŠHÂˆ›Û™HOˆ[˜[\Ú\ÎŽ”ÙX\˜Ú[Z]ˆÛÛYJ
+HOˆ[˜[\Ú\ÎŽ•[œÛÛ˜X›KˆÛÛYJJHOˆ[˜[\Ú\ÎŽ•[š\]YKˆÛÛYJÊHOˆ[˜[\Ú\ÎŽ“][\KˆBŸB‚™›ˆÛÝ[ÜÛÛ][ÛœÊˆ›Ø\™ˆ	›]]›Ø\™ˆ[š]Îˆ	›]][š]ËˆYÙ]ˆ	›]]LÌ‹ˆ[Z]ˆNŠHOˆÜ[ÛNˆÂˆ
+˜YÙ]HYÙ]˜ÚXÚÙYÜÝXŠJOÎÂˆ]ÛÛYJ
+[™^]]ÚÚXÙ\ÊJHH[š]Ë›™^ØÙ[
+›Ø\™
+H[ÙHÂˆ™]\›ˆÛÛYJJNÂˆNÂˆ]]]ÛÝ[HÂˆÚ[HÚÚXÙ\ÈOH	‰ˆÛÝ[[Z]Âˆ]Ù™œÙ]HÚÚXÙ\Ë˜Z[[™×Þ™\›ÜÊ
+NÂˆ]š]HHÙ™œÙ]ÂˆÚÚXÙ\ÈHš]Âˆ›Ø\™Ú[™^HHÙ™œÙ]\ÈN
+ÈNÂˆ[š]ËÙÙÛJ[™^š]
+NÂˆ]›Ý[™HÛÝ[ÜÛÛ][ÛœÊ›Ø\™[š]ËYÙ][Z]HÛÝ[
+NÂˆ[š]ËÙÙÛJ[™^š]
+NÂˆ›Ø\™Ú[™^HHÂˆÛÝ[
+ÏH›Ý[™ÎÂˆBˆÛÛYJÛÝ[
+BŸB‚‹ËËÈš[™Û™HÛÛ\][ÛˆžH^XÝÙX\˜Ú‚‹ËËÂ‹ËËÈ™]\›œÈ›Û™XÛˆÛÛ™›XÝ[\ÜÜÚXš[]KÜˆYÙ]^]\Ý[Û‹ˆ\ÙHØ[˜[^™XB‹ËËÈ›Üˆ[š\]Y[™\ÜÈ[™ØÛÛ™WÛÙÚXØ[XH›ÜˆH[X[‹\Ý[HYXÝ[Ûˆ˜XÙK‚œXˆ›ˆÛÛ™J›Ø\™ˆ	›Ø\™
+HOˆÜ[Û›Ø\™ˆÂˆ]]][š]ÈH[š]ÎŽ™œ›ÛWØ›Ø\™
+›Ø\™
+OÎÂˆ]]]ÛÜšÈH
+˜›Ø\™Âˆ]]]YÙ]HVPÕÔ“Ð‘WÓ“ÑTÎÂˆYˆÛÛ™WÛÛ™J	›]]ÛÜšË	›]][š]Ë	›]]YÙ]
+HÂˆ™]\›ˆÛÛYJÛÜšÊNÂˆBˆYˆYÙ]OHÂˆ™]\›ˆ›Û™NÂˆBˆÛÜšÈHÛ\ÜÚX×ÜÚ[™Û\Öj¹âžkºwµçhºÚn¶Šâ‚)Ú–Ú$zw(º{xÓMS¢Ö¥¢ëiºÙbë5(*board, &[DIGITS; CELLS])?;
     units = Units::from_board(&work)?;
     budget = SEARCH_LIMIT - EXACT_PROBE_NODES;
     solve_one(&mut work, &mut units, &mut budget).then_some(work)
@@ -443,305 +212,4 @@ pub fn generate(seed: u32) -> Board {
 /// A difficulty or exclusive-opening target for [`generate_targeted`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[cfg(any(feature = "generation", test))]
-pub enum GenerationTarget<'a> {
-    /// A complete solve at the specified difficulty using the supplied order.
-    Difficulty {
-        /// Required difficulty of the full solve.
-        level: Difficulty,
-        /// Ordered set of techniques available to the solver.
-        technique_order: &'a [Technique],
-    },
-    /// The only technique that can produce a deduction from the givens.
-    Opening(Technique),
-}
-
-#[cfg(any(feature = "generation", test))]
-impl GenerationTarget<'_> {
-    fn match_path(self, board: &Board) -> Option<generation::MatchedPath> {
-        match self {
-            Self::Difficulty {
-                level,
-                technique_order,
-            } => logical::match_generation_path(
-                board,
-                technique_order,
-                Some(&GenerationRating::Difficulty(level)),
-                None,
-            ),
-            Self::Opening(technique) => logical::has_exclusive_opener(board, technique)
-                .then_some(generation::MatchedPath::Unrated),
-        }
-    }
-}
-
-/// Why a generation request was rejected or failed to produce a match.
-#[cfg(any(feature = "generation", test))]
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum GenerationError {
-    /// A clue count lies outside 17â€“81 or the clue range is reversed.
-    InvalidClueCount,
-    /// The score range is reversed.
-    InvalidScoreRange,
-    /// The engine identified a conflict between the requested targets.
-    IncompatibleTargets(GenerationConflict),
-    /// The search ended before it found a match.
-    SearchLimit,
-}
-
-/// Generate a uniquely solvable puzzle matching the target.
-/// Each attempt starts with a new completed grid and checks its successive clue removals.
-#[cfg(any(feature = "generation", test))]
-pub fn generate_targeted(
-    seed: u32,
-    target: GenerationTarget<'_>,
-    max_attempts: u32,
-) -> Result<Board, GenerationError> {
-    start_targeted(seed, target, max_attempts)?.finish()
-}
-
-#[cfg(any(feature = "generation", test))]
-fn filled_board(random: &mut Random) -> Board {
-    let mut board = [0; CELLS];
-    assert!(fill(&mut board, &mut Units::default(), random));
-    board
-}
-
-#[cfg(any(feature = "generation", test))]
-fn carve(
-    board: &mut Board,
-    random: &mut Random,
-    mut matches: impl FnMut(&Board, usize) -> bool,
-) -> bool {
-    let mut order = std::array::from_fn::<_, CELLS, _>(|index| index);
-    random.shuffle(&mut order);
-    let mut clues = CELLS;
-    for index in order {
-        let previous = std::mem::take(&mut board[index]);
-        if analyze(board) == Analysis::Unique {
-            clues -= 1;
-            if matches(board, clues) {
-                return true;
-            }
-        } else {
-            board[index] = previous;
-        }
-    }
-    false
-}
-
-#[cfg(target_arch = "wasm32")]
-mod wasm {
-    use std::cell::Cell;
-
-    use super::*;
-
-    // JS views these fixed-size buffers between synchronous calls on one worker.
-    thread_local! {
-        static BOARD: Cell<Board> = const { Cell::new([0; CELLS]) };
-        static NOTES: Cell<[u16; CELLS]> = const { Cell::new([0; CELLS]) };
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C" fn board_buffer() -> *mut u8 {
-        BOARD.with(|board| board.as_ptr().cast())
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C" fn notes_buffer() -> *mut u16 {
-        NOTES.with(|notes| notes.as_ptr().cast())
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C" fn analyze_board() -> u32 {
-        BOARD.with(|board| analyze(&board.get()) as u32)
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C" fn fill_notes() -> u32 {
-        let Some(masks) = BOARD.with(|board| candidates(&board.get())) else {
-            return 0;
-        };
-        NOTES.with(|notes| notes.set(masks));
-        1
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C" fn solve_board() -> u32 {
-        let Some(solution) = BOARD.with(|board| solve(&board.get())) else {
-            return 0;
-        };
-        BOARD.with(|board| board.set(solution));
-        1
-    }
-
-    #[cfg(feature = "generation")]
-    #[unsafe(no_mangle)]
-    pub extern "C" fn generate_board(seed: u32) {
-        BOARD.with(|board| board.set(generate(seed)));
-    }
-}
-
-#[cfg(all(target_arch = "wasm32", feature = "wasm-api"))]
-mod wasm_protocol {
-    use std::cell::RefCell;
-
-    thread_local! {
-        static REQUEST: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
-        static RESPONSE: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
-    }
-
-    // The worker writes the request buffer before the call and reads the response after it.
-    #[unsafe(no_mangle)]
-    pub extern "C" fn request_buffer(length: usize) -> *mut u8 {
-        REQUEST.with(|request| {
-            let mut request = request.borrow_mut();
-            request.resize(length, 0);
-            request.as_mut_ptr()
-        })
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C" fn run_request() -> usize {
-        let response = REQUEST.with(|request| super::protocol::process(&request.borrow()));
-        let length = response.len();
-        RESPONSE.with(|buffer| buffer.replace(response));
-        length
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C" fn response_buffer() -> *const u8 {
-        RESPONSE.with(|response| response.borrow().as_ptr())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    const WARMUP: &str =
-        "530070000600195000098000060800060003400803001700020006060000280000419005000080079";
-
-    #[test]
-    fn checks_solution_count_and_conflicts() {
-        let mut board = parse_givens(WARMUP).unwrap();
-        assert_eq!(analyze(&board), Analysis::Unique);
-        board[2] = 1;
-        assert_eq!(analyze(&board), Analysis::Unsolvable);
-        board[2] = 3;
-        assert_eq!(analyze(&board), Analysis::Conflict);
-        assert_eq!(analyze(&[0; CELLS]), Analysis::Multiple);
-    }
-
-    #[test]
-    fn exact_search_requires_enough_budget_to_prove_uniqueness() {
-        let mut board = solve(&parse_givens(WARMUP).unwrap()).unwrap();
-        board[0] = 0;
-        assert_eq!(analyze_with_budget(&board, 1), Analysis::SearchLimit);
-        assert_eq!(analyze_with_budget(&board, 2), Analysis::Unique);
-    }
-
-    #[test]
-    fn validation_resolves_sparse_puzzles_with_forced_singles() {
-        let board = parse_givens(
-            "345000000000200010000000000020100000000004500600000007800750000000060040000000300",
-        )
-        .unwrap();
-        assert_eq!(analyze(&board), Analysis::Unique);
-        let answer = solve(&board).unwrap();
-        assert!(!answer.contains(&0));
-        assert_eq!(analyze(&answer), Analysis::Unique);
-    }
-
-    #[test]
-    fn returns_legal_candidates_only_for_empty_cells() {
-        let board = parse_givens(WARMUP).unwrap();
-        let masks = candidates(&board).unwrap();
-        assert_eq!(masks[0], 0);
-        assert_eq!(masks[2], 0b1011);
-        assert_eq!(masks[40], 1 << 4);
-    }
-
-    #[test]
-    fn solves_a_valid_puzzle() {
-        let board = parse_givens(WARMUP).unwrap();
-        let solution = solve(&board).unwrap();
-        assert_eq!(analyze(&solution), Analysis::Unique);
-        assert!(!solution.contains(&0));
-        assert!(
-            board
-                .iter()
-                .zip(solution)
-                .all(|(&given, solved)| given == 0 || given == solved)
-        );
-    }
-
-    #[test]
-    fn generator_produces_distinct_unique_puzzles() {
-        for seed in [0, 1, 42, u32::MAX] {
-            let board = generate(seed);
-            assert_eq!(analyze(&board), Analysis::Unique);
-            assert!((34..=40).contains(&board.iter().filter(|&&digit| digit != 0).count()));
-        }
-        assert_ne!(generate(1), generate(42));
-    }
-
-    #[test]
-    fn targeted_generation_checks_the_rating_under_the_requested_order() {
-        for level in [Difficulty::Beginner, Difficulty::Easy, Difficulty::Medium] {
-            let order = level.technique_order();
-            let target = GenerationTarget::Difficulty {
-                level,
-                technique_order: &order,
-            };
-            let board = generate_targeted(42, target, 512).unwrap();
-            assert_eq!(analyze(&board), Analysis::Unique);
-            assert!(board.iter().filter(|&&digit| digit != 0).count() <= 40);
-            assert_eq!(
-                solve_logically(&board, &order).unwrap().status,
-                SolveStatus::Solved(level)
-            );
-            let lower: Vec<_> = order
-                .iter()
-                .copied()
-                .filter(|t| t.difficulty() < level)
-                .collect();
-            assert_eq!(
-                solve_logically(&board, &lower).unwrap().status,
-                SolveStatus::Stalled
-            );
-        }
-        let stalled = GenerationTarget::Difficulty {
-            level: Difficulty::Easy,
-            technique_order: &[],
-        };
-        assert_eq!(
-            generate_targeted(42, stalled, 1),
-            Err(GenerationError::IncompatibleTargets(
-                GenerationConflict::EmptySolverProfile
-            ))
-        );
-    }
-
-    #[test]
-    fn targeted_generation_rejects_a_competing_opening_proof() {
-        let target = GenerationTarget::Opening(Technique::HiddenSingle);
-        // The previously exclusive board now also has forcing proofs.
-        let board = parse_givens(
-            "020900000490000830008000005000003070080020400370410009006085000050000100000360000",
-        )
-        .unwrap();
-        let openers = opening_techniques(&board).unwrap();
-        for technique in [
-            Technique::HiddenSingle,
-            Technique::ForcingChain,
-            Technique::ForcingNet,
-        ] {
-            assert!(openers.contains(&technique));
-        }
-        assert!(target.match_path(&board).is_none());
-        assert_eq!(
-            generate_targeted(795_642_738, target, 1),
-            Err(GenerationError::SearchLimit)
-        );
-    }
-}
+p×M5¶‰žËkºwµçB²6VÆÃ£¦æWr…³²4TÄÅ5Ò’Ó°¢7FF–2äõDU3¢6VÆÃÅ·Sc²4TÄÅ5ÓâÒ6öç7B²6VÆÃ£¦æWr…³²4TÄÅ5Ò’Ó°¢Ð ¢5·Vç6fR†æõöÖævÆR•Ð¢V"W‡FW&â$2"fâ&ö&Eö'VffW"‚’Óâ¦×WBS‚°¢$ô$Bçv—F‚‡Æ&ö&GÂ&ö&Bæ5÷G"‚’æ67B‚’¢Ð ¢5·Vç6fR†æõöÖævÆR•Ð¢V"W‡FW&â$2"fâæ÷FW5ö'VffW"‚’Óâ¦×WBSb°¢äõDU2çv—F‚‡Ææ÷FW7Âæ÷FW2æ5÷G"‚’æ67B‚’¢Ð ¢5·Vç6fR†æõöÖævÆR•Ð¢V"W‡FW&â$2"fâæÇ—¦Uö&ö&B‚’ÓâS3"°¢$ô$Bçv—F‚‡Æ&ö&GÂæÇ—¦R‚f&ö&BævWB‚’’2S3"¢Ð ¢5·Vç6fR†æõöÖævÆR•Ð¢V"W‡FW&â$2"fâf–ÆÅöæ÷FW2‚’ÓâS3"°¢ÆWB6öÖR†Ö6·2’Ò$ô$Bçv—F‚‡Æ&ö&GÂ6æF–FFW2‚f&ö&BævWB‚’’’VÇ6R°¢&WGW&â°¢Ó°¢äõDU2çv—F‚‡Ææ÷FW7Âæ÷FW2ç6WB†Ö6·2’“°¢¢Ð ¢5·Vç6fR†æõöÖævÆR•Ð¢V"W‡FW&â$2"fâ6öÇfUö&ö&B‚’ÓâS3"°¢ÆWB6öÖR‡6öÇWF–öâ’Ò$ô$Bçv—F‚‡Æ&ö&GÂ6öÇfR‚f&ö&BævWB‚’’’VÇ6R°¢&WGW&â°¢Ó°¢$ô$Bçv—F‚‡Æ&ö&GÂ&ö&Bç6WB‡6öÇWF–öâ’“°¢¢Ð ¢5¶6fr†fVGW&RÒ&vVæW&F–öâ"•Ð¢5·Vç6fR†æõöÖævÆR•Ð¢V"W‡FW&â$2"fâvVæW&FUö&ö&B‡6VVC¢S3"’°¢$ô$Bçv—F‚‡Æ&ö&GÂ&ö&Bç6WB†vVæW&FR‡6VVB’’“°¢Ð§Ð ¢5¶6fr†ÆÂ‡F&vWEö&6‚Ò'v6Ó3""ÂfVGW&RÒ'v6ÒÖ’"’•Ð¦ÖöBv6Õ÷&÷Fö6öÂ°¢W6R7FC£¦6VÆÃ£¥&Vd6VÆÃ° ¢F‡&VEöÆö6Â°¢7FF–2$UTU5C¢&Vd6VÆÃÅfV3ÇSƒãâÒ6öç7B²&Vd6VÆÃ£¦æWr…fV3£¦æWr‚’’Ó°¢7FF–2$U5ôå4S¢&Vd6VÆÃÅfV3ÇSƒãâÒ6öç7B²&Vd6VÆÃ£¦æWr…fV3£¦æWr‚’’Ó°¢Ð ¢òòF†Rv÷&¶W"w&—FW2F†R&WVW7B'VffW"&Vf÷&RF†R6ÆÂæB&VG2F†R&W7öç6RgFW"—Bà¢5·Vç6fR†æõöÖævÆR•Ð¢V"W‡FW&â$2"fâ&WVW7Eö'VffW"†ÆVæwFƒ¢W6—¦R’Óâ¦×WBS‚°¢$UTU5Bçv—F‚‡Ç&WVW7GÂ°¢ÆWB×WB&WVW7BÒ&WVW7Bæ&÷'&÷uö×WB‚“°¢&WVW7Bç&W6—¦R†ÆVæwF‚Â“°¢&WVW7Bæ5ö×WE÷G"‚¢Ò¢Ð ¢5·Vç6fR†æõöÖævÆR•Ð¢V"W‡FW&â$2"fâ'Vå÷&WVW7B‚’ÓâW6—¦R°¢ÆWB&W7öç6RÒ$UTU5Bçv—F‚‡Ç&WVW7GÂ7WW#£§&÷Fö6öÃ£§&ö6W72‚g&WVW7Bæ&÷'&÷r‚’’“°¢ÆWBÆVæwF‚Ò&W7öç6RæÆVâ‚“°¢$U5ôå4Rçv—F‚‡Æ'VffW'Â'VffW"ç&WÆ6R‡&W7öç6R’“°¢ÆVæwF€¢Ð ¢5·Vç6fR†æõöÖævÆR•Ð¢V"W‡FW&â$2"fâ&W7öç6Uö'VffW"‚’Óâ¦6öç7BS‚°¢$U5ôå4Rçv—F‚‡Ç&W7öç6WÂ&W7öç6Ræ&÷'&÷r‚’æ5÷G"‚’¢Ð§Ð ¢5¶6fr‡FW7B•Ð¦ÖöBFW7G2°¢W6R7WW#£¢£° ¢6öç7Bt$ÕU¢g7G"Ð¢#S3sc“S“ƒcƒc3Cƒ3s#cc#ƒC“Sƒs’#° ¢5·FW7EÐ¢fâ6†V6·5÷6öÇWF–öåö6÷VçEöæEö6öæfÆ–7G2‚’°¢ÆWB×WB&ö&BÒ'6Uöv—fVç2…t$ÕU’çVçw&‚“°¢76W'EöW†æÇ—¦R‚f&ö&B’ÂæÇ—6—3£¥Væ—VR“°¢&ö&E³%ÒÒ°¢76W'EöW†æÇ—¦R‚f&ö&B’ÂæÇ—6—3£¥Vç6öÇf&ÆR“°¢&ö&E³%ÒÒ3°¢76W'EöW†æÇ—¦R‚f&ö&B’ÂæÇ—6—3£¤6öæfÆ–7B“°¢76W'EöW†æÇ—¦R‚e³²4TÄÅ5Ò’ÂæÇ—6—3£¤×VÇF—ÆR“°¢Ð ¢5·FW7EÐ¢fâW†7E÷6V&6…÷&WV—&W5öVæ÷Vv…ö'VFvWE÷Fõ÷&÷fU÷Væ—VVæW72‚’°¢ÆWB×WB&ö&BÒ6öÇfR‚g'6Uöv—fVç2…t$ÕU’çVçw&‚’’çVçw&‚“°¢&ö&E³ÒÒ°¢76W'EöW†æÇ—¦U÷v—F…ö'VFvWB‚f&ö&BÂ’ÂæÇ—6—3£¥6V&6„Æ–Ö—B“°¢76W'EöW†æÇ—¦U÷v—F…ö'VFvWB‚f&ö&BÂ"’ÂæÇ—6—3£¥Væ—VR“°¢Ð ¢5·FW7EÐ¢fâfÆ–FF–öå÷&W6öÇfW5÷7'6U÷W§¦ÆW5÷v—F…öf÷&6VE÷6–ævÆW2‚’°¢ÆWB&ö&BÒ'6Uöv—fVç2€¢#3CS##CScsƒsScC3"À¢¢çVçw&‚“°¢76W'EöW†æÇ—¦R‚f&ö&B’ÂæÇ—6—3£¥Væ—VR“°¢ÆWBç7vW"Ò6öÇfR‚f&ö&B’çVçw&‚“°¢76W'B‚ç7vW"æ6öçF–ç2‚c’“°¢76W'EöW†æÇ—¦R‚fç7vW"’ÂæÇ—6—3£¥Væ—VR“°¢Ð ¢5·FW7EÐ¢fâ&WGW&ç5öÆVvÅö6æF–FFW5ööæÇ•öf÷%öV×G•ö6VÆÇ2‚’°¢ÆWB&ö&BÒ'6Uöv—fVç2…t$ÕU’çVçw&‚“°¢ÆWBÖ6·2Ò6æF–FFW2‚f&ö&B’çVçw&‚“°¢76W'EöW†Ö6·5³ÒÂ“°¢76W'EöW†Ö6·5³%ÒÂ#“°¢76W'EöW†Ö6·5³CÒÂÃÂB“°¢Ð ¢5·FW7EÐ¢fâ6öÇfW5ö÷fÆ–E÷W§¦ÆR‚’°¢ÆWB&ö&BÒ'6Uöv—fVç2…t$ÕU’çVçw&‚“°¢ÆWB6öÇWF–öâÒ6öÇfR‚f&ö&B’çVçw&‚“°¢76W'EöW†æÇ—¦R‚g6öÇWF–öâ’ÂæÇ—6—3£¥Væ—VR“°¢76W'B‚6öÇWF–öâæ6öçF–ç2‚c’“°¢76W'B€¢&ö&@¢æ—FW"‚¢ç¦—‡6öÇWF–öâ¢æÆÂ‡Â‚fv—fVâÂ6öÇfVB—Âv—fVâÓÒÇÂv—fVâÓÒ6öÇfVB¢“°¢Ð ¢5·FW7EÐ¢fâvVæW&F÷%÷&öGV6W5öF—7F–æ7E÷Væ—VU÷W§¦ÆW2‚’°¢f÷"6VVB–â³ÂÂC"ÂS3#£¤Ô…Ò°¢ÆWB&ö&BÒvVæW&FR‡6VVB“°¢76W'EöW†æÇ—¦R‚f&ö&B’ÂæÇ—6—3£¥Væ—VR“°¢76W'B‚ƒ3BâãÓC’æ6öçF–ç2‚f&ö&Bæ—FW"‚’æf–ÇFW"‡ÂbfF–v—GÂF–v—BÒ’æ6÷VçB‚’’“°¢Ð¢76W'EöæR†vVæW&FRƒ’ÂvVæW&FRƒC"’“°¢Ð ¢5·FW7EÐ¢fâF&vWFVEövVæW&F–öåö6†V6·5÷F†U÷&F–æu÷VæFW%÷F†U÷&WVW7FVEö÷&FW"‚’°¢f÷"ÆWfVÂ–â´F–ff–7VÇG“£¤&Vv–ææW"ÂF–ff–7VÇG“£¤V7’ÂF–ff–7VÇG“£¤ÖVF—VÕÒ°¢ÆWB÷&FW"ÒÆWfVÂçFV6†æ—VUö÷&FW"‚“°¢ÆWBF&vWBÒvVæW&F–öåF&vWC£¤F–ff–7VÇG’°¢ÆWfVÂÀ¢FV6†æ—VUö÷&FW#¢f÷&FW"À¢Ó°¢ÆWB&ö&BÒvVæW&FU÷F&vWFVBƒC"ÂF&vWBÂS"’çVçw&‚“°¢76W'EöW†æÇ—¦R‚f&ö&B’ÂæÇ—6—3£¥Væ—VR“°¢76W'B†&ö&Bæ—FW"‚’æf–ÇFW"‡ÂbfF–v—GÂF–v—BÒ’æ6÷VçB‚’ÃÒC“°¢76W'EöW€¢6öÇfUöÆöv–6ÆÇ’‚f&ö&BÂf÷&FW"’çVçw&‚’ç7FGW2À¢6öÇfU7FGW3£¥6öÇfVB†ÆWfVÂ¢“°¢ÆWBÆ÷vW#¢fV3ÅóâÒ÷&FW ¢æ—FW"‚¢æ6÷–VB‚¢æf–ÇFW"‡ÇGÂBæF–ff–7VÇG’‚’ÂÆWfVÂ¢æ6öÆÆV7B‚“°¢76W'EöW€¢6öÇfUöÆöv–6ÆÇ’‚f&ö&BÂfÆ÷vW"’çVçw&‚’ç7FGW2À¢6öÇfU7FGW3£¥7FÆÆV@¢“°¢Ð¢ÆWB7FÆÆVBÒvVæW&F–öåF&vWC£¤F–ff–7VÇG’°¢ÆWfVÃ¢F–ff–7VÇG“£¤V7’À¢FV6†æ—VUö÷&FW#¢eµÒÀ¢Ó°¢76W'EöW€¢vVæW&FU÷F&vWFVBƒC"Â7FÆÆVBÂ’À¢W'"„vVæW&F–öäW'&÷#£¤–æ6ö×F–&ÆUF&vWG2€¢vVæW&F–öä6öæfÆ–7C£¤V×G•6öÇfW%&öf–ÆP¢’¢“°¢Ð ¢5·FW7EÐ¢fâF&vWFVEövVæW&F–öå÷&V¦V7G5öö6ö×WF–æuö÷Væ–æu÷&ööb‚’°¢ÆWBF&vWBÒvVæW&F–öåF&vWC£¤÷Væ–ær…FV6†æ—VS£¤†–FFVå6–ævÆR“°¢òòF†R&Wf–÷W6Ç’W†6ÇW6—fR&ö&Bæ÷rÇ6ò†2f÷&6–ær&öög2à¢ÆWB&ö&BÒ'6Uöv—fVç2€¢##“C“ƒ3ƒS3sƒ#C3sC“cƒSS3c"À¢¢çVçw&‚“°¢ÆWB÷VæW'2Ò÷Væ–æu÷FV6†æ—VW2‚f&ö&B’çVçw&‚“°¢f÷"FV6†æ—VR–â°¢FV6†æ—VS£¤†–FFVå6–ævÆRÀ¢FV6†æ—VS£¤f÷&6–æt6†–âÀ¢FV6†æ—VS£¤f÷&6–ætæWBÀ¢Ò°¢76W'B†÷VæW'2æ6öçF–ç2‚gFV6†æ—VR’“°¢Ð¢76W'B‡F&vWBæÖF6…÷F‚‚f&ö&B’æ—5öæöæR‚’“°¢76W'EöW€¢vVæW&FU÷F&vWFVBƒs“UócC%ós3‚ÂF&vWBÂ’À¢W'"„vVæW&F–öäW'&÷#£¥6V&6„Æ–Ö—B¢“°¢Ð§Ð
