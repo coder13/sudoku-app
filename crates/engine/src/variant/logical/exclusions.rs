@@ -1,8 +1,8 @@
 //! Finite alternatives certify removals without an exact-solver assumption.
 
 use super::{
-    CompiledVariant, ProofPosition, VariantDeduction, VariantEvidence, VariantExclusionPremise,
-    VariantHouseKind, VariantTechnique, cells_in, digit_bit, digits,
+    CompiledVariant, ProofPosition, VariantConstraintScope, VariantDeduction, VariantEvidence,
+    VariantExclusionPremise, VariantHouseKind, VariantTechnique, cells_in, digit_bit, digits,
 };
 use crate::{CELLS, Candidate, HintAction};
 
@@ -12,7 +12,85 @@ enum Conflict<'a> {
     Rule(&'a [usize]),
 }
 
+fn is_chess_rule(technique: VariantTechnique) -> bool {
+    matches!(
+        technique,
+        VariantTechnique::AntiKing | VariantTechnique::AntiKnight
+    )
+}
+
 impl CompiledVariant {
+    pub(super) fn peer_locks(
+        &self,
+        position: &ProofPosition<'_>,
+        proofs: &mut Vec<VariantDeduction>,
+    ) {
+        if !self
+            .pair_clues
+            .iter()
+            .any(|clue| is_chess_rule(clue.source.technique))
+        {
+            return;
+        }
+        let mut candidates = [0u128; 9];
+        for (cell, &mask) in position.masks.iter().enumerate() {
+            for digit in digits(mask) {
+                candidates[usize::from(digit - 1)] |= 1 << cell;
+            }
+        }
+        for (house, &house_cells) in self.houses.iter().zip(&self.house_masks) {
+            for (index, &digit_cells) in candidates.iter().enumerate() {
+                let sites = digit_cells & house_cells;
+                if sites.count_ones() < 2 {
+                    continue;
+                }
+                let targets = cells_in(sites).fold(digit_cells & !house_cells, |targets, cell| {
+                    targets & self.peers[cell]
+                });
+                let digit = index as u8 + 1;
+                for cell in cells_in(targets) {
+                    let conflicts: Option<Vec<_>> = cells_in(sites)
+                        .map(|site| {
+                            self.peer_lock_conflict(site, cell)
+                                .map(|scope| (site, scope))
+                        })
+                        .collect();
+                    let Some(conflicts) = conflicts else { continue };
+                    // House intersections already have their own proofs.
+                    if !conflicts
+                        .iter()
+                        .any(|(_, scope)| matches!(scope, VariantConstraintScope::Pair { .. }))
+                    {
+                        continue;
+                    }
+                    proofs.push(VariantDeduction {
+                        technique: VariantTechnique::LockedCandidates,
+                        actions: vec![HintAction::Eliminate(Candidate { cell, digit })],
+                        evidence: VariantEvidence::PeerLock {
+                            house: house.kind,
+                            digit,
+                            conflicts,
+                        },
+                    });
+                }
+            }
+        }
+    }
+
+    fn peer_lock_conflict(&self, site: usize, target: usize) -> Option<VariantConstraintScope> {
+        if let Some(house) = self.shared_enforced_house(site, &[target]) {
+            return Some(VariantConstraintScope::House { house });
+        }
+        self.pair_clue_memberships[site].iter().find_map(|&index| {
+            let clue = &self.pair_clues[index];
+            (is_chess_rule(clue.source.technique) && clue.cells.contains(&target)).then(|| {
+                VariantConstraintScope::Pair {
+                    rules: clue.source.indices.clone(),
+                }
+            })
+        })
+    }
+
     pub(super) fn nonconsecutive_exclusions(
         &self,
         position: &ProofPosition<'_>,

@@ -251,6 +251,7 @@ fn empty_model(count: usize) -> InferenceGraph {
             .collect(),
         singles: count,
         mixed: Vec::new(),
+        variant_links: false,
         strong: vec![Vec::new(); count],
         weak: vec![Vec::new(); count],
         positions: [0; 9],

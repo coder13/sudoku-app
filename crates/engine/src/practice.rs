@@ -2914,6 +2914,10 @@ mod tests {
                 assert_eq!(link.strength, LinkStrength::Weak);
                 return;
             }
+            #[cfg(feature = "variants")]
+            LinkSource::VariantHouse(_) | LinkSource::VariantRule(_) => {
+                unreachable!("classic practice examples only use classic link sources")
+            }
         };
         assert!(linked.iter().all(|value| constraint.contains(value)));
         if link.strength == LinkStrength::Strong {

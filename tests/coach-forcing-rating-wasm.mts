@@ -10,7 +10,8 @@ import { useWasmWorker } from './helpers/wasm-worker.ts'
 useWasmWorker()
 
 const fixtures = JSON.parse(readFileSync(new URL('./fixtures/coach-forcing-rating.json', import.meta.url), 'utf8')) as {
-  id: string; title: string; code: string; solution: string; status: VariantRating['status']; points: number; traceDigest: string
+  id: string; title: string; code: string; solution: string; status: VariantRating['status']; points: number
+  scoringVersion?: number; traceDigest: string
 }[]
 
 const techniquesAddedSinceRecording = new Set([
@@ -31,7 +32,11 @@ test('deferred import ratings preserve uniqueness, complete proofs, and versione
       const trace = await runEngine({ type: 'variant', operation: 'trace', position: { puzzle: game.variant.puzzle }, techniqueOrder })
       assert.deepEqual(trace.rating.status, source.status)
       assert.equal(trace.rating.points, source.points)
-      assert.equal(trace.rating.scoringVersion, 24)
+      assert.equal(trace.rating.scoringVersion, source.scoringVersion ?? 24)
+      for (const step of trace.steps) for (const action of step.actions) {
+        const { cell, digit } = 'place' in action ? action.place : action.eliminate
+        assert.equal(Number(source.solution[cell]) === digit, 'place' in action)
+      }
       // Compare the entire recorded proof with the previous profile metadata.
       assert.deepEqual(trace.rating.techniqueOrder, techniqueOrder)
       assert.ok(techniqueOrder.includes('entropy-quadruple'))

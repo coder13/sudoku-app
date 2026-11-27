@@ -43,7 +43,6 @@ for (const difficulty of ['easy', 'medium'] as const) {
       assert.equal(variantIdForPuzzle(result.puzzle), 'anti-king')
       assert.deepEqual(result.puzzle.rules, [{ type: 'anti-king' }])
       assert.deepEqual(result.rating.status, { solved: difficulty })
-      assert.equal(result.rating.scoringVersion, 24)
       assert.ok(result.rating.counts['anti-king'])
       assert.ok(result.givens <= 30)
       const independent = countCellRuleSolutions(result.puzzle)
@@ -61,6 +60,9 @@ for (const difficulty of ['easy', 'medium'] as const) {
       assert.equal(trace.rating.hardest, result.rating.hardest)
       assert.deepEqual(trace.rating.counts, result.rating.counts)
       assert.deepEqual(trace.rating.status, result.rating.status)
+      const usesPeerLock = trace.steps.some(step => step.evidence.type === 'peer-lock')
+      assert.equal(trace.rating.scoringVersion, usesPeerLock ? 27 : 24)
+      assert.equal(result.rating.scoringVersion, trace.rating.scoringVersion)
       let played: Game = game
       for (const step of trace.steps) {
         checkCornerProof(step)
@@ -82,10 +84,13 @@ for (const difficulty of ['easy', 'medium'] as const) {
 test('Medium generation reaches a checked fallback after its bounded fresh search misses', async () => {
   const recipe = variantSeeds['anti-king'].medium![1], techniqueOrder = await getVariantPlayOrder()
   const fresh = variantGenerationRequest('anti-king', 'medium', recipe, techniqueOrder, 1)
-  fresh.maxNodes = 20_000
+  // Constrain the first attempt enough to exercise recovery independently of
+  // whether the regular budget now finds a different Medium puzzle.
+  fresh.maxNodes = 1
   await assert.rejects(runEngine(fresh), error => error instanceof EngineError && error.code === 'search-limit')
   const fallback = await runEngine(variantGenerationRequest('anti-king', 'medium', recipe, techniqueOrder))
-  assert.deepEqual(await generatePlayableVariant('anti-king', 'medium', 1, []), fallback)
+  assert.deepEqual(await generatePlayableVariant('anti-king', 'medium', 1, [], undefined, request =>
+    runEngine(request.type === 'generate-variant' && request.seed === 1 ? { ...request, maxNodes: 1 } : request)), fallback)
   assert.deepEqual(fallback.rating.status, { solved: 'medium' })
 })
 

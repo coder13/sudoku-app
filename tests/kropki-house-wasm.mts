@@ -29,7 +29,10 @@ test('Cauldron imports, rates and replays to its published grid using checked do
   const position = variantPosition(game.variant)
   const order = await getVariantPlayOrder(position.puzzle)
   const trace = (techniqueOrder: readonly string[]) => runEngine({ type: 'variant', operation: 'trace', position, techniqueOrder })
-  const before = await trace(order.filter(id => id !== technique && id !== 'linked-clue-contradiction'))
+  const withoutSupport = order.filter(id => id !== technique && id !== 'linked-clue-contradiction')
+  assert.deepEqual((await trace(withoutSupport)).rating.status, { solved: 'expert' })
+  const chains = ['x-chain', 'xy-chain', 'aic', 'discontinuous-nice-loop', 'continuous-nice-loop']
+  const before = await trace(withoutSupport.filter(id => !chains.includes(id)))
   assert.equal(before.rating.status, 'stalled')
   assert.equal(before.steps.length, 83)
   const after = await trace(order)

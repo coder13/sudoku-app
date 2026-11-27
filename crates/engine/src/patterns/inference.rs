@@ -22,11 +22,20 @@ enum Scope {
     UniqueRectangle,
 }
 
+#[derive(Clone, Copy, Eq, PartialEq)]
+#[cfg_attr(not(feature = "variants"), allow(dead_code))]
+enum LinkMode {
+    All,
+    SameDigit,
+    BivalueCells,
+}
+
 #[derive(Clone, Copy)]
 pub(super) struct Rule {
     technique: Technique,
     shape: Shape,
     scope: Scope,
+    links: LinkMode,
 }
 
 impl Rule {
@@ -56,7 +65,40 @@ impl Rule {
             technique,
             shape,
             scope,
+            links: LinkMode::All,
         })
+    }
+
+    #[cfg(feature = "variants")]
+    pub(super) fn for_variant_technique(technique: Technique) -> Option<Self> {
+        let links = match technique {
+            Technique::XChain => LinkMode::SameDigit,
+            Technique::XYChain => LinkMode::BivalueCells,
+            _ => return Self::for_technique(technique),
+        };
+        Some(Self {
+            technique,
+            shape: Shape::Open,
+            scope: Scope::Plain,
+            links,
+        })
+    }
+
+    fn allows_link(
+        self,
+        graph: &InferenceGraph,
+        from: usize,
+        to: usize,
+        strength: LinkStrength,
+    ) -> bool {
+        match self.links {
+            LinkMode::All => true,
+            LinkMode::SameDigit => graph.nodes[from].digit == graph.nodes[to].digit,
+            LinkMode::BivalueCells => match strength {
+                LinkStrength::Strong => graph.nodes[from].members == graph.nodes[to].members,
+                LinkStrength::Weak => graph.nodes[from].digit == graph.nodes[to].digit,
+            },
+        }
     }
 
     pub(super) fn with_als_cells(self) -> Self {
@@ -237,7 +279,14 @@ impl<'a> Paths<'a> {
                 .neighbors(current.node(), current.next_strength());
             for (neighbor, &edge) in neighbors.iter().enumerate() {
                 let next_is_group = edge.to >= self.graph.singles;
-                if next_is_group && self.rule.scope == Scope::Plain {
+                if (next_is_group && self.rule.scope == Scope::Plain)
+                    || !self.rule.allows_link(
+                        self.graph,
+                        current.node(),
+                        edge.to,
+                        current.next_strength(),
+                    )
+                {
                     continue;
                 }
                 let qualifies = current.qualifies()
@@ -355,28 +404,41 @@ impl<'a> Paths<'a> {
         // Type 2 between individual endpoints uses two cells that see each other.
         // A grouped endpoint can also conflict with a candidate in the other
         // endpoint's cell. The exclusion check below requires every group member.
-        if !matches!(
-            self.rule.scope,
-            Scope::Als | Scope::AlsCell | Scope::UniqueRectangle
-        ) && let Some((left, right)) = self
-            .graph
-            .nodes
-            .get(start.node())
-            .zip(self.graph.nodes.get(end.node()))
+        if !self.graph.variant_links
+            && !matches!(
+                self.rule.scope,
+                Scope::Als | Scope::AlsCell | Scope::UniqueRectangle
+            )
+            && let Some((left, right)) = self
+                .graph
+                .nodes
+                .get(start.node())
+                .zip(self.graph.nodes.get(end.node()))
             && left.digit != right.digit
             && let Some((a, b)) = left.single().zip(right.single())
             && !see_each_other(a, b)
         {
             return ControlFlow::Continue(());
         }
+        let digit = self.graph.nodes.get(start.node()).map(|node| node.digit);
+        if self.rule.links == LinkMode::BivalueCells
+            && self.graph.nodes.get(end.node()).map(|node| node.digit) != digit
+        {
+            return ControlFlow::Continue(());
+        }
         let targets: Vec<_> = self
             .graph
             .excluded_by_either(start.node(), end.node())
+            .filter(|candidate| self.rule.links == LinkMode::All || Some(candidate.digit) == digit)
             .collect();
         if targets.is_empty() {
             return ControlFlow::Continue(());
         }
-        self.eliminate(self.path(end), targets, visit)
+        let path = self.path(end);
+        if self.rule.links == LinkMode::BivalueCells && path.len() < 5 {
+            return ControlFlow::Continue(());
+        }
+        self.eliminate(path, targets, visit)
     }
 
     fn path(&self, mut end: State) -> Vec<PathEdge> {

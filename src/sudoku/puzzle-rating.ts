@@ -10,11 +10,14 @@ export type PuzzleGrade = RatingAttempt['grade']
 const FOG_RATING_VERSION = 1
 const FOG_QUADRUPLE_RATING_VERSION = 2
 const VARIANT_RATING_VERSION = 22
+const CHESS_VARIANT_RATING_VERSION = 23
 
 type GradedPuzzle = Pick<Game, 'grid' | 'difficulty' | 'score' | 'variant' | 'fogRatingVersion' | 'variantRatingVersion' | 'practiceTechnique'>
 
 function variantRatingVersion(variant: Game['variant']) {
-  return variant ? VARIANT_RATING_VERSION : undefined
+  if (!variant) return
+  return variant.puzzle.rules?.some(rule => rule.type === 'anti-knight' || rule.type === 'anti-king')
+    ? CHESS_VARIANT_RATING_VERSION : VARIANT_RATING_VERSION
 }
 
 function fogRatingVersion(variant: Game['variant']) {
@@ -41,18 +44,17 @@ export async function ratePuzzle(
   allowStalled = false,
   verifiedUniqueVariant = false,
 ): Promise<PuzzleGrade | null> {
-  // Fog ratings score the player's revealed logical path. A separate exact
-  // uniqueness proof must not turn a stalled Fog path into an "impossible"
-  // grade; preserve the existing unrated behavior for those puzzles.
-  const canRateVerifiedStall = Boolean(verifiedUniqueVariant && variant && !variant.fog)
+  // A unique completion can finish a Fog puzzle without proving that the
+  // visible rules let a player reach it.
   const rating = variant?.fog ? (await solveFogPath(variant, run, false)).rating
     : variant ? await run({ type: 'variant', operation: 'rate', position: variantPosition(variant), techniqueOrder: await getVariantPlayOrder(variant.puzzle) })
       : await run({ type: 'rate', values: givens, techniqueOrder: (await run({ type: 'techniques' })).difficultyOrder })
-  if (rating.status === 'stalled' && !allowStalled && !canRateVerifiedStall) return null
+  const canGradeStall = verifiedUniqueVariant && !variant?.fog
+  if (rating.status === 'stalled' && !allowStalled && !canGradeStall) return null
   const points = 'score' in rating ? rating.score.points : rating.points
   const hardest = 'score' in rating ? rating.score.hardest : rating.hardest
   const difficulty = rating.status === 'stalled'
-    ? canRateVerifiedStall ? 'impossible'
+    ? canGradeStall ? 'impossible'
       : (await run({ type: 'techniques', variant: Boolean(variant) })).techniques.find(technique => technique.id === hardest)?.difficulty ?? 'beginner'
     : rating.status.solved
   return {

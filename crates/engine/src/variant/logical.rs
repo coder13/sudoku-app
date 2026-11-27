@@ -12,7 +12,8 @@ use crate::{
     Analysis, Board, CELLS, Candidate, DIGITS, Difficulty, HintAction, HintEvidence, SolveStatus,
     Technique,
     hints::{
-        Deduction, DeductionSearch, OverlaySearch, RectangleInferenceCache, digit_bit, digits,
+        Deduction, DeductionSearch, InferenceGraph, OverlaySearch, RectangleInferenceCache,
+        digit_bit, digits,
     },
 };
 
@@ -24,11 +25,13 @@ mod tests;
 pub const VARIANT_SCORING_VERSION: u32 = 24;
 const GROUP_ORDER_ELIMINATION_SCORING_VERSION: u32 = 25;
 const CONDITIONAL_NEIGHBOR_SCORING_VERSION: u32 = 26;
+const VARIANT_LINKS_SCORING_VERSION: u32 = 27;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
 
 mod cages;
+mod chain_inference;
 mod conditional_neighbors;
 mod quadruples;
 mod rule_proofs;
@@ -189,7 +192,7 @@ catalog! {
     Renban: "renban", 40, Medium;
     /// Find shared sums among parts of a Region Sum line.
     RegionSum: "region-sum", 48, Medium;
-    /// Confine a digit to the intersection of two of the puzzle's houses.
+    /// Remove a digit from cells that conflict with every required location for it.
     LockedCandidates: "locked-candidates", Technique::Pointing.cost(), Medium;
     /// Check the digit sum of a diagonal ray.
     LittleKiller: "little-killer", 50, Medium;
@@ -468,6 +471,15 @@ pub enum VariantEvidence {
         cells: Vec<usize>,
         /// Digit confined to the intersection.
         digit: u8,
+    },
+    /// A house must place a digit, and each location conflicts with the target.
+    PeerLock {
+        /// House that requires the digit.
+        house: VariantHouseKind,
+        /// Digit required by the house and removed from the target.
+        digit: u8,
+        /// Each possible location and the house or rule that connects it to the target.
+        conflicts: Vec<(usize, VariantConstraintScope)>,
     },
     /// A clue requires a digit somewhere in the intersecting house.
     LockedDigit {
@@ -1398,6 +1410,10 @@ impl VariantPosition {
                 rating.scoring_version = rating
                     .scoring_version
                     .max(CONDITIONAL_NEIGHBOR_SCORING_VERSION);
+            } else if matches!(step.evidence, VariantEvidence::PeerLock { .. })
+                || matches!(technique, VariantTechnique::Classic(classic) if compiled.uses_variant_chains(classic))
+            {
+                rating.scoring_version = rating.scoring_version.max(VARIANT_LINKS_SCORING_VERSION);
             }
             *rating.counts.entry(technique).or_default() += 1;
             rating.points += u32::from(scoring::deduction_cost(&step, &self.puzzle));
@@ -1463,6 +1479,7 @@ impl VariantDeduction {
             VariantEvidence::CageSum { cells, .. }
             | VariantEvidence::Constraint { cells, .. }
             | VariantEvidence::Intersection { cells, .. } => cells.len(),
+            VariantEvidence::PeerLock { conflicts, .. } => conflicts.len() + 1,
             VariantEvidence::GroupLineHouse { cells, .. } => cells.len(),
             VariantEvidence::GroupLineHouseTriplet { cells, .. } => cells.len(),
             VariantEvidence::GroupLineSumHouse { cells, .. } => cells.len(),
@@ -1544,6 +1561,7 @@ pub(super) struct ProofPosition<'a> {
     uniqueness: OnceCell<bool>,
     rectangle_guardians: OnceCell<bool>,
     rectangle_inference: RectangleInferenceCache,
+    variant_inference: OnceCell<Box<InferenceGraph>>,
     overlay: OnceCell<Box<RefCell<OverlaySearch<'a>>>>,
 }
 
@@ -1594,7 +1612,7 @@ impl ProofPosition<'_> {
     }
 }
 
-fn overlay_proof(step: Deduction) -> VariantDeduction {
+fn classic_proof(step: Deduction) -> VariantDeduction {
     let crate::Hint {
         technique,
         evidence,
@@ -1855,6 +1873,7 @@ impl CompiledVariant {
             uniqueness: OnceCell::new(),
             rectangle_guardians: OnceCell::new(),
             rectangle_inference: RectangleInferenceCache::default(),
+            variant_inference: OnceCell::new(),
             overlay: OnceCell::new(),
         }
     }
@@ -1870,7 +1889,13 @@ impl CompiledVariant {
             self.overlay_search(position)
                 .visit(classic, &mut ControlFlow::Break)
                 .break_value()
-                .map(overlay_proof)
+                .map(classic_proof)
+        } else if let VariantTechnique::Classic(classic) = technique
+            && self.uses_variant_chains(classic)
+        {
+            self.visit_variant_chains(position, classic, &mut ControlFlow::Break)
+                .break_value()
+                .map(classic_proof)
         } else if technique == VariantTechnique::EntropyQuadruple {
             self.entropy_proofs(position, technique, 1).pop()
         } else if technique == VariantTechnique::MatchingDigitContradiction {
@@ -2047,6 +2072,7 @@ impl CompiledVariant {
             LockedCandidates => {
                 self.locked_candidates(position, &mut proofs);
                 self.quadruple_locks(position, &mut proofs);
+                self.peer_locks(position, &mut proofs);
             }
             NonConsecutiveLockedPair
             | NonConsecutiveLockedTriple
@@ -2117,6 +2143,7 @@ impl CompiledVariant {
     /// check the same cached uniqueness requirement before searching.
     pub fn supports_technique(&self, technique: VariantTechnique) -> bool {
         match technique {
+            VariantTechnique::Classic(classic) if self.uses_variant_chains(classic) => true,
             VariantTechnique::Classic(classic) if classic.pattern_overlay_width().is_some() => true,
             VariantTechnique::Classic(
                 Technique::XWing | Technique::Swordfish | Technique::Jellyfish,
@@ -2136,12 +2163,19 @@ impl CompiledVariant {
         if !self.supports_technique(variant) {
             return;
         }
+        if self.uses_variant_chains(technique) {
+            let _ = self.visit_variant_chains(position, technique, &mut |step| {
+                proofs.push(classic_proof(step));
+                ControlFlow::Continue(())
+            });
+            return;
+        }
         if self.classic_search_is_empty(position, technique) {
             return;
         }
         if technique.pattern_overlay_width().is_some() {
             let _ = self.overlay_search(position).visit(technique, &mut |step| {
-                proofs.push(overlay_proof(step));
+                proofs.push(classic_proof(step));
                 ControlFlow::Continue(())
             });
             return;
