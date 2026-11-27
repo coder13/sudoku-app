@@ -24,7 +24,7 @@ test('Cauldron imports, rates and replays to its published grid using checked do
   const oldGrade = { ...game, variantRatingVersion: 15, difficulty: null, score: null }
   assert.ok(puzzleGradeIsStale(oldGrade))
   const refreshed = applyPuzzleGrade(oldGrade, await ratePuzzle(game.givens, game.variant))
-  assert.deepEqual([refreshed.difficulty, refreshed.score, refreshed.variantRatingVersion], ['medium', 2933, 17])
+  assert.deepEqual([refreshed.difficulty, refreshed.score, refreshed.variantRatingVersion], ['medium', 2933, 22])
 
   const position = variantPosition(game.variant)
   const order = await getVariantPlayOrder(position.puzzle)
