@@ -711,6 +711,8 @@ impl<'a> Pattern<'a> {
                 }
             }
             LinkSource::Peers {} => {}
+            #[cfg(feature = "variants")]
+            LinkSource::VariantHouse(_) | LinkSource::VariantRule(_) => {}
         }
     }
 

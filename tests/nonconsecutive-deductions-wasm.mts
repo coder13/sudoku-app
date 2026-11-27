@@ -115,9 +115,13 @@ test('Consecudoku now completes without seeding removals and every new step repl
   assert.equal(logical.positions?.length, logical.steps.length + 1)
 })
 
-test('old explicit profiles retain the archived stall and disabled hints preserve exact rules', async () => {
+test('disabling exclusions and variant chains keeps the archived stall and preserves exact rules', async () => {
   const { game } = await prepareImportedPuzzle(coach.code)
-  const order = (await getVariantPlayOrder()).filter(id => !NC_EXCLUSION_TECHNIQUES.includes(id as typeof NC_EXCLUSION_TECHNIQUES[number]))
+  const chains = ['x-chain', 'xy-chain', 'aic', 'discontinuous-nice-loop', 'continuous-nice-loop']
+  const exclusionsOnly = (await getVariantPlayOrder()).filter(id => !NC_EXCLUSION_TECHNIQUES.includes(id as typeof NC_EXCLUSION_TECHNIQUES[number]))
+  const withChains = await runEngine({ type: 'variant', operation: 'trace', position: variantPosition(game.variant!), techniqueOrder: exclusionsOnly })
+  assert.deepEqual(withChains.rating.status, { solved: 'expert' })
+  const order = exclusionsOnly.filter(id => !chains.includes(id))
   const retained = await runEngine({ type: 'variant', operation: 'trace', position: variantPosition(game.variant!), techniqueOrder: order })
   assert.equal(retained.rating.status, 'stalled')
   assert.equal(retained.steps.length, 62)
@@ -125,7 +129,7 @@ test('old explicit profiles retain the archived stall and disabled hints preserv
   const previous = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
   Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: new MemoryStorage() })
   try {
-    assert.equal(saveDisabledHintTechniques([...NC_EXCLUSION_TECHNIQUES, 'kropki-house-support']), true)
+    assert.equal(saveDisabledHintTechniques([...NC_EXCLUSION_TECHNIQUES, ...chains, 'kropki-house-support']), true)
     const base = makeGame('nc-archived-stall', 'Consecudoku', fixture.position.puzzle.givens, 'imported')
     const current = { ...base, variant: game.variant, position: { ...base.position,
       entries: fixture.position.entries, eliminations: [...fixture.position.eliminations] } }

@@ -2,7 +2,7 @@ import type { BoardAnnotations, BoardGroup, BoardLink, BoardRegion, CandidateAnn
 import type { Candidate, Deduction, DeductionAction, Difficulty, HintChoice, HintTrace, House, InferenceNode, LessonExample, PositionSnapshot, ProofPattern } from './engine'
 import { CLASSIC_GRID, gridHouseCells, type PlayGrid } from './grid.ts'
 import { DIGITS, peer } from './game.ts'
-import { cellReference, type CellReferenceOptions, type CellReferenceStyle } from './hints.ts'
+import { cellReference, techniqueLabel, type CellReferenceOptions, type CellReferenceStyle } from './hints.ts'
 import { variantHintChoice } from './variant-hints.ts'
 import { chainColor, CHAIN_COLOR_PAIRS } from './chain-sketch.ts'
 import { alsChainCandidateStates } from './subset-proofs.ts'
@@ -526,8 +526,12 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
         `If the set at ${setNames(evidence.set.cells)} skips ${inside.digit}, it must use ${list.format(blocked.map(String))}. That forces ${nameCandidate(forced)}.`),
     ])]
     const group = nodes.find(node => !('candidate' in node))
+    const variantSteps = chain.flatMap(({ from, to, source }) => {
+      if (!('variant-rule' in source)) return []
+      return [`${techniqueLabel(source['variant-rule'])} prevents ${nameInference(from)} and ${nameInference(to)} from both being true.`]
+    })
     const explainInference = (reason: string) => {
-      const steps = [...(group ? [inferenceGroupMeaning] : []), ...alsSteps, reason]
+      const steps = [...(group ? [inferenceGroupMeaning] : []), ...alsSteps, ...variantSteps, reason]
       return steps.length > 1 ? explainSteps(steps) : { reason }
     }
     const pattern = {

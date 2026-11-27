@@ -27,6 +27,18 @@ mod inference_cache;
 #[cfg(feature = "variants")]
 pub(crate) use inference_cache::RectangleInferenceCache;
 mod inference_graph;
+#[cfg(feature = "variants")]
+pub(crate) use inference_graph::InferenceGraph;
+#[cfg(feature = "variants")]
+pub(crate) fn visit_variant_inference(
+    graph: &InferenceGraph,
+    technique: Technique,
+    visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
+) -> ControlFlow<Deduction> {
+    inference::Rule::for_variant_technique(technique)
+        .expect("variant inference uses a chain technique")
+        .visit(graph, visit)
+}
 mod kraken;
 mod links;
 mod multi_coloring;

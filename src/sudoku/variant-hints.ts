@@ -577,6 +577,32 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       reason = `One shared cell must hold ${evidence.digit}. Remove it from the rest of ${houseLabel(evidence.target)}.`
       break
     }
+    case 'peer-lock': {
+      const { house, digit, conflicts } = evidence
+      const target = focus[0].cell
+      const location = nameCell(target)
+      const sites = conflicts.map(([cell]) => cell)
+      cells = [...sites, target]
+      candidates = [...sites.map(cell => ({ cell, digit })), ...focus]
+      description = `In ${houseLabel(house)}, ${digit} can go only in ${alternatives.format(sites.map(nameCell))}.`
+      reasonSteps = conflicts.map(([cell, scope]) => {
+        const site = nameCell(cell)
+        if (scope.type === 'house') {
+          return `If ${site} is ${digit}, ${location} cannot be ${digit} because both cells are in ${houseLabel(scope.house)}.`
+        }
+        const usesRule = (type: string) => scope.type === 'pair' && scope.rules.some(index => puzzle.rules?.[index]?.type === type)
+        if (usesRule('anti-knight')) {
+          return `If ${site} is ${digit}, Anti-Knight rules out ${digit} in ${location}, a knight’s move away.`
+        }
+        if (usesRule('anti-king')) {
+          return `If ${site} is ${digit}, Anti-King rules out ${digit} in ${location} because the cells touch at a corner.`
+        }
+        return `If ${site} is ${digit}, the rule connecting the two cells rules out ${digit} in ${location}.`
+      })
+      reasonSteps.push(`One of those cells must contain ${digit}, so remove ${digit} from ${location}.`)
+      reason = reasonSteps.join(' ')
+      break
+    }
     case 'locked-digit': {
       cells = evidence.clue.cells
       const target = houseLabel(evidence.target)

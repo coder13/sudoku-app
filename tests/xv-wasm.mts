@@ -72,7 +72,8 @@ test('all preserved Coach combinations keep every constraint and their complete 
     assert.equal(puzzle.rules!.length, [2, 6, 3, 12, 4][index])
     assertVariantCompletion(puzzle, source.solution)
     const trace = await runEngine({ type: 'variant', operation: 'trace', position: variantPosition(game.variant!), techniqueOrder })
-    assert.equal(trace.steps.length, [27, 170, 199, 6, 212][index]); assert.equal(trace.rating.points, [1059, 3597, 92756, 206, 4254][index])
+    assert.equal(trace.steps.length, [27, 197, 275, 6, 254][index]); assert.equal(trace.rating.points, [1059, 4768, 7690, 206, 3862][index])
+    assert.equal(trace.rating.scoringVersion, [24, 27, 27, 24, 27][index])
     let played = game
     for (const step of trace.steps) {
       for (const action of step.actions) {

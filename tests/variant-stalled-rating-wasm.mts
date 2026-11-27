@@ -18,9 +18,9 @@ test('a uniquely verified mixed-rule puzzle gets a rating when logical technique
   assert.notEqual(game.nonUnique, true)
   assert.ok(game.variant.puzzle.rules?.some(rule => rule.type === 'anti-knight'))
   assert.ok(hasPrintedKropki(game.variant.puzzle.rules))
-  assert.deepEqual([grade?.difficulty, grade?.points, grade?.scoringVersion], ['impossible', 6132, 24])
-  assert.deepEqual([game.difficulty, game.score, game.variantRatingVersion], ['impossible', 6132, 22])
+  assert.deepEqual([grade?.difficulty, grade?.points, grade?.scoringVersion], ['impossible', 5058, 27])
+  assert.deepEqual([game.difficulty, game.score, game.variantRatingVersion], ['impossible', 5058, 23])
 
-  const previousGrade = { ...game, variantRatingVersion: 21 }
+  const previousGrade = { ...game, variantRatingVersion: 22 }
   assert.ok(puzzleGradeIsStale(previousGrade))
 })
