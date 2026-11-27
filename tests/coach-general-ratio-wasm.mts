@@ -314,6 +314,18 @@ test('#86 imports the published Light puzzle with its 3:1 Ratio mark and compani
     3 * Math.min(Number(solution[79]), Number(solution[78])))
   assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: {
     puzzle: imported.variant.puzzle,
+    entries: imported.givens,
+  } }), 'unique', 'the complete published puzzle must solve uniquely with all imported companion rules')
+  const withoutRatio = {
+    ...imported.variant.puzzle,
+    rules: imported.variant.puzzle.rules?.filter(rule => rule.type !== 'labeled-dots' || rule.relation !== 'ratio'),
+  }
+  assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: {
+    puzzle: withoutRatio,
+    entries: imported.givens,
+  } }), 'multiple', 'the published 3:1 Ratio rule is needed for uniqueness alongside the companion rules')
+  assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: {
+    puzzle: imported.variant.puzzle,
     entries: solution,
   } }), 'unique', 'the published completion must satisfy the Ratio and every companion rule together')
 
