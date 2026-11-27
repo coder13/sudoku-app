@@ -258,6 +258,26 @@ test('synthetic Coach Ratio 3 keeps its marked relation in Play and engine analy
   assert.equal(impossible, 'conflict')
 })
 
+test('synthetic Coach Ratio labels from 2:1 through 9:1 match exact candidate support', async () => {
+  for (let ratio = 2; ratio <= 9; ratio++) {
+    for (let fixedDigit = 1; fixedDigit <= 9; fixedDigit++) {
+      const imported = await detectPuzzle(coachCode({
+        givenDigits: String(fixedDigit) + '0'.repeat(80),
+        givenConstraints: [{ type: 'ratio', settings: { negativeConstraint: false }, segments: [
+          { cells: [0, 1], parameters: { ratio } },
+        ] }],
+      }))
+      assert.ok(imported.variant, `ratio ${ratio}:1 with ${fixedDigit} fixed at R1C1`)
+      const candidates = await runEngine({ type: 'variant', operation: 'candidates', position: variantPosition(imported.variant) })
+      assert.ok(candidates)
+      const expected = Array.from({ length: 9 }, (_, index) => index + 1).filter(digit =>
+        Math.max(digit, fixedDigit) / Math.min(digit, fixedDigit) === ratio)
+      const actual = Array.from({ length: 9 }, (_, index) => index + 1).filter(digit => candidates[1] & (1 << (digit - 1)))
+      assert.deepEqual(actual, expected, `ratio ${ratio}:1 with ${fixedDigit} fixed at R1C1`)
+    }
+  }
+})
+
 test('synthetic sized Coach Ratio 3 composes with a diagonal and constrains imported Play candidates', async () => {
   const { game } = await prepareImportedPuzzle(coachCode({
     gridSize: 6,
