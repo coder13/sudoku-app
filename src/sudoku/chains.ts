@@ -3,7 +3,7 @@ import { visitFireworkLinks, visitRectangleLinks, type PatternLinkSource } from 
 import { candidateCount, hasCandidate, marksOf, peer } from './game.ts'
 import { cellReference } from './hints.ts'
 import { techniqueActionKey } from './technique-progress.ts'
-import { regionMembership, variantHouseCells } from './variants.ts'
+import { regionMembership, variantDigitExclusions, variantHouseCells } from './variants.ts'
 
 export type ChainGroup = `g:${number}:${string}`
 /** The proposition that a digit occurs in one of its candidate cells in a saved ALS. */
@@ -119,6 +119,7 @@ export function makeChainGraph(masks: readonly number[], puzzle?: VariantPuzzle,
     const first = chainCandidate(a)
     const second = chainCandidate(b)
     return first.cell === second.cell || (first.digit === second.digit && peers(first.cell, second.cell))
+      || hasCandidate(variantDigitExclusions(puzzle, first.cell, second.cell, first.digit), second.digit)
   }
 
   const knownCandidates = new Set(candidates)

@@ -159,6 +159,8 @@ fn transpose_link_source(source: LinkSource) -> LinkSource {
             }
         }
         LinkSource::Peers {} => source,
+        #[cfg(feature = "variants")]
+        LinkSource::VariantHouse(_) | LinkSource::VariantRule(_) => source,
     }
 }
 

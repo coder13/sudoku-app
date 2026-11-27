@@ -111,17 +111,18 @@ impl Edge {
 }
 
 #[derive(Clone)]
-pub(super) struct InferenceGraph {
-    pub nodes: Vec<Node>,
+pub(crate) struct InferenceGraph {
+    pub(super) nodes: Vec<Node>,
     pub singles: usize,
     mixed: Vec<MixedNode>,
     strong: Vec<Vec<Edge>>,
     weak: Vec<Vec<Edge>>,
     positions: [u128; 9],
+    pub(super) variant_links: bool,
 }
 
 impl InferenceGraph {
-    pub fn new(masks: &[u16; CELLS], positions: [u128; 9]) -> Self {
+    fn single_nodes(masks: &[u16; CELLS]) -> (Vec<Node>, [usize; links::CANDIDATE_COUNT]) {
         let mut nodes = Vec::new();
         let mut indices = [usize::MAX; links::CANDIDATE_COUNT];
         for (cell, &mask) in masks.iter().enumerate() {
@@ -130,6 +131,11 @@ impl InferenceGraph {
                 nodes.push(Node::new(digit as u8 + 1, cell_bit(cell)));
             }
         }
+        (nodes, indices)
+    }
+
+    pub fn new(masks: &[u16; CELLS], positions: [u128; 9]) -> Self {
+        let (mut nodes, indices) = Self::single_nodes(masks);
         let singles = nodes.len();
         let groups: [std::ops::Range<usize>; 9] = std::array::from_fn(|digit| {
             let start = nodes.len();
@@ -157,6 +163,7 @@ impl InferenceGraph {
             singles,
             mixed: Vec::new(),
             positions,
+            variant_links: false,
         };
         let mut constraint = Vec::with_capacity(18);
         for (cell, &mask) in masks.iter().enumerate() {
@@ -193,6 +200,53 @@ impl InferenceGraph {
                     }
                 }
             }
+        }
+        graph.sort_edges();
+        graph
+    }
+
+    #[cfg(feature = "variants")]
+    pub(crate) fn for_variant(
+        masks: &[u16; CELLS],
+        houses: impl IntoIterator<Item = (u128, LinkSource)>,
+        conflicts: impl IntoIterator<Item = (Candidate, Candidate, LinkSource)>,
+    ) -> Self {
+        let (nodes, indices) = Self::single_nodes(masks);
+        let singles = nodes.len();
+        let positions = super::candidate_positions(masks);
+        let mut graph = Self {
+            nodes,
+            singles,
+            mixed: Vec::new(),
+            strong: vec![Vec::new(); singles],
+            weak: vec![Vec::new(); singles],
+            positions,
+            variant_links: true,
+        };
+        let mut constraint = Vec::with_capacity(9);
+        let mut add_constraint = |members: &[usize], source| {
+            for (i, &a) in members.iter().enumerate() {
+                for &b in &members[i + 1..] {
+                    graph.connect(a, b, source, members.len() == 2);
+                }
+            }
+        };
+        for (cell, &mask) in masks.iter().enumerate() {
+            constraint.clear();
+            constraint.extend(bit_indices(mask).map(|digit| indices[cell * 9 + digit]));
+            add_constraint(&constraint, LinkSource::Cell(cell));
+        }
+        for (house, source) in houses {
+            for (digit, &sites) in positions.iter().enumerate() {
+                constraint.clear();
+                constraint.extend(cells(house & sites).map(|cell| indices[cell * 9 + digit]));
+                add_constraint(&constraint, source);
+            }
+        }
+        for (left, right, source) in conflicts {
+            let a = indices[links::index(left)];
+            let b = indices[links::index(right)];
+            graph.connect(a, b, source, false);
         }
         graph.sort_edges();
         graph
@@ -291,7 +345,7 @@ impl InferenceGraph {
         }
     }
 
-    pub fn neighbors(&self, node: usize, strength: LinkStrength) -> &[Edge] {
+    pub(super) fn neighbors(&self, node: usize, strength: LinkStrength) -> &[Edge] {
         match strength {
             LinkStrength::Strong => &self.strong[node],
             LinkStrength::Weak => &self.weak[node],
@@ -373,7 +427,7 @@ impl InferenceGraph {
         self.strong.iter().flatten().copied().any(matches)
     }
 
-    pub fn edge(&self, from: usize, to: usize, strength: LinkStrength) -> Option<Edge> {
+    pub(super) fn edge(&self, from: usize, to: usize, strength: LinkStrength) -> Option<Edge> {
         let edges = self.neighbors(from, strength);
         edges
             .binary_search_by_key(&to, |edge| edge.to)
@@ -381,7 +435,7 @@ impl InferenceGraph {
             .map(|i| edges[i])
     }
 
-    pub fn link(&self, from: usize, edge: Edge, strength: LinkStrength) -> InferenceLink {
+    pub(super) fn link(&self, from: usize, edge: Edge, strength: LinkStrength) -> InferenceLink {
         InferenceLink {
             from: self.evidence(from),
             to: self.evidence(edge.to),
@@ -410,6 +464,19 @@ impl InferenceGraph {
     }
 
     pub fn excluded_by_either(&self, a: usize, b: usize) -> impl Iterator<Item = Candidate> + '_ {
+        // Numeric variant rules can also exclude digits other than either endpoint digit.
+        let variant_targets = self.variant_links.then(|| {
+            let mut masks = [0; 9];
+            for edge in &self.weak[a] {
+                if self.edge(b, edge.to, LinkStrength::Weak).is_some() {
+                    let target = self.nodes[edge.to]
+                        .single()
+                        .expect("variant graph has only candidates");
+                    masks[usize::from(target.digit - 1)] |= cell_bit(target.cell);
+                }
+            }
+            masks
+        });
         let possible_digits = self
             .nodes
             .get(a)
@@ -422,14 +489,26 @@ impl InferenceGraph {
                     endpoint_digits
                 }
             });
+        let possible_digits = if variant_targets.is_some() {
+            DIGITS
+        } else {
+            possible_digits
+        };
         bit_indices(possible_digits).flat_map(move |index| {
             let digit = index as u8 + 1;
-            cells(self.positions[index] & self.exclusions(a, index) & self.exclusions(b, index))
-                .map(move |cell| Candidate { cell, digit })
+            let targets = variant_targets.map_or_else(
+                || self.positions[index] & self.exclusions(a, index) & self.exclusions(b, index),
+                |masks| masks[index],
+            );
+            cells(targets).map(move |cell| Candidate { cell, digit })
         })
     }
 
-    pub fn locked_als_targets(&self, a: usize, edge: Edge) -> impl Iterator<Item = Candidate> + '_ {
+    pub(super) fn locked_als_targets(
+        &self,
+        a: usize,
+        edge: Edge,
+    ) -> impl Iterator<Item = Candidate> + '_ {
         self.als_lock(a, edge)
             .into_iter()
             .flat_map(move |(set, unlocked)| {
@@ -798,6 +877,7 @@ mod tests {
             strong: vec![Vec::new(); 11],
             weak: vec![Vec::new(); 11],
             positions: [0; 9],
+            variant_links: false,
         };
         let special = LinkSource::Firework(0);
         let weak = LinkSource::Peers {};

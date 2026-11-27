@@ -15,7 +15,10 @@ mod patterns;
 pub(crate) use patterns::OverlaySearch;
 pub(crate) use patterns::unique_layouts;
 #[cfg(feature = "variants")]
-pub(crate) use patterns::{RectangleInferenceCache, has_rectangle_guardians, layouts_in_houses};
+pub(crate) use patterns::{
+    InferenceGraph, RectangleInferenceCache, has_rectangle_guardians, layouts_in_houses,
+    visit_variant_inference,
+};
 
 #[path = "proofs.rs"]
 mod proofs;
@@ -147,6 +150,12 @@ pub enum LinkSource {
     Cell(usize),
     /// The link follows from the positions of a digit in one house.
     House(House),
+    /// The link follows from the positions of a digit in a variant house.
+    #[cfg(feature = "variants")]
+    VariantHouse(crate::VariantHouseKind),
+    /// The two candidates cannot coexist under this type of variant rule.
+    #[cfg(feature = "variants")]
+    VariantRule(crate::VariantTechnique),
     /// The row and column through this pivot require a digit in at least one endpoint.
     Firework(usize),
     /// At least one of the endpoint candidates must break this Tridagon.

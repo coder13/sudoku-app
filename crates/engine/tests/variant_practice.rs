@@ -372,6 +372,10 @@ fn variant_practice_library_proves_its_answers_on_distinct_unique_puzzles() {
                 | VariantEvidence::Intersection { cells, .. } => {
                     scopes.insert(cells);
                 }
+                VariantEvidence::PeerLock { conflicts, .. } => {
+                    assert!(conflicts.len() >= 2);
+                    scopes.insert(conflicts.into_iter().map(|(cell, _)| cell).collect());
+                }
                 VariantEvidence::Single { .. } | VariantEvidence::Classic { .. } => {}
                 VariantEvidence::Exclusion { premise, rules, .. } => {
                     assert!(
