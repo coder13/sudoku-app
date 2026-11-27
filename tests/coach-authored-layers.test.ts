@@ -95,6 +95,28 @@ test('#544 imports XV Entropy when the authored cosmetic cage is empty', async (
   ])
 })
 
+test('#544 keeps its authored empty cage and imports a companion rule from the published link', async t => {
+  const source = fixture.examples.find(example => example.issue === 544)
+  assert.ok(source)
+  const data = await decodeSudokuCoachPayload(source.code)
+  const code = coachCode({ ...data, givenConstraints: [
+    ...(data.givenConstraints as unknown[]), { type: 'antiKnight', segments: [], settings: {} },
+  ] })
+  const fetch = t.mock.method(globalThis, 'fetch', async (path: string) => {
+    assert.equal(path, `/api/v1/import/sudoku-coach/${source.id}`)
+    return Response.json({ code, coach: {
+      hasAuthorInstructions: true, authoredRule: 'xv-empty-cosmetic-cage', title: source.title,
+    } })
+  })
+
+  const imported = await detectPuzzle(`https://sudoku.coach/en/s/${source.id}`)
+  assert.equal(fetch.mock.callCount(), 1)
+  assert.ok(imported.variant?.puzzle.rules?.some(rule => rule.type === 'global-entropy'))
+  assert.ok(imported.variant?.puzzle.rules?.some(rule => rule.type === 'xv'))
+  assert.ok(imported.variant?.puzzle.rules?.some(rule => rule.type === 'kropki'))
+  assert.ok(imported.variant?.puzzle.rules?.some(rule => rule.type === 'anti-knight'))
+})
+
 test('#542 imports the shape groups, active rules, and authored RP label', async () => {
   const source = fixture.examples.find(example => example.issue === 542)
   assert.ok(source)
