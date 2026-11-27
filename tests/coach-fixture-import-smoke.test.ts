@@ -4,6 +4,9 @@ import { join, relative } from 'node:path'
 import { test } from 'node:test'
 import { syncDatabase } from './helpers/sync-database.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { makeGame } from '../src/sudoku/game.ts'
+import { MAX_DECODED_LENGTH, MAX_IMPORT_LENGTH } from '../src/sudoku/puzzle-import/shared.ts'
+import { puzzleExportText } from '../src/sudoku/puzzle-sharing.ts'
 import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
 import { coachCode } from './helpers/coach-code.ts'
 
@@ -165,4 +168,23 @@ test('every preserved Coach Sudoku export survives public sharing and reopen', a
   } finally {
     sqlite.close()
   }
+})
+
+test('#547 pretty-printed app exports above the provider cap re-import with authored artwork', async () => {
+  const authored = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-authored-layers.json', import.meta.url), 'utf8')) as {
+    examples: { issue: number; code: string }[]
+  }
+  const source = authored.examples.find(example => example.issue === 547)
+  assert.ok(source)
+  const sourcePuzzle = await detectPuzzle(source.code)
+  assert.ok(sourcePuzzle.variant)
+  const game = { ...makeGame('coach-large-export', 'CS1G', sourcePuzzle.givens, 'imported'),
+    variant: sourcePuzzle.variant, authoredArtwork: sourcePuzzle.authoredArtwork }
+  const text = puzzleExportText(game)
+  assert.ok(text.length > MAX_IMPORT_LENGTH)
+  assert.ok(text.length <= MAX_DECODED_LENGTH)
+  const imported = await detectPuzzle(text)
+  assert.equal(imported.format, 'Puzzle export')
+  assert.deepEqual(imported.variant?.puzzle, game.variant?.puzzle)
+  assert.deepEqual(imported.authoredArtwork, game.authoredArtwork)
 })
