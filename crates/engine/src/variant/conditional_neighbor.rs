@@ -5,6 +5,7 @@ use crate::{Board, CELLS, hints::digit_bit};
 
 #[derive(Clone, Debug)]
 pub(super) struct CompiledConditionalNeighbor {
+    pub(super) rule_index: usize,
     pub source: usize,
     pub trigger_digit: u8,
     pub alternatives: Vec<(usize, u8)>,
@@ -53,6 +54,7 @@ impl CompiledConditionalNeighbor {
                     })
                     .collect();
                 Self {
+                    rule_index: rule,
                     source,
                     trigger_digit,
                     alternatives,
