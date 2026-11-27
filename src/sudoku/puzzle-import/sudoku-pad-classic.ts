@@ -227,7 +227,7 @@ export function readClassicSudokuPad(data: Record<string, unknown>) {
   const givens = readGivens(data.cells)
   readRegions(data.regions)
   const rulesText = Array.isArray(data.metadata.rules) ? data.metadata.rules.join('\n') : data.metadata.rules as string
-  const clauses = rulesText.trim().split(/\n+/).map(clause => clause.replace(/\s+/g, ' ')).filter(Boolean)
+  const clauses = rulesText.trim().split(/\n+/).map(clause => clause.replace(/\s+/g, ' ').trim()).filter(Boolean)
   if (!clauses.length || !BASE_RULE.test(clauses[0])) return reject('This SudokuPad puzzle has authored rules this importer cannot verify.')
   const rules: VariantRule[] = []
   let hasNonconsecutive = false
