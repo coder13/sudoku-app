@@ -6,7 +6,7 @@ import { completeCandidateMasks, hintEliminations, isSolved, valuesOf, type Game
 import { sizedRuleHintChoices, SIZED_RULE_TECHNIQUES } from '../sudoku/sized-rule-play'
 import { MINI_TECHNIQUES, miniHintChoices } from '../sudoku/mini-play'
 import { ALGEBRAIC_CAGE_TECHNIQUE, algebraicHintChoices } from '../sudoku/algebraic-play'
-import { ALGEBRAIC_CAGES_NAME, MINI_NAME, sizedGridName } from '../sudoku/new-puzzle'
+import { MINI_NAME, sizedGridName } from '../sudoku/new-puzzle'
 import { HINT_CANDIDATES_ERROR, HINT_ERROR, techniqueLabel } from '../sudoku/hints'
 import { addAnalysisAssistance } from '../sudoku/player-rating'
 import { roomStore } from '../sudoku/storage'
@@ -170,7 +170,9 @@ function SizedAnalysis({ game, active = true, onSelectTechnique }: ContentsProps
   }, [active, algebraic, grid, sized, solved, values, eliminations, key, techniques])
 
   const results = scan?.key === key ? scan.results : {}
-  const groups = filterAnalysisGroups([{ title: algebraic ? ALGEBRAIC_CAGES_NAME : grid ? sizedGridName(grid) : MINI_NAME, techniques: [...techniques] }], results, hideZero, solved)
+  const categories = sized || algebraic ? analysisGroupsForCatalog(techniques)
+    : [{ title: grid ? sizedGridName(grid) : MINI_NAME, techniques: [...techniques] }]
+  const groups = filterAnalysisGroups(categories, results, hideZero, solved)
   return <div className="puzzle-analysis-content">
     {failedKey === key ? <p role="alert" className="analysis-error">Check the placed digits and candidates, then try again.</p> : <>
       <label className="analysis-zero-filter">
@@ -219,7 +221,7 @@ function StandardAnalysis({ game, active = true, onSelectTechnique }: ContentsPr
     return () => { current = false }
   }, [active, variant, retry])
 
-  const groups = useMemo(() => analysisGroupsForCatalog(catalog?.techniques ?? []), [catalog])
+  const groups = useMemo(() => analysisGroupsForCatalog(catalog?.techniques.map(({ id }) => id) ?? []), [catalog])
   const techniques = techniqueOrder
 
   useEffect(() => {
