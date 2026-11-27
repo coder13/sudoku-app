@@ -778,9 +778,9 @@ const coach220VLineColoursExport = '7cf6d6e8cb55e93db7199f2d9c6c90e64f60dde46df8
 
 // The Rainbow colors repeat the region map. Revival's yellow pattern adds no
 // rule. Match the reviewed exports in full because other colors can encode clues.
-const reviewedCoachColorExports = new Map([
-  ['3c5e14b3fada38879b5f42667ad02820548f06ea6282db2b98d07edc8cfe3d17', 'Entro Quad Rainbow Jigsaw'],
-  ['b255fa64004bfdd04e71a07ac68863131e8906d992bf77af35af53296d812228', 'Revival'],
+const reviewedCoachColorExports = new Map<string, { title: string; constraintCount: number }>([
+  ['3c5e14b3fada38879b5f42667ad02820548f06ea6282db2b98d07edc8cfe3d17', { title: 'Entro Quad Rainbow Jigsaw', constraintCount: 2 }],
+  ['b255fa64004bfdd04e71a07ac68863131e8906d992bf77af35af53296d812228', { title: 'Revival', constraintCount: 2 }],
 ])
 
 function readCoachInsideGrid(constraints: readonly unknown[]): VariantRule[] {
@@ -1069,8 +1069,17 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   if (declaredLettered && !lettered) throw new Error('The export does not match its published lettered Quadruples.')
   if (declaredInsideGrid && !insideGrid) throw new Error('The export does not match its published Inside Grid.')
   const rawQuadArrows = !publication && await coachConstraintPrefixHash(code, data, 1) === quadArrowsExport
-  const reviewedColorTitle = !fog && !publication?.hasAuthorInstructions && exportHash
-    ? reviewedCoachColorExports.get(exportHash) : undefined
+  let reviewedColorTitle = !fog && !publication?.hasAuthorInstructions && exportHash
+    ? reviewedCoachColorExports.get(exportHash)?.title : undefined
+  if (!reviewedColorTitle && !fog && !publication?.hasAuthorInstructions && Array.isArray(data.givenConstraints)) {
+    for (const [reviewedHash, review] of reviewedCoachColorExports) {
+      if (data.givenConstraints.length <= review.constraintCount) continue
+      if (await coachConstraintPrefixHash(code, data, review.constraintCount) === reviewedHash) {
+        reviewedColorTitle = review.title
+        break
+      }
+    }
+  }
   const authoredRule = rawQuadArrows ? 'quad-arrows' : magicSquare ? 'magic-square' : unknownCageSums ? 'unknown-cage-sums' :
     distantNeighbors ? 'distant-neighbors' : authoredAsnFXSums ? 'x-sum' :
       reviewed220VLineLegend ? 'line-colours' : authoredAllBlackDots ? 'all-black-dots' : publication?.authoredRule

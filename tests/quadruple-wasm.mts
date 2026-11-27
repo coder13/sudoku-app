@@ -5,6 +5,7 @@ import { runEngine, type VariantPuzzle, type VariantRule } from '../src/sudoku/e
 import { readGame } from '../src/sudoku/storage.ts'
 import worker from '../cloudflare/pages/_worker.js'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { needsPuzzleGrade } from '../src/sudoku/puzzle-rating.ts'
 import { applyDeduction, conflictsOf, enter, isSolved, peer, undo, redo, valuesOf } from '../src/sudoku/game.ts'
@@ -616,6 +617,37 @@ test('reviewed Quadruple publications preserve colors, author-defined regions an
       givenConstraints: [{ type: 'quadruple', segments: [{ cells: [0], parameters: { digits: '2' } }] }] })
     await assert.rejects(detectPuzzle(sources[1].url), /unsupported authored markings/)
   } finally { sqlite.close() }
+})
+
+test('reviewed Quadruple region legends retain their title and colors with appended rules', async () => {
+  const sources = JSON.parse(readFileSync(new URL('./fixtures/quadruple-coach-colors.json', import.meta.url), 'utf8')) as {
+    title: string; coach: string; solution: string; regionLabels: string | null; colorCodes: string; palette: string[]
+  }[]
+  for (const source of sources) {
+    const data = await decodeSudokuCoachPayload(source.coach)
+    const digits = [...source.solution].map(Number)
+    const pair = Array.from({ length: 81 }, (_, cell) => {
+      const right = cell % 9 < 8 ? cell + 1 : -1
+      const down = cell < 72 ? cell + 9 : -1
+      return [right, down].filter(next => Math.max(digits[cell], digits[next]) === 2 * Math.min(digits[cell], digits[next]))
+        .map(next => [cell, next] as [number, number])
+    }).flat()[0]
+    assert.ok(pair, source.title)
+    const code = coachCode({ ...data, givenConstraints: [
+      ...(data.givenConstraints as unknown[]),
+      { type: 'ratio', segments: [{ cells: pair, parameters: {} }], settings: {} },
+    ] })
+    const { game } = await prepareImportedPuzzle(code, [], { deferRating: true })
+    assert.ok(game.variant, source.title)
+    assert.equal(game.title, source.title)
+    assert.equal(game.variant.solution, source.solution)
+    assert.deepEqual(game.givenCellColors, Object.fromEntries(source.colorCodes.split('.').flatMap((color, cell) =>
+      color ? [[cell, [source.palette[Number(color)]]]] : [])))
+    assert.equal(game.variant.puzzle.rules?.filter(rule => rule.type === 'quadruple').length,
+      source.title === 'Revival' ? 16 : 20)
+    assert.ok(game.variant.puzzle.rules?.some(rule => rule.type === 'kropki'))
+    assertVariantCompletion(game.variant.puzzle, source.solution)
+  }
 })
 
 test('Code Cracker keeps its Inside Grid, Consecutive Thermometers and Quadruple proofs', async ({ mock }) => {
