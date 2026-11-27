@@ -1038,10 +1038,9 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   if (publication?.authoredRule === 'partial-regions' && !artwork?.partialRegions) {
     throw new Error('The export does not match its published region outlines.')
   }
-  const guideLayers = constraints.every(layer => record(layer) &&
-    ['whisper', 'cosmeticShape', 'cosmeticText'].includes(String(layer.type))) &&
-    constraints.some(layer => layer.type === 'whisper') && constraints.some(layer => layer.type === 'cosmeticShape')
-    ? constraints.filter(layer => layer.type !== 'whisper') : []
+  const guideLayers = constraints.some(layer => record(layer) && layer.type === 'whisper') &&
+    constraints.some(layer => record(layer) && layer.type === 'cosmeticShape')
+    ? constraints.filter(layer => record(layer) && (layer.type === 'cosmeticShape' || layer.type === 'cosmeticText')) : []
   const artworkLayers = artwork && 'layers' in artwork ? artwork.layers ?? [] : artwork ? [artwork.layer] : []
   const cellColours = readCoachColourCells(data.colours, data.givenColours)
   const hasQuadruples = constraints.some(layer => record(layer) && layer.type === 'quadruple')
@@ -1062,7 +1061,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     ...(unknownCageSums ? constraints.filter(layer => record(layer) && layer.type === 'cosmeticText') : [])]
   const encodedRules = entropyGroupOrder ? entropyGroupOrder.source.otherRules
     : unknownCageSums ? constraints.filter(layer => record(layer) && layer.type !== 'cage' && layer.type !== 'cosmeticText')
-    : guideLayers.length ? constraints.filter(layer => layer.type === 'whisper')
+    : guideLayers.length ? constraints.filter(layer => !guideLayers.includes(layer))
     : reviewedLayers.length ? constraints.filter(layer => !reviewedLayers.includes(layer)) : constraints
   const insideGrid = await coachConstraintPrefixHash(code, data, 14) === codeCrackerExport && (!publication || declaredInsideGrid)
   const lettered = await coachConstraintPrefixHash(code, data, 12) === sandwichRollExport && (!publication || declaredLettered)
@@ -1106,9 +1105,10 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     throw new Error('This Sudoku Coach Quad-Arrows export is missing its circles.')
   }
   const palette = Array.isArray(data.colours) ? data.colours : []
+  const guidePuzzle = { version: 1 as const, givens, regions, rules: rules.filter(rule => rule.type === 'whispers') }
   const whispersGuide = guideLayers.length > 0 && cellColours !== undefined && isCoachWhispersGuide(
     cellColours.map(shade => shade === '' ? '' : shade.length === 1 ? palette[COACH_BASE62.indexOf(shade)] : undefined),
-    guideLayers, { version: 1, givens, regions, rules },
+    guideLayers, guidePuzzle,
   )
   if (guideLayers.length > 0 && !whispersGuide || publication?.whispersGuide && !whispersGuide) {
     throw new Error('This Sudoku Coach puzzle has an unsupported Whispers guide.')
