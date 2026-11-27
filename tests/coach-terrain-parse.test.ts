@@ -3,7 +3,11 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { readReviewedCoachTerrain } from '../src/sudoku/puzzle-import/coach-terrain.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { coachCode } from './helpers/coach-code.ts'
+import { useWasmWorker } from './helpers/wasm-worker.ts'
+
+useWasmWorker()
 
 const source = JSON.parse(readFileSync(new URL('./fixtures/sandwich-terrain-unsupported.json', import.meta.url), 'utf8')) as {
   source: { sudoku: string; solution: string }
@@ -67,4 +71,7 @@ test('Coach Terrain imports retain player progress added to the reviewed puzzle'
   assert.equal(imported.format, 'Sudoku Coach')
   assert.equal(imported.progress?.entries[0], source.source.solution[0])
   assert.equal(imported.variant?.puzzle.rules?.filter(rule => rule.type === 'terrain-sandwich').length, 15)
+  const { game } = await prepareImportedPuzzle(code)
+  assert.equal(game.position.entries[0], source.source.solution[0])
+  assert.equal(game.variant?.puzzle.rules?.filter(rule => rule.type === 'terrain-sandwich').length, 15)
 })
