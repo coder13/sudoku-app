@@ -144,6 +144,18 @@ test('the published Every Constraint combination compiles and propagates in the 
     assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle } }),
       { status: 'unique', solution }, `all-family Coach combination, symmetry ${symmetry}`)
   }
+
+  const sameDigitCells = Array.from({ length: 81 }, (_, cell) => cell)
+    .filter(cell => solved.solution[cell] === solved.solution[0])
+    .slice(0, 9)
+  assert.equal(sameDigitCells.length, 9)
+  const contradictoryPuzzle = {
+    ...imported.variant.puzzle,
+    rules: [...(imported.variant.puzzle.rules ?? []), { type: 'extra-house' as const, cells: sameDigitCells }],
+  }
+  assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: {
+    puzzle: contradictoryPuzzle,
+  } }), { status: 'unsolvable' }, 'a valid contradictory companion makes the imported combination unsatisfiable')
 })
 
 test('published Jigsaw Coach combination needs both Killer and Little Killer rules for uniqueness', async () => {
