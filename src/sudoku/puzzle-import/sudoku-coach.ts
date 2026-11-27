@@ -913,7 +913,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   if (standalone) return { ...standalone, ...(publication?.title && { title: publication.title }) }
   if (data.gridSize === 4 || isRectangularSize(data.gridSize) || isJigsawSize(data.gridSize)) {
     const reviewedEntropicRunaround = publication?.authoredRule === 'sized-entropic-runaround' && data.gridSize === 6 &&
-      await sourceHash(code, data) === '80e6ee3c1b96047b9e28201a75d19e68c6886f4bf61e3a01932b9bf4ec274cca'
+      await coachConstraintPrefixHash(code, data, 3) === '80e6ee3c1b96047b9e28201a75d19e68c6886f4bf61e3a01932b9bf4ec274cca'
     const reviewedSkyscrapers = publication?.authoredRule === 'sized-skyscrapers' ||
       await coachConstraintPrefixHash(code, data, 1) === coachSkyscrapersExport
     const reviewedNonogram = publication?.authoredRule === 'sized-nonogram' ||

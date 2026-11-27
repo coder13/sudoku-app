@@ -189,6 +189,27 @@ test('Cmki imports as a complete six-by-six mixed-rule Coach puzzle', async () =
   ])
 })
 
+test('Cmki keeps its authored instructions and imports a companion rule from the published link', async ({ mock }) => {
+  const source = load('coach').examples.find((example: { url: string }) => example.url.endsWith('/Cmki'))
+  assert.ok(source)
+  const data = await decodeSudokuCoachPayload(source.code)
+  const code = coachCode({ ...data, givenConstraints: [
+    ...(data.givenConstraints as unknown[]),
+    { type: 'ratio', segments: [{ cells: [0, 1], parameters: {} }], settings: {} },
+  ] })
+  mock.method(globalThis, 'fetch', async (url: string) => {
+    assert.equal(url, '/api/v1/import/sudoku-coach/Cmki')
+    return Response.json({ code, coach: {
+      title: source.title, hasAuthorInstructions: true, authoredRule: 'sized-entropic-runaround',
+    } })
+  })
+
+  const imported = await detectPuzzle(source.url)
+  assert.ok(imported.sizedRules?.some(rule => rule.type === 'whispers'))
+  assert.ok(imported.sizedRules?.some(rule => rule.type === 'modular'))
+  assert.ok(imported.sizedRules?.some(rule => rule.type === 'kropki'))
+})
+
 test('the original 5 × 5 Modular/Entropic Coach export retains every line and its unique Anti-King completion', async ({ mock }) => {
   const source = load('coach').examples.find((example: { url: string }) => example.url.endsWith('/7hzU'))
   assert.ok(source)
