@@ -666,7 +666,7 @@ test('the published X-Sums declaration must describe the complete rules', async 
   while (codes.length) assert.deepEqual(await (await request('sudoku-coach/AsnF')).json(), expected)
 })
 
-test('#404 the public Coach import worker connects a sized X-Sums declaration to its structured clues', async ({ mock }) => {
+test('#404 the Coach import worker connects a mocked sized X-Sums publication to its structured clues', async ({ mock }) => {
   const solution = '123456456123234561561234345612612345'
   const regions = Array.from({ length: 36 }, (_, cell) =>
     Math.floor(Math.floor(cell / 6) / 2) * 2 + Math.floor((cell % 6) / 3) + 1)

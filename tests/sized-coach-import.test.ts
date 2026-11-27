@@ -153,7 +153,7 @@ test('six-by-six Coach decoding imports Sandwich clues with other typed rules', 
     givenConstraints: [sandwich('top', 6, 0)] })), /invalid Sandwich clue/)
 })
 
-test('published sized Coach X-Sums parse outside labels against the grid size', async ({ mock }) => {
+test('synthetic sized Coach X-Sums parse outside labels against the grid size', async ({ mock }) => {
   const code = coachCode({ ...six, regions: rectangularRegions(2, 3), givenConstraints: [{
     type: 'cosmeticText', settings: {}, segments: [
       { cells: [[0.5, -0.5]], parameters: { text: '21' } },
