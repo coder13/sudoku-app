@@ -125,10 +125,18 @@ test('the published Every Constraint combination compiles and propagates in the 
   for (const [cell, mask] of candidates.entries()) {
     assert.ok(mask > 0 && (mask & ~0x1ff) === 0, `combined source leaves valid candidates at cell ${cell}`)
   }
-  assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: {
+  const solved = await runEngine({ type: 'variant', operation: 'solve-unique', position: {
     puzzle: imported.variant.puzzle,
-    entries: imported.givens,
-  } }), 'unique', 'the full-rule source has one completion under the imported combination')
+  } })
+  assert.equal(solved.status, 'unique', 'the full-rule source has one completion under the imported combination')
+  assert.ok('solution' in solved)
+  for (let symmetry = 0; symmetry < 8; symmetry++) {
+    const puzzle = reflectVariant(imported.variant.puzzle, symmetry)
+    const solution = transformedBoard(solved.solution, symmetry)
+    assertVariantCompletion(puzzle, solution)
+    assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle } }),
+      { status: 'unique', solution }, `all-family Coach combination, symmetry ${symmetry}`)
+  }
 })
 
 test('published Jigsaw Coach combination needs both Killer and Little Killer rules for uniqueness', async () => {
