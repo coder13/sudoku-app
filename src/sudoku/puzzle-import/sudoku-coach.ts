@@ -38,7 +38,7 @@ import { closedRegionSumCells, regionIndex } from '../region-sum.ts'
 import { isSizedRuleList } from '../sized-rule-game.ts'
 import { cellsShareEdge } from '../variants.ts'
 import { fetchPublishedExport } from './published-link.ts'
-import { MAX_DECODED_LENGTH, MAX_IMPORT_LENGTH, hasData, hasMiniBoxes, jigsawLayoutError, makeImportedPuzzle, parseJSON, rawSourceHash, readRegions, record, sourceHash } from './shared.ts'
+import { MAX_DECODED_LENGTH, MAX_IMPORT_LENGTH, hasData, hasMiniBoxes, jigsawLayoutError, makeImportedPuzzle, parseJSON, readRegions, record, sourceHash } from './shared.ts'
 import type { ImportResult, PuzzleImporter } from './types.ts'
 
 const BASE32HEX = '0123456789abcdefghijklmnopqrstuv'
@@ -49,7 +49,7 @@ const LEGACY_COACH_CODE = /^SCv([3-6])_/i
 const MAX_COACH_PROGRESS_LENGTH = 1_048_576
 const COACH_COLLECTION_LINK = /^\/(?:[a-z]{2}\/)?collections\/((?:[a-z0-9-]{1,64}\/){0,3}[a-z0-9-]{1,64})\/s\/([A-Za-z0-9]{1,16})\/?$/
 // Retain the 5NW source's visible fills only for the exact reviewed export.
-const coachRomeoAndJulietExport = 'a00378f1b8e4943815a5987cacaeeec0669db58163a9cdca19675d3f36a678e3'
+const coachRomeoAndJulietExport = '3582ebf36e054ed53bce1b471d1498a1da51c2af52102146782478564ab4c2d9'
 // The reviewed Mini Jigsaw source describes regions that wrap over both board axes.
 // Region geometry alone cannot distinguish this topology from ordinary authored regions.
 const coachWrappedJigsawExport = '0b2943873942f7ae5b388d0acb2534a5d241a64fb039619115364e6d461ebed3'
@@ -1074,7 +1074,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   if (unknownCageSums) rules.push(unknownCageSums.rule)
   if (distantNeighbors) rules.push(distantNeighbors)
   if (entropyGroups) rules.push(...entropyGroups.map(group => ({ type: 'entropy-window-group' as const, ...group })))
-  const reviewedRomeoAndJuliet = await rawSourceHash(code) === coachRomeoAndJulietExport && !publication?.hasAuthorInstructions
+  const reviewedRomeoAndJuliet = exportHash === coachRomeoAndJulietExport && !publication?.hasAuthorInstructions
   if (artwork?.partialRegions) {
     const marked = rules.filter(rule => rule.type === 'extra-house')
     if (regions?.type !== 'partial' || !marked.length) throw new Error('The Bento puzzle is missing its marked regions.')
@@ -1628,7 +1628,7 @@ async function readCoachSized(data: Record<string, unknown>, code?: string, publ
     ? coachSkyscrapersRules(Array.isArray(data.givenConstraints) ? data.givenConstraints : [], 7,
       'Skyscrapers: Digits displayed on the grid also represent heights of "skyscrapers". Larger values being taller skyscrapers than smaller ones. Clues outside the grid indicate the number of "skyscrapers" visible from that direction.')
     : []
-  const fractionalRegions = code ? await readCoachFractionalRegions(code, data.givenConstraints, Number(size)) : undefined
+  const fractionalRegions = code ? await readCoachFractionalRegions(code, data, Number(size)) : undefined
   const rowEquations = code && size === 5
     ? await readReviewedCoachRowEquations(data.givenConstraints, 5) : undefined
   if (regions !== undefined && (!Array.isArray(regions) || !regions.every(label => Number.isInteger(label) && label >= 0))) {

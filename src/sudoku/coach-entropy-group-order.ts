@@ -1,3 +1,5 @@
+import { sourceHash } from './puzzle-import/shared.ts'
+
 export type CoachEntropyGroup = 'low' | 'middle' | 'high'
 export type CoachEntropyGroupOrder = {
   side: 'top' | 'right' | 'bottom' | 'left'
@@ -21,15 +23,13 @@ function exactKeys(value: Record<string, unknown>, keys: readonly string[]) {
   return Object.keys(value).length === keys.length && Object.keys(value).every(key => keys.includes(key))
 }
 
-const reviewedExport = 'a53d999916a980c445143564ea4188bdbf35f7df545bf2d946b4e307dedd15ba'
+const reviewedExport = 'd9f3ea4e1aa25c44be400b93d62b4e20fa3491a197c26e53033d16f1c00d56da'
 
 /** Decode the seven authored outside group-order clues from the reviewed 7nms export. */
 export async function readReviewedCoachEntropyGroupOrder(code: string, data: Record<string, unknown>): Promise<{
   source: CoachEntropyGroupOrderSource
 } | undefined> {
-  if (!globalThis.crypto?.subtle) return
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(code))
-  const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('')
+  const hash = await sourceHash(code, data)
   if (hash !== reviewedExport || data.gridSize !== 9 || !Array.isArray(data.givenConstraints) ||
     !data.givenConstraints.every(record)) return
 

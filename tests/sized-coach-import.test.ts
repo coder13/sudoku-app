@@ -9,6 +9,7 @@ import { readImportedFutoshiki } from '../src/futoshiki/imported.ts'
 import { readImportedCalcudoku } from '../src/calcudoku/imported.ts'
 import { publishFixture } from './helpers/shared-puzzle.ts'
 import { decodeCoachSix, detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { tournamentQuadrupleCode, tournamentQuadrupleRules, tournamentQuadrupleSolution } from './fixtures/tournament-quadruple.ts'
 import { coachCode } from './helpers/coach-code.ts'
@@ -369,6 +370,13 @@ test('Coach 5 × 5 fractional regions keep their authored shading and Little Kil
     assert.deepEqual(shading.pieces.map(piece => piece.color), ['#b4b4b4', '#bebebe', '#c8c8c8', '#aaaaaa'])
     assert.equal(shading.pieces.flatMap(piece => piece.quarters).length, 100)
   }
+  const data = await decodeSudokuCoachPayload(source.code)
+  const givens = typeof data.givenDigits === 'string' ? data.givenDigits : '0'.repeat(25)
+  const emptyCell = givens.indexOf('0')
+  const userDigits = Array.from({ length: 25 }, (_, cell) => cell === emptyCell ? '1' : '0').join('')
+  const withProgress = await detectPuzzle(coachCode({ ...data, userDigits }))
+  assert.equal(withProgress.progress?.entries[emptyCell], '1')
+  assert.equal(withProgress.sizedRules?.filter(rule => rule.type === 'fractional-regions').length, 1)
 })
 
 test('sized Coach Little Killer import validates ray geometry and rejects unknown segment data', async () => {

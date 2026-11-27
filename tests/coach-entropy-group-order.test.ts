@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { readReviewedCoachEntropyGroupOrder } from '../src/sudoku/coach-entropy-group-order.ts'
 import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
+import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { coachCode } from './helpers/coach-code.ts'
 
 const examples = JSON.parse(readFileSync(new URL('./fixtures/entropic-coach.json', import.meta.url), 'utf8')).examples as {
   url: string; code: string; solution: string
@@ -27,9 +29,9 @@ test('7nms parses all seven directed outside group clues against its printed sol
   }
 })
 
-test('7nms parsing rejects altered source content and malformed authored text', async () => {
+test('7nms parsing rejects changed puzzle data and keeps progress-bearing outside clues', async () => {
   const data = await decodeSudokuCoachPayload(source.code)
-  assert.equal(await readReviewedCoachEntropyGroupOrder(`${source.code}0`, data), undefined)
+  assert.equal((await readReviewedCoachEntropyGroupOrder(`${source.code}0`, data))?.source.orders.length, 7)
 
   const changedSettings = structuredClone(data)
   const textLayer = (changedSettings.givenConstraints as Record<string, unknown>[]).find(layer => layer.type === 'cosmeticText')!
@@ -41,4 +43,8 @@ test('7nms parsing rejects altered source content and malformed authored text', 
   const first = (clueLayer.segments as Record<string, unknown>[])[0]
   ;(first.parameters as Record<string, unknown>).text = 'X'
   assert.equal(await readReviewedCoachEntropyGroupOrder(source.code, changedClue), undefined)
+
+  const imported = await detectPuzzle(coachCode({ ...data, userDigits: `1${'0'.repeat(80)}` }))
+  assert.equal(imported.progress?.entries[0], '1')
+  assert.equal(imported.variant?.puzzle.rules?.filter(rule => rule.type === 'digit-order').length, 7)
 })

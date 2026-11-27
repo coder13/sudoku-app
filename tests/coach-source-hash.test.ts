@@ -32,4 +32,8 @@ test('reviewed Sudoku Coach recognizers hash puzzle data without player progress
   assert.equal(await sourceHash('SCv7_32_other', otherPayload), createHash('sha256')
     .update(`SCv7_32_{"givenDigits":"${'1'.repeat(81)}","gridSize":9}`).digest('hex'))
   assert.equal(calls, 4, 'separate decoded payload objects have separate cache entries')
+
+  const legacyPayload = { gridSize: 9, givenDigits: '0'.repeat(81), userDigits: '1'.repeat(81) }
+  assert.equal(await sourceHash('SCv4_y_legacy', legacyPayload), createHash('sha256')
+    .update(`SCv4_{"givenDigits":"${'0'.repeat(81)}","gridSize":9}`).digest('hex'))
 })

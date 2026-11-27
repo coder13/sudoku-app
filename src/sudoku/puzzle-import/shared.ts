@@ -27,8 +27,10 @@ export function sourceHash(code: string, payload: object): Promise<string | unde
   // Keep the Coach format version in the digest, but hash decoded puzzle data
   // so adding player progress does not disable source-specific import rules.
   const header = /^SCv([0-9]+)_([0-9]+)_/i.exec(code)
+  const legacyHeader = /^SCv([3-6])_/i.exec(code)
   const fingerprint = header
     ? `SCv${header[1]}_${header[2]}_${stableCoachSource(payload, true)}`
+    : legacyHeader ? `SCv${legacyHeader[1]}_${stableCoachSource(payload, true)}`
     : canonicalCoachCode(code)
   const cached = sourceHashes.get(payload)
   if (cached?.fingerprint === fingerprint) return cached.hash
@@ -40,13 +42,6 @@ export function sourceHash(code: string, payload: object): Promise<string | unde
   })
   sourceHashes.set(payload, { fingerprint, hash })
   return hash
-}
-
-/** Preserve the original export digest for one-off source reviews that have not migrated to semantic hashing. */
-export async function rawSourceHash(code: string): Promise<string | undefined> {
-  if (!globalThis.crypto?.subtle) return
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonicalCoachCode(code)))
-  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('')
 }
 
 export function record(value: unknown): value is Record<string, unknown> {
