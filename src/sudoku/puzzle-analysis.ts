@@ -6,7 +6,7 @@ export const TECHNIQUE_FINDER_TITLE = 'Techniques'
 // in "Other techniques" until a more specific category is added.
 export const ANALYSIS_GROUPS = [
   { title: 'Singles', techniques: ['full-house', 'hidden-single-box', 'naked-single', 'hidden-single'] },
-  { title: 'Locked candidates', techniques: ['pointing', 'claiming', 'direct-pointing', 'direct-claiming'] },
+  { title: 'Locked candidates', techniques: ['locked-candidates', 'pointing', 'claiming', 'direct-pointing', 'direct-claiming'] },
   { title: 'Subsets', techniques: [
     'locked-pair', 'locked-triple', 'naked-pair', 'hidden-pair', 'naked-triple',
     'hidden-triple', 'naked-quadruple', 'hidden-quadruple', 'direct-hidden-pair', 'direct-hidden-triple',
@@ -54,7 +54,7 @@ export const ANALYSIS_GROUPS = [
 
 const VARIANT_ANALYSIS_GROUP = {
   title: 'Variant techniques',
-  techniques: ['locked-candidates', 'anti-knight', 'anti-king', 'conditional-neighbor'],
+  techniques: ['anti-knight', 'anti-king', 'conditional-neighbor'],
 } as const
 
 export const ANALYSIS_TECHNIQUES = ANALYSIS_GROUPS.flatMap(({ techniques }) => [...techniques])
