@@ -1580,6 +1580,10 @@ Row run counts use a shared right edge and fixed inset from the grid; column cou
 
 The 6×6 Coach X-Sum decoder/worker checks in `sized-coach-import.test.ts` and `public-puzzle-import.test.ts` use synthetic payloads and mocked publication metadata. They test parsing, clue bounds and description matching; they are not a published Coach export. No source-backed non-9×9 Coach X-Sum fixture is currently preserved. The SudokuPad X-Sum Twins above provide the source-backed non-9×9 import control for #404.
 
+## Sparse Coach exact-search symmetry check
+
+The zero-given Entropic Coach source at `entropic-coach.json:$.examples[6]` contains Global Entropy, eight Entropic paths and seven directed digit-order clues. Exact solving under the default one-million-node budget previously reached `search-limit` after a 180° transform; raising the diagnostic budget to five million found the unique solution in 26.1 seconds. Exact solving now breaks equal-MRV/equal-peer-degree ties by the number of distinct rule lines covering each cell. The default budget proves the source unique under all eight symmetries. One local run took 39.0 seconds for all eight orientations; the source orientation took 5.0 seconds. These are single local measurements, not a broad performance claim. Candidate propagation and seeded generation traversal are unchanged.
+
 Independent proof replay, all eight transforms, disabled profiles, input/history, storage/sharing, hints/pages/Finder, Learn/practice and calibrated Hard New Puzzle use the real app/worker callers. The bounded subset table used for local input is checked against direct full-row permutations. [Complete source, validation, performance and limits](../../SUDOKU_X_SUM_AUDIT.md). Full authored Coach formats remain in issue 7; diagonal X-Sums remain separate native research in 204.
 
 ## Skyscrapers app integration

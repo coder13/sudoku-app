@@ -401,7 +401,25 @@ impl CompiledVariant {
             .iter()
             .enumerate()
             .filter(|&(_, &digit)| digit == 0)
-            .min_by_key(|&(cell, _)| position.masks[cell].count_ones());
+            .min_by_key(|&(cell, _)| {
+                // At equal MRV and peer degree, prefer cells that participate
+                // in more rule lines. Seeded generation keeps row-major ties.
+                let degree = if matches!(mode, SearchMode::Verify(_)) {
+                    self.peers[cell].count_ones()
+                } else {
+                    0
+                };
+                let line_degree = if matches!(mode, SearchMode::Verify(_)) {
+                    self.search_degree[cell]
+                } else {
+                    0
+                };
+                (
+                    position.masks[cell].count_ones(),
+                    std::cmp::Reverse(degree),
+                    std::cmp::Reverse(line_degree),
+                )
+            });
         let Some((cell, _)) = next else {
             if self
                 .neighbor_matches

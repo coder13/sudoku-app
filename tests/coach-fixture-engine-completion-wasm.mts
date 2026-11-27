@@ -114,3 +114,16 @@ test('the zero-given Entropic Coach source has one exact solution from its encod
     puzzle: imported.variant.puzzle,
   } }), { status: 'unique', solution: source.solution })
 })
+
+test('the zero-given Entropic Coach source proves unique under all eight symmetries', async () => {
+  const source = [...sources.values()].find(({ references }) => references.includes('entropic-coach.json:$.examples[6]'))
+  assert.ok(source)
+  const imported = await detectPuzzle(source.code)
+  assert.ok(imported.variant)
+  for (let symmetry = 0; symmetry < 8; symmetry++) {
+    const puzzle = reflectVariant(imported.variant.puzzle, symmetry)
+    const solution = transformedBoard(source.solution, symmetry)
+    assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle } }),
+      { status: 'unique', solution }, `symmetry ${symmetry}`)
+  }
+})

@@ -49,6 +49,7 @@ impl VariantPuzzle {
             search_houses: Vec::new(),
             memberships: std::array::from_fn(|_| Vec::new()),
             peers: [0; CELLS],
+            search_degree: [0; CELLS],
             cages: Vec::new(),
             cage_house_sums: OnceLock::new(),
             rule_proofs: OnceLock::new(),
@@ -305,6 +306,16 @@ impl VariantPuzzle {
             .collect();
         compiled.positive_sums = positive_sums(&self.rules);
         compile_line_sums(&mut compiled);
+        for line in &compiled.lines {
+            let mut seen = 0u128;
+            for &cell in &line.cells {
+                let bit = 1u128 << cell;
+                if seen & bit == 0 {
+                    compiled.search_degree[cell] += 1;
+                    seen |= bit;
+                }
+            }
+        }
         compiled.extra_rule_cells = compiled.house_masks[primary_house_count..]
             .iter()
             .copied()

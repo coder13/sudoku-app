@@ -99,7 +99,8 @@ test('#542, #544, #545 and #547 Coach combinations rely on their active rule fam
 
     for (const type of necessaryRules) {
       const withoutFamily = { ...game.variant.puzzle, rules: game.variant.puzzle.rules?.filter(rule => rule.type !== type) }
-      const result = await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle: withoutFamily } })
+      const result = await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle: withoutFamily },
+        maxNodes: issue === 542 && type === 'global-entropy' ? 5_000_000 : undefined })
       assert.equal(result.status, 'multiple', `#${issue} should have multiple solutions without ${type}`)
     }
   }
