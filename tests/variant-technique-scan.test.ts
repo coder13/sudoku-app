@@ -16,6 +16,10 @@ test('variant scans count distinct targets, retain rules, and leave foreground a
       const { id } = this.requests.shift()!
       this.onmessage?.({ data: { id, value } as EngineResponse })
     }
+    fail(error: string) {
+      const { id } = this.requests.shift()!
+      this.onmessage?.({ data: { id, error } as EngineResponse })
+    }
   }
   const original = Object.getOwnPropertyDescriptor(globalThis, 'Worker')
   Object.defineProperty(globalThis, 'Worker', { value: TestWorker, configurable: true })
@@ -80,6 +84,17 @@ test('variant scans count distinct targets, retain rules, and leave foreground a
   assert.deepEqual(await Promise.all(counts), [1, 1, 1])
   assert.equal(workers[0].requests.length, 0)
   batchScan.close()
+  const retryPosition = { puzzle: { ...puzzle, rules: [{ type: 'anti-king' as const }] }, entries }
+  const retryScan = watchTechniqueScan(entries, undefined, retryPosition, undefined, ['locked-candidates', 'xy-wing'])
+  const failedBatch = retryScan.count('locked-candidates')
+  assert.equal(workers[0].requests.length, 1)
+  workers[0].fail('Batch scan failed')
+  await assert.rejects(failedBatch, /Batch scan failed/)
+  const retriedBatch = retryScan.count('locked-candidates')
+  assert.equal(workers[0].requests.length, 1, 'A rejected batch can be retried on the same worker')
+  workers[0].reply([])
+  assert.equal(await retriedBatch, 0)
+  retryScan.close()
   assert.deepEqual(cachedTechniqueCounts(techniqueScanKey(entries, removals, puzzle))['locked-candidates'], { count: 3 })
   assert.deepEqual(cachedTechniqueCounts(techniqueScanKey(entries, removals, other.puzzle))['locked-candidates'], { count: 0 })
   const cancelledPuzzle: VariantPuzzle = { ...puzzle, rules: [{ type: 'anti-knight' }] }
