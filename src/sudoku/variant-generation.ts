@@ -180,7 +180,7 @@ export function reflectVariant(puzzle: VariantPuzzle, symmetry: number): Variant
           const direction = row < 0 ? column < 0 ? 'north-west' : 'north-east' : column < 0 ? 'south-west' : 'south-east'
           return { ...rule, cells: rule.cells.map(cell), direction }
         }
-        case 'sandwich': case 'x-sum': case 'skyscrapers': {
+        case 'sandwich': case 'terrain-sandwich': case 'x-sum': case 'skyscrapers': {
           const cells = rule.cells.map(cell), step = cells[1] - cells[0]
           return { ...rule, cells, direction: step === 1 ? 'east' : step === -1 ? 'west' : step === 9 ? 'south' : 'north' }
         }

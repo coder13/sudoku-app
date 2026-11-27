@@ -8,8 +8,10 @@ import { parsePuzzleExport, puzzleDefinitionForSharing, puzzleExportText } from 
 import { readGame } from '../src/sudoku/storage.ts'
 import { syncRequest } from '../src/sudoku/sync-engine.ts'
 import { variantHintChoice } from '../src/sudoku/variant-hints.ts'
+import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { syncDatabase } from './helpers/sync-database.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
+import { transformedBoard } from './helpers/transformed-board.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 
 useWasmWorker()
@@ -122,6 +124,18 @@ test('#196 imports the reviewed Terrain source and checks its transformed maxima
       await assert.rejects(api('shares', 'POST', invalid), { status: 400 })
     }
   } finally { sqlite.close() }
+})
+
+test('#196 transforms every Terrain ray and preserves the published solution under all eight symmetries', async () => {
+  const parsed = await detectPuzzle(source.source.sudoku)
+  assert.ok(parsed.variant)
+  for (let symmetry = 0; symmetry < 8; symmetry++) {
+    const puzzle = reflectVariant(parsed.variant.puzzle, symmetry)
+    const solution = transformedBoard(source.source.solution, symmetry)
+    assertVariantCompletion(puzzle, solution)
+    assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle } }),
+      { status: 'unique', solution }, `symmetry ${symmetry}`)
+  }
 })
 
 test('#196 Terrain candidates match an independent permutation oracle for every published clue', async () => {
