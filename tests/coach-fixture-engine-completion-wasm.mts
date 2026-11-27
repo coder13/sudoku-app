@@ -104,3 +104,13 @@ test('published Sudoku Coach completions pass the Rust engine with every importe
   assert.equal(transformedChecks, 464)
   assert.deepEqual([...standaloneSeen].sort(), [...standaloneCoachSolutionSources].sort())
 })
+
+test('the zero-given Entropic Coach source has one exact solution from its encoded rules', async () => {
+  const source = [...sources.values()].find(({ references }) => references.includes('entropic-coach.json:$.examples[6]'))
+  assert.ok(source)
+  const imported = await detectPuzzle(source.code)
+  assert.ok(imported.variant)
+  assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: {
+    puzzle: imported.variant.puzzle,
+  } }), { status: 'unique', solution: source.solution })
+})
