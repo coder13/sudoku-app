@@ -6,7 +6,9 @@ import { readGame } from '../src/sudoku/storage.ts'
 import { playCandidates, variantPosition } from '../src/sudoku/variant-play.ts'
 import { runEngine } from '../src/sudoku/engine.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { parsePuzzleExport, puzzleExportText } from '../src/sudoku/puzzle-sharing.ts'
 import { coachCode } from './helpers/coach-code.ts'
+import { publishFixture } from './helpers/shared-puzzle.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 
 useWasmWorker()
@@ -236,6 +238,18 @@ test('synthetic Coach Ratio 3 keeps its marked relation in Play and engine analy
   assert.deepEqual([...Array(9).keys()].filter(digit => candidates[2] & 1 << digit), [5],
     'a default 1:2 dot stays marked beside the custom 1:3 dot')
   assert.notEqual(candidates[9] & (1 << 1), 0, 'without negative markers, unmarked 1:2 edges remain allowed')
+
+  const restored = readGame(afterOne.id, JSON.stringify(afterOne))
+  assert.ok(restored)
+  assert.deepEqual(restored.variant, afterOne.variant, 'saved progress keeps both the 1:3 and 1:2 marks')
+  assert.deepEqual(undo(restored).position, game.position)
+  assert.deepEqual(redo(undo(restored)).position, afterOne.position)
+
+  const exported = parsePuzzleExport(puzzleExportText(afterOne))
+  assert.deepEqual(exported.variant?.puzzle, game.variant?.puzzle, 'portable sharing retains both labeled ratios')
+  assert.equal(exported.givens, game.givens)
+  const shared = await publishFixture(afterOne)
+  assert.deepEqual(shared.variant?.puzzle, game.variant?.puzzle, 'public sharing retains both labeled ratios')
 
   const impossible = await runEngine({
     type: 'variant', operation: 'analyze',
