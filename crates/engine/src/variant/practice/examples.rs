@@ -1195,7 +1195,7 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
         ],
         ConditionalNeighbor => [
             seed(
-                "000000000000000000000000000000020000000050000000000000000000000000000000000000000",
+                "234715689158639247697248351376124895489356172512007463943561728861972534725403916",
                 49,
                 8,
                 [PuzzleRule::ConditionalNeighbor {
@@ -1215,9 +1215,9 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 }],
             ),
             seed(
-                "000000000000000000000000000000000000000050000000080000000000000000000000000000000",
-                31,
-                2,
+                "234715689158639247697248351376124895489356172512897463043561720061972534725483916",
+                54,
+                8,
                 [PuzzleRule::ConditionalNeighbor {
                     trigger_digit: 5,
                     alternatives: vec![
@@ -1235,8 +1235,8 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 }],
             ),
             seed(
-                "000000000000000000000000000000002000000005000000000000000000000000000000000000000",
-                50,
+                "234715689158639247697248351376124895489356172512097463943561728061072534725403916",
+                66,
                 8,
                 [PuzzleRule::ConditionalNeighbor {
                     trigger_digit: 5,
