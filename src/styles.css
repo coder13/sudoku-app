@@ -731,7 +731,7 @@ svg { flex-shrink: 0; }
 .branch-digit-filter select { max-inline-size: 100%; }
 .branch-conflict-status { color: var(--danger-ink); font-size: .75rem; font-weight: 650; }
 .branch-results summary, .proof-trace-case > summary { cursor: pointer; }
-.branch-results ul, .branch-proven-results ul { margin-block: var(--space-4); padding-inline-start: var(--space-18); }
+.branch-results ul, .branch-proven-results ul, .branch-move-list { margin-block: var(--space-4); padding-inline-start: var(--space-18); }
 .branch-proven-results h3 { font-size: inherit; margin: 0; }
 .branch-proven-results li + li { margin-top: var(--space-6); }
 .branch-proven-results .proof-trace { margin-top: 0; }
@@ -1947,14 +1947,6 @@ svg { flex-shrink: 0; }
   pointer-events: none;
 }
 .candidate-branch-removal { color: var(--chain-removal); text-decoration: line-through; }
-.center-marks:has(.candidate-branch-labels) { background: transparent; translate: 0 -.25em; }
-.center-marks .board-candidate:has(.candidate-branch-labels) { font-size: 1.35em; }
-.center-marks .candidate-branch-labels {
-  inset: 100% auto auto 50%;
-  translate: -50% 0;
-  max-inline-size: 9cqw;
-  text-overflow: ellipsis;
-}
 .board-candidate[data-candidate-preview="remove"]::before { border-top-width: 1px; }
 .board-candidate:is([data-mark="ring"], [data-mark="emphasized"])::after,
 .board-candidate:is([data-mark="strike"], [data-candidate-preview="remove"])::before { opacity: 1; }

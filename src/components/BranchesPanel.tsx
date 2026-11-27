@@ -49,17 +49,15 @@ export function BranchesPanel({ model, disabled, retryCandidates }: {
 }) {
   const { view, editing, selected, entries, differences, checked, shown } = model
   const compare = view.kind === 'compare' && view.all
-  const listed = editing ? (selected ? [selected] : []) : entries
   const moves = model.marks.filter(mark => mark.removed.length > 0)
   const finding = view.kind === 'compare' && !sameBranchOrigin(model.origin, selected?.branch.origin ?? model.origin)
     ? 'Proved at this earlier position' : 'Proved from the starting candidates'
 
   return <section className="branches-panel" aria-label="Branches" data-grid-click-away-exempt>
     <div className="tool-toolbar branch-toolbar">
-      <Button variant="primary" disabled={disabled || !model.canCreate || editing} onClick={model.begin}>New branch</Button>
-      <Button variant="quiet" aria-pressed={compare} disabled={disabled || editing || !compare && !model.sameOrigin.some(({ branch }) => !branch.hidden)}
+      <Button variant="primary" aria-pressed={editing && !selected} disabled={disabled || !model.canCreate} onClick={model.begin}>New branch</Button>
+      <Button variant="quiet" aria-pressed={compare} disabled={disabled || !compare && !model.sameOrigin.some(({ branch }) => !branch.hidden)}
         onClick={model.compare}>Compare branches</Button>
-      {view.kind === 'compare' && <Button variant="quiet" onClick={model.stop}>Return to puzzle</Button>}
     </div>
     {!editing && model.unavailable && <div><p role="status">{model.unavailable}</p>
       {retryCandidates && <Button variant="quiet" onClick={retryCandidates}>Retry candidates</Button>}
@@ -76,25 +74,36 @@ export function BranchesPanel({ model, disabled, retryCandidates }: {
         </select>
       </label>}
     </div>}
-    {listed.length > 0 && <ul className="tool-item-list" aria-label="Saved branches">
-      {listed.map(({ branch, analysis }) => {
+    {entries.length > 0 && <ul className="tool-item-list" aria-label="Saved branches">
+      {entries.map(({ branch, analysis }) => {
         const name = `Branch ${branchLetter(branch.number)}`
-        const assumption = analysis.moves[0]
-        const summary = assumption ? condition(assumption) : 'No starting move'
+        const changes = analysis.moves
+        const placements = changes.filter(move => move.truth).length
+        const removals = changes.length - placements
+        const summary = changes.length === 1 ? action(changes[0]) : changes.length ? [
+          placements ? `${placements} placement${placements === 1 ? '' : 's'}` : '',
+          removals ? `${removals} removal${removals === 1 ? '' : 's'}` : '',
+        ].filter(Boolean).join(' · ') : undefined
         const typeLabel = analysis.conflict ? 'Contradiction' : !sameBranchOrigin(model.origin, branch.origin) ? 'Earlier position' : undefined
         const selected = model.selected?.branch.id === branch.id
+        const editingThis = editing && selected
         const failure = analysis.conflict
         const usesTrial = failure && requiredBranchFacts(analysis.facts, failure.causes).some(index => analysis.facts[index].kind === 'trial')
         return <ToolItemCard key={branch.id} name={name} typeLabel={typeLabel} colors={[branchColor(branch.number)]}
-          selected={selected} hidden={branch.hidden} onSelect={() => assumption ? model.selectBranch(branch) : model.startEdit(branch)}
-          subtitle={{ text: summary, description: summary }}
-          edit={editing ? undefined : { label: `Edit ${name.toLowerCase()}`, disabled, onClick: () => model.startEdit(branch) }}
+          selected={selected} hidden={branch.hidden} onSelect={() => changes.length ? model.selectBranch(branch) : model.toggleEdit(branch)}
+          subtitle={summary ? { text: summary, description: summary } : undefined}
+          edit={{ label: `Edit ${name.toLowerCase()}`, disabled, pressed: editingThis, onClick: () => model.toggleEdit(branch) }}
           visibility={{ label: `${branch.hidden ? 'Show' : 'Hide'} ${name.toLowerCase()} in comparison`, disabled,
             onClick: () => model.toggleVisibility(branch) }}
-          remove={{ label: `Delete ${name.toLowerCase()}`, disabled: disabled || editing, onClick: () => model.remove(branch) }}
-          editor={failure ? { label: `Contradiction in ${name.toLowerCase()}`, content: <>
-            <p><CellReferenceText text={conflictText(failure, analysis.facts)} />{usesTrial && ' This depends on trial edits.'}</p>
-            <ProofTrace summary="View contradiction" trace={[traceCase(branch, analysis, failure.causes, '')]} />
+          remove={{ label: `Delete ${name.toLowerCase()}`, disabled, onClick: () => model.remove(branch) }}
+          editor={changes.length > 1 || failure ? { label: `Moves in ${name.toLowerCase()}`, content: <>
+            {changes.length > 1 && <ul className="branch-move-list" aria-label="Branch moves">
+              {changes.map(move => <li key={`${move.cell}-${move.digit}-${move.truth}`}><CellReferenceText text={action(move)} /></li>)}
+            </ul>}
+            {failure && <>
+              <p><CellReferenceText text={conflictText(failure, analysis.facts)} />{usesTrial && ' This depends on trial edits.'}</p>
+              <ProofTrace summary="View contradiction" trace={[traceCase(branch, analysis, failure.causes, '')]} />
+            </>}
           </> } : undefined}
         />
       })}
