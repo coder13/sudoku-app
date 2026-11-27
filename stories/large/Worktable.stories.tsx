@@ -1,44 +1,28 @@
-import { useRef, useState, useSyncExternalStore, type ComponentProps } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { expect, fireEvent, fn, waitFor, within } from 'storybook/test'
+import { expect, fireEvent, waitFor, within } from 'storybook/test'
 import mixedPuzzles from '../../tests/fixtures/mixed-puzzles.json'
 import palindrome14 from '../../tests/fixtures/inequality-palindrome14.json'
 import renbanArchive from '../../tests/fixtures/renban-coach.json'
 import type { VariantPuzzle } from '../../src/sudoku/engine'
-import { Worktable, type WorktableActions } from '../../src/components/Worktable'
-import { DesktopPlayLayout, PlayWorkspace } from '../../src/components/DesktopPlayLayout'
-import { useMobileLayout } from '../../src/components/mobile-layout'
+import { Worktable } from '../../src/components/Worktable'
 import { newChainSketch } from '../../src/sudoku/chain-sketch'
 import { alsChainNode, candidateId, chainGroup, type ChainEdge } from '../../src/sudoku/chains'
 import { EMPTY, enter, fillEntries, makeGame, paintCells, peer, puzzleIdentity, replaceCandidates, uniquenessKey, valuesOf, type Game } from '../../src/sudoku/game'
 import { recordAction } from '../../src/sudoku/action-history'
 import { playPreferenceStore } from '../../src/sudoku/play-preferences'
 import { defaultToolPanels, TOOL_PANEL_ORDER, playSession, puzzleTabsKey } from '../../src/sudoku/play-session'
-import { DEFAULT_CELL_REFERENCE_STYLE } from '../../src/sudoku/hints'
-import {
-  DEFAULT_ADVANCED_MODES, DEFAULT_APPEARANCE, DEFAULT_ERROR_MODE, DEFAULT_HIGHLIGHT_PREFERENCES, DEFAULT_INPUT_SIZE,
-  DEFAULT_WORKSPACE_MODE, MAX_GRID_TEXT_SCALE,
-} from '../../src/sudoku/preferences'
+import { DEFAULT_ADVANCED_MODES, DEFAULT_APPEARANCE, MAX_GRID_TEXT_SCALE } from '../../src/sudoku/preferences'
 import { medusaRemovalGame } from '../support/chain-fixtures'
 import { inProgress, lessonExamples, namedDraft, solved, starter } from '../support/fixtures'
 import { roomStore, seedRoom } from '../support/story-room'
+import { defaultWorktableStoryArgs, WorktableExample } from '../support/worktable-example'
 
 const meta = {
   title: 'Large/Play/Worktable',
   component: Worktable,
   tags: ['!autodocs'],
   parameters: { layout: 'fullscreen' },
-  args: {
-    game: starter, games: [starter], preferredDifficulty: 'easy', modalOpen: false, advancedModes: DEFAULT_ADVANCED_MODES,
-    appearance: DEFAULT_APPEARANCE, highlighting: DEFAULT_HIGHLIGHT_PREFERENCES, errorMode: DEFAULT_ERROR_MODE,
-    workspaceMode: DEFAULT_WORKSPACE_MODE,
-    cellReferenceStyle: DEFAULT_CELL_REFERENCE_STYLE,
-    multi: false, actionsRef: { current: null }, inputSize: DEFAULT_INPUT_SIZE, panelHeight: 280, setPanelHeight: fn(),
-    beginResize: fn(), toggleMulti: fn(), onShare: fn(), onPublish: fn(), onCancelDraft: fn(), onStopPlaying: fn(),
-    onNewPuzzle: fn(), onImportPuzzle: fn(),
-    showLeftPanel: true, showRightPanel: true, showBottomPanel: true, onOpenHintPanel: fn(), onOpenRightPanel: fn(),
-    puzzleBrowserView: 'active', setPuzzleBrowserView: fn(),
-  },
+  args: defaultWorktableStoryArgs,
   beforeEach: ({ args }) => {
     playSession.set(args.game.id, 'toolPanels', defaultToolPanels)
     playSession.activate(null)
@@ -176,7 +160,7 @@ export const MobileInputTools: Story = {
     const menu = within(inputTools)
     expect(menu.queryByRole('button', { name: 'Generate candidates' })).not.toBeInTheDocument()
     expect(menu.getAllByRole('button', { pressed: false }).map(button => button.textContent?.trim()))
-      .toEqual(['Solution', 'Techniques', 'Colors', 'Chains', 'Bookmarks'])
+      .toEqual(['Solution', 'Techniques', 'Colors', 'Subsets', 'Chains', 'Branches', 'Bookmarks'])
     for (const name of ['Solution', 'Techniques']) {
       const toggle = menu.getByRole('button', { name })
       toggle.focus()
@@ -1774,22 +1758,3 @@ export const SubsetIntersectionPattern = subsetProofStory('subset-intersection-p
   0: [1, 2, 3, 4], 1: [1, 2, 3, 4], 3: [1, 5], 4: [2, 5], 9: [3, 5], 10: [4, 5],
   6: [1, 5, 6], 18: [3, 5, 6],
 }, [[0, 1], [3, 4], [9, 10]])
-
-function WorktableExample({ withTopbar, resizable, ...args }: ComponentProps<typeof Worktable> & { withTopbar?: boolean; resizable?: boolean }) {
-  const room = useSyncExternalStore(roomStore.subscribe, roomStore.getSnapshot)
-  const [height, setHeight] = useState(args.panelHeight)
-  const [multi, setMulti] = useState(args.multi)
-  const pageRef = useRef<HTMLElement>(null)
-  const actionsRef = useRef<WorktableActions | null>(null)
-  const game = room.games.find(({ id }) => id === room.active) ?? args.game
-  const mobile = useMobileLayout()
-  const desktopResize = Boolean(resizable && !mobile)
-  return <DesktopPlayLayout pageRef={pageRef} enabled={desktopResize} className={withTopbar ? 'story-app app-shell' : 'story-app worktable-story'}>
-    {withTopbar && <header className="topbar"><div className="topbar-inner"><span className="wordmark">Sudoku</span></div></header>}
-    <main ref={pageRef} id="sudoku-workspace" className="page standard-workspace-page" aria-label="Sudoku workspace"><PlayWorkspace resizable={desktopResize}>
-      <Worktable {...args} key={`${game.id}-${game.source}`} game={game} games={room.games}
-        actionsRef={actionsRef} panelHeight={height} setPanelHeight={setHeight} multi={multi}
-        toggleMulti={() => setMulti((value) => !value)} />
-    </PlayWorkspace></main>
-  </DesktopPlayLayout>
-}

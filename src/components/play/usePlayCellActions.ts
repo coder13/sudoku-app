@@ -27,6 +27,7 @@ type Options = {
     gridSize: number
     completed: boolean
     draft: boolean
+    trial?: boolean
   }
   selection: {
     selected: readonly number[]
@@ -75,7 +76,7 @@ type Options = {
 
 /** Own the puzzle action and selection policy for a direct cell click or double-click. */
 export function usePlayCellActions({ puzzle, selection, input, capability, gestures, actions }: Options) {
-  const { game, values, visibleGivens, gridSize, completed, draft } = puzzle
+  const { game, values, visibleGivens, gridSize, completed, draft, trial } = puzzle
   const { selected, anchor, multi, setActive, setAnchor, setSelected } = selection
   const { mode, candidateMode, colorMode, eraseMode, highlightMode, pencilActive, pencilGroup,
     selectedDigit, selectedColor, highlightedDigitMask, digitHighlightMatch, colorTarget, cellBrush } = input
@@ -125,9 +126,9 @@ export function usePlayCellActions({ puzzle, selection, input, capability, gestu
     if (pencilGroup && !givenDigit && values[index] === '0' && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
       edit(current => {
         const next = toggleCandidateGroup(current, index, candidateMode, pencilGroup)
-        const actionsForEdit = marksOf(pencilGroup).flatMap(digit => playerActions(current, next, [index], candidateMode, digit))
-        if (actionsForEdit.length && !completed) {
-          void observeTechniqueActions(current, actionsForEdit, 'independent', hintEliminations(
+        if (!trial && !completed) {
+          const actionsForEdit = marksOf(pencilGroup).flatMap(digit => playerActions(current, next, [index], candidateMode, digit))
+          if (actionsForEdit.length) void observeTechniqueActions(current, actionsForEdit, 'independent', hintEliminations(
             valuesOf(current), completeCandidateMasks(current), current.position.eliminations, gridSize
           ))
         }

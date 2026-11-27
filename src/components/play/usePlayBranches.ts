@@ -1,21 +1,20 @@
 import { useMemo, useState } from 'react'
 import type { BoardAnnotations, CandidateAnnotation, CellAnnotation } from '../BoardAnnotations'
-import { analyzeBranch, branchLetter, branchOriginMasks, branchOriginUsable, branchResults, branchRules, sameBranchOrigin,
+import { analyzeBranch, branchLetter, branchOriginMasks, branchOriginUsable, branchResults, branchRules, recordBranchInput, sameBranchOrigin,
   type BranchAnalysis, type BranchMove, type BranchOrigin, type BranchWorkspace, type SavedBranch } from '../../sudoku/branches'
-import type { Game } from '../../sudoku/game'
+import { makeGame, type Game } from '../../sudoku/game'
 import { createUuid } from '../../uuid'
 
 type View =
   | { kind: 'idle' }
-  | { kind: 'new'; cell: number | null; digit: number | null; truth: boolean }
-  | { kind: 'edit'; id: string; cell: number | null; digit: number | null; truth: boolean }
+  | { kind: 'edit'; draft: SavedBranch }
   | { kind: 'compare'; id?: string; all: boolean }
 
 type Entry = { branch: SavedBranch; analysis: BranchAnalysis }
 type ComparisonMark = { cell: number; digit: number; placed: number[]; removed: number[] }
-type Options = { game: Game; values: string; visible: boolean; enabled: boolean; originConflict: boolean; selection: number | null;
+type Options = { game: Game; values: string; visible: boolean; enabled: boolean; originConflict: boolean;
   candidateMasks?: readonly number[] | null; candidateLoadFailed?: boolean;
-  updateGame: (change: (current: Game) => Game) => void; onEnter: () => void }
+  updateGame: (change: (current: Game) => Game) => void; onEnter: (editing: boolean) => void }
 
 const initialWorkspace: BranchWorkspace = { branches: [], nextNumber: 1 }
 const classicRules = branchRules()
@@ -28,7 +27,6 @@ export const branchColor = (number: number) => `var(--chain-${colors[(number - 1
 const letters = (ids: readonly number[]) => ids.map(branchLetter).join(ids.some(id => id > 26) ? '·' : '')
 const names = (ids: readonly number[]) => ids.map(branchLetter).join(', ')
 const branchNames = (ids: readonly number[]) => `${ids.length === 1 ? 'branch' : 'branches'} ${names(ids)}`
-const contains = (mask: number, digit: number) => Boolean(mask & (1 << (digit - 1)))
 
 function compareFacts(entries: readonly Entry[]) {
   const marks = new Map<number, ComparisonMark>()
@@ -68,7 +66,7 @@ function editorAnnotations(entry: Entry, showEliminations: boolean): BoardAnnota
       cells.set(fact.cell, { fill: `color-mix(in srgb, ${branchColor(number)} 24%, transparent)`, ink: branchColor(number),
         branchPlacement: fact.kind === 'assumption' || fact.kind === 'trial' ? fact.kind : 'derived',
         label: `${fact.kind === 'assumption' ? 'Assumed' : fact.kind === 'trial' ? 'Trial' : 'Forced'} placement in branch ${branchLetter(number)}` })
-    } else if (!fact.truth && (showEliminations || fact.kind === 'assumption')) {
+    } else if (!fact.truth && showEliminations) {
       const marks = candidates.get(fact.cell) ?? new Map()
       marks.set(fact.digit, { mark: 'strike', color: branchColor(number),
         label: fact.kind === 'assumption' ? 'Assumed removal' : fact.kind === 'trial' ? 'Trial removal' : 'Ruled out in this branch' })
@@ -78,30 +76,43 @@ function editorAnnotations(entry: Entry, showEliminations: boolean): BoardAnnota
   return { cells, candidates }
 }
 
+function editorGame({ branch, analysis }: Entry) {
+  const game = makeGame(branch.id, `Branch ${branchLetter(branch.number)}`, branch.origin.values, 'imported', 0)
+  return { ...game, position: { ...game.position,
+    entries: Array.from(analysis.values, (digit, cell) => branch.origin.values[cell] === '0' ? digit : '0').join(''),
+    corner: [...analysis.masks],
+  } }
+}
+
 /** Own the saved branch editor and derive a read-only comparison of branches with the same starting position. */
-export function usePlayBranches({ game, values, visible, enabled, originConflict, selection, candidateMasks, candidateLoadFailed, updateGame, onEnter }: Options) {
+export function usePlayBranches({ game, values, visible, enabled, originConflict, candidateMasks, candidateLoadFailed, updateGame, onEnter }: Options) {
   const workspace = game.branchWorkspace ?? initialWorkspace
   const [ui, setUi] = useState<{ gameId: string; view: View; eliminations: boolean; digit?: number }>({ gameId: game.id, view: idle, eliminations: false })
   const shown = ui.gameId === game.id && ui.eliminations
   const digit = ui.gameId === game.id ? ui.digit : undefined
-  const view = visible && enabled && ui.gameId === game.id ? ui.view : idle
-  const pending = view.kind === 'new' || view.kind === 'edit' ? view : undefined
+  const view = enabled && ui.gameId === game.id && (visible || ui.view.kind === 'edit') ? ui.view : idle
+  const editing = view.kind === 'edit'
+  const active = visible || editing
   const puzzle = game.variant?.puzzle
-  const rules = useMemo(() => visible && enabled && puzzle ? branchRules(puzzle) : classicRules, [visible, enabled, puzzle])
-  const masks = useMemo(() => visible && enabled
+  const rules = useMemo(() => active && enabled && puzzle ? branchRules(puzzle) : classicRules, [active, enabled, puzzle])
+  const masks = useMemo(() => active && enabled
     ? branchOriginMasks({ values, eliminations: game.position.eliminations, candidateMasks: candidateMasks ?? undefined }, rules)
-    : noMasks, [values, game.position.eliminations, candidateMasks, rules, visible, enabled])
+    : noMasks, [values, game.position.eliminations, candidateMasks, rules, active, enabled])
   const origin = useMemo<BranchOrigin>(() => ({ values, candidateMasks: masks }), [values, masks])
   const canCreate = visible && enabled && !originConflict && (!puzzle || candidateMasks != null) && branchOriginUsable(origin, masks, rules)
   const unavailable = !visible || !enabled || canCreate ? undefined : originConflict ? 'Resolve the conflicts on the main grid to start a branch.'
     : candidateLoadFailed ? 'Could not load candidates.' : puzzle && candidateMasks === undefined ? 'Loading candidates…'
       : 'Restore the starting candidates before creating a branch.'
-  const entries = useMemo(() => visible && enabled ? workspace.branches.map(branch => ({ branch, analysis: analyzeBranch(branch, rules) })) : noEntries,
-    [visible, enabled, workspace, rules])
-  const id = view.kind === 'edit' || view.kind === 'compare' ? view.id : undefined
+  const entries = useMemo(() => active && enabled ? workspace.branches.map(branch => ({ branch, analysis: analyzeBranch(branch, rules) })) : noEntries,
+    [active, enabled, workspace, rules])
+  const id = editing ? view.draft.id : view.kind === 'compare' ? view.id : undefined
   const selected = entries.find(entry => entry.branch.id === id)
+  const editor = useMemo(() => editing ? selected ?? { branch: view.draft, analysis: analyzeBranch(view.draft, rules) } : undefined,
+    [editing, selected, view, rules])
+  const scratch = useMemo(() => editor ? editorGame(editor) : undefined, [editor])
   const comparisonOrigin = selected?.branch.origin ?? origin
-  const sameOrigin = useMemo(() => entries.filter(entry => sameBranchOrigin(entry.branch.origin, comparisonOrigin)), [entries, comparisonOrigin])
+  const sameOrigin = useMemo(() => entries.filter(entry => entry.analysis.moves.length && sameBranchOrigin(entry.branch.origin, comparisonOrigin)),
+    [entries, comparisonOrigin])
   const compareAll = view.kind === 'compare' && view.all
   const displayed = useMemo(() => view.kind === 'compare' ? compareAll ? sameOrigin.filter(({ branch }) => !branch.hidden) : selected ? [selected] : noEntries : noEntries,
     [view.kind, compareAll, sameOrigin, selected])
@@ -136,9 +147,9 @@ export function usePlayBranches({ game, values, visible, enabled, originConflict
 
   const board = useMemo(() => {
     if (view.kind === 'idle') return null
-    if (view.kind === 'edit' && selected) {
-      const { branch, analysis } = selected
-      const annotations = editorAnnotations(selected, shown)
+    if (editor) {
+      const { branch, analysis } = editor
+      const annotations = editorAnnotations(editor, shown)
       const candidates = analysis.masks.map((mask, cell) => {
         const marks = annotations.candidates?.get(cell)
         if (marks) for (const digit of marks.keys()) mask |= 1 << (digit - 1)
@@ -157,9 +168,8 @@ export function usePlayBranches({ game, values, visible, enabled, originConflict
       return { content: { values: comparisonOrigin.values, ...notes }, annotations,
         label: view.all || !selected ? 'Sudoku grid comparing branches' : `Sudoku grid for branch ${branchLetter(selected.branch.number)}` }
     }
-    if (view.kind === 'new' && canCreate) return { content: { values, candidates: masks }, annotations: undefined, label: 'Sudoku grid for choosing a branch assumption' }
     return null
-  }, [view, selected, shown, comparisonOrigin, displayMasks, marks, digit, canCreate, values, masks])
+  }, [view, editor, selected, shown, comparisonOrigin, displayMasks, marks, digit])
 
   function changeView(next: View) {
     setUi(current => ({ gameId: game.id, view: next, eliminations: current.gameId === game.id && current.eliminations,
@@ -186,25 +196,28 @@ export function usePlayBranches({ game, values, visible, enabled, originConflict
   }
 
   function begin() {
-    if (!canCreate) return
-    onEnter()
-    changeView({ kind: 'new', cell: selection !== null && masks[selection] ? selection : null, digit: null, truth: true })
+    if (!canCreate || editing) return
+    onEnter(true)
+    changeView({ kind: 'edit', draft: { id: createUuid(), number: workspace.nextNumber, origin, history: [], cursor: 0 } })
   }
 
   function startEdit(branch: SavedBranch) {
-    onEnter()
-    changeView({ kind: 'edit', id: branch.id, cell: null, digit: null, truth: true })
+    if (editing) return
+    onEnter(true)
+    changeView({ kind: 'edit', draft: branch })
   }
 
   function selectBranch(branch: SavedBranch) {
-    onEnter()
+    if (editing) return
+    onEnter(false)
     changeView({ kind: 'compare', id: branch.id, all: false })
   }
 
   function compare() {
+    if (editing) return
     if (view.kind === 'compare' && view.all) changeView(selected ? { ...view, all: false } : idle)
     else {
-      onEnter()
+      onEnter(false)
       changeView({ kind: 'compare', id, all: true })
     }
   }
@@ -212,53 +225,29 @@ export function usePlayBranches({ game, values, visible, enabled, originConflict
   function stop() { changeView(idle) }
 
   function done() {
-    if (view.kind === 'edit') changeView({ kind: 'compare', id: view.id, all: false })
+    if (editing && selected?.analysis.moves.length) changeView({ kind: 'compare', id: view.draft.id, all: false })
     else stop()
   }
 
-  const sourceMasks = useMemo(() => view.kind === 'edit' && selected ? branchOriginMasks(selected.branch.origin, rules) : masks,
-    [view.kind, selected, rules, masks])
-
-  function editable(cell: number, digit: number) {
-    if (!pending || !contains(sourceMasks[cell], digit)) return false
-    if (pending.kind === 'new') return canCreate
-    if (!selected || selected.analysis.conflict) return false
-    const placed = Number(selected.analysis.values[cell])
-    return pending.truth ? placed !== digit : placed === digit || contains(selected.analysis.masks[cell], digit)
-  }
-
-  function enter(cell: number, digit: number) {
-    if (!pending || !editable(cell, digit)) return
-    const move = { cell, digit, truth: pending.truth }
-    if (pending.kind === 'new') {
-      const id = createUuid()
-      save(working => working.branches.some(branch => branch.id === id) ? working : { nextNumber: working.nextNumber + 1,
-        branches: [...working.branches, { id, number: working.nextNumber, origin,
-          assumption: move, edits: [], cursor: 0 }] })
-      changeView({ kind: 'edit', id, cell, digit: pending.digit, truth: pending.digit === null || pending.truth })
-    } else {
-      updateBranch(pending.id, branch => ({ ...branch, edits: [...branch.edits.slice(0, branch.cursor), move], cursor: branch.cursor + 1 }))
-      changeView({ ...pending, cell })
-    }
-  }
-
-  function selectCell(cell: number, applyDigit = true) {
-    if (!pending) return
-    if (applyDigit && pending.digit !== null && editable(cell, pending.digit)) enter(cell, pending.digit)
-    else changeView({ ...pending, cell })
-  }
-
-  function input(digit: number, cell?: number) {
-    if (!pending) return
-    if (cell !== undefined) enter(cell, digit)
-    else if (pending.digit !== null || pending.cell === null) changeView({ ...pending, digit: pending.digit === digit ? null : digit })
-    else enter(pending.cell, digit)
+  function edit(transform: (current: Game) => Game) {
+    if (!editor || !scratch) return
+    save(working => {
+      const existing = working.branches.find(branch => branch.id === editor.branch.id)
+      if (selected && !existing) return working
+      const branch = existing ?? { ...editor.branch, number: working.nextNumber }
+      const analysis = !existing || existing === editor.branch ? editor.analysis : analyzeBranch(branch, rules)
+      const before = analysis === editor.analysis ? scratch : editorGame({ branch, analysis })
+      const next = recordBranchInput(branch, analysis, before.position, transform(before).position, rules)
+      if (next === branch) return working
+      return existing ? { ...working, branches: working.branches.map(item => item === existing ? next : item) }
+        : { nextNumber: working.nextNumber + 1, branches: [...working.branches, next] }
+    })
   }
 
   function undo(offset: -1 | 1) {
-    if (view.kind !== 'edit') return
-    updateBranch(view.id, branch => {
-      const cursor = Math.max(0, Math.min(branch.edits.length, branch.cursor + offset))
+    if (!editing) return
+    updateBranch(view.draft.id, branch => {
+      const cursor = Math.max(0, Math.min(branch.history.length, branch.cursor + offset))
       return cursor === branch.cursor ? branch : { ...branch, cursor }
     })
   }
@@ -268,13 +257,10 @@ export function usePlayBranches({ game, values, visible, enabled, originConflict
     if (id === branch.id) changeView(view.kind === 'compare' && view.all ? { kind: 'compare', all: true } : idle)
   }
 
-  return { view, pending, board, entries, selected, sameOrigin, marks, differences,
+  return { view, editing, scratch, board, entries, selected, sameOrigin, marks, differences,
     checked: digit === undefined ? checked : checked.filter(result => result.move.digit === digit),
     origin, canCreate, unavailable, shown, digit,
-    begin, startEdit, selectBranch, compare, stop, done, selectCell, input, undo, remove,
-    canInput: (digit: number) => Boolean(pending && !selected?.analysis.conflict &&
-      (pending.digit !== null || pending.cell === null || editable(pending.cell, digit))),
-    setTruth: (truth: boolean) => { if (pending) changeView({ ...pending, truth }) },
+    begin, startEdit, selectBranch, compare, stop, done, edit, undo, remove,
     toggleEliminations: () => setUi(current => ({ gameId: game.id, view, eliminations: !shown, digit: current.gameId === game.id ? current.digit : undefined })),
     setDigit: (digit: number | undefined) => setUi({ gameId: game.id, view, eliminations: shown, digit }),
     toggleVisibility: (branch: SavedBranch) => updateBranch(branch.id, item => ({ ...item, hidden: item.hidden ? undefined : true })),
