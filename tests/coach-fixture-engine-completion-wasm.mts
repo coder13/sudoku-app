@@ -156,6 +156,12 @@ test('zero-given published Coach Bento needs Global Entropy and labeled dots for
     puzzle: imported.variant.puzzle,
   } }), { status: 'unique', solution: source.solution },
   'the complete zero-given published puzzle must retain its exact solution')
+  for (let symmetry = 0; symmetry < 8; symmetry++) {
+    assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: {
+      puzzle: reflectVariant(imported.variant.puzzle, symmetry),
+    } }), { status: 'unique', solution: transformedBoard(source.solution, symmetry) },
+    `the mixed partial-region puzzle stays unique under symmetry ${symmetry}`)
+  }
 
   for (const ruleType of ['global-entropy', 'labeled-dots'] as const) {
     const withoutRule = {
