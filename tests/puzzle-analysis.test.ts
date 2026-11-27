@@ -32,17 +32,18 @@ test('the technique finder includes every detector in the Rust engine catalog', 
   const groups = analysisGroupsForCatalog(ids.map((id) => ({ id })))
   assert.equal(groups.length, ANALYSIS_GROUPS.filter(({ techniques }) => techniques.some((id) => ids.includes(id))).length)
   assert.deepEqual(groups.flatMap(({ techniques }) => techniques).sort(), [...ids].sort())
-  assert.deepEqual(analysisGroupsForCatalog([...ids.map((id) => ({ id })), { id: 'future-technique' }])
-    .at(-1), { title: 'Other techniques', techniques: ['future-technique'] })
+  const futureGroups = analysisGroupsForCatalog([...ids.map((id) => ({ id })), { id: 'future-technique' }])
+  assert.deepEqual(futureGroups.at(-2), { title: 'Other techniques', techniques: ['future-technique'] })
+  assert.equal(futureGroups.at(-1)?.title, 'Advanced patterns')
 })
 
 test('variant deductions have a named section in the technique finder', () => {
   const groups = analysisGroupsForCatalog(['locked-candidates', 'anti-knight', 'anti-king', 'conditional-neighbor', 'future-technique']
     .map((id) => ({ id })))
-  assert.deepEqual(groups, [
-    { title: 'Variant techniques', techniques: ['locked-candidates', 'anti-knight', 'anti-king', 'conditional-neighbor'] },
-    { title: 'Other techniques', techniques: ['future-technique'] },
-  ])
+  assert.deepEqual(groups.map(({ title }) => title), ['Variant techniques', 'Other techniques'])
+  assert.deepEqual(groups[0]?.techniques, ['locked-candidates', 'anti-knight', 'anti-king', 'conditional-neighbor'])
+  assert.deepEqual(analysisGroupsForCatalog(['pattern-overlay', 'anti-knight', 'future-technique'].map(id => ({ id })))
+    .map(({ title }) => title), ['Variant techniques', 'Other techniques', 'Advanced patterns'])
 })
 
 test('count distinct action targets for each technique even with overlapping proofs and moves', () => {

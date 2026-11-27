@@ -3190,19 +3190,36 @@ svg { flex-shrink: 0; }
   text-align: right;
 }
 .analysis-table .analysis-section-row th {
+  padding: 0;
   text-align: left;
-  padding: var(--space-6) var(--space-10);
   color: var(--ink);
   font-size: 0.8125rem;
   font-weight: 760;
   background: var(--surface-muted);
 }
-.analysis-table .analysis-section-kind { color: var(--muted); font-weight: 500; }
+.analysis-section-toggle {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  justify-content: space-between;
+  padding: var(--space-6) var(--space-10);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  text-align: left;
+  white-space: normal;
+}
+.analysis-section-toggle:hover { color: var(--dark-purple); }
+.analysis-section-toggle:focus-visible { outline-offset: -3px; }
 .analysis-table .analysis-data-row > * {
   padding: 7px 10px;
   border-bottom: 1px solid var(--border);
 }
 .analysis-table .analysis-data-row th { font-weight: 500; overflow-wrap: anywhere; }
+.analysis-table .analysis-section-kind { color: var(--muted); font-weight: 500; }
 
 .analysis-technique-link {
   display: inline;
