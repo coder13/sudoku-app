@@ -115,6 +115,31 @@ test('published Sudoku Coach completions pass the Rust engine with every importe
   assert.deepEqual([...standaloneSeen].sort(), [...standaloneCoachSolutionSources].sort())
 })
 
+test('published Jigsaw Coach combination needs both Killer and Little Killer rules for uniqueness', async () => {
+  const source = [...sources.values()].find(({ references }) =>
+    references.includes('disconnected-jigsaw-coach.json:$'))
+  assert.ok(source)
+  const imported = await detectPuzzle(source.code)
+  assert.ok(imported.variant)
+  assert.deepEqual(imported.variant.puzzle.rules?.map(rule => rule.type), ['killer-cages', 'little-killer'])
+
+  assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: {
+    puzzle: imported.variant.puzzle,
+    entries: imported.givens,
+  } }), 'unique', 'the original Jigsaw, Killer cages and Little Killer combination is unique')
+
+  for (const ruleType of ['killer-cages', 'little-killer'] as const) {
+    const withoutRule = {
+      ...imported.variant.puzzle,
+      rules: imported.variant.puzzle.rules?.filter(rule => rule.type !== ruleType),
+    }
+    assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: {
+      puzzle: withoutRule,
+      entries: imported.givens,
+    } }), 'multiple', `removing the ${ruleType} companion must expose alternate solutions`)
+  }
+})
+
 test('the zero-given Entropic Coach source has one exact solution from its encoded rules', async () => {
   const source = [...sources.values()].find(({ references }) => references.includes('entropic-coach.json:$.examples[6]'))
   assert.ok(source)
