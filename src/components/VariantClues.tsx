@@ -716,13 +716,13 @@ function visibleCellPath(cells: ReadonlySet<number>) {
   return runs.join(' ')
 }
 
-export function VariantClues({ rules, viewBox = '0 0 9 9', visibleCells }: {
-  rules: readonly VariantRule[]; viewBox?: string; visibleCells?: ReadonlySet<number>
+export function VariantClues({ rules, viewBox = '0 0 9 9', visibleCells, cageCaptionOffsets }: {
+  rules: readonly VariantRule[]; viewBox?: string; visibleCells?: ReadonlySet<number>; cageCaptionOffsets?: ReadonlyMap<number, number>
 }) {
   const marker = useId()
   const clipId = `${marker}-fog`
   const clip = useMemo(() => visibleCells && visibleCellPath(visibleCells), [visibleCells])
-  const drawing = <VariantClueDrawing rules={rules} marker={marker} />
+  const drawing = <VariantClueDrawing rules={rules} marker={marker} cageCaptionOffsets={cageCaptionOffsets} />
   return <svg className="variant-clues" viewBox={viewBox} aria-hidden="true" focusable="false">
     {rules.some(rule => rule.type === 'arrow' || rule.type === 'pill-arrow') && arrowHead(marker)}
     {clip === undefined ? drawing : <>
@@ -733,8 +733,8 @@ export function VariantClues({ rules, viewBox = '0 0 9 9', visibleCells }: {
 }
 
 // A reveal changes the clip path while the authored geometry stays in place.
-const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
-  rules: readonly VariantRule[]; marker: string
+const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker, cageCaptionOffsets }: {
+  rules: readonly VariantRule[]; marker: string; cageCaptionOffsets?: ReadonlyMap<number, number>
 }) {
   const model = useMemo(() => buildVariantClueModel(rules), [rules])
   const { clones, cloneIndices, disjoint, shared, coloredLanes, sumEnds, renbanIndices, regionSumIndices, drawingOrder, dots, sums, markedEdges } = model
@@ -814,8 +814,11 @@ const VariantClueDrawing = memo(function VariantClueDrawing({ rules, marker }: {
         case 'extra-house':
           return disjoint.has(index) ? null : <ExtraRegion key={index} cells={rule.cells} />
         case 'killer-cages':
-          return <g key={index}>{rule.cages.map((cage) => <Cage key={Math.min(...cage.cells)} cells={cage.cells} captionWidth={cage.sum < 10 ? .17 : .3}
-            captionInset={cageLabelInset(Math.min(...cage.cells), rules)} />)}</g>
+          return <g key={index}>{rule.cages.map((cage) => {
+            const corner = Math.min(...cage.cells)
+            return <Cage key={corner} cells={cage.cells} captionWidth={cage.sum < 10 ? .17 : .3}
+              captionInset={cageCaptionOffsets?.get(corner) ?? cageLabelInset(corner, rules)} />
+          })}</g>
         case 'unknown-cage-sums': return <UnknownCagesClue key={index} rule={rule} />
         case 'whispers': {
           return <g key={index} className="variant-whispers" data-min-difference={rule.minDifference}>

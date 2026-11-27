@@ -5,6 +5,7 @@ type Point = readonly [x: number, y: number]
 
 export type AuthoredMark = { type: 'outline'; points: readonly Point[]; thickness: number }
   | { type: 'divider'; points: readonly Point[]; thickness: number }
+  | { type: 'cage-caption-offset'; cell: number; offset: number }
   | { type: 'disc'; center: Point; radius: number; color: string }
   | { type: 'tile'; center: Point; size: number; rotation: number; color: string; opacity: number }
   | { type: 'text'; center: Point; text: string; size: number; color: string; opacity: number;
@@ -40,6 +41,9 @@ export function validAuthoredArtwork(value: unknown): value is readonly Authored
           ? points[0].every((coordinate, axis) => coordinate === points.at(-1)![axis])
           : points.slice(1).every(([x, y], i) => (x === points[i][0]) !== (y === points[i][1])))
     }
+    if (mark.type === 'cage-caption-offset') return Object.keys(mark).length === 3 &&
+      typeof mark.cell === 'number' && Number.isInteger(mark.cell) && mark.cell >= 0 && mark.cell < 81 &&
+      typeof mark.offset === 'number' && Number.isFinite(mark.offset) && mark.offset >= 0 && mark.offset <= 1
     if (mark.type === 'disc') return Object.keys(mark).length === 4 && size(mark.radius) &&
       point(mark.center, false) && typeof mark.color === 'string' && /^#[0-9a-f]{6}$/i.test(mark.color)
     if (mark.type === 'tile') return Object.keys(mark).length === 6 && artworkPoint(mark.center) &&
@@ -66,6 +70,8 @@ export function sameAuthoredArtwork(a?: readonly AuthoredMark[], b?: readonly Au
     if (mark.type !== other.type) return false
     if (mark.type === 'outline' || mark.type === 'divider') return other.type === mark.type &&
       mark.thickness === other.thickness && JSON.stringify(mark.points) === JSON.stringify(other.points)
+    if (mark.type === 'cage-caption-offset') return other.type === mark.type &&
+      mark.cell === other.cell && mark.offset === other.offset
     if (mark.type === 'disc') return other.type === 'disc' && mark.radius === other.radius &&
         mark.color === other.color && mark.center[0] === other.center[0] && mark.center[1] === other.center[1]
     if (mark.type === 'text') return other.type === 'text' && mark.text === other.text && mark.size === other.size &&

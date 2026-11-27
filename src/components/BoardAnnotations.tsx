@@ -182,7 +182,7 @@ export const BoardArtwork = memo(function BoardArtwork({ artwork, region }: {
 }) {
   const bounds = region ? `${region.column} ${region.row} ${region.columns} ${region.rows}` : '0 0 9 9'
   return <svg className="board-authored-artwork" viewBox={bounds} aria-hidden="true">
-    {artwork.map((mark, index) => mark.type === 'outline' || mark.type === 'divider'
+    {artwork.map((mark, index) => mark.type === 'cage-caption-offset' ? null : mark.type === 'outline' || mark.type === 'divider'
       ? <polyline key={index} data-authored-divider={mark.type === 'divider' || undefined} points={mark.points.map(([x, y]) => `${x},${y}`).join(' ')}
         fill="none" stroke="var(--board-ink)" strokeWidth={mark.thickness} strokeLinejoin="round" />
       : mark.type === 'disc'

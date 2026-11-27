@@ -723,10 +723,15 @@ const artworkText = mark => fields(mark, {
   outlineThickness: value => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= .1,
   offsetY: value => typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= 1,
 })
+const artworkCageCaptionOffset = mark => fields(mark, {
+  type: oneOf('cage-caption-offset'), cell,
+  offset: value => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1,
+})
 const authoredArtwork = list(mark => fields(mark, { type: oneOf('outline'), points: closedArtworkOutline, thickness: artworkSize }) ||
   fields(mark, { type: oneOf('divider'), points: artworkDivider, thickness: artworkSize }) ||
   fields(mark, { type: oneOf('disc'), center: artworkCenter, radius: artworkSize,
-    color: value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) }) || artworkTile(mark) || artworkText(mark), 1, 512)
+    color: value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) }) ||
+  artworkTile(mark) || artworkText(mark) || artworkCageCaptionOffset(mark), 1, 512)
 const pairs = list(list(cell, 2, 2), 0)
 const house = list(cell, 9, 9)
 const direction = oneOf('north', 'east', 'south', 'west')

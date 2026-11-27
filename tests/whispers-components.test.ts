@@ -88,8 +88,8 @@ test('a Whispers minimum label moves off a Quadruple circle and points back to t
 test('the imported Cmdt board renders every region, diagonal, cage total and line family', async () => {
   const examples = JSON.parse(readFileSync(new URL('./fixtures/whispers-coach.json', import.meta.url), 'utf8')).examples as { url: string; code: string }[]
   const source = examples.find(source => source.url.endsWith('/Cmdt'))!
-  const { variant, givens } = await detectPuzzle(source.code)
-  const board = createElement(Board, { variantPuzzle: variant?.puzzle, givens, values: givens })
+  const { variant, givens, authoredArtwork } = await detectPuzzle(source.code)
+  const board = createElement(Board, { variantPuzzle: variant?.puzzle, givens, values: givens, authoredArtwork })
   const mobile = createElement(MobilePanelLayout, { puzzleId: 'coach-cmdt', rearranging: false, blocked: false,
     onRearrangingChange() {}, withHint: false, panels: { puzzle: { title: 'Puzzle', content: board } } })
   for (const node of [board, mobile]) {
@@ -99,6 +99,7 @@ test('the imported Cmdt board renders every region, diagonal, cage total and lin
       ['variant-quadruple', 21], ['variant-thermometer', 18], ['variant-whispers', 16],
     ]
     for (const [clue, count] of expected) assert.equal(html.split(`class="${clue}"`).length - 1, count, clue)
+    assert.equal(html.split('inset-inline-start:36%').length - 1, 10)
     const filledCells = [...html.matchAll(/data-cell="(\d+)"[^>]*data-house-fill="true"/g)].map(([, index]) => Number(index))
     const diagonalCells = Array.from({ length: 81 }, (_, index) => index)
       .filter(index => index % 10 === 0 || (index > 0 && index < 80 && index % 8 === 0))

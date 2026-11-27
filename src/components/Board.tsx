@@ -301,6 +301,8 @@ export function Board(props: BoardProps) {
     const visibleClones = variantRules?.filter((rule) => rule.type === 'clone') ?? []
     return [...fullPuzzle.rules.filter((rule) => rule.type !== 'clone'), ...visibleClones]
   }, [clipCells, fullPuzzle?.rules, variantRules])
+  const cageCaptionOffsets = useMemo(() => new Map((authoredArtwork ?? []).flatMap(mark =>
+    mark.type === 'cage-caption-offset' ? [[mark.cell, mark.offset] as const] : [])), [authoredArtwork])
   const linkCounts = useMemo(() => (whispersGuide && variantPuzzle ? whispersLinkCounts(variantPuzzle) : undefined), [whispersGuide, variantPuzzle])
   const houseFills = useMemo(() => new Set(variantRules?.flatMap(variantHouseFillCells)), [variantRules])
   const highlightedDiagonals = useMemo(
@@ -417,11 +419,11 @@ export function Board(props: BoardProps) {
       clueDrawing
         ? [
             <div className="board-variant-clues" key={clueDrawing.key}>
-              <VariantClues rules={clueDrawing.rules} visibleCells={clipCells} />
+              <VariantClues rules={clueDrawing.rules} visibleCells={clipCells} cageCaptionOffsets={cageCaptionOffsets} />
             </div>,
           ]
         : NO_MARKS,
-    [clueDrawing, clipCells]
+    [clueDrawing, clipCells, cageCaptionOffsets]
   )
   const [candidateFocus, setCandidateFocus] = useState<CandidateSlot>()
   const highlightedDigits = useMemo(() => marksOf(highlightedDigitMask), [highlightedDigitMask])
@@ -516,7 +518,8 @@ export function Board(props: BoardProps) {
         const regionAtCell = regionsAt?.[index]
         const cageTotal = cageTotals.get(index) ?? algebraicLabels.captions.get(index)
         const cageRules = drawingRules ?? sizedClueRules
-        const cageInset = cageTotal !== undefined && cageRules ? cageLabelInset(index, cageRules, gridSize) : undefined
+        const cageInset = cageTotal !== undefined && cageRules
+          ? cageCaptionOffsets.get(index) ?? cageLabelInset(index, cageRules, gridSize) : undefined
         return {
           index,
           row,
@@ -553,6 +556,7 @@ export function Board(props: BoardProps) {
       linkCounts,
       rectangularBoxes,
       cageTotals,
+      cageCaptionOffsets,
       algebraicLabels,
       clones,
       drawingRules,

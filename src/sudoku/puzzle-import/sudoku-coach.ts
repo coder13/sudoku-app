@@ -821,6 +821,20 @@ function readCoachFogCellColors(fog: FogDefinition, cellColours: readonly string
   return validImportedCellColors(colors) ? colors : undefined
 }
 
+function readCoachCageCaptionOffsets(constraints: readonly unknown[]) {
+  return constraints.flatMap(layer => {
+    if (!record(layer) || layer.type !== 'cage' || !record(layer.settings) || !Array.isArray(layer.segments)) return []
+    const offset = layer.settings.horizontalOffset
+    if (typeof offset !== 'number' || !Number.isFinite(offset) || offset < 0 || offset > 100) return []
+    return layer.segments.flatMap(segment => {
+      if (!record(segment) || !Array.isArray(segment.cells) || !segment.cells.length ||
+        !segment.cells.every(cell => Number.isInteger(cell) && Number(cell) >= 0 && Number(cell) < 81)) return []
+      return [{ type: 'cage-caption-offset' as const, cell: Math.min(...segment.cells as number[]),
+        offset: offset / 100 }]
+    })
+  })
+}
+
 // Coach leaves this rule out of a pasted Quad-Arrows export.
 const quadArrowsExport = '79e91e3f2437d79f1f711dfdef45d0c0d1b4c9218b84a2d539cbb7797d145764'
 const codeCrackerExport = 'f3e4547984dce224f6194295e4bf116d924557ba6e80e914aff73e91b443a7ff'
@@ -1178,6 +1192,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     throw new Error('This Sudoku Coach Quad-Arrows export is missing its circles.')
   }
   const palette = Array.isArray(data.colours) ? data.colours : []
+  const cageCaptionOffsets = readCoachCageCaptionOffsets(constraints)
   const guidePuzzle = { version: 1 as const, givens, regions, rules: rules.filter(rule => rule.type === 'whispers') }
   const whispersGuide = guideLayers.length > 0 && cellColours !== undefined && isCoachWhispersGuide(
     cellColours.map(shade => shade === '' ? '' : shade.length === 1 ? palette[COACH_BASE62.indexOf(shade)] : undefined),
@@ -1250,7 +1265,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     (authoredAsnFXSums ? 'X sums #3' : rawQuadArrows ? 'Quad-Arrows' : insideGrid ? 'Code Cracker' : lettered ? 'Sandwich Roll ;)' : undefined)
   return { ...imported, ...(title && { title }), ...(progress && { progress }),
     ...(unknownCageSums && { authoredSolution: unknownCageSums.authoredSolution, authoredSolutionOnly: true as const }),
-    ...((artwork || textClues) && { authoredArtwork: [...(artwork?.artwork ?? []), ...(textClues?.artwork ?? [])] }),
+    ...((artwork || textClues || cageCaptionOffsets.length) && { authoredArtwork: [...(artwork?.artwork ?? []), ...(textClues?.artwork ?? []), ...cageCaptionOffsets] }),
     ...(whispersGuide && { whispersGuide: true }), ...(givenCellColors && { givenCellColors }) }
 }
 
