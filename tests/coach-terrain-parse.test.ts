@@ -3,14 +3,15 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { readReviewedCoachTerrain } from '../src/sudoku/puzzle-import/coach-terrain.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { coachCode } from './helpers/coach-code.ts'
 
 const source = JSON.parse(readFileSync(new URL('./fixtures/sandwich-terrain-unsupported.json', import.meta.url), 'utf8')) as {
   source: { sudoku: string; solution: string }
-  payload: { gridSize: number; colours: string[]; givenColours: string; givenConstraints: unknown[] }
+  payload: Record<string, unknown> & { gridSize: number; colours: string[]; givenColours: string; givenConstraints: unknown[] }
 }
 
 test('reviewed Coach Terrain parser preserves its transforms and maximum Sandwich totals', async () => {
-  const terrain = await readReviewedCoachTerrain(source.source.sudoku, source.payload)
+  const terrain = await readReviewedCoachTerrain(source.payload)
   assert.ok(terrain)
   assert.deepEqual(terrain.valueChanges, [
     { color: 'yellow', operation: 'multiply', amount: 2 },
@@ -53,7 +54,17 @@ test('reviewed Coach Terrain parser preserves its transforms and maximum Sandwic
   assert.deepEqual(imported.givenCellColors, Object.fromEntries(terrain.cellColors.flatMap((color, cell) => color ? [[cell, [color]]] : [])))
 })
 
-test('Coach Terrain semantics are restricted to the exact reviewed export', async () => {
-  assert.equal(await readReviewedCoachTerrain(source.source.sudoku.replace(/0/, '1'), source.payload), undefined)
-  assert.equal(await readReviewedCoachTerrain(source.source.sudoku, { ...source.payload, colours: ['green', 'purple'] }), undefined)
+test('Coach Terrain semantics are restricted to the exact reviewed puzzle data', async () => {
+  assert.equal(await readReviewedCoachTerrain({ ...source.payload, givenDigits: '1' + '0'.repeat(80) }), undefined)
+  assert.equal(await readReviewedCoachTerrain({ ...source.payload, colours: ['green', 'purple'] }), undefined)
+  assert.equal(await readReviewedCoachTerrain({ ...source.payload, customRules: 'different semantics' }), undefined)
+})
+
+test('Coach Terrain imports retain player progress added to the reviewed puzzle', async () => {
+  const userDigits = [...source.source.solution].map((digit, cell) => cell === 0 ? digit : '0').join('')
+  const code = coachCode({ ...source.payload, userDigits })
+  const imported = await detectPuzzle(code)
+  assert.equal(imported.format, 'Sudoku Coach')
+  assert.equal(imported.progress?.entries[0], source.source.solution[0])
+  assert.equal(imported.variant?.puzzle.rules?.filter(rule => rule.type === 'terrain-sandwich').length, 15)
 })

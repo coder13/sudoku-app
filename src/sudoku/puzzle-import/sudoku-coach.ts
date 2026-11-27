@@ -855,7 +855,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   const data: Record<string, unknown> = /^[0-9]{81}$/.test(code) ? { gridSize: 9, givenDigits: code } : await decodeCoach(code)
   const insideDigitGroups = await readCoachInsideDigitGroups(code, data)
   if (insideDigitGroups) return { ...insideDigitGroups, title: publication?.title ?? 'Symmetrical Inside' }
-  const terrain = await readReviewedCoachTerrain(code, data)
+  const terrain = await readReviewedCoachTerrain(data)
   if (terrain) {
     const givens = data.givenDigits === undefined ? EMPTY : data.givenDigits
     if (typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens)) throw new Error('This Sudoku Coach puzzle has invalid givens.')
@@ -870,7 +870,8 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     })
     const imported = makeImportedPuzzle(givens, rules, undefined)
     const givenCellColors = Object.fromEntries(terrain.cellColors.flatMap((color, cell) => color ? [[cell, [color]]] : []))
-    return { ...imported, givenCellColors, title: publication?.title ?? 'Terrain Variants I: Diamond Sandwich' }
+    const progress = readCoachProgress(data, givens)
+    return { ...imported, givenCellColors, title: publication?.title ?? 'Terrain Variants I: Diamond Sandwich', ...(progress && { progress }) }
   }
   const crust = await readReviewedCoachCrust(code, data)
   if (crust) {
