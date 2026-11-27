@@ -1,6 +1,6 @@
 import { sizedSumEndKey, sizedSumEndLabel, sizedXSumSide } from '../sudoku/sized-linked-double-arrow'
 import { memo, useId, useMemo, type CSSProperties } from 'react'
-import type { SizedConstraintRule, SizedLinkedDoubleArrow, SizedSumEnd, SizedDifferenceRule, SizedVariantPosition, VariantRule } from '../sudoku/engine'
+import type { SizedConstraintRule, SizedLinkedDoubleArrow, SizedSumEnd, SizedXSumDot, SizedDifferenceRule, SizedVariantPosition, VariantRule } from '../sudoku/engine'
 import { isQuadrupleRule, quadrupleCells, sumLabel } from '../sudoku/variants'
 import { coloredLineOverlapLanes, lineSkipsCells, sharedPalindromeEdges, sharedRegionSumEnds } from '../sudoku/line-geometry'
 import { sizedRegionSumParts } from '../sudoku/region-sum'
@@ -402,6 +402,31 @@ export function LinkedDoubleArrowClues({ rules, size, hidden }: {
         return <circle data-linked-sum-end={key} key={key} cx={cx} cy={cy} r=".32" />
       })}
     </g>
+  </svg>
+}
+
+/** Draw Kropki dots between paired X-Sum totals or between a total and its first cell. */
+export function XSumDotClues({ rules, size, hidden }: {
+  rules: readonly SizedXSumDot[]; size: number; hidden?: boolean
+}) {
+  const endCenter = (end: SizedSumEnd): readonly [number, number] => {
+    if (typeof end === 'number') return center(end, size)
+    const side = sizedXSumSide(end.direction)
+    const at = end.index + .5
+    if (side === 'top') return [at, -.5]
+    if (side === 'bottom') return [at, size + .5]
+    if (side === 'left') return [-.5, at]
+    return [size + .5, at]
+  }
+  const labels = rules.map(({ ends: [a, b], relation }) =>
+    `${sizedSumEndLabel(a, size)} and ${sizedSumEndLabel(b, size)} are ${relation === 'consecutive' ? 'consecutive' : 'in a 1:2 ratio'}.`).join(' ')
+  return <svg className="board-outside-clues x-sum-dot-clues" viewBox={`0 0 ${size} ${size}`}
+    role="img" aria-label={labels} aria-hidden={hidden || undefined} focusable="false">
+    {rules.map(({ ends: [a, b], relation }, index) => {
+      const [ax, ay] = endCenter(a), [bx, by] = endCenter(b)
+      return <circle key={index} data-x-sum-dot={relation} className={`variant-dot ${relation === 'consecutive' ? 'variant-dot-white' : 'variant-dot-black'}`}
+        cx={(ax + bx) / 2} cy={(ay + by) / 2} r=".105" />
+    })}
   </svg>
 }
 

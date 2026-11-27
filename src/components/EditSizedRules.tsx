@@ -28,6 +28,7 @@ const ruleNames = {
   'double-arrow': 'Double Arrow',
   'linked-double-arrow': 'Double Arrow with X-Sum ends',
   'x-sum': 'Outside X-Sum',
+  'x-sum-dot': 'X-Sum dot',
   'region-sum': 'Region Sum line',
   quadruple: 'Quadruple circle',
   'extra-house': 'Extra region',
@@ -60,6 +61,7 @@ function ruleLabel(rule: SizedConstraintRule, size: number, valueOffset = 0) {
     const index = vertical ? rule.cells[0] % size : Math.floor(rule.cells[0] / size)
     return `Outside X-Sum ${rule.sum} · ${sizedSumEndLabel({ direction: rule.direction, index }, size)}`
   }
+  if (rule.type === 'x-sum-dot') return `X-Sum dot · ${rule.relation === 'consecutive' ? 'consecutive' : 'ratio 1:2'} · ${sizedSumEndLabel(rule.ends[0], size)} and ${sizedSumEndLabel(rule.ends[1], size)}`
   if (rule.type === 'product-cage') return `Product cage · ${rule.product}`
   if (rule.type === 'digit-count') return `Digit count · ${rule.digit - valueOffset} at least ${rule.minimum}`
   return ruleNames[ruleChoice(rule)]
@@ -84,7 +86,7 @@ const emptyDotLayer: SizedLabeledDotsRule = {
 }
 
 function draftRule(
-  kind: Exclude<RuleChoice, 'linked-double-arrow' | 'anti-sum' | 'row-column-sum' | 'quadruple' | 'x-sum'>,
+  kind: Exclude<RuleChoice, 'linked-double-arrow' | 'anti-sum' | 'row-column-sum' | 'quadruple' | 'x-sum' | 'x-sum-dot'>,
   cells: readonly number[],
   marks: KropkiMarks,
   difference: number,
@@ -131,6 +133,8 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
   const [editing, setEditing] = useState(-1)
   const [kind, setKind] = useState<RuleChoice>('thermometer')
   const [linkedEnds, setLinkedEnds] = useState(defaultLinkedEnds)
+  const [xSumDotEnds, setXSumDotEnds] = useState<readonly [SizedSumEnd, SizedSumEnd]>(defaultLinkedEnds)
+  const [xSumDotRelation, setXSumDotRelation] = useState<'consecutive' | 'ratio'>('consecutive')
   const [xSumEnd, setXSumEnd] = useState<SizedXSumEnd>({ direction: 'south', index: 0 })
   const [xSumTotal, setXSumTotal] = useState('')
   const [quadrupleDigits, setQuadrupleDigits] = useState('')
@@ -155,6 +159,15 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
   const [error, setError] = useState('')
   const id = useId()
   const otherRules = rules.filter((_, index) => index !== editing)
+  const xSumDotPairs: (readonly [SizedSumEnd, SizedSumEnd])[] = []
+  const xSumEnds = sizedXSumDirections.flatMap((direction) =>
+    Array.from({ length: size }, (_, index) => ({ direction, index }))
+  )
+  for (const end of xSumEnds) {
+    xSumDotPairs.push([end, sizedSumEndCells(end, size)[0]])
+    const neighbor = xSumEnds.find((other) => other.direction === end.direction && other.index === end.index + 1)
+    if (neighbor) xSumDotPairs.push([end, neighbor])
+  }
   const previous = rules[editing]
   const readOnlyImported = previous && ['whispers', 'xv', 'sandwich'].includes(previous.type)
   const editingAlternatives = previous?.type === 'constraint-alternatives'
@@ -192,6 +205,8 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
               }
               : kind === 'x-sum'
                 ? { type: kind, direction: xSumEnd.direction, cells: sizedSumEndCells(xSumEnd, size), sum: Number(xSumTotal) }
+                : kind === 'x-sum-dot'
+                  ? { type: kind, ends: xSumDotEnds, relation: xSumDotRelation }
             : draftRule(kind, cells, marks, difference, groupByRegion, labeled, killer,
               Number(productTotal), countDigit, Number(countMinimum), countMaximum === '' ? undefined : Number(countMaximum))
   if (kind === 'product-cage' && rule.type === 'product-cage' && previous?.type === 'product-cage' && previous.color) {
@@ -262,6 +277,8 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
     setQuadrupleDigits(previous?.type === 'quadruple' ? previous.digits.join('') : '')
     setCells(selected)
     setLinkedEnds(previous?.type === 'linked-double-arrow' ? previous.ends : defaultLinkedEnds)
+    setXSumDotEnds(previous?.type === 'x-sum-dot' ? previous.ends : xSumDotPairs[0] ?? defaultLinkedEnds)
+    setXSumDotRelation(previous?.type === 'x-sum-dot' ? previous.relation : 'consecutive')
     if (previous?.type === 'x-sum') {
       const vertical = previous.direction === 'north' || previous.direction === 'south'
       setXSumEnd({ direction: previous.direction, index: vertical ? previous.cells[0] % size : Math.floor(previous.cells[0] / size) })
@@ -358,6 +375,11 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
     }
     if (kind === 'x-sum' && xSumTotal === '') {
       setError('Enter the outside X-Sum total.')
+      return
+    }
+    if (kind === 'x-sum-dot' && !xSumDotPairs.some(([a, b]) =>
+      sizedSumEndKey(a) === sizedSumEndKey(xSumDotEnds[0]) && sizedSumEndKey(b) === sizedSumEndKey(xSumDotEnds[1]))) {
+      setError('Choose two adjacent X-Sums or an X-Sum and its first digit for the dot.')
       return
     }
     if (kind === 'product-cage' && productTotal === '') {
@@ -457,6 +479,8 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
               setKind(event.currentTarget.value as RuleChoice)
               setCells([])
               setLinkedEnds(defaultLinkedEnds)
+              setXSumDotEnds(xSumDotPairs[0] ?? defaultLinkedEnds)
+              setXSumDotRelation('consecutive')
               setXSumEnd({ direction: 'south', index: 0 })
               setXSumTotal('')
               setCages([])
@@ -582,6 +606,31 @@ export function EditSizedRules({ game, layout, close }: { game: Game; layout: Si
               }}
             />
             <p id={`${id}-instructions`}>The first digit from this side gives the count of digits to add, including the first digit.</p>
+          </>
+        )}
+        {kind === 'x-sum-dot' && (
+          <>
+            <label htmlFor={`${id}-x-sum-dot-pair`}>Numbers separated by the dot</label>
+            <SelectControl
+              id={`${id}-x-sum-dot-pair`}
+              value={`${sizedSumEndKey(xSumDotEnds[0])}|${sizedSumEndKey(xSumDotEnds[1])}`}
+              onChange={event => {
+                const pair = xSumDotPairs.find(([a, b]) => `${sizedSumEndKey(a)}|${sizedSumEndKey(b)}` === event.currentTarget.value)
+                if (pair) setXSumDotEnds(pair)
+                setError('')
+              }}
+            >
+              {xSumDotPairs.map(([a, b]) => <option key={`${sizedSumEndKey(a)}|${sizedSumEndKey(b)}`} value={`${sizedSumEndKey(a)}|${sizedSumEndKey(b)}`}>
+                {sizedSumEndLabel(a, size)} · {sizedSumEndLabel(b, size)}
+              </option>)}
+            </SelectControl>
+            <label htmlFor={`${id}-x-sum-dot-relation`}>Dot relation</label>
+            <SelectControl id={`${id}-x-sum-dot-relation`} value={xSumDotRelation}
+              onChange={event => setXSumDotRelation(event.currentTarget.value as 'consecutive' | 'ratio')}>
+              <option value="consecutive">White dot · consecutive</option>
+              <option value="ratio">Black dot · ratio 1:2</option>
+            </SelectControl>
+            <p id={`${id}-instructions`}>A dot links adjacent outside X-Sums or an X-Sum to its first digit.</p>
           </>
         )}
         {kind === 'double-arrow' && <p id={`${id}-instructions`}>Select the first end circle, the cells along the line in order, and the second end circle.</p>}
