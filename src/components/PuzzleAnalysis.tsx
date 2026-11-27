@@ -18,6 +18,7 @@ import { Modal } from './Modal'
 import { HIDE_ZERO_TECHNIQUES_KEY } from '../sudoku/preferences'
 import { notifySettingsEdit } from '../sudoku/settings-events'
 import { usePanelActivity } from './PanelActivity'
+import { usePlayPreference } from './usePlayPreference'
 
 const SCAN_DEBOUNCE_MS = 1000
 
@@ -52,20 +53,14 @@ function AnalysisTable({
   onSelectTechnique?: (technique: string) => void; unit?: string; label?: (technique: string) => string
 }) {
   const tableId = useId()
-  const groupTitles = groups.map(({ title }) => title).join('\u0000')
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => new Set(groups[0] ? [groups[0].title] : []))
+  const [expandedGroups, setExpandedGroups] = usePlayPreference('expandedTechniqueGroups')
 
-  useEffect(() => {
-    const titles = groupTitles ? groupTitles.split('\u0000') : []
+  function toggleGroup(title: string) {
     setExpandedGroups(current => {
-      if (current.size === 0) return current
-      const available = new Set(titles)
-      const expanded = new Set([...current].filter(title => available.has(title)))
-      if (expanded.size === current.size) return current
-      if (expanded.size === 0 && titles[0]) expanded.add(titles[0])
-      return expanded
+      const expanded = current ?? (groups[0] ? [groups[0].title] : [])
+      return expanded.includes(title) ? expanded.filter(group => group !== title) : [...expanded, title]
     })
-  }, [groupTitles])
+  }
 
   return (
     <table className="analysis-table" aria-label={`Available ${unit.toLowerCase()} by technique`}>
@@ -74,7 +69,7 @@ function AnalysisTable({
       </thead>
       {groups.map((group, index) => {
         const accordionEnabled = groups.length > 1
-        const expanded = !accordionEnabled || expandedGroups.has(group.title)
+        const expanded = !accordionEnabled || (expandedGroups?.includes(group.title) ?? (index === 0))
         const contentId = `${tableId}-group-${index}`
         const controlIds = group.techniques.map((_, rowIndex) => `${contentId}-row-${rowIndex}`).join(' ')
         return <tbody key={group.title}>
@@ -83,12 +78,7 @@ function AnalysisTable({
               {accordionEnabled
                 ? <Button variant="quiet" className="analysis-section-toggle"
                     aria-expanded={expanded} aria-controls={controlIds}
-                    onClick={() => setExpandedGroups(current => {
-                      const expanded = new Set(current)
-                      if (expanded.has(group.title)) expanded.delete(group.title)
-                      else expanded.add(group.title)
-                      return expanded
-                    })}>
+                    onClick={() => toggleGroup(group.title)}>
                     <span>{group.title}</span>
                     {expanded ? <ChevronDown size={16} aria-hidden="true" /> : <ChevronRight size={16} aria-hidden="true" />}
                   </Button>

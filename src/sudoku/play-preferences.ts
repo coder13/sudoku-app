@@ -28,6 +28,8 @@ export type PlayPreferences = {
   chainColorPairs: readonly ChainColorPair[]
   highlightCandidatePairs: boolean
   showKillerCombinations: boolean
+  /** Null opens the first visible section. An empty list keeps all sections closed. */
+  expandedTechniqueGroups: readonly string[] | null
   multi: boolean
   puzzleBrowserView: 'active' | 'past' | 'saved'
   cardModeBadgePosition: ModeBadgePosition
@@ -53,6 +55,7 @@ export const DEFAULT_PLAY_PREFERENCES: PlayPreferences = {
   chainColorPairs: CHAIN_COLOR_PAIRS,
   highlightCandidatePairs: false,
   showKillerCombinations: true,
+  expandedTechniqueGroups: null,
   multi: false,
   puzzleBrowserView: 'active',
   cardModeBadgePosition: { edge: 'bottom', offset: 0.95 },
@@ -115,6 +118,7 @@ function parseChainColorPairs(value: unknown): readonly ChainColorPair[] {
 export function parsePlayPreferences(value: unknown): PlayPreferences {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return { ...DEFAULT_PLAY_PREFERENCES }
   const saved = value as Record<string, unknown>
+  const expandedTechniqueGroups = saved.expandedTechniqueGroups
   // Invalid or older records can omit fields without losing the valid settings.
   const inputTool = inputToolPreferencesFromState(inputToolStateFromPreferences({
     pencil: saved.pencil === true,
@@ -132,6 +136,8 @@ export function parsePlayPreferences(value: unknown): PlayPreferences {
     chainColorPairs: parseChainColorPairs(saved.chainColorPairs),
     highlightCandidatePairs: saved.highlightCandidatePairs === true,
     showKillerCombinations: saved.showKillerCombinations !== false,
+    expandedTechniqueGroups: Array.isArray(expandedTechniqueGroups) && expandedTechniqueGroups.every(title => typeof title === 'string')
+      ? [...new Set<string>(expandedTechniqueGroups)] : null,
     multi: saved.multi === true,
     puzzleBrowserView: saved.puzzleBrowserView === 'past' || saved.puzzleBrowserView === 'saved'
       ? saved.puzzleBrowserView : 'active',
