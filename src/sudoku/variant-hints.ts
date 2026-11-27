@@ -88,6 +88,30 @@ function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at:
     case 'digit-restriction':
       return { description: `${at(a)} has a ${rule.shape} shape.`, reason:
         `Only ${new Intl.ListFormat('en', { type: 'conjunction' }).format(rule.digits.map(String))} can go in this cell.` }
+    case 'conditional-neighbor': {
+      const source = cells[0]
+      const available = new Set(cells.slice(1))
+      const requirements = rule.alternatives.flatMap(({ rowOffset, columnOffset, digit }) => {
+        const row = Math.floor(source / 9) + rowOffset
+        const column = source % 9 + columnOffset
+        const cell = row * 9 + column
+        return row >= 0 && row < 9 && column >= 0 && column < 9 && available.has(cell)
+          ? [{ cell, digit }]
+          : []
+      })
+      const requirementText = requirements.map(({ cell, digit }) => `${at(cell)} is ${digit}`)
+      const locationList = alternatives.format(requirementText)
+      const possible = requirements.filter(({ cell, digit }) => domains[cells.indexOf(cell)] & (1 << (digit - 1)))
+      const removesTrigger = focus.some(({ cell, digit }) => cell === source && digit === rule.triggerDigit)
+      return {
+        description: `If ${at(source)} is ${rule.triggerDigit}, at least one of ${locationList} must hold.`,
+        reason: removesTrigger
+          ? `Remove ${rule.triggerDigit} from ${at(source)}; none of the required neighboring digits is available.`
+          : possible.length === 1
+            ? `If ${at(source)} is ${rule.triggerDigit}, ${at(possible[0].cell)} must be ${possible[0].digit}; every other required neighboring digit is unavailable.`
+            : 'Keep at least one of the required neighboring digits available while the trigger digit remains possible.',
+      }
+    }
     case 'non-consecutive':
       return { description: `${pair} share an edge. Their digits cannot differ by one.`,
         reason: 'A crossed-out digit has no possible partner across that edge.' }

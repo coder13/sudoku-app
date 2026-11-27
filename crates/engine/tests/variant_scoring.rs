@@ -190,7 +190,9 @@ fn estimate(deduction: &VariantDeduction, puzzle: &VariantPuzzle) -> u16 {
     let choices = binary_choices(domains);
     match deduction.technique {
         Parity | DigitRestriction | AntiKing | AntiKnight | NonConsecutive | Inequality => 4 + span,
-        Clone | Palindrome | ConsecutiveRun | DistinctCells => 8 + span + choices,
+        Clone | Palindrome | ConsecutiveRun | DistinctCells | ConditionalNeighbor => {
+            8 + span + choices
+        }
         // Read the shared set and check each inside row and column.
         InsideGrid => 20 + 4 * (cells.len() as u16).isqrt(),
         Kropki | Xv | AdjacentTotal | Thermometer | Between | Lockout | Whispers | Entropic
@@ -283,10 +285,10 @@ fn focused_examples_keep_their_technique_and_bill_once_per_deduction() {
                 panic!("{} calibration path stalled", technique.id());
             };
             assert_eq!(trace.rating.technique_order, order);
-            let expected_version = if technique == VariantTechnique::GroupOrderElimination {
-                VARIANT_SCORING_VERSION + 1
-            } else {
-                VARIANT_SCORING_VERSION
+            let expected_version = match technique {
+                VariantTechnique::GroupOrderElimination => VARIANT_SCORING_VERSION + 1,
+                VariantTechnique::ConditionalNeighbor => VARIANT_SCORING_VERSION + 2,
+                _ => VARIANT_SCORING_VERSION,
             };
             assert_eq!(trace.rating.scoring_version, expected_version);
             assert_eq!(trace.rating.regions, position.puzzle.regions);
