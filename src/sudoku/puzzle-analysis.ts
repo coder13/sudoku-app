@@ -205,13 +205,19 @@ export function analysisGroupsForCatalog(catalog: readonly { id: string }[]): An
   const available = new Set(catalog.map(({ id }) => id))
   const used = new Set<string>()
   const groups: AnalysisGroup[] = []
-  for (const group of [...ANALYSIS_GROUPS, VARIANT_ANALYSIS_GROUP]) {
+  const advancedPatterns = ANALYSIS_GROUPS.find(({ title }) => title === 'Advanced patterns')
+  const advancedTechniqueIds = new Set<string>(advancedPatterns?.techniques ?? [])
+  for (const group of [...ANALYSIS_GROUPS.filter(({ title }) => title !== 'Advanced patterns'), VARIANT_ANALYSIS_GROUP]) {
     const techniques = group.techniques.filter((id) => available.has(id) && !used.has(id))
     for (const id of techniques) used.add(id)
     if (techniques.length) groups.push({ title: group.title, techniques })
   }
-  const unknown = catalog.map(({ id }) => id).filter((id) => !used.has(id))
+  const unknown = catalog.map(({ id }) => id).filter((id) => !used.has(id) && !advancedTechniqueIds.has(id))
   if (unknown.length) groups.push({ title: 'Other techniques', techniques: unknown })
+  if (advancedPatterns) {
+    const techniques = advancedPatterns.techniques.filter((id) => available.has(id) && !used.has(id))
+    if (techniques.length) groups.push({ title: advancedPatterns.title, techniques })
+  }
   return groups
 }
 

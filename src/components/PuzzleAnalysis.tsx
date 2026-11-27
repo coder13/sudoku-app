@@ -1,6 +1,6 @@
 import { Button, IconButton } from './Button'
-import { useEffect, useMemo, useState } from 'react'
-import { LoaderCircle, X } from 'lucide-react'
+import { useEffect, useId, useMemo, useState } from 'react'
+import { ChevronDown, ChevronRight, LoaderCircle, X } from 'lucide-react'
 import { createEngineSession, type TechniqueCatalog } from '../sudoku/engine'
 import { completeCandidateMasks, hintEliminations, isSolved, valuesOf, type Game } from '../sudoku/game'
 import { sizedRuleHintChoices, SIZED_RULE_TECHNIQUES } from '../sudoku/sized-rule-play'
@@ -51,21 +51,55 @@ function AnalysisTable({
   groups: readonly AnalysisGroup[]; results: ScanResults; solved: boolean
   onSelectTechnique?: (technique: string) => void; unit?: string; label?: (technique: string) => string
 }) {
+  const tableId = useId()
+  const groupTitles = groups.map(({ title }) => title).join('\u0000')
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => new Set(groups[0] ? [groups[0].title] : []))
+
+  useEffect(() => {
+    const titles = groupTitles ? groupTitles.split('\u0000') : []
+    setExpandedGroups(current => {
+      if (current.size === 0) return current
+      const available = new Set(titles)
+      const expanded = new Set([...current].filter(title => available.has(title)))
+      if (expanded.size === current.size) return current
+      if (expanded.size === 0 && titles[0]) expanded.add(titles[0])
+      return expanded
+    })
+  }, [groupTitles])
+
   return (
     <table className="analysis-table" aria-label={`Available ${unit.toLowerCase()} by technique`}>
       <thead>
         <tr><th scope="col">Technique</th><th scope="col">{unit}</th></tr>
       </thead>
-      {groups.map((group) => (
-        <tbody key={group.title}>
+      {groups.map((group, index) => {
+        const accordionEnabled = groups.length > 1
+        const expanded = !accordionEnabled || expandedGroups.has(group.title)
+        const contentId = `${tableId}-group-${index}`
+        const controlIds = group.techniques.map((_, rowIndex) => `${contentId}-row-${rowIndex}`).join(' ')
+        return <tbody key={group.title}>
           <tr className="analysis-section-row">
-            <th scope="rowgroup" colSpan={2}>{group.title}</th>
+            <th scope="rowgroup" colSpan={2}>
+              {accordionEnabled
+                ? <Button variant="quiet" className="analysis-section-toggle"
+                    aria-expanded={expanded} aria-controls={controlIds}
+                    onClick={() => setExpandedGroups(current => {
+                      const expanded = new Set(current)
+                      if (expanded.has(group.title)) expanded.delete(group.title)
+                      else expanded.add(group.title)
+                      return expanded
+                    })}>
+                    <span>{group.title}</span>
+                    {expanded ? <ChevronDown size={16} aria-hidden="true" /> : <ChevronRight size={16} aria-hidden="true" />}
+                  </Button>
+                : group.title}
+            </th>
           </tr>
-          {group.techniques.map((technique) => {
+          {group.techniques.map((technique, rowIndex) => {
             const result = results[technique]
             const count = solved ? 0 : result && 'count' in result ? result.count : null
             return (
-              <tr key={technique} className="analysis-data-row">
+              <tr key={technique} id={`${contentId}-row-${rowIndex}`} hidden={!expanded} className="analysis-data-row">
                 <th scope="row">
                   {onSelectTechnique && !solved
                     ? <button type="button" className="analysis-technique-link"
@@ -87,7 +121,7 @@ function AnalysisTable({
             )
           })}
         </tbody>
-      ))}
+      })}
     </table>
   )
 }
