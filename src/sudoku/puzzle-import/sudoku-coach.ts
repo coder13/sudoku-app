@@ -888,9 +888,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   }
   const standalone = publication !== null && !publication?.hasAuthorInstructions ? readCoachStandalone(data) : undefined
   if (standalone) return { ...standalone, ...(publication?.title && { title: publication.title }) }
-  const hasOddEvenLines = Array.isArray(data.givenConstraints) && data.givenConstraints.some(rule => record(rule) && rule.type === 'oddEven')
-  if (data.gridSize === 4 || isRectangularSize(data.gridSize) || isJigsawSize(data.gridSize) ||
-    data.gridSize === 9 && hasOddEvenLines) {
+  if (data.gridSize === 4 || isRectangularSize(data.gridSize) || isJigsawSize(data.gridSize)) {
     const reviewedEntropicRunaround = publication?.authoredRule === 'sized-entropic-runaround' && data.gridSize === 6 &&
       await sourceHash(code, data) === 'eaa3711145076e992c920d15677b5f02651e829cbec2b1ba95a0d37c7f93162f'
     const reviewedSkyscrapers = publication?.authoredRule === 'sized-skyscrapers' ||
@@ -1235,6 +1233,12 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
   for (const constraint of constraints) {
     if (!record(constraint) || !Array.isArray(constraint.segments) || typeof constraint.type !== 'string') {
       throw new Error('This Sudoku Coach puzzle has invalid rules.')
+    }
+    // Sudoku Coach's `oddEven` layer is a legacy cell-mark format. Its
+    // segments are not the alternating-line representation used by the app.
+    // Reject it until the original encoded cell parities can be preserved.
+    if (constraint.type === 'oddEven') {
+      throw new Error('This Sudoku Coach Odd/Even layer uses an unsupported legacy format.')
     }
     if (constraint.type !== 'consecutiveLine' &&
       Object.keys(constraint).some(key => !['id', 'type', 'segments', 'settings'].includes(key))) {
@@ -1662,7 +1666,7 @@ async function readCoachSized(data: Record<string, unknown>, code?: string, publ
     Object.keys(rule).every(key => ['id', 'type', 'segments', 'settings'].includes(key)) &&
     Array.isArray(rule.segments) && rule.segments.length === 0 &&
     (rule.settings === undefined || rule.settings === null || record(rule.settings) && Object.keys(rule.settings).length === 0)))
-  const supported = ['diagonalNegative', 'diagonalPositive', 'antiKnight', 'antiKing', 'nonconsecutive', 'greaterLess', 'cage', 'region', 'odd', 'even', 'oddEven', 'thermometer', 'betweenLine', 'renban', 'difference', 'ratio', 'arrow', 'regionSumLine', 'whisper', 'quadruple', 'modularLine', 'twoCellSum', 'littleKiller', 'sandwich', 'globalEntropy', ...(publishedNonogram || publishedSkyscrapers || publishedXSums ? ['cosmeticText'] : [])]
+  const supported = ['diagonalNegative', 'diagonalPositive', 'antiKnight', 'antiKing', 'nonconsecutive', 'greaterLess', 'cage', 'region', 'odd', 'even', 'thermometer', 'betweenLine', 'renban', 'difference', 'ratio', 'arrow', 'regionSumLine', 'whisper', 'quadruple', 'modularLine', 'twoCellSum', 'littleKiller', 'sandwich', 'globalEntropy', ...(publishedNonogram || publishedSkyscrapers || publishedXSums ? ['cosmeticText'] : [])]
   if (active.some(rule => !record(rule) || !supported.includes(String(rule.type)))) {
     throw new Error(`This ${grid.size} × ${grid.size} Sudoku Coach export includes an unsupported active rule.`)
   }
@@ -1701,27 +1705,6 @@ async function readCoachSized(data: Record<string, unknown>, code?: string, publ
           segment.cells.some(cell => !Number.isInteger(cell) || cell < 0 || cell >= grid.size ** 2) || segment.cells[0] === segment.cells[1] ||
           !gridCellsShareEdge(segment.cells[0], segment.cells[1], grid.size)) throw new Error('This Sudoku Coach puzzle has an invalid inequality sign.')
         return { type: 'inequality', less: segment.cells[0], greater: segment.cells[1] }
-      })
-    }
-    if (record(constraint) && constraint.type === 'oddEven') {
-      const settings = constraint.settings
-      if (Object.keys(constraint).some(key => !['id', 'type', 'segments', 'settings'].includes(key)) ||
-        hasData(settings) && (!record(settings) || Object.keys(settings).some(key => !LINE_STYLING.has(key))) ||
-        !Array.isArray(constraint.segments) || constraint.segments.length === 0) {
-        throw new Error('This Sudoku Coach Odd/Even Line uses unsupported settings or has no line segments.')
-      }
-      return constraint.segments.map(segment => {
-        if (!record(segment) || Object.keys(segment).some(key => key !== 'cells' && key !== 'parameters') ||
-          !Array.isArray(segment.cells) || segment.cells.length < 2 || hasData(segment.parameters)) {
-          throw new Error('This Sudoku Coach puzzle has an invalid Odd/Even Line.')
-        }
-        const cells = segment.cells
-        if (cells.some(cell => !Number.isInteger(cell) || cell < 0 || cell >= grid.size ** 2) ||
-          new Set(cells).size !== cells.length ||
-          cells.some((cell, index) => index > 0 && !gridCellsShareEdge(cells[index - 1], cell, grid.size))) {
-          throw new Error('This Sudoku Coach puzzle has an invalid Odd/Even Line.')
-        }
-        return { type: 'parity-line' as const, cells }
       })
     }
     if (record(constraint) && constraint.type === 'nonconsecutive') {
