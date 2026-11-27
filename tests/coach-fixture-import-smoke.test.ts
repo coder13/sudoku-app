@@ -91,7 +91,7 @@ test('every imported sized Coach rule rejects unknown engine fields', async () =
   assert.equal(mutations, 128)
 })
 
-test('preserved Coach exports reject unknown fields on every populated rule layer, setting and segment', async () => {
+test('preserved Coach exports reject unknown fields on every populated layer, setting, segment and parameter', async () => {
   let mutations = 0
   for (const [code, source] of [...codes].sort(([, left], [, right]) => left.localeCompare(right))) {
     const payload = await decodeSudokuCoachPayload(code)
@@ -129,11 +129,26 @@ test('preserved Coach exports reject unknown fields on every populated rule laye
           await assert.rejects(detectPuzzle(coachCode({ ...payload, givenConstraints: changed })),
             `${source}: unknown segment data on Coach ${original?.type ?? 'rule'} layer ${index + 1}, segment ${segmentIndex + 1} must reject the whole import`)
           mutations++
+
+          if (segment.parameters && typeof segment.parameters === 'object' && !Array.isArray(segment.parameters)) {
+            const parameterMutation = structuredClone(constraints)
+            const parameterLayer = parameterMutation[index]
+            const parameterSegment = parameterLayer && typeof parameterLayer === 'object' && !Array.isArray(parameterLayer) &&
+              Array.isArray(parameterLayer.segments) ? parameterLayer.segments[segmentIndex] : undefined
+            assert.ok(parameterSegment && typeof parameterSegment === 'object' && !Array.isArray(parameterSegment))
+            const parameters = parameterSegment.parameters && typeof parameterSegment.parameters === 'object' &&
+              !Array.isArray(parameterSegment.parameters) ? parameterSegment.parameters : {}
+            parameterSegment.parameters = { ...parameters, futureSemantics: true }
+
+            await assert.rejects(detectPuzzle(coachCode({ ...payload, givenConstraints: parameterMutation })),
+              `${source}: unknown parameter data on Coach ${original?.type ?? 'rule'} layer ${index + 1}, segment ${segmentIndex + 1} must reject the whole import`)
+            mutations++
+          }
         }
       }
     }
   }
-  assert.equal(mutations, 3822)
+  assert.equal(mutations, 6610)
 })
 
 test('every preserved Coach Sudoku export survives public sharing and reopen', async () => {
