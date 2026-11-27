@@ -1038,15 +1038,16 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   if (publication?.authoredRule === 'partial-regions' && !artwork?.partialRegions) {
     throw new Error('The export does not match its published region outlines.')
   }
-  const guideLayers = constraints.some(layer => record(layer) && layer.type === 'whisper') &&
+  const hasQuadruples = constraints.some(layer => record(layer) && layer.type === 'quadruple')
+  const declaredLettered = publication?.authoredRule === 'lettered-quadruples'
+  const lettered = await coachConstraintPrefixHash(code, data, 12) === sandwichRollExport && (!publication || declaredLettered)
+  const guideLayers = !lettered && constraints.some(layer => record(layer) && layer.type === 'whisper') &&
     constraints.some(layer => record(layer) && layer.type === 'cosmeticShape')
     ? constraints.filter(layer => record(layer) && (layer.type === 'cosmeticShape' || layer.type === 'cosmeticText')) : []
   const artworkLayers = artwork && 'layers' in artwork ? artwork.layers ?? [] : artwork ? [artwork.layer] : []
   const cellColours = readCoachColourCells(data.colours, data.givenColours)
-  const hasQuadruples = constraints.some(layer => record(layer) && layer.type === 'quadruple')
   const hasShapeLayer = constraints.some(layer => record(layer) && layer.type === 'cosmeticShape')
   const declaredInsideGrid = publication?.authoredRule === 'inside-grid'
-  const declaredLettered = publication?.authoredRule === 'lettered-quadruples'
   const exportHash = (!publication && hasQuadruples || declaredInsideGrid || declaredLettered || hasShapeLayer || !fog && cellColours?.some(Boolean))
     ? await sourceHash(code, data) : undefined
   const entropyLayers = sunnyEntropyMatch
@@ -1064,7 +1065,6 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     : guideLayers.length ? constraints.filter(layer => !guideLayers.includes(layer))
     : reviewedLayers.length ? constraints.filter(layer => !reviewedLayers.includes(layer)) : constraints
   const insideGrid = await coachConstraintPrefixHash(code, data, 14) === codeCrackerExport && (!publication || declaredInsideGrid)
-  const lettered = await coachConstraintPrefixHash(code, data, 12) === sandwichRollExport && (!publication || declaredLettered)
   if (declaredLettered && !lettered) throw new Error('The export does not match its published lettered Quadruples.')
   if (declaredInsideGrid && !insideGrid) throw new Error('The export does not match its published Inside Grid.')
   const rawQuadArrows = !publication && await coachConstraintPrefixHash(code, data, 1) === quadArrowsExport
@@ -1083,7 +1083,17 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     distantNeighbors ? 'distant-neighbors' : authoredAsnFXSums ? 'x-sum' :
       reviewed220VLineLegend ? 'line-colours' : authoredAllBlackDots ? 'all-black-dots' : publication?.authoredRule
   const sourceRules = distantNeighbors ? encodedRules.filter(layer => !record(layer) || layer.type !== 'cosmeticLine') : encodedRules
-  let rules = lettered ? readCoachLetteredQuadruples(encodedRules)
+  // Lettered Quadruples use decorative text and shapes alongside unrelated
+  // guide artwork. Keep their captions and circles while filtering guide art.
+  const letteredLayers = constraints.filter(layer => {
+    if (!record(layer)) return true
+    if (layer.type === 'cosmeticText' && record(layer.settings)) {
+      return layer.settings.gridSnapToCentres === false && layer.settings.gridSnapToEdges === false
+    }
+    if (layer.type === 'cosmeticShape' && record(layer.settings)) return layer.settings.gridSnapToCorners === true
+    return !guideLayers.includes(layer)
+  })
+  let rules = lettered ? readCoachLetteredQuadruples(letteredLayers)
     : insideGrid ? readCoachInsideGrid(encodedRules) : readCoachRules(sourceRules, { regions, authoredRule })
   if (textClues) rules.push(textClues.rule)
   if (entropyGroupOrder) rules.push(...entropyGroupOrder.source.orders.map(({ cells, digits }) => ({
