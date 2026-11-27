@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { runEngine } from '../src/sudoku/engine.ts'
@@ -113,6 +114,17 @@ test('published Sudoku Coach completions pass the Rust engine with every importe
   assert.equal(checked, 77)
   assert.equal(transformedChecks, 464)
   assert.deepEqual([...standaloneSeen].sort(), [...standaloneCoachSolutionSources].sort())
+})
+
+test('the published Every Constraint combination compiles and propagates in the Rust engine', async () => {
+  const fixture = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-every-constraint.json', import.meta.url), 'utf8'))
+  const imported = await detectPuzzle(fixture.examples[0].code)
+  assert.ok(imported.variant)
+  const candidates = await runEngine({ type: 'variant', operation: 'candidates', position: { puzzle: imported.variant.puzzle } })
+  assert.equal(candidates.length, 81)
+  for (const [cell, mask] of candidates.entries()) {
+    assert.ok(mask > 0 && (mask & ~0x1ff) === 0, `combined source leaves valid candidates at cell ${cell}`)
+  }
 })
 
 test('published Jigsaw Coach combination needs both Killer and Little Killer rules for uniqueness', async () => {

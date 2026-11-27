@@ -68,6 +68,45 @@ test('every preserved raw Coach fixture imports or matches its explicit unsuppor
   assert.deepEqual([...rejected].sort(), [...expectedRejections.keys()].sort())
 })
 
+test('the published Every Constraint Coach source retains every mixed rule family', async () => {
+  const fixture = JSON.parse(readFileSync(join(fixturePath, 'sudoku-coach-every-constraint.json'), 'utf8'))
+  const source = fixture.examples[0]
+  const imported = await detectPuzzle(source.code)
+  assert.equal(imported.givens, '0'.repeat(81))
+  assert.deepEqual(Object.fromEntries([...imported.variant!.puzzle.rules.reduce((counts, { type }) => {
+    counts.set(type, (counts.get(type) ?? 0) + 1)
+    return counts
+  }, new Map<string, number>())].sort(([left], [right]) => left.localeCompare(right))), {
+    'anti-king': 1,
+    'anti-knight': 1,
+    arrow: 1,
+    between: 1,
+    'consecutive-run': 1,
+    entropic: 1,
+    'global-entropy': 1,
+    inequality: 3,
+    'killer-cages': 1,
+    kropki: 1,
+    'labeled-dots': 1,
+    'little-killer': 1,
+    lockout: 1,
+    maximum: 1,
+    minimum: 1,
+    modular: 1,
+    'non-consecutive': 1,
+    palindrome: 1,
+    parity: 2,
+    'pill-arrow': 1,
+    quadruple: 1,
+    'region-sum': 1,
+    renban: 1,
+    sandwich: 18,
+    thermometer: 1,
+    whispers: 1,
+    xv: 1,
+  })
+})
+
 test('all preserved published Coach links import the same rules as their raw exports', async ({ mock }) => {
   assert.equal(publicCoachLinks.size, 81)
   const authoredRules: Record<string, string> = {
