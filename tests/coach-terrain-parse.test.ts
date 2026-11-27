@@ -9,7 +9,7 @@ import { useWasmWorker } from './helpers/wasm-worker.ts'
 
 useWasmWorker()
 
-const source = JSON.parse(readFileSync(new URL('./fixtures/sandwich-terrain-unsupported.json', import.meta.url), 'utf8')) as {
+const source = JSON.parse(readFileSync(new URL('./fixtures/coach-terrain.json', import.meta.url), 'utf8')) as {
   source: { sudoku: string; solution: string }
   payload: Record<string, unknown> & { gridSize: number; colours: string[]; givenColours: string; givenConstraints: unknown[] }
 }

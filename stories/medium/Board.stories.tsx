@@ -17,7 +17,7 @@ import authoredLayers from '../../tests/fixtures/sudoku-coach-authored-layers.js
 import coachNonogram from '../../tests/fixtures/sized-coach-nonogram.json'
 import coachSkyscrapers from '../../tests/fixtures/skyscrapers-coach-9W3o.json'
 import coachCrust from '../../tests/fixtures/sudoku-coach-crust.json'
-import coachTerrain from '../../tests/fixtures/sandwich-terrain-unsupported.json'
+import coachTerrain from '../../tests/fixtures/coach-terrain.json'
 import coachRowEquations from '../../tests/fixtures/coach-row-equations.json'
 import coachFractionalRegions from '../../tests/fixtures/coach-fractional-regions.json'
 import coachUnknownCageSums from '../../tests/fixtures/sudoku-coach-unknown-cage-totals.json'

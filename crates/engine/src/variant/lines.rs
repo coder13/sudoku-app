@@ -1842,7 +1842,7 @@ mod terrain_sandwich_tests {
     #[test]
     fn terrain_sandwich_accepts_the_published_d8hp_solution_and_rejects_a_changed_clue() {
         let source: serde_json::Value = serde_json::from_str(include_str!(
-            "../../../../tests/fixtures/sandwich-terrain-unsupported.json"
+            "../../../../tests/fixtures/coach-terrain.json"
         ))
         .unwrap();
         let solution: [u8; 81] = source["source"]["solution"]

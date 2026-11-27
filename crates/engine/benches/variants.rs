@@ -202,10 +202,8 @@ fn exact_search_benchmark() {
 }
 
 fn terrain_sandwich_benchmark() {
-    let source: serde_json::Value = serde_json::from_str(include_str!(
-        "../../../tests/fixtures/sandwich-terrain-unsupported.json"
-    ))
-    .unwrap();
+    let source: serde_json::Value =
+        serde_json::from_str(include_str!("../../../tests/fixtures/coach-terrain.json")).unwrap();
     let payload = &source["payload"];
     assert_eq!(
         payload["colours"],

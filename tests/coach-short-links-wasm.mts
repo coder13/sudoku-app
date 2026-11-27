@@ -64,7 +64,7 @@ const xSumTranscription: Pick<Fixture, 'puzzle' | 'solution'> =
   JSON.parse(readFileSync(new URL('./fixtures/x-sum-coach-transcription.json', import.meta.url), 'utf8'))
 const disconnectedJigsaw = JSON.parse(readFileSync(new URL('./fixtures/disconnected-jigsaw-coach.json', import.meta.url), 'utf8')) as
   Fixture & { regionColors: string[] }
-const terrain = JSON.parse(readFileSync(new URL('./fixtures/sandwich-terrain-unsupported.json', import.meta.url), 'utf8')).source
+const terrain = JSON.parse(readFileSync(new URL('./fixtures/coach-terrain.json', import.meta.url), 'utf8')).source
 
 function coachPage(id: string, code: string, name: string, details: Record<string, unknown> = {}) {
   const specificSudoku = {

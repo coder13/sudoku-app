@@ -4,7 +4,7 @@ import { gzipSync } from 'node:zlib'
 import { createEngineHandler } from '../src/sudoku/engine-protocol.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 
-const source = JSON.parse(await readFile(new URL('../tests/fixtures/sandwich-terrain-unsupported.json', import.meta.url), 'utf8')).source
+const source = JSON.parse(await readFile(new URL('../tests/fixtures/coach-terrain.json', import.meta.url), 'utf8')).source
 const imported = await detectPuzzle(source.sudoku)
 assert.ok(imported.variant, 'the published Coach Terrain source should import as a variant')
 
