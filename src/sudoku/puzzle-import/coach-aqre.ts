@@ -204,9 +204,14 @@ function countRegions(kind: Spec['kind'], regions: readonly (readonly number[])[
 export async function readReviewedCoachAqre(code: string, data: Record<string, unknown>): Promise<{
   source: CoachAqreSource
 } | undefined> {
-  const hash = await sourceHash(code, data)
-  if (!hash) return
-  const spec = SOURCES.get(hash)
+  if (!Array.isArray(data.givenConstraints)) return
+  let spec: Spec | undefined
+  for (let count = data.givenConstraints.length; count > 0; count -= 1) {
+    const base = { ...data, givenConstraints: data.givenConstraints.slice(0, count) }
+    const hash = await sourceHash(code, base)
+    const match = hash && SOURCES.get(hash)
+    if (match) { spec = match; break }
+  }
   if (!spec) return
   if (data.gridSize !== 9 || typeof data.givenDigits !== 'string' || !/^[0-9]{81}$/.test(data.givenDigits) ||
     !Array.isArray(data.regions) || data.regions.length ||

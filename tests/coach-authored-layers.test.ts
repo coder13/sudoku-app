@@ -270,6 +270,17 @@ test('#543 and #546 import their Aqre shading, regions, and companion clues', as
   assert.equal(game.variant?.puzzle.rules?.some(rule => rule.type === 'aqre'), true)
 })
 
+test('#543 retains supported companion rules appended after its reviewed Aqre layers', async () => {
+  const source = fixture.examples.find(example => example.issue === 543)
+  assert.ok(source)
+  const data = await decodeSudokuCoachPayload(source.code)
+  const ratio = { type: 'ratio', segments: [{ cells: [0, 1], parameters: {} }] }
+  const imported = await detectPuzzle(coachCode({ ...data, givenConstraints: [...data.givenConstraints, ratio] }))
+  const rules = imported.variant?.puzzle.rules
+  assert.ok(rules?.some(rule => rule.type === 'aqre'))
+  assert.ok(rules?.some(rule => rule.type === 'kropki' && rule.ratioTwo?.pairs.some(([a, b]) => a === 0 && b === 1)))
+})
+
 test('Aqre import rejects off-grid artwork coordinates instead of changing its regions', async () => {
   const source = fixture.examples.find(example => example.issue === 543)
   assert.ok(source)
