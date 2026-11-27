@@ -94,12 +94,28 @@ type PlacedRule = Extract<VariantRule, { type: 'parity' | 'digit-restriction' | 
 
 /** Local restrictions from placed digits. Other rules still contribute their own checks. */
 export function variantPlacedRuleState(puzzle: VariantPuzzle | undefined, values: string) {
+  const conditionalNeighbors = puzzle?.rules?.filter((rule): rule is Extract<VariantRule, { type: 'conditional-neighbor' }> => rule.type === 'conditional-neighbor') ?? []
   const rules = puzzle?.rules?.filter((rule): rule is PlacedRule => rule.type === 'parity' || rule.type === 'digit-restriction' || rule.type === 'thermometer' || rule.type === 'inside-grid' || rule.type === 'lettered-quadruples' ||
     rule.type === 'consecutive-run' && rule.fromBulb || isQuadrupleRule(rule))
-  if (!rules?.length) return
+  if (!rules?.length && !conditionalNeighbors.length) return
   const allowed = Array<number>(81).fill(ALL_DIGITS)
   const conflicts = new Set<number>()
-  for (const rule of rules) {
+  for (const rule of conditionalNeighbors) {
+    for (let cell = 0; cell < 81; cell++) {
+      const row = Math.floor(cell / 9), column = cell % 9
+      const options = rule.alternatives.flatMap(alternative => {
+        const targetRow = row + alternative.rowOffset, targetColumn = column + alternative.columnOffset
+        return targetRow >= 0 && targetRow < 9 && targetColumn >= 0 && targetColumn < 9
+          ? [{ cell: targetRow * 9 + targetColumn, digit: alternative.digit }] : []
+      })
+      const placed = Number(values[cell])
+      if (placed === rule.triggerDigit && !options.some(option => Number(values[option.cell]) === option.digit)) conflicts.add(cell)
+      else if (values[cell] === '0' && options.length && options.every(option => values[option.cell] !== '0' && Number(values[option.cell]) !== option.digit)) {
+        allowed[cell] &= ~digitMask(rule.triggerDigit)
+      }
+    }
+  }
+  for (const rule of rules ?? []) {
     if (rule.type === 'parity') {
       const parity = rule.parity === 'odd' ? 0b101010101 : 0b010101010
       for (const cell of rule.cells) {

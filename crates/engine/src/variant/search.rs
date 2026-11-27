@@ -425,6 +425,7 @@ impl CompiledVariant {
                 .neighbor_matches
                 .iter()
                 .any(|clue| !clue.permits(&position.board))
+                || self.conditional_neighbors.iter().any(|rule| !rule.permits(&position.board))
             {
                 return Some(0);
             }
@@ -678,6 +679,15 @@ impl CompiledVariant {
             }
             for clue in &self.neighbor_matches {
                 match clue.restrict(&position.board, &mut position.masks) {
+                    Ok(restricted) => changed |= restricted,
+                    Err(()) => {
+                        position.masks.fill(0);
+                        return;
+                    }
+                }
+            }
+            for rule in &self.conditional_neighbors {
+                match rule.restrict(&position.board, &mut position.masks) {
                     Ok(restricted) => changed |= restricted,
                     Err(()) => {
                         position.masks.fill(0);

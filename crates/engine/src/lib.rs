@@ -91,7 +91,7 @@ pub use technique::{ProfileError, SolverProfile, Technique};
 pub use variant::{
     AqreCount, AqreGivenShade, AqreKind, AqrePositionError, AqreRegion, AqreShade, ClueDirection,
     CompiledVariant, DEFAULT_VARIANT_SEARCH_NODES, Diagonal, EntropyGroup, KillerCage,
-    LetteredQuadruple, MarkedPairs, NeighborMatchClue, Parity, PuzzleRule, RegionLayout,
+    ConditionalNeighborAlternative, LetteredQuadruple, MarkedPairs, NeighborMatchClue, Parity, PuzzleRule, RegionLayout,
     VARIANT_FORMAT_VERSION, VARIANT_SCORING_VERSION, VariantClueScope, VariantConstraintCheck,
     VariantConstraintScope, VariantDeduction, VariantDefinitionError, VariantEntropyAreaProof,
     VariantEvidence, VariantExclusionPremise, VariantGroupLineHouseCase,

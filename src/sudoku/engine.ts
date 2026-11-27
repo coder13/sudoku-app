@@ -79,6 +79,7 @@ export type VariantRule =
       count?: { type: 'fixed'; value: number } | { type: 'digit-cell'; cell: number }
     }[]; givenShades: readonly { cell: number; shade: 'unshaded' | 'shaded' }[] }
   | { type: 'neighbor-match'; clues: readonly { cell: number; digit: number }[] }
+  | { type: 'conditional-neighbor'; triggerDigit: number; alternatives: readonly { rowOffset: number; columnOffset: number; digit: number }[] }
   | { type: 'whispers'; cells: readonly number[]; minDifference: number }
   | { type: 'arrow'; circle: number; cells: readonly number[] }
   | { type: 'pill-arrow'; pill: readonly [number, number]; cells: readonly number[]; fromTens?: boolean }

@@ -71,6 +71,8 @@ mod lettered_quadruples;
 use lettered_quadruples::LetteredQuadruples;
 mod neighbor_match;
 use neighbor_match::CompiledNeighborMatch;
+mod conditional_neighbor;
+use conditional_neighbor::CompiledConditionalNeighbor;
 mod magic_square;
 use magic_square::CompiledMagicSquare;
 mod unknown_cage_sums;
@@ -269,6 +271,22 @@ pub struct NeighborMatchClue {
     pub digit: u8,
 }
 
+/// A relative neighbor option for conditional digit rules.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(
+    feature = "wasm-api",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(rename_all = "camelCase", deny_unknown_fields)
+)]
+pub struct ConditionalNeighborAlternative {
+    /// Row displacement from the trigger cell.
+    pub row_offset: i8,
+    /// Column displacement from the trigger cell.
+    pub column_offset: i8,
+    /// Required digit in the relative cell.
+    pub digit: u8,
+}
+
 /// An affine value change applied before a Terrain arithmetic rule is checked.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[cfg_attr(
@@ -369,6 +387,13 @@ rules! {
     NeighborMatch => "neighbor-match" {
         /// Clue cells and their required neighboring digits.
         clues: Vec<NeighborMatchClue>,
+    }
+    /// If a cell contains the trigger digit, at least one relative neighbor must contain its listed digit.
+    ConditionalNeighbor => "conditional-neighbor" {
+        /// Digit that activates the condition in each cell.
+        trigger_digit: u8,
+        /// Relative positions and the digit required at each position.
+        alternatives: Vec<ConditionalNeighborAlternative>,
     }
     /// Require each row, column, and diagonal of a 3 × 3 square to sum to 15.
     MagicSquare => "magic-square" {
@@ -895,6 +920,7 @@ pub struct CompiledVariant {
     quadruples: Vec<Quadruple>,
     lettered_quadruples: Option<LetteredQuadruples>,
     neighbor_matches: Vec<CompiledNeighborMatch>,
+    conditional_neighbors: Vec<CompiledConditionalNeighbor>,
     magic_squares: Vec<CompiledMagicSquare>,
     unknown_cage_sums: Vec<CompiledUnknownCageSums>,
     global_entropy: Option<usize>,

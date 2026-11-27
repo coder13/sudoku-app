@@ -35,6 +35,43 @@ test('detects existing formats and compact Classic links', async () => {
   ]
   for (const [input, format] of inputs) assert.deepEqual(await detectPuzzle(input), { givens: STARTER, format }, input)
 })
+test('imports SudokuPad Anti-Knight and conditional neighbor rules for Dutch Flatmates', async () => {
+  const data = {
+    metadata: {
+      title: 'Dutch Flatmates', author: 'aqjhs', antiknight: true,
+      rules: [
+        'Normal sudoku rules apply.',
+        "Cells one chess knight's move apart may not have the same digit.",
+        "Dutch Flatmates: Every 5 in the grid must have a '1' directly above it or a '9' directly below it. It may have both, but it doesn't need both.",
+      ],
+    },
+    cells: Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => ({}))),
+    regions: Array.from({ length: 9 }, (_, box) => Array.from({ length: 9 }, (_, offset) => [
+      Math.floor(box / 3) * 3 + Math.floor(offset / 3), (box % 3) * 3 + offset % 3,
+    ])),
+  }
+  const imported = await detectPuzzle('ctc' + lzString.compressToBase64(JSON.stringify(data)))
+  assert.equal(imported.format, 'SudokuPad')
+  assert.deepEqual(imported.variant?.puzzle.rules, [
+    { type: 'anti-knight' },
+    { type: 'conditional-neighbor', triggerDigit: 5, alternatives: [
+      { rowOffset: -1, columnOffset: 0, digit: 1 }, { rowOffset: 1, columnOffset: 0, digit: 9 },
+    ] },
+  ])
+  assert.deepEqual(variantRuleDescriptions(imported.variant!.puzzle), [
+    'Fill each row, column, and box with the digits 1–9 once each.',
+    'Cells a chess knight’s move apart cannot share a digit. A knight moves two cells in one direction and one cell across.',
+    'Every 5 must have a 1 directly above it or a 9 directly below it. It may have both.',
+  ])
+  const values = Array(81).fill('0')
+  values[40] = '5'
+  values[31] = '1'
+  assert.equal(conflictsOf(values.join(''), imported.variant!.puzzle).has(40), false)
+  values[31] = '2'
+  values[49] = '8'
+  assert.equal(conflictsOf(values.join(''), imported.variant!.puzzle).has(40), true)
+})
+
 test('imports embedded puzzles with no browser location and resolves shares only on the app origin', async t => {
   const priorWindow = Object.getOwnPropertyDescriptor(globalThis, 'window')
   const origin = 'https://sudoku.example'
