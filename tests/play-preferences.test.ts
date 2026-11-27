@@ -39,6 +39,9 @@ test('play controls save immediately and survive a fresh app instance', () => {
 
   store.set('expandedTechniqueGroups', [])
   assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot().expandedTechniqueGroups, [])
+  assert.deepEqual(parsePlayPreferences({
+    expandedTechniqueGroups: ['Variant techniques', 'Locked candidates', 'Candidate restrictions'],
+  }).expandedTechniqueGroups, ['Candidate restrictions', 'Locked candidates'])
 })
 
 test('overlay modes stay exclusive and keep the Pen or Pencil choice across reloads', () => {

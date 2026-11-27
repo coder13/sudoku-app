@@ -137,7 +137,8 @@ export function parsePlayPreferences(value: unknown): PlayPreferences {
     highlightCandidatePairs: saved.highlightCandidatePairs === true,
     showKillerCombinations: saved.showKillerCombinations !== false,
     expandedTechniqueGroups: Array.isArray(expandedTechniqueGroups) && expandedTechniqueGroups.every(title => typeof title === 'string')
-      ? [...new Set<string>(expandedTechniqueGroups)] : null,
+      ? [...new Set<string>(expandedTechniqueGroups.map(title => title === 'Variant techniques' ? 'Candidate restrictions' : title))]
+      : null,
     multi: saved.multi === true,
     puzzleBrowserView: saved.puzzleBrowserView === 'past' || saved.puzzleBrowserView === 'saved'
       ? saved.puzzleBrowserView : 'active',

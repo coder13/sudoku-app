@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
+import { ALGEBRAIC_CAGE_TECHNIQUE } from '../src/sudoku/algebraic-play.ts'
 import type { DeductionAction, DeductionMatch, EngineRequest, EngineResponse, HintChoice } from '../src/sudoku/engine.ts'
 import { STARTER } from '../src/sudoku/formats.ts'
 import { ANALYSIS_GROUPS, ANALYSIS_TECHNIQUES, analysisGroupsForCatalog, classicBasicTechniqueCounts, filterAnalysisGroups, summarizeDeductions, summarizeGroup, techniqueHintsFromMatches } from '../src/sudoku/puzzle-analysis.ts'
+import { SIZED_RULE_TECHNIQUES } from '../src/sudoku/sized-rule-play.ts'
 import { cachedTechniqueCounts, watchTechniqueScan, techniqueScanKey } from '../src/sudoku/technique-scan.ts'
 
 function match(actions: DeductionAction[], techniques: string[]): DeductionMatch {
@@ -20,33 +22,49 @@ function match(actions: DeductionAction[], techniques: string[]): DeductionMatch
   }
 }
 
-test('the technique finder includes every detector in the Rust engine catalog', () => {
-  const source = readFileSync(new URL('../crates/engine/src/technique.rs', import.meta.url), 'utf8')
+function rustTechniqueIds(path: string) {
+  const source = readFileSync(new URL(path, import.meta.url), 'utf8')
   const start = source.indexOf('catalog! {')
+  assert.notEqual(start, -1)
   const rustCatalog = source.slice(start, source.indexOf('\n}', start))
-  const ids = [...rustCatalog.matchAll(/^\s*\w+:\s*"([^"]+)"/gm)].map((match) => match[1])
-  assert.ok(ids.length >= 72)
-  assert.equal(new Set(ANALYSIS_TECHNIQUES).size, ANALYSIS_TECHNIQUES.length)
-  assert.deepEqual(new Set(ANALYSIS_TECHNIQUES), new Set([...ids, 'locked-candidates']))
+  return [...rustCatalog.matchAll(/^\s*\w+:\s*"([^"]+)"/gm)].map((match) => match[1])
+}
 
-  const groups = analysisGroupsForCatalog(ids.map((id) => ({ id })))
-  assert.equal(groups.length, ANALYSIS_GROUPS.filter(({ techniques }) => techniques.some((id) => ids.includes(id))).length)
-  assert.deepEqual(groups.flatMap(({ techniques }) => techniques).sort(), [...ids].sort())
-  const futureGroups = analysisGroupsForCatalog([...ids.map((id) => ({ id })), { id: 'future-technique' }])
+test('the technique finder categorizes every Classic, variant and sized detector it displays', () => {
+  const classicIds = rustTechniqueIds('../crates/engine/src/technique.rs')
+  const variantIds = rustTechniqueIds('../crates/engine/src/variant/logical.rs')
+  assert.ok(classicIds.length >= 72)
+  assert.ok(variantIds.length >= 60)
+  const ids = new Set([...classicIds, ...variantIds, ...SIZED_RULE_TECHNIQUES, ALGEBRAIC_CAGE_TECHNIQUE])
+  assert.equal(new Set(ANALYSIS_TECHNIQUES).size, ANALYSIS_TECHNIQUES.length)
+  assert.deepEqual(new Set(ANALYSIS_TECHNIQUES), ids)
+
+  const groups = analysisGroupsForCatalog(classicIds)
+  assert.deepEqual(groups.map(({ title }) => title), ANALYSIS_GROUPS
+    .filter(({ techniques }) => techniques.some(id => classicIds.includes(id))).map(({ title }) => title))
+  assert.deepEqual(groups.flatMap(({ techniques }) => techniques).sort(), [...classicIds].sort())
+  const futureGroups = analysisGroupsForCatalog([...ids, 'future-technique'])
   assert.deepEqual(futureGroups.at(-2), { title: 'Other techniques', techniques: ['future-technique'] })
   assert.equal(futureGroups.at(-1)?.title, 'Advanced patterns')
 })
 
-test('variant locked candidates share the Locked candidates section', () => {
-  const groups = analysisGroupsForCatalog(['locked-candidates', 'anti-knight', 'anti-king', 'conditional-neighbor', 'future-technique']
-    .map((id) => ({ id })))
-  assert.deepEqual(groups, [
-    { title: 'Locked candidates', techniques: ['locked-candidates'] },
-    { title: 'Variant techniques', techniques: ['anti-knight', 'anti-king', 'conditional-neighbor'] },
-    { title: 'Other techniques', techniques: ['future-technique'] },
+test('direct variant and locked candidate deductions appear before advanced families', () => {
+  assert.deepEqual(analysisGroupsForCatalog([
+    'pattern-overlay', 'forcing-net', 'linked-clue-contradiction', 'whispers-house-support', 'arrow',
+    'thermometer', 'renban-locked-digit', 'non-consecutive-locked-candidates-3', 'non-consecutive-locked-candidates-2',
+    'pointing', 'locked-candidates', 'anti-knight', 'anti-king', 'non-consecutive', 'conditional-neighbor', 'naked-single',
+  ]), [
+    { title: 'Singles', techniques: ['naked-single'] },
+    { title: 'Candidate restrictions', techniques: ['anti-knight', 'anti-king', 'non-consecutive', 'conditional-neighbor'] },
+    { title: 'Locked candidates', techniques: [
+      'pointing', 'non-consecutive-locked-candidates-2', 'non-consecutive-locked-candidates-3', 'locked-candidates', 'renban-locked-digit',
+    ] },
+    { title: 'Lines and matching digits', techniques: ['thermometer'] },
+    { title: 'Cages and sums', techniques: ['arrow'] },
+    { title: 'Clue interactions', techniques: ['whispers-house-support'] },
+    { title: 'Forcing techniques', techniques: ['linked-clue-contradiction', 'forcing-net'] },
+    { title: 'Advanced patterns', techniques: ['pattern-overlay'] },
   ])
-  assert.deepEqual(analysisGroupsForCatalog(['pattern-overlay', 'anti-knight', 'future-technique'].map(id => ({ id })))
-    .map(({ title }) => title), ['Variant techniques', 'Other techniques', 'Advanced patterns'])
 })
 
 test('count distinct action targets for each technique even with overlapping proofs and moves', () => {
