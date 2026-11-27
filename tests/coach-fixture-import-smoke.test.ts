@@ -4,6 +4,8 @@ import { join, relative } from 'node:path'
 import { test } from 'node:test'
 import { syncDatabase } from './helpers/sync-database.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
+import { coachCode } from './helpers/coach-code.ts'
 
 const fixtureRoot = new URL('./fixtures/', import.meta.url)
 const fixturePath = new URL(fixtureRoot).pathname
@@ -46,6 +48,39 @@ test('every preserved raw Coach fixture imports or matches its explicit unsuppor
   }
 
   assert.deepEqual([...rejected].sort(), [...expectedRejections.keys()].sort())
+})
+
+test('preserved Coach exports reject unknown fields on every populated rule layer, setting and segment', async () => {
+  let mutations = 0
+  for (const [code, source] of [...codes].sort(([, left], [, right]) => left.localeCompare(right))) {
+    const payload = await decodeSudokuCoachPayload(code)
+    const constraints = payload.givenConstraints
+    if (!Array.isArray(constraints)) continue
+    for (let index = 0; index < constraints.length; index++) {
+      const original = constraints[index]
+      for (const location of ['layer', 'settings', 'segment'] as const) {
+        const changed = structuredClone(constraints)
+        const layer = changed[index]
+        if (!layer || typeof layer !== 'object' || Array.isArray(layer)) continue
+        if (location === 'layer') {
+          layer.futureSemantics = true
+        } else if (location === 'settings') {
+          const settings = layer.settings && typeof layer.settings === 'object' && !Array.isArray(layer.settings)
+            ? layer.settings : {}
+          layer.settings = { ...settings, futureSemantics: true }
+        } else if (Array.isArray(layer.segments) && layer.segments.length) {
+          const segment = layer.segments[0]
+          if (!segment || typeof segment !== 'object' || Array.isArray(segment)) continue
+          segment.futureSemantics = true
+        } else continue
+
+        await assert.rejects(detectPuzzle(coachCode({ ...payload, givenConstraints: changed })),
+          `${source}: unknown ${location} data on Coach ${original?.type ?? 'rule'} layer ${index + 1} must reject the whole import`)
+        mutations++
+      }
+    }
+  }
+  assert.equal(mutations, 1476)
 })
 
 test('every preserved Coach Sudoku export survives public sharing and reopen', async () => {
