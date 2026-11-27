@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createEngineSession } from '../../sudoku/engine'
-import type { Game } from '../../sudoku/game'
+import { hasUniquenessProof, type Game } from '../../sudoku/game'
 import { applyPuzzleGrade, needsPuzzleGrade, ratePuzzle } from '../../sudoku/puzzle-rating'
 import { roomStore } from '../../sudoku/storage'
 
@@ -26,7 +26,8 @@ export function usePlayPuzzleRating({ game, givens, variant, nonUnique, draft, c
     if (draft || game.paused || !needsRating && !needsAttempt) return
     let current = true
     const engine = createEngineSession()
-    void ratePuzzle(givens, variant, engine.run, nonUnique).then(grade => {
+    void ratePuzzle(givens, variant, engine.run, nonUnique,
+      Boolean(variant && hasUniquenessProof(game))).then(grade => {
       if (!current) return
       roomStore.update(game.id, latest => latest.givens === givens && latest.variant === variant
         ? applyPuzzleGrade(latest, grade)

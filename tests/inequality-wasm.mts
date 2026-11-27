@@ -48,7 +48,7 @@ test('the complete published mixed puzzle imports, offers multiple hints and rep
   assert.deepEqual(trace.steps.slice(0, prior.steps.length), prior.steps)
   const stale = { ...game, variantRatingVersion: 19 }
   assert.ok(puzzleGradeIsStale(stale))
-  assert.equal(applyPuzzleGrade(stale, null).variantRatingVersion, 21)
+  assert.equal(applyPuzzleGrade(stale, null).variantRatingVersion, 22)
   assert.deepEqual(await runEngine({ type: 'variant', operation: 'rate', position, techniqueOrder }), trace.rating)
   let played = game
   const snapshot = () => ({

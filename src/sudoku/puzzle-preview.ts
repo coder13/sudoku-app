@@ -210,7 +210,8 @@ async function preparePuzzlePreview(imported: ImportedPuzzle, games: readonly Ga
     if (savedGrade) return { ...preview, game: applyPuzzleGrade(game, savedGrade), grade: savedGrade }
     if (deferRating) return { ...preview, game, ratingPending: true }
     try {
-      const grade = await ratePuzzle(givens, game.variant, run, game.nonUnique)
+      const grade = await ratePuzzle(givens, game.variant, run, game.nonUnique,
+        Boolean(game.variant && hasUniquenessProof(game)))
       return { ...preview, game: applyPuzzleGrade(game, grade), grade }
     } catch { /* A validated puzzle can still be imported if rating is unavailable. */ }
   }

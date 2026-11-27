@@ -25,7 +25,7 @@ test('the published Between the Dots walkthrough replays independently checked c
   const old = { ...game, variantRatingVersion: 16, difficulty: null, score: null }
   assert.ok(puzzleGradeIsStale(old))
   const rerated = applyPuzzleGrade(old, await ratePuzzle(game.givens, game.variant))
-  assert.deepEqual([rerated.difficulty, rerated.score, rerated.variantRatingVersion], ['hard', 5566, 17])
+  assert.deepEqual([rerated.difficulty, rerated.score, rerated.variantRatingVersion], ['hard', 5566, 22])
 
   const position = variantPosition(game.variant)
   const order = await getVariantPlayOrder(position.puzzle)

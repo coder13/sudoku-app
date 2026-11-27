@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createEngineSession } from '../sudoku/engine'
+import { hasUniquenessProof } from '../sudoku/game'
 import { MAX_IMPORT_LENGTH, type ImportedPuzzle } from '../sudoku/puzzle-import'
 import { PuzzleVerificationError, type PhotoProgress, type PuzzlePreview } from '../sudoku/puzzle-preview'
 import { applyPuzzleGrade, ratePuzzle } from '../sudoku/puzzle-rating'
@@ -32,7 +33,8 @@ export function usePuzzleImportPreview(onPreview: PreviewRequest) {
     const engine = createEngineSession()
     const { game } = preview
     let current = true
-    void ratePuzzle(game.givens, game.variant, engine.run)
+    void ratePuzzle(game.givens, game.variant, engine.run, game.nonUnique,
+      Boolean(game.variant && hasUniquenessProof(game)))
       .then((grade) => {
         if (current)
           setPreview((latest) =>
