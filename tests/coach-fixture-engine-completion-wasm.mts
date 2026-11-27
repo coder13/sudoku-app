@@ -39,7 +39,7 @@ function coachProgress(givens: string, solution: string) {
 test('published Sudoku Coach completions pass the Rust engine with every imported rule combination', async () => {
   assert.equal(sources.size, 80)
   const standaloneSeen = new Set<string>()
-  let checked = 0
+  let checked = 0, transformedChecks = 0
 
   for (const source of sources.values()) {
     const imported = await detectPuzzle(source.code)
@@ -57,15 +57,14 @@ test('published Sudoku Coach completions pass the Rust engine with every importe
         puzzle: imported.variant.puzzle,
         entries: source.solution,
       } }), 'unique', sourceName)
-      const transformSensitive = imported.variant.puzzle.rules?.some(rule =>
-        ['magic-square', 'unknown-cage-sums', 'digit-order'].includes(rule.type))
-      if (transformSensitive) for (let symmetry = 0; symmetry < 8; symmetry++) {
+      for (let symmetry = 0; symmetry < 8; symmetry++) {
         const puzzle = reflectVariant(imported.variant.puzzle, symmetry)
         const solution = transformedBoard(source.solution, symmetry)
         assertVariantCompletion(puzzle, solution)
         assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: {
           puzzle, entries: solution,
         } }), 'unique', `${sourceName}, symmetry ${symmetry}`)
+        transformedChecks++
       }
       const candidates = await runEngine({ type: 'variant', operation: 'candidates', position: { puzzle: imported.variant.puzzle } })
       assertSolutionCandidates(candidates, imported.givens, source.solution, sourceName)
@@ -102,5 +101,6 @@ test('published Sudoku Coach completions pass the Rust engine with every importe
   }
 
   assert.equal(checked, 77)
+  assert.equal(transformedChecks, 464)
   assert.deepEqual([...standaloneSeen].sort(), [...standaloneCoachSolutionSources].sort())
 })
