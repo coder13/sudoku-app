@@ -1,4 +1,4 @@
-import { Bookmark, Info, Layers, Link2, ListFilter, ListOrdered, Palette, type LucideIcon } from 'lucide-react'
+import { Bookmark, GitBranch, Info, Layers, Link2, ListFilter, ListOrdered, Palette, type LucideIcon } from 'lucide-react'
 import { TECHNIQUE_FINDER_TITLE } from '../sudoku/puzzle-analysis'
 import { TOOL_PANEL_ORDER, type PuzzleTool, type ToolPanelTab, type ToolPanels } from '../sudoku/play-session'
 
@@ -15,6 +15,7 @@ export type PlayToolContext = {
   draft: boolean
   gridPuzzle: boolean
   mixedVariant: boolean
+  hiddenClues?: boolean
   solved: boolean
 }
 
@@ -29,6 +30,7 @@ export const PLAY_TOOL_REGISTRY = {
   colors: { id: 'colors', label: 'Colors', Icon: Palette, supported: always, availableAfterSolve: false },
   subsets: { id: 'subsets', label: 'Subsets', Icon: Layers, supported: always, availableAfterSolve: false },
   chains: { id: 'chains', label: 'Chains', Icon: Link2, supported: context => !context.gridPuzzle, availableAfterSolve: false },
+  branches: { id: 'branches', label: 'Branches', Icon: GitBranch, supported: context => !context.gridPuzzle && !context.hiddenClues, availableAfterSolve: false },
   bookmarks: { id: 'bookmarks', label: 'Bookmarks', Icon: Bookmark, supported: always, availableAfterSolve: true },
   rules: { id: 'rules', label: 'Rules', Icon: Info, supported: context => context.mixedVariant, availableAfterSolve: true },
 } satisfies Record<PuzzleTool, PlayToolDefinition>
@@ -59,6 +61,7 @@ export const PLAY_PANEL_LABELS: Record<ToolPanelTab, string> = {
   colors: PLAY_TOOL_REGISTRY.colors.label,
   subsets: PLAY_TOOL_REGISTRY.subsets.label,
   chains: PLAY_TOOL_REGISTRY.chains.label,
+  branches: PLAY_TOOL_REGISTRY.branches.label,
   bookmarks: PLAY_TOOL_REGISTRY.bookmarks.label,
   rules: PLAY_TOOL_REGISTRY.rules.label,
 }

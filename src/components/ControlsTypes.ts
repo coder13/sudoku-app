@@ -58,6 +58,7 @@ export type ControlsProps = {
   }
   actions: {
     onCheck?: () => void
+    checkDisabled?: boolean
     onActions?: () => void
     actionsMenu?: ReactNode
     actionsButtonRef?: Ref<HTMLButtonElement>

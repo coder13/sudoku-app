@@ -33,6 +33,7 @@ import type { AlgebraicCage } from './algebraic-cages.ts'
 import type { CandidateColors, ImportedCellColors } from './imported-colors.ts'
 import type { ImportedDrawing } from './imported-drawings.ts'
 import type { AuthoredMark } from './authored-artwork.ts'
+import type { BranchWorkspace } from './branches.ts'
 
 export type Mode = 'value' | 'candidate' | 'center' | 'corner' | 'color'
 export type CandidateLayout = 'grid' | 'center-corner'
@@ -102,6 +103,7 @@ export type Game = {
   actionHistory?: ActionHistoryEntry[]
   chainSketch?: ChainSketchState
   subsetWorkspace?: SubsetWorkspace
+  branchWorkspace?: BranchWorkspace
   elapsed: number
   timeUntracked?: true
   started: boolean
@@ -183,6 +185,7 @@ export function restartGame(game: Game): Game {
     analysisUsed: game.analysisUsed,
     ...(game.bookmarks && { bookmarks: game.bookmarks }),
     ...(game.subsetWorkspace && { subsetWorkspace: game.subsetWorkspace }),
+    ...(game.branchWorkspace && { branchWorkspace: game.branchWorkspace }),
     ratingAttempt: game.ratingAttempt && {
       ...game.ratingAttempt, priorElapsed: game.ratingAttempt.priorElapsed + game.elapsed,
       timeUntracked: game.timeUntracked || game.ratingAttempt.timeUntracked,
@@ -197,7 +200,7 @@ export function restartGame(game: Game): Game {
 
 export function shouldOfferPuzzleSave(game: Game | undefined): game is Game & { pendingSave: true } {
   return Boolean(game?.source === 'generated' && game.pendingSave && !game.started && !game.saved &&
-    !game.savedForLater && !game.archived && !game.bookmarks?.length && !isSolved(game))
+    !game.savedForLater && !game.archived && !game.bookmarks?.length && !game.branchWorkspace?.branches.length && !isSolved(game))
 }
 
 export function isPuzzleSaved(game: Game): boolean {
@@ -979,6 +982,25 @@ export function applyDeduction(game: Game, actions: readonly DeductionAction[], 
       return displayed & ~eliminations[cell]
     }),
   })
+}
+
+/** Apply a set of placements and removals as one undoable edit. */
+export function applyDeductionBatch(game: Game, actions: readonly DeductionAction[], candidates: readonly number[], removeCandidates: boolean,
+  variantRules?: readonly VariantToolId[]): Game {
+  const removals = actions.filter(action => 'eliminate' in action)
+  const eliminated = applyDeduction(game, removals, candidates, removeCandidates, variantRules)
+  if (removals.length && eliminated === game) return game
+  const placements = actions.filter(action => 'place' in action)
+  if (!placements.length) return eliminated
+
+  const values = [...valuesOf(game)]
+  for (const { place: { cell, digit } } of placements) {
+    if (values[cell] !== '0' || !hasCandidate(candidates[cell] & ~(eliminated.position.eliminations?.[cell] ?? 0), digit)) return game
+    values[cell] = String(digit)
+  }
+  const filled = values.join('')
+  if (conflictsOf(filled, playVariantPuzzle(game.variant, game.position.entries), game.grid, game.sized?.rules).size) return game
+  return move(game, fillEntries(eliminated, filled, removeCandidates, variantRules).position)
 }
 
 export function singleFromCandidates(values: string, masks: readonly number[], eliminations?: readonly number[], variant?: VariantPuzzle, grid?: SizedGrid, sizedRules?: SizedRuleGame['rules']): [number, number] | null {

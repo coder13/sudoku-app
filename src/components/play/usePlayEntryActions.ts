@@ -14,6 +14,7 @@ type Options = {
     selected: readonly number[]
     completed: boolean
     draft: boolean
+    trial?: boolean
   }
   state: {
     mode: Mode
@@ -48,7 +49,7 @@ type Options = {
 
 /** Route keypad input through the active Play mode while keeping entry edits reusable. */
 export function usePlayEntryActions({ puzzle, state, modes, actions }: Options) {
-  const { values, visibleGivens, gridSize, selected, completed, draft } = puzzle
+  const { values, visibleGivens, gridSize, selected, completed, draft, trial } = puzzle
   const { mode, highlightMode, selectedDigit, highlightedDigitMask, brush, colorBrush, colorTarget,
     givenHighlightSelection, multi } = state
   const { edit, clearHighlightedDigits, showPinnedDigitPreview, paintCandidateDigits, changeHintVisuals, leaveChainInput,
@@ -64,12 +65,13 @@ export function usePlayEntryActions({ puzzle, state, modes, actions }: Options) 
         variantRules: modes.autoRemoveCandidateVariants,
         ...options,
       })
-      const playerActionsForEdit = playerActions(current, next, cells, inputMode, digit)
-      if (playerActionsForEdit.length && !completed)
-        void observeTechniqueActions(current, playerActionsForEdit, 'independent', hintEliminations(
+      if (!trial && !completed) {
+        const playerActionsForEdit = playerActions(current, next, cells, inputMode, digit)
+        if (playerActionsForEdit.length) void observeTechniqueActions(current, playerActionsForEdit, 'independent', hintEliminations(
           valuesOf(current), completeCandidateMasks(current), current.position.eliminations, gridSize
         ))
-      if (modes.autoPlaceNakedSingles && !draft && !completed && !next.paused && inputMode === 'value' && digit &&
+      }
+      if (!trial && modes.autoPlaceNakedSingles && !draft && !completed && !next.paused && inputMode === 'value' && digit &&
         cells.some(cell => next.position.entries[cell] === String(digit) && current.position.entries[cell] !== String(digit)))
         placement = next
       return next

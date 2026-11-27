@@ -1,5 +1,5 @@
 /** The mode shown by the puzzle border and floating icon while the board is playable. */
-export type PuzzleInputMode = 'pen' | 'pencil' | 'highlight' | 'erase' | 'color' | 'chain'
+export type PuzzleInputMode = 'pen' | 'pencil' | 'highlight' | 'erase' | 'color' | 'chain' | 'branch'
 
 type InputState = {
   drawingLinks: boolean

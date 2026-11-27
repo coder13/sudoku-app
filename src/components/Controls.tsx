@@ -54,7 +54,7 @@ export function Controls({ digits, tools, history, actions, layout }: ControlsPr
             hideUndo={history.hideUndo}
           />
           {actions.onCheck && (
-            <IconButton className="puzzle-check-button" onClick={actions.onCheck} disabled={editsDisabled} aria-label="Check puzzle" title="Check puzzle">
+            <IconButton className="puzzle-check-button" onClick={actions.onCheck} disabled={editsDisabled || actions.checkDisabled} aria-label="Check puzzle" title="Check puzzle">
               <Check size={20} />
             </IconButton>
           )}

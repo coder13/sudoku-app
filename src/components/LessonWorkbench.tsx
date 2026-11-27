@@ -715,7 +715,7 @@ export function LessonWorkbench({
             history={{ undo: () => commit(undo), redo: () => commit(redo), canUndo: game.past.length > 0, canRedo: game.future.length > 0 }}
             actions={{
               inputTools: showChainTools ? (
-                <InputToolsMenu disabled={!interactive} preferBelow observeRef={tools}>
+                <InputToolsMenu disabled={!interactive} observeRef={tools}>
                   <button type="button" aria-pressed={chainsOpen} onClick={toggleChainsPanel}>
                     <Link2 size={16} aria-hidden="true" /> Chains
                   </button>

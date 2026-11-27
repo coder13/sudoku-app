@@ -15,7 +15,7 @@ export function SketchActionsMenu({ actions, label }: {
   const trigger = useRef<HTMLButtonElement>(null)
   const popover = useRef<HTMLDivElement>(null)
   useAnchoredPopover({ open, anchorRef: trigger, popupRef: popover, clearInlineStyle: true,
-    place: positionScaledRightPopover,
+    place: (button, menu) => positionScaledRightPopover(button, menu, { gap: 0, preferAbove: true }),
   })
 
   function close() {

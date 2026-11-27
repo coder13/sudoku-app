@@ -27,6 +27,7 @@ import {
   CloudUpload,
   Eraser,
   Eye,
+  GitBranch,
   Info,
   Layers,
   Lightbulb,
@@ -120,6 +121,7 @@ import { BookmarksPanel } from './BookmarksPanel'
 import { AdvancedPuzzleBrowser, type PuzzleBrowserView } from './AdvancedPuzzleBrowser'
 import { CellColorPalette } from './CellColorPalette'
 import { ChainColorsDialog, ChainsPanel } from './ChainsPanel'
+import { BranchesPanel } from './BranchesPanel'
 import { CompletedPuzzle } from './CompletedPuzzle'
 import { KillerCombos } from './KillerCombos'
 import { Controls } from './Controls'
@@ -186,6 +188,7 @@ import { usePlayChainActions } from './play/usePlayChainActions'
 import { usePlayColorModel } from './play/usePlayColorModel'
 import { usePlayErrorModel } from './play/usePlayErrorModel'
 import { usePlayInteractionModel } from './play/usePlayInteractionModel'
+import { usePlayBranches } from './play/usePlayBranches'
 import { usePlayToolPreferences } from './play/usePlayToolPreferences'
 import { usePlayBoardGestures } from './play/usePlayBoardGestures'
 import { usePlayCellActions } from './play/usePlayCellActions'
@@ -343,8 +346,6 @@ export function Worktable({
     visibleGivens,
     start,
     values,
-    center,
-    corner,
     eliminations,
     displayedCandidates,
     candidateDigitColors,
@@ -387,6 +388,7 @@ export function Worktable({
   } | null>(null)
   const [desktopColorsVisible, setDesktopColorsVisible] = useState(false)
   const [desktopChainsVisible, setDesktopChainsVisible] = useState(false)
+  const [desktopBranchesVisible, setDesktopBranchesVisible] = useState(false)
   const [desktopSubsetsVisible, setDesktopSubsetsVisible] = useState(false)
   const alsHighlightEnabled = advancedModes.experimentalAlsHighlighting
   const [desktopInputVisible, setDesktopInputVisible] = useState(false)
@@ -511,7 +513,6 @@ export function Worktable({
   const solutionHintOpen = !game.paused && (solutionView?.hintOpen ?? false)
   // A loading draft skips solver effects but reserves the regular play UI.
   const presentationDraft = draft && !placeholder
-  const candidateMode = advancedModes.candidateLayout === 'grid' ? 'candidate' : candidateKind
   const solved = playground ? isSolved(game) : completed
   const {
     hint,
@@ -565,6 +566,7 @@ export function Worktable({
     disabled,
     cellColorsDisabled,
     chainsVisible,
+    branchesVisible,
     colorsPanelOpen,
     colorsVisible,
   } = usePlayPanelModel({
@@ -582,6 +584,7 @@ export function Worktable({
     showRightPanel,
     desktopColorsVisible,
     desktopChainsVisible,
+    desktopBranchesVisible,
     desktopSolutionVisible,
     solutionPathRevealed,
     solutionPath,
@@ -643,14 +646,81 @@ export function Worktable({
   const { mounted: puzzleMenuMounted, exiting: puzzleMenuExiting } = usePresence(puzzleMenuOpen)
   const puzzleControlsBelow = appearance.puzzleControlsPosition === 'bottom' && !draft && !placeholder
   const floatingPuzzleMenu = mobile || puzzleControlsBelow
+  const { notes, eliminationKey, retry: retryCandidateNotes } = usePlayCandidateNotes({
+    game,
+    values,
+    generateCandidateVariants: advancedModes.generateCandidateVariants,
+    draft: Boolean(draft),
+    solved,
+  })
+  const puzzleNotes = notes?.gameId === id && notes.variant === variant && notes.algebraic === algebraic && notes.sized === sized ? notes : undefined
+  const currentNotes = puzzleNotes?.values === values && puzzleNotes.eliminationKey === eliminationKey ? puzzleNotes : undefined
+  const masks = currentNotes?.masks
+  const toolMasks = useMemo(() => candidateToolMasks(masks, values, displayedCandidates, eliminations), [masks, values, displayedCandidates, eliminations])
+  const updateWorkingGame = useCallback(
+    (transform: (current: Game) => Game) => {
+      if (session) {
+        updateSolvedSession(session, transform)
+      } else if (!completed) {
+        roomStore.update(id, (current) => (isSolved(current) ? current : transform(current)), {
+          chainCandidates(current) {
+            if (
+              !puzzleNotes?.masks ||
+              current.grid ||
+              current.givens !== givens ||
+              current.variant !== variant ||
+              candidateNotesEliminationKey(current) !== puzzleNotes.eliminationKey
+            )
+              return null
+            const currentValues = valuesOf(current)
+            if (currentValues !== puzzleNotes.values) return null
+            return candidateToolMasks(puzzleNotes.masks, currentValues, completeCandidateMasks(current), current.position.eliminations)
+          },
+        })
+      }
+    },
+    [completed, givens, id, puzzleNotes, session, updateSolvedSession, variant]
+  )
+
+  const branches = usePlayBranches({ game, values, visible: branchesVisible,
+    open: openPuzzlePanels.includes('branches'),
+    editPanelActive: branchesVisible || (mobile || advancedWorkspace && showRightPanel) && activeToolPanel === 'digits',
+    enabled: !disabled && !previewing && !solved && panelAvailable('branches'),
+    originConflict: conflicts.size > 0, updateGame: updateWorkingGame,
+    candidateMasks: variant ? toolMasks ?? masks : displayedCandidates,
+    candidateLoadFailed: Boolean(variant && currentNotes?.failed),
+    onStartEditing: () => {
+      leaveChainInput(false)
+      if (subsets.draft) subsets.finish()
+      setShowStrongLinks(false)
+      setColorBrush(null)
+      setHintRevealed(false)
+      closeBoardContext()
+      closeCandidateLinks()
+      cancelPendingPuzzleWork()
+      resetBoardGestures()
+      if (savedInputTool.override === 'color' || savedInputTool.override === 'erase') setInputToolOverride(null)
+      if (mobile || advancedWorkspace) selectToolPanel('digits')
+      requestAnimationFrame(() => focusGridCell(boardRef.current, active, true))
+    },
+  })
+  const branchEditing = branches.editing
+  const canApplyBranchEdits = branchesVisible && Boolean(branches.applyEdits)
+  const inputGame = branches.scratch ?? game
+  const inputValues = branches.scratch ? branches.board?.content.values ?? values : values
+  const inputGivens = branches.scratch?.givens ?? visibleGivens
+  const inputCandidateLayout = branchEditing ? 'grid' : advancedModes.candidateLayout
+  const candidateMode = inputCandidateLayout === 'grid' ? 'candidate' : candidateKind
+  const editInput = branchEditing ? branches.edit : edit
+
   const { canPaint, mobileHintPreview, brush, colorMode, eraseMode, highlightMode, pencil, cellBrush, boardPosition, cellPaint } = usePlayInputModel({
     gameId: id,
     game,
     selectedColor,
     colorTarget,
     colorBrush,
-    savedInputTool,
-    cellColorsDisabled,
+    savedInputTool: branchEditing && savedInputTool.override === 'color' ? { ...savedInputTool, override: null } : savedInputTool,
+    cellColorsDisabled: cellColorsDisabled || branchEditing,
     hintAnnotations: Boolean(hintAnnotations),
     mobileHintOpen,
     playerVisualsSelected,
@@ -670,17 +740,6 @@ export function Worktable({
     capturePointer: (pointerId) => boardRef.current?.setPointerCapture(pointerId),
   })
   const colorsActive = brush !== null || colorMode
-  const { notes, eliminationKey, retry: retryCandidateNotes } = usePlayCandidateNotes({
-    game,
-    values,
-    generateCandidateVariants: advancedModes.generateCandidateVariants,
-    draft: Boolean(draft),
-    solved,
-  })
-  const puzzleNotes = notes?.gameId === id && notes.variant === variant && notes.algebraic === algebraic && notes.sized === sized ? notes : undefined
-  const currentNotes = puzzleNotes?.values === values && puzzleNotes.eliminationKey === eliminationKey ? puzzleNotes : undefined
-  const masks = currentNotes?.masks
-  const toolMasks = useMemo(() => candidateToolMasks(masks, values, displayedCandidates, eliminations), [masks, values, displayedCandidates, eliminations])
   const singlesPuzzle = useMemo(() => variant && puzzle
     ? puzzleForVariantTools(puzzle, advancedModes.solveSinglesVariants)
     : puzzle, [variant, puzzle, advancedModes.solveSinglesVariants])
@@ -750,7 +809,7 @@ export function Worktable({
     draft,
     solved,
     completed,
-    disabled,
+    disabled: disabled || branchEditing,
     chainsPanelOpen,
     chainsVisible,
     startDrawingOnOpen,
@@ -815,8 +874,8 @@ export function Worktable({
     selectedDigit,
     highlightedDigitMask,
     selected,
-    values,
-    visibleGivens,
+    values: inputValues,
+    visibleGivens: inputGivens,
     gridSize,
     multi,
     candidateMode,
@@ -895,13 +954,13 @@ export function Worktable({
   const cancelCellHold = cellHold.cancel
   const boardGestures = usePlayBoardGestures({
     boardRef,
-    puzzle: { game, readWorkingGame, values, gridSize },
+    puzzle: { game: inputGame, readWorkingGame: branchEditing ? () => inputGame : readWorkingGame, values: inputValues, gridSize },
     selection: { selected, multi, setActive, setAnchor, setSelected },
     input: { brush: cellBrush, pencilGroup, pencilPreviewMask, candidateMode, selectedDigit, temporaryPencil },
     capability: { mobile, desktop, canPreviewCandidates, canSelectCellsByDrag, canDragCandidates },
     controllers: { cellPaint, cellHold },
     actions: {
-      edit,
+      edit: editInput,
       highlightCellCandidates,
       cellHighlightMask,
       cellAtPoint: (point) => gridCellAtPoint(boardRef.current, point),
@@ -1038,31 +1097,6 @@ export function Worktable({
   }, [savedPlayState?.hintOpen, savedPlayState?.puzzleId, savedHintView, hintPositionKey, game.id, game.paused, hintState, busy,
     hasActiveTask, disabled, solved, draft, resumeHint])
 
-  const updateWorkingGame = useCallback(
-    (transform: (current: Game) => Game) => {
-      if (session) {
-        updateSolvedSession(session, transform)
-      } else if (!completed) {
-        roomStore.update(id, (current) => (isSolved(current) ? current : transform(current)), {
-          chainCandidates(current) {
-            if (
-              !puzzleNotes?.masks ||
-              current.grid ||
-              current.givens !== givens ||
-              current.variant !== variant ||
-              candidateNotesEliminationKey(current) !== puzzleNotes.eliminationKey
-            )
-              return null
-            const currentValues = valuesOf(current)
-            if (currentValues !== puzzleNotes.values) return null
-            return candidateToolMasks(puzzleNotes.masks, currentValues, completeCandidateMasks(current), current.position.eliminations)
-          },
-        })
-      }
-    },
-    [completed, givens, id, puzzleNotes, session, updateSolvedSession, variant]
-  )
-
   const subsetContext = useMemo<SubsetContext>(() => ({
     values, masks: toolMasks, grid: grid ?? CLASSIC_GRID, puzzle, sizedRules: sized?.rules, visibleCells: fog?.cells,
   }), [values, toolMasks, grid, puzzle, sized?.rules, fog?.cells])
@@ -1070,7 +1104,7 @@ export function Worktable({
     : advancedWorkspace ? showRightPanel && desktopSubsetsVisible : activeDesktopTab?.id === 'subsets'
   const subsets = usePlaySubsets({
     game, context: subsetContext, panelVisible: subsetsPanelVisible, panelOpen: openPuzzlePanels.includes('subsets'),
-    enabled: !disabled && !solved && !draft && !placeholder,
+    enabled: !disabled && !branchEditing && !solved && !draft && !placeholder,
     highlightedDigit: selectedDigit ?? onlyCandidate(highlightedDigitMask),
     updateGame: updateWorkingGame, clearSelection: () => setSelected([]),
   })
@@ -1116,8 +1150,9 @@ export function Worktable({
       updateWorkingGame,
     },
   })
-  const { applyCandidateRecovery, applyHint, applyChainEdits, applySubsetEdits } = usePlayHintMutations({
-    puzzle: { currentPosition: hintPosition, savedChainSketch: savedGame.chainSketch, savedSubsets: savedGame.subsetWorkspace, completed },
+  const { applyCandidateRecovery, applyHint, applyChainEdits, applySubsetEdits, applyBranchEdits } = usePlayHintMutations({
+    puzzle: { currentPosition: hintPosition, savedChainSketch: savedGame.chainSketch, savedSubsets: savedGame.subsetWorkspace,
+      savedBranches: savedGame.branchWorkspace, completed },
     state: {
       recovery,
       visibleHint,
@@ -1129,6 +1164,7 @@ export function Worktable({
       chainIds: sketch.appliedChainIds,
       subsetActions: subsets.actions,
       subsetMasks: toolMasks,
+      branchEdits: branches.applyEdits,
     },
     modes: advancedModes,
     actions: {
@@ -1146,7 +1182,7 @@ export function Worktable({
   const placeNakedSingles = usePlayNakedSingles({
     gameId: id,
     enabled: advancedModes.autoPlaceNakedSingles,
-    disabled,
+    disabled: disabled || branchEditing,
     modalOpen,
     session: Boolean(session),
     solveSinglesVariants: advancedModes.solveSinglesVariants,
@@ -1155,7 +1191,7 @@ export function Worktable({
     updateWorkingGame,
   })
   const { input, enterFromInput } = usePlayEntryActions({
-    puzzle: { values, visibleGivens, gridSize, selected, completed, draft: Boolean(draft) },
+    puzzle: { values: inputValues, visibleGivens: inputGivens, gridSize, selected, completed, draft: Boolean(draft), trial: branchEditing },
     state: {
       mode,
       highlightMode,
@@ -1167,9 +1203,9 @@ export function Worktable({
       givenHighlightSelection,
       multi,
     },
-    modes: advancedModes,
+    modes: branchEditing ? { ...advancedModes, autoRemoveCandidates: false } : advancedModes,
     actions: {
-      edit,
+      edit: editInput,
       clearHighlightedDigits,
       showPinnedDigitPreview,
       paintCandidateDigits,
@@ -1186,7 +1222,7 @@ export function Worktable({
   })
 
   const { clickCell, doubleClickCell } = usePlayCellActions({
-    puzzle: { game, values, visibleGivens, gridSize, completed, draft: Boolean(draft) },
+    puzzle: { game: inputGame, values: inputValues, visibleGivens: inputGivens, gridSize, completed, draft: Boolean(draft), trial: branchEditing },
     selection: { selected, anchor, multi, setActive, setAnchor, setSelected },
     input: {
       mode,
@@ -1211,7 +1247,7 @@ export function Worktable({
       suppressHoldClick: cellHold.suppressClick,
       cellHighlightMask,
     },
-    actions: { edit, enterFromInput, highlightCellCandidates, toggleDigitHighlight, setSelectedDigit },
+    actions: { edit: editInput, enterFromInput, highlightCellCandidates, toggleDigitHighlight, setSelectedDigit },
   })
 
   const cancelPendingPuzzleWork = useCallback(() => {
@@ -1398,13 +1434,13 @@ export function Worktable({
   }, [advancedModes.solveSinglesVariants, draft, game.paused, givens, needsSinglesCheck, solved, variant])
 
   useEffect(() => {
-    if (!autoGenerateCandidates || !masks || disabled) return
+    if (!autoGenerateCandidates || !masks || disabled || branchEditing) return
     updateWorkingGame((current) =>
       !current.paused && current.givens === givens && valuesOf(current) === values && needsInitialCandidates(current)
         ? replaceCandidates(current, masks, { recordHistory: false })
         : current
     )
-  }, [advancedModes.generateCandidateVariants, autoGenerateCandidates, disabled, givens, masks, updateWorkingGame, values])
+  }, [advancedModes.generateCandidateVariants, autoGenerateCandidates, branchEditing, disabled, givens, masks, updateWorkingGame, values])
 
   useLayoutEffect(() => {
     if (wasMobile.current && advancedWorkspace && openPuzzlePanels.length && !showRightPanel) onOpenRightPanel()
@@ -1548,7 +1584,7 @@ export function Worktable({
       }
       return
     }
-    if (disabled) return
+    if (disabled || branchEditing) return
     updateWorkingGame((current) => recordAction(current, transform(current), kind, options))
   }
 
@@ -1590,7 +1626,7 @@ export function Worktable({
   }
 
   function cellHighlightMask(index: number) {
-    return canHighlightCellCandidates && values[index] === '0' ? center[index] | corner[index] : 0
+    return canHighlightCellCandidates && inputValues[index] === '0' ? inputGame.position.center[index] | inputGame.position.corner[index] : 0
   }
 
   function leaveChainInput(switchMobileToDigits = true) {
@@ -1627,6 +1663,7 @@ export function Worktable({
   }
 
   function toggleChainErasing() {
+    branches.stopEditing()
     if (!sketch.erasing) {
       setShowStrongLinks(false)
       changeHintVisuals('player')
@@ -1635,6 +1672,7 @@ export function Worktable({
   }
 
   function toggleChainDrawing() {
+    branches.stopEditing()
     if (sketch.erasing) {
       sketch.stopErasing()
       if (chainDrawingRequested) return
@@ -1712,6 +1750,11 @@ export function Worktable({
       }
       const historyShortcut = shortcut && (key === 'z' || key === 'y')
       const redoShortcut = key === 'y' || event.shiftKey
+      if (branchEditing && key === 'escape') {
+        event.preventDefault()
+        if (!event.repeat) branches.stopEditing()
+        return
+      }
       if (showResults && historyShortcut && !historyDisabled && !variantRulesOpen) {
         event.preventDefault()
         edit(redoShortcut ? redo : undo)
@@ -1758,7 +1801,7 @@ export function Worktable({
         return
       }
       if (previewing) return
-      if (historyShortcut && (sketch.drawing || sketch.erasing || browsingStrongLinks || (chainsVisible && target instanceof Node && chainsPanelRef.current?.contains(target)))) {
+      if (!branchEditing && historyShortcut && (sketch.drawing || sketch.erasing || browsingStrongLinks || (chainsVisible && target instanceof Node && chainsPanelRef.current?.contains(target)))) {
         event.preventDefault()
         if (redoShortcut) sketch.redo()
         else if (sketch.canUndo) sketch.undo()
@@ -1774,11 +1817,12 @@ export function Worktable({
         if (!event.repeat) togglePenPencilMode()
         return
       }
-      if (applyEditsShortcut && !variantRulesOpen && !draft && !disabled && !solved &&
-        (canApplyHintEdit || (subsetsPanelVisible ? subsets.actions?.length : canApplyChainEdits))) {
+      if (!branchEditing && applyEditsShortcut && !variantRulesOpen && !draft && !disabled && !solved &&
+        (canApplyHintEdit || canApplyBranchEdits || (subsetsPanelVisible ? subsets.actions?.length : canApplyChainEdits))) {
         event.preventDefault()
         if (event.repeat) return
         if (canApplyHintEdit) applyHint()
+        else if (canApplyBranchEdits) applyBranchEdits()
         else if (subsetsPanelVisible) applySubsetEdits()
         else applyChainEdits()
         return
@@ -1810,7 +1854,7 @@ export function Worktable({
           : sketch.drawing
             ? chainHighlightDigit
             : (selectedDigit ?? onlyCandidate(highlightedDigitMask) ?? coloringDigit)
-        highlightedDigit = nextIncompleteDigit(values, current, gridSize)
+        highlightedDigit = nextIncompleteDigit(inputValues, current, gridSize)
         if (highlightedDigit === null) return
       }
       if (sketch.erasing) {
@@ -1850,7 +1894,8 @@ export function Worktable({
         if (!event.repeat) switchColorShade()
       } else if (historyShortcut) {
         event.preventDefault()
-        edit(redoShortcut ? redo : undo)
+        if (branchEditing) branches.undo(redoShortcut ? 1 : -1)
+        else edit(redoShortcut ? redo : undo)
       } else if (solvingDigitShortcuts && digitShortcut) {
         if (digitShortcut > gridSize) return
         event.preventDefault()
@@ -1870,7 +1915,7 @@ export function Worktable({
           !selected.length && target instanceof HTMLButtonElement && target.matches('[role="gridcell"][data-cell]') && boardRef.current?.contains(target)
             ? [Number(target.dataset.cell)]
             : selected
-        if (!cells.some((cell) => values[cell] === '0')) return
+        if (!cells.some((cell) => inputValues[cell] === '0')) return
         event.preventDefault()
         if (!event.repeat) input(shortcutDigit, candidateMode, cells)
       } else if (!shortcut && isGridDirectionKey(event.key) && (target === document.body || boardRef.current?.contains(target as Node))) {
@@ -1878,7 +1923,7 @@ export function Worktable({
         const next = gridCellInDirection(active, gridSize, event.key)
         if (next === undefined) return
         setActive(next)
-        const givenDigit = givenDigitAt(visibleGivens, next)
+        const givenDigit = givenDigitAt(inputGivens, next)
         if (!highlightedDigitMask) {
           if (givenDigit) setSelectedDigit(givenDigit)
           else if (!highlightMode) setSelectedDigit(null)
@@ -1928,12 +1973,12 @@ export function Worktable({
     }
   })
 
-  const checkCommand: UiCommand<'check'> = pinnedCommand('check', !busy && !hasActiveTask() && !game.paused && !placeholder, () => {
+  const checkCommand: UiCommand<'check'> = pinnedCommand('check', !branchEditing && !busy && !hasActiveTask() && !game.paused && !placeholder, () => {
     void runCheck()
   })
 
   const generateCandidatesCommand: UiCommand<'candidates'> = {
-    ...pinnedCommand('candidates', !busy && !solved && !disabled && !draft && !placeholder, (source) => {
+    ...pinnedCommand('candidates', !branchEditing && !busy && !solved && !disabled && !draft && !placeholder, (source) => {
       void generateCandidates(false, source)
     }),
     shortcut: shortcutLabel(shortcuts.generateCandidates),
@@ -1952,14 +1997,14 @@ export function Worktable({
   }
 
   const solveSinglesCommand: UiCommand<'singles'> = {
-    ...pinnedCommand('singles', !busy && !hasActiveTask() && hasSingles && !solved && !draft && !disabled, () => {
+    ...pinnedCommand('singles', !branchEditing && !busy && !hasActiveTask() && hasSingles && !solved && !draft && !disabled, () => {
       void solveAllSingles()
     }),
     shortcut: shortcutLabel(shortcuts.solveSingles),
     shortcutId: 'solveSingles',
   }
 
-  const hintCommand: UiCommand<'hint'> = pinnedCommand('hint', !busy && !hasActiveTask() && !solved && !draft && !disabled, () => {
+  const hintCommand: UiCommand<'hint'> = pinnedCommand('hint', !branchEditing && !busy && !hasActiveTask() && !solved && !draft && !disabled, () => {
     void showHint()
   })
   const highlightCandidatePairsCommand: UiCommand<'candidate-pairs'> = {
@@ -2134,7 +2179,7 @@ export function Worktable({
       canContinueGroup={canContinueColorGroup}
       groupMessage={colorGroupMessage}
       onContinueGroup={continueColorGroup}
-      disabled={cellColorsDisabled}
+      disabled={cellColorsDisabled || branchEditing}
       onColor={chooseColor}
       onSwitchShade={switchColorShade}
       onStop={() => {
@@ -2144,8 +2189,7 @@ export function Worktable({
       onClear={clearColors}
     />
   )
-  const chainUnavailable =
-    chainGraph && canAnalyzeChains
+  const chainUnavailable = chainGraph && canAnalyzeChains
       ? undefined
       : previewing
         ? 'Select a chain step in Solution.'
@@ -2183,7 +2227,10 @@ export function Worktable({
         shown: showStrongLinks,
         hasHighlights: strongLinkMask !== 0,
         count: strongLinks.count,
-        toggle: toggleStrongLinks,
+        toggle: () => {
+          branches.stopEditing()
+          toggleStrongLinks()
+        },
       }}
     />
   )
@@ -2214,6 +2261,7 @@ export function Worktable({
 
   function activateColorsShortcut() {
     if (!panelAvailable('colors') || disabled) return
+    branches.stopEditing()
     const coloringActive = colorMode || colorBrush !== null
     const paletteOpen = colorsPanelOpen
     showColors()
@@ -2239,6 +2287,7 @@ export function Worktable({
 
   function enterColorsMode() {
     if (!panelAvailable('colors') || disabled) return
+    branches.stopEditing()
     leaveChainInput(false)
     if (!colorMode && colorBrush === null) {
       changeHintVisuals('player')
@@ -2252,6 +2301,7 @@ export function Worktable({
 
   function enterChainsMode() {
     if (grid || !panelAvailable('chains')) return
+    branches.stopEditing()
     setColorBrush(null)
     setInputToolOverride(null)
     setShowStrongLinks(false)
@@ -2326,7 +2376,7 @@ export function Worktable({
   const clearImportedDrawingsCommand: UiCommand<'clear-imported-drawings'> = {
     id: 'clear-imported-drawings',
     label: 'Clear imported drawings',
-    available: !disabled,
+    available: !disabled && !branchEditing,
     run: () => {
       setPuzzleMenuOpen(false)
       edit(clearImportedDrawings)
@@ -2371,6 +2421,8 @@ export function Worktable({
       }[syncStatus]
   const puzzleOptionItems = (
     <>
+      {panelAvailable('branches') && <ActionMenuItem command={{ id: 'branches', label: 'Branches', available: !disabled,
+        run: () => showPuzzleTool('branches') }} Icon={GitBranch} />}
       {hintMenuAction}
       <ActionMenuItem command={checkCommand} Icon={Check} />
       {!grid && !advancedWorkspace && !draft && !placeholder && (
@@ -2444,7 +2496,7 @@ export function Worktable({
     </div>
   )
   const canSelectCell = !game.paused && !showMobileResults && !rearranging
-  const boardContextAvailable = canSelectCell && !interactionBlocked && !disabled && !solved && !draft && !placeholder && !previewing && !subsets.draft
+  const boardContextAvailable = canSelectCell && !branchEditing && !interactionBlocked && !disabled && !solved && !draft && !placeholder && !previewing && !subsets.draft
   useEffect(() => {
     if (!boardContextAvailable) closeBoardContext()
   }, [boardContextAvailable, closeBoardContext])
@@ -2461,7 +2513,7 @@ export function Worktable({
   }
   // Input mode is independent of the visible tool tab and never falls into a "no mode" state.
   // Paused/preview/finished puzzles retain their mode without showing editable controls.
-  const gridInputMode = puzzleInputMode({
+  const gridInputMode = branchEditing ? 'branch' : puzzleInputMode({
     drawingLinks: sketch.drawing,
     browsingStrongLinks,
     erasing: eraseMode || sketch.erasing,
@@ -2479,6 +2531,10 @@ export function Worktable({
       position={modeBadgePosition}
       onPosition={setModeBadgePosition}
       onActivate={() => {
+        if (badgeMode === 'branch') {
+          branches.stopEditing()
+          return
+        }
         if (sketch.erasing) {
           sketch.stopErasing()
           return
@@ -2504,6 +2560,7 @@ export function Worktable({
   const chainBoardAnnotations = chainsVisible
     ? mergeBoardAnnotations(subsets.annotations, chainAndAlsAnnotations)
     : mergeBoardAnnotations(chainAndAlsAnnotations, subsets.annotations)
+  const playAnnotations = mergeBoardAnnotations(chainBoardAnnotations, branches.overlay)
   const visibleSetsForDrawing = openPuzzlePanels.includes('subsets') ? subsets.highlightedIds : undefined
   const candidateLinksOpen = candidateLinks && sketch.drawing && candidateLinks.gameId === game.id &&
     candidateLinks.position === game.position && candidateLinks.sketch === game.chainSketch &&
@@ -2582,6 +2639,26 @@ export function Worktable({
     solutionGrid
   ) : !mobile && completionPanel ? (
     completionPanel
+  ) : branches.board ? (
+    <Board content={{ ...boardContent, position: branches.scratch?.position, ...branches.board.content }}
+      appearance={{ ...boardAppearance, authoredArtwork: game.authoredArtwork, annotations: branches.board.annotations,
+        showAnnotatedCandidates: true,
+        candidateLayout: branchEditing ? inputCandidateLayout : 'center-corner', annotationsOnTop: true,
+        highlightedDigit: branchEditing ? selectedDigit : undefined,
+        highlightedDigitMask: branchEditing ? highlightedDigitMask : undefined,
+        highlightedDigitMatch: digitHighlight.match,
+        highlightCandidateCells: branchEditing && !eraseMode,
+        label: branches.board.label, descriptionId: badgeMode ? modeBadgeId : undefined }}
+      interaction={{ boardRef, active, selected: branchEditing ? selected : [], pointerFocusedCell,
+        candidateGroupPreview: branchEditing && canPreviewCandidates && candidatePreviewCell !== null
+          ? { cell: candidatePreviewCell, mask: pencilPreviewMask, mode: candidateMode } : undefined,
+        onCell: branchEditing && canSelectCell ? clickCell : undefined,
+        onCellDoubleClick: branchEditing && canSelectCell ? doubleClickCell : undefined,
+        dragSelect: branchEditing && canSelectCell && (canSelectCellsByDrag || canDragCandidates),
+        onCellPointerDown: branchEditing && canSelectCell ? startCellDrag : undefined,
+        onCellPointerMove: branchEditing && canSelectCell ? continueCellDrag : undefined,
+        onGridPointerLeave }}
+      layout={liveBoardLayout} />
   ) : (sketch.drawing || sketch.erasing || browsingStrongLinks) && chainMasks ? (
     <Board
       content={{
@@ -2637,9 +2714,9 @@ export function Worktable({
         errors: errors,
         candidateLayout: advancedModes.candidateLayout,
         authoredArtwork: game.authoredArtwork,
-        annotations: hintAnnotations ?? chainBoardAnnotations,
-        annotationsOnTop: Boolean(hintAnnotations || alsAnnotations || subsets.annotations || sketch.hasSubsetAnnotations && visibleChainAnnotations),
-        showAnnotatedCandidates: Boolean(visibleChainAnnotations || subsets.annotations?.candidates?.size),
+        annotations: hintAnnotations ?? playAnnotations,
+        annotationsOnTop: Boolean(hintAnnotations || alsAnnotations || branches.overlay || subsets.annotations || sketch.hasSubsetAnnotations && visibleChainAnnotations),
+        showAnnotatedCandidates: Boolean(visibleChainAnnotations || branches.overlay || subsets.annotations?.candidates?.size),
         showPlayerColors: showPlayerColors,
         showImportedAnnotations: true,
         descriptionId: badgeMode ? modeBadgeId : undefined,
@@ -2889,6 +2966,7 @@ export function Worktable({
         </>
       ) : (
         <>
+          {branchEditing && branches.selected?.analysis.conflict && <span className="branch-conflict-status" role="status">Contradiction</span>}
           {!puzzleControlsBelow && puzzleUtilityActions}
           {viewToggleBesideMenu && viewToggle}
           {timing.trackTime && timing.showPause && !draft && !completed && (mobile || game.started || game.paused) && !previewing && (
@@ -3055,7 +3133,7 @@ export function Worktable({
       <Controls
         digits={{
           gridSize: gridSize,
-          candidateDigitColors: candidateDigitColors,
+          candidateDigitColors: branchEditing ? undefined : candidateDigitColors,
           digitPaintColor: !hintAnnotations && !mobileHintPreview
             ? brush ?? (colorMode ? selectedColor ?? undefined : undefined)
             : undefined,
@@ -3071,7 +3149,7 @@ export function Worktable({
           onToggleDigitHighlight: strongLinksVisible ? toggleStrongLinkDigit : undefined,
           digitHighlightMatch: digitHighlight.match,
           onDigitHighlightMatchChange: !draft && !solved && !previewing ? changeDigitHighlightMatch : undefined,
-          values: values,
+          values: inputValues,
           input: sketch.drawing || sketch.erasing || browsingStrongLinks ? toggleChainHighlight : input,
           onPaintDigit: digit => {
             const color = brush ?? (colorMode ? selectedColor : null)
@@ -3084,7 +3162,7 @@ export function Worktable({
           },
         }}
         tools={{
-          togglePencil: () => switchPenPencil(gridInputMode !== 'pencil'),
+          togglePencil: () => switchPenPencil(branchEditing ? !pencilActive : gridInputMode !== 'pencil'),
           colorMode: colorMode,
           colorTarget: colorTarget,
           setColorTarget: changeColorTarget,
@@ -3113,15 +3191,17 @@ export function Worktable({
           toggleMulti: toggleMulti,
         }}
         history={{
-          undo: () => edit(undo),
-          redo: () => edit(redo),
-          canUndo: !!game.past.length,
-          canRedo: !!game.future.length,
-          historyDisabled: historyDisabled,
+          undo: () => branchEditing ? branches.undo(-1) : edit(undo),
+          redo: () => branchEditing ? branches.undo(1) : edit(redo),
+          canUndo: branchEditing ? Boolean(branches.selected?.branch.cursor) : !!game.past.length,
+          canRedo: branchEditing && branches.selected ? branches.selected.branch.cursor < branches.selected.branch.history.length
+            : !branchEditing && !!game.future.length,
+          historyDisabled,
           hideUndo: completed,
         }}
         actions={{
           onCheck: presentationDraft || previewing ? undefined : () => checkCommand.run(),
+          checkDisabled: branchEditing,
           actionsButtonRef: actionsMenuButtonRef,
           actionsOpen: actionsOpen,
           reserveSolvingSlots: desktop && !advancedWorkspace && solved && !previewing,
@@ -3130,7 +3210,6 @@ export function Worktable({
             desktop && panelToggles.length > 0 ? (
               <InputToolsMenu
                 disabled={game.paused}
-                preferBelow
                 onShow={(opener) => {
                   desktopToolsOpener.current = opener
                   setPuzzleMenuOpen(false)
@@ -3149,7 +3228,7 @@ export function Worktable({
               : undefined,
         }}
         layout={{
-          advancedModes: advancedModes,
+          advancedModes: branchEditing ? { ...advancedModes, candidateLayout: inputCandidateLayout } : advancedModes,
           compact: mobile,
           disabled: disabled || (solved && !showSolvedGrid),
           draft: presentationDraft,
@@ -3184,7 +3263,7 @@ export function Worktable({
           </div>
           <Button
             variant="primary"
-            disabled={busy || solved || draft || game.paused}
+            disabled={busy || solved || draft || game.paused || branchEditing}
             onClick={() => {
               void showHint()
             }}
@@ -3192,7 +3271,7 @@ export function Worktable({
             <Eye size={17} /> {busy && hintRevealed ? 'Finding a hint…' : 'Reveal hint'}
           </Button>
           <Button
-            disabled={busy || solved || draft || game.paused}
+            disabled={busy || solved || draft || game.paused || branchEditing}
             onClick={() => {
               void showHint('all')
             }}
@@ -3210,7 +3289,7 @@ export function Worktable({
   ) : draft ? (
     <p className="analysis-empty">Available after starting the puzzle.</p>
   ) : (
-    <PuzzleAnalysisContents game={game} onSelectTechnique={showTechniqueHints} />
+    <PuzzleAnalysisContents game={game} onSelectTechnique={branchEditing ? undefined : showTechniqueHints} />
   )
   const solutionPathPanel = game.paused ? (
     pausedPanel
@@ -3237,7 +3316,7 @@ export function Worktable({
         <h2>Solution</h2>
         <p>The solving steps stay hidden until you choose to reveal them.</p>
       </div>
-      <Button variant="primary" disabled={busy || draft} onClick={() => showSolutionPath()}>
+      <Button variant="primary" disabled={busy || draft || branchEditing} onClick={() => showSolutionPath()}>
         <Eye size={17} /> Reveal solution
       </Button>
     </section>
@@ -3312,14 +3391,14 @@ export function Worktable({
     </section>
   )
   const bookmarksPanel = (
-    <BookmarksPanel key={id} bookmarks={savedGame.bookmarks} disabled={historyDisabled} onSave={saveBookmark} onRestore={restoreBookmark} onDelete={deleteBookmark} />
+    <BookmarksPanel key={id} bookmarks={savedGame.bookmarks} disabled={historyDisabled || branchEditing} onSave={saveBookmark} onRestore={restoreBookmark} onDelete={deleteBookmark} />
   )
   const toolPanelContents: Record<ToolPanelTab, ReactNode> = {
     digits: inputPanel,
     colors: cellColorsPanel,
     subsets: <SubsetsPanel sets={subsets.sets} gridSize={gridSize} selectedId={subsets.selectedId} highlightedIds={subsets.highlightedIds}
       drawing={Boolean(subsets.draft)}
-      disabled={disabled || solved}
+      disabled={disabled || solved || branchEditing}
       onStart={(id) => {
         leaveChainInput(false)
         setColorBrush(null)
@@ -3337,6 +3416,9 @@ export function Worktable({
       onRemove={subsets.remove}
     />,
     chains: chainsPanel,
+    branches: <BranchesPanel model={branches} disabled={disabled || previewing || solved}
+      applyKey={shortcutLabel(shortcuts.applyEdits)} onApply={applyBranchEdits}
+      retryCandidates={variant && currentNotes?.failed ? retryCandidateNotes : undefined} />,
     bookmarks: bookmarksPanel,
     rules: rulesPanel,
     solution: solutionPathPanel,
@@ -3456,6 +3538,7 @@ export function Worktable({
               focusChainsRequest={focusChainsRequest}
               onToolVisibilityChange={{
                 chains: setDesktopChainsVisible,
+                branches: setDesktopBranchesVisible,
                 subsets: setDesktopSubsetsVisible,
                 colors: setDesktopColorsVisible,
                 solution: setDesktopSolutionVisible,
@@ -3555,6 +3638,7 @@ export function Worktable({
           removesTime: Boolean(completed || game.timeUntracked),
           onClose: () => setResetOpen(false),
           onConfirm: () => {
+            branches.stopEditing()
             if (completed)
               openSolvedGrid({
                 ...restartGame(game),

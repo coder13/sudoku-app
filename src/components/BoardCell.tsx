@@ -295,7 +295,11 @@ export const BoardCell = memo(function BoardCell({ geometry, content, appearance
       const className = ['board-candidate', colorClass].filter(Boolean).join(' ')
       const normal = <span key={digit} className={className} style={style}
         data-mark={mark} data-strike={annotation?.strike || undefined}
-        data-chain-hover={annotation?.emphasized || undefined} data-reference-highlight={annotation?.referenceHighlight || undefined}>{digit}</span>
+        data-chain-hover={annotation?.emphasized || undefined} data-reference-highlight={annotation?.referenceHighlight || undefined}>
+        {annotation?.branchPlacementLabels ? <>{digit}<small className="candidate-branch-labels" aria-hidden="true">
+          {annotation.branchPlacementLabels}
+        </small></> : digit}
+      </span>
       return [digit, { normal, highlighted: cloneElement(normal, { className: `${className} candidate-match` }) }] as const
   }))), [candidateAction, visibleGridCandidates, visibleCenterCandidates, candidateAnnotations, candidateColors, importedCandidateColors, boxColumns, annotationsOnTop])
 
@@ -368,6 +372,7 @@ export const BoardCell = memo(function BoardCell({ geometry, content, appearance
 
   return <Cell role="gridcell" data-cell={index} data-fogged={fogged || undefined} data-clone={geometry.cloneLabel} className={classes} style={renderedCellStyle} aria-label={label}
     data-region-color={geometry.regionColor} data-house-fill={geometry.houseFill || undefined}
+    data-branch-placement={cellAnnotation?.branchPlacement}
     data-reference-highlight={cellAnnotation?.referenceHighlight || undefined}
     data-whispers-links={geometry.whispersLinks} data-pointer-focused={pointerFocused || undefined}
     aria-description={preview ? `${previewAction === 'add' ? 'Add' : 'Remove'} ${previewDigits.length === 1 ? 'candidate' : 'candidates'} ${previewDigits.join(', ')}` : undefined}

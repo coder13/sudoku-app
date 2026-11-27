@@ -475,7 +475,7 @@ type ForcingScope =
   | { 'naked-pair': { house: House; cells: [number, number]; digits: [number, number] } }
   | { 'hidden-pair': { house: House; cells: [number, number]; digits: [number, number] } }
   | { 'x-wing': { digit: number; bases: [House, House]; covers: [House, House] } }
-type ForcingBranch = {
+export type ForcingBranch = {
   assumption: ForcingLiteral
   steps: { effect: ForcingLiteral; scope: ForcingScope; causes: number[] }[]
   conflict:
@@ -498,7 +498,7 @@ type ExocetAssignment = { bases: [number, number]; targets: [number, number] }
 type ExocetComponent = { bases: [number, number]; targets: [number, number]; covers: ExocetCover[] }
 type ExocetTarget = { cell: number } | { 'conjugate-pair': { digit: number; link: ConjugatePair } }
 type GroupedExocetComponent = Omit<ExocetComponent, 'targets'> & { targets: [ExocetTarget, ExocetTarget] }
-export type HintTrace = { assumption: string; steps: string[]; conclusion: string }[]
+export type HintTrace = { assumption: string; steps: string[]; conclusion: string; cases?: HintTrace }[]
 type Evidence =
   | { 'pattern-overlay': {
       digit: number
