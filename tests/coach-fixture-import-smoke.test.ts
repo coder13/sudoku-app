@@ -15,6 +15,7 @@ import { coachCode } from './helpers/coach-code.ts'
 const fixtureRoot = new URL('./fixtures/', import.meta.url)
 const fixturePath = new URL(fixtureRoot).pathname
 const codes = new Map<string, string>()
+const publicCoachLinks = new Map<string, { code: string; source: string }>()
 
 function visit(value: unknown, file: string, keyPath = '$') {
   if (typeof value === 'string' && value.startsWith('SCv7_32_')) {
@@ -22,6 +23,18 @@ function visit(value: unknown, file: string, keyPath = '$') {
   } else if (Array.isArray(value)) {
     value.forEach((item, index) => visit(item, file, `${keyPath}[${index}]`))
   } else if (value && typeof value === 'object') {
+    if (!Array.isArray(value)) {
+      const entry = value as Record<string, unknown>
+      const code = typeof entry.code === 'string' && entry.code.startsWith('SCv7_32_')
+        ? entry.code
+        : typeof entry.coach === 'string' && entry.coach.startsWith('SCv7_32_') ? entry.coach : undefined
+      if (typeof entry.url === 'string' && /^https:\/\/sudoku\.coach\/(?:[a-z]{2}\/)?s\/[A-Za-z0-9]{1,16}\/?$/i.test(entry.url) && code) {
+        const source = `${file}:${keyPath}`
+        const previous = publicCoachLinks.get(entry.url)
+        if (previous && previous.code !== code) throw new Error(`Conflicting Coach exports for ${entry.url}`)
+        publicCoachLinks.set(entry.url, { code, source })
+      }
+    }
     for (const [key, item] of Object.entries(value)) visit(item, file, `${keyPath}.${key}`)
   }
 }
@@ -53,6 +66,47 @@ test('every preserved raw Coach fixture imports or matches its explicit unsuppor
   }
 
   assert.deepEqual([...rejected].sort(), [...expectedRejections.keys()].sort())
+})
+
+test('all preserved published Coach links import the same rules as their raw exports', async ({ mock }) => {
+  assert.equal(publicCoachLinks.size, 81)
+  const authoredRules: Record<string, string> = {
+    K95q: 'all-black-dots',
+    '7rs9': 'line-colours',
+    '7FCB': 'inside-grid',
+    'ALYC': 'lettered-quadruples',
+    '7Vva': 'quad-arrows',
+  }
+  const linksById = new Map([...publicCoachLinks].map(([url, value]) => [new URL(url).pathname.match(/\/s\/([^/]+)/i)![1], value]))
+  mock.method(globalThis, 'fetch', async (path: string) => {
+    const id = path.match(/^\/api\/v1\/import\/sudoku-coach\/([A-Za-z0-9]{1,16})$/)?.[1]
+    const source = id && linksById.get(id)
+    if (!id || !source) return Response.json({ error: 'Unknown fixture link' }, { status: 404 })
+    const authoredRule = authoredRules[id]
+    return Response.json({ code: source.code, coach: {
+      hasAuthorInstructions: Boolean(authoredRule),
+      ...(authoredRule && { authoredRule }),
+    } })
+  })
+
+  for (const [url, { code, source }] of publicCoachLinks) {
+    const linked = await detectPuzzle(url)
+    const raw = await detectPuzzle(code)
+    assert.equal(linked.format, 'Sudoku Coach', source)
+    assert.equal(linked.givens, raw.givens, `${source}: linked givens`)
+    assert.deepEqual(linked.grid, raw.grid, `${source}: linked grid`)
+    assert.deepEqual(linked.sizedRules, raw.sizedRules, `${source}: linked sized rules`)
+    assert.deepEqual(linked.algebraic, raw.algebraic, `${source}: linked algebraic rules`)
+    assert.deepEqual(linked.variant && {
+      id: linked.variant.id,
+      puzzle: linked.variant.puzzle,
+      fog: linked.variant.fog,
+    }, raw.variant && {
+      id: raw.variant.id,
+      puzzle: raw.variant.puzzle,
+      fog: raw.variant.fog,
+    }, `${source}: linked variant rules`)
+  }
 })
 
 test('every imported Coach rule rejects unknown engine fields', async () => {
