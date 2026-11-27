@@ -125,7 +125,7 @@ function MobileHintPlacementDemo({ hint }: ComponentProps<typeof HintCard>) {
   const panels: Record<ToolPanelTab, ReactNode> = {
     digits: <div className="compact-controls">Digits input</div>,
     solution: <p>Solution</p>, techniques: <p>Techniques</p>, colors: <p>Colors</p>,
-    subsets: <p>Subsets</p>, chains: <p>Chains</p>, bookmarks: <p>Bookmarks</p>, rules: <p>Rules</p>,
+    subsets: <p>Subsets</p>, chains: <p>Chains</p>, branches: <p>Branches</p>, bookmarks: <p>Bookmarks</p>, rules: <p>Rules</p>,
   }
   const card = visible && <HintCard hint={hint} onClose={() => setVisible(false)} pinned={pinned}
     onTogglePinned={() => setPinned(value => !value)} />

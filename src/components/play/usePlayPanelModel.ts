@@ -20,6 +20,7 @@ type Options = {
   showRightPanel: boolean
   desktopColorsVisible: boolean
   desktopChainsVisible: boolean
+  desktopBranchesVisible: boolean
   desktopSolutionVisible: boolean
   solutionPathRevealed: boolean
   solutionPath: SolutionPathState | null
@@ -30,13 +31,14 @@ type Options = {
 /** Resolve panel availability and the play surface state for each responsive host. */
 export function usePlayPanelModel({
   game, toolPanels, placeholder, draft, mixedVariant, solved, showResults, showSolvedGrid,
-  mobile, desktop, workspaceMode, showRightPanel, desktopColorsVisible, desktopChainsVisible,
+  mobile, desktop, workspaceMode, showRightPanel, desktopColorsVisible, desktopChainsVisible, desktopBranchesVisible,
   desktopSolutionVisible, solutionPathRevealed, solutionPath, savedHighlightMode, rearranging,
 }: Options) {
   const gridPuzzle = Boolean(game.grid)
+  const hiddenClues = Boolean(game.variant?.fog)
   const advancedWorkspace = desktop && workspaceMode === 'advanced'
-  const toolContext = useMemo<PlayToolContext>(() => ({ placeholder, draft, gridPuzzle, mixedVariant, solved }),
-    [placeholder, draft, gridPuzzle, mixedVariant, solved])
+  const toolContext = useMemo<PlayToolContext>(() => ({ placeholder, draft, gridPuzzle, mixedVariant, solved, hiddenClues }),
+    [placeholder, draft, gridPuzzle, mixedVariant, solved, hiddenClues])
   const panelAvailable = useCallback((panel: PuzzleTool) => playToolAvailable(panel, toolContext), [toolContext])
   const { open: openPuzzlePanels, active: activeToolPanel } = resolvePlayPanels(toolPanels, toolContext, desktop)
   const advancedPanelOpen = useCallback((panel: PuzzleTool) => openPuzzlePanels.includes(panel), [openPuzzlePanels])
@@ -54,6 +56,8 @@ export function usePlayPanelModel({
   const cellColorsDisabled = draft || disabled || (solved && !showSolvedGrid)
   const chainsVisible = !gridPuzzle && (mobile ? activeToolPanel === 'chains'
     : advancedWorkspace ? showRightPanel && desktopChainsVisible : activeDesktopTab?.id === 'chains')
+  const branchesVisible = panelAvailable('branches') && (mobile ? activeToolPanel === 'branches'
+    : advancedWorkspace ? showRightPanel && desktopBranchesVisible : activeDesktopTab?.id === 'branches')
   const colorsPanelOpen = openPuzzlePanels.includes('colors')
   const colorsVisible = mobile ? activeToolPanel === 'colors'
     : advancedWorkspace ? showRightPanel && desktopColorsVisible : activeDesktopTab?.id === 'colors'
@@ -61,7 +65,7 @@ export function usePlayPanelModel({
   return {
     toolContext, panelAvailable, openPuzzlePanels, activeToolPanel, advancedPanelOpen, openInsightTabs,
     activeDesktopTab, advancedWorkspace, puzzleToolsAvailable, mobileToolsAvailable, previewing,
-    showMobileResults, historyDisabled, disabled, cellColorsDisabled, chainsVisible,
+    showMobileResults, historyDisabled, disabled, cellColorsDisabled, chainsVisible, branchesVisible,
     colorsPanelOpen, colorsVisible,
   }
 }

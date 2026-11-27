@@ -4,7 +4,7 @@ import { readLegacyDesktopToolPanels } from './play-preferences.ts'
 
 export { defaultDigitHighlight, type DigitHighlight } from './highlighting.ts'
 
-export const PUZZLE_TOOL_ORDER = ['colors', 'subsets', 'chains', 'bookmarks'] as const
+export const PUZZLE_TOOL_ORDER = ['colors', 'subsets', 'chains', 'branches', 'bookmarks'] as const
 export const TOOL_PANEL_ORDER = ['solution', 'techniques', ...PUZZLE_TOOL_ORDER, 'rules'] as const
 export type PuzzleTool = typeof TOOL_PANEL_ORDER[number]
 export type ToolPanelTab = 'digits' | PuzzleTool

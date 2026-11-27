@@ -4,6 +4,7 @@ import { createContext, useContext, useLayoutEffect, useRef, type ReactNode, typ
 import type { HintRemoval, PuzzleHint } from '../sudoku/hints'
 import type { lessonDiagram } from '../sudoku/lesson-diagram'
 import { CellReferenceText, SetReferenceContext, type SetReference } from './CellReferenceHighlight'
+import { ProofTrace } from './ProofTrace'
 
 type HintNavigation = { index: number; count: number; onMove: (offset: -1 | 1) => void }
 type HintDetailNavigation = { first: boolean; last: boolean; onMove: (offset: -1 | 1) => void }
@@ -137,14 +138,7 @@ export function DeductionExplanation({ explanation, explanationSteps, collapseEx
         {paragraphs.map((paragraph, index) => <p key={index}><CellReferenceText text={paragraph} /></p>)}
         {explanationSteps?.length ? <ol className="hint-reason-steps">{explanationSteps.map((step, index) => <li key={index}><CellReferenceText text={step} /></li>)}</ol> : null}
       </section>)}
-      {trace && <details className="hint-card-explanation">
-        <summary>Read the proof step by step</summary>
-        {trace.map(({ assumption, steps, conclusion }, index) => <div key={index}>
-          <p><CellReferenceText text={assumption} /></p>
-          <ol>{steps.map((step, stepIndex) => <li key={stepIndex}><CellReferenceText text={step} /></li>)}</ol>
-          <p><CellReferenceText text={conclusion} /></p>
-        </div>)}
-      </details>}
+      {trace && <ProofTrace trace={trace} />}
     </>
   )
 }

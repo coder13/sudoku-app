@@ -1,5 +1,5 @@
 import type { BoardAnnotations, BoardGroup, BoardLink, BoardRegion, CandidateAnnotation, CellAnnotation } from '../components/BoardAnnotations'
-import type { Candidate, Deduction, DeductionAction, Difficulty, HintChoice, HintTrace, House, InferenceNode, LessonExample, PositionSnapshot, ProofPattern } from './engine'
+import type { Candidate, Deduction, DeductionAction, Difficulty, ForcingBranch, HintChoice, HintTrace, House, InferenceNode, LessonExample, PositionSnapshot, ProofPattern } from './engine'
 import { CLASSIC_GRID, gridHouseCells, type PlayGrid } from './grid.ts'
 import { DIGITS, peer } from './game.ts'
 import { cellReference, type CellReferenceOptions, type CellReferenceStyle } from './hints.ts'
@@ -691,8 +691,14 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
       .filter(({ cell, digit }) => cell !== first.cell || digit !== first.digit)
     const statement = ({ candidate, truth }: { candidate: Candidate; truth: boolean }) =>
       `${candidate.digit} ${truth ? 'goes in' : 'is ruled out in'} ${nameCell(candidate.cell)}`
-    const trace = branches.map(({ assumption, steps, conflict }) => {
-      const effects = [assumption, ...steps.map(({ effect }) => effect)]
+    function traceBranch({ assumption, steps, conflict }: ForcingBranch, premises?: readonly number[], outer?: readonly ForcingBranch['assumption'][]): HintTrace[number] {
+      const effects = [assumption, ...(premises?.map(index => outer![index]) ?? []), ...steps.map(({ effect }) => effect)]
+      const inherited = premises?.map(index => index === 0 ? 'the outer assumption' : `outer step ${index}`)
+      function causeName(index: number) {
+        if (index === 0) return 'the assumption'
+        if (index <= (inherited?.length ?? 0)) return inherited![index - 1]
+        return `step ${index - (inherited?.length ?? 0)}`
+      }
       let conclusion = `This choice also ${'place' in firstAction ? 'forces' : 'rules out'} ${nameCandidate(first)}.`
       if (conflict && 'opposite' in conflict) {
         conclusion = `This trial both forces and rules out ${nameCandidate(effects[conflict.opposite[0]].candidate)}.`
@@ -708,11 +714,13 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
         conclusion = `The two inner cases are “${inner[0]}” and “${inner[1]}.” Both lead to a conflict, so the starting assumption is impossible.`
       }
       return {
-        assumption: `Suppose ${statement(assumption)}.`,
-        steps: steps.map(({ effect, causes }) => `${capital(statement(effect))} (from ${list.format(causes.map((index) => index === 0 ? 'the assumption' : `step ${index}`))}).`),
+        assumption: `Suppose ${statement(assumption)}.${inherited?.length ? ` This case also uses ${list.format(inherited)}.` : ''}`,
+        steps: steps.map(({ effect, causes }) => `${capital(statement(effect))} (from ${list.format(causes.map(causeName))}).`),
         conclusion,
+        ...(conflict && 'cases' in conflict ? { cases: conflict.cases.map(({ branch, premises }) => traceBranch(branch, premises, effects)) } : {}),
       }
-    })
+    }
+    const trace = branches.map(branch => traceBranch(branch))
     return {
       candidates: branches.flatMap(({ steps }) => steps.map(({ effect }) => effect.candidate)),
       accent: starting.length ? { candidates: starting, label: 'Starting assumption' } : undefined,

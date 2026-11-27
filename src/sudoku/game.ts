@@ -33,6 +33,7 @@ import type { AlgebraicCage } from './algebraic-cages.ts'
 import type { CandidateColors, ImportedCellColors } from './imported-colors.ts'
 import type { ImportedDrawing } from './imported-drawings.ts'
 import type { AuthoredMark } from './authored-artwork.ts'
+import type { BranchWorkspace } from './branches.ts'
 
 export type Mode = 'value' | 'candidate' | 'center' | 'corner' | 'color'
 export type CandidateLayout = 'grid' | 'center-corner'
@@ -102,6 +103,7 @@ export type Game = {
   actionHistory?: ActionHistoryEntry[]
   chainSketch?: ChainSketchState
   subsetWorkspace?: SubsetWorkspace
+  branchWorkspace?: BranchWorkspace
   elapsed: number
   timeUntracked?: true
   started: boolean
@@ -183,6 +185,7 @@ export function restartGame(game: Game): Game {
     analysisUsed: game.analysisUsed,
     ...(game.bookmarks && { bookmarks: game.bookmarks }),
     ...(game.subsetWorkspace && { subsetWorkspace: game.subsetWorkspace }),
+    ...(game.branchWorkspace && { branchWorkspace: game.branchWorkspace }),
     ratingAttempt: game.ratingAttempt && {
       ...game.ratingAttempt, priorElapsed: game.ratingAttempt.priorElapsed + game.elapsed,
       timeUntracked: game.timeUntracked || game.ratingAttempt.timeUntracked,
@@ -197,7 +200,7 @@ export function restartGame(game: Game): Game {
 
 export function shouldOfferPuzzleSave(game: Game | undefined): game is Game & { pendingSave: true } {
   return Boolean(game?.source === 'generated' && game.pendingSave && !game.started && !game.saved &&
-    !game.savedForLater && !game.archived && !game.bookmarks?.length && !isSolved(game))
+    !game.savedForLater && !game.archived && !game.bookmarks?.length && !game.branchWorkspace?.branches.length && !isSolved(game))
 }
 
 export function isPuzzleSaved(game: Game): boolean {

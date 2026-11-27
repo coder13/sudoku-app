@@ -50,6 +50,7 @@ type DockContent = {
 }
 type PanelVisibility = Pick<DockContent, 'showLeft' | 'showRight' | 'showBottom'> & {
   showChains: boolean
+  showBranches: boolean
   showSubsets: boolean
   showBookmarks: boolean
   showColors: boolean
@@ -177,7 +178,7 @@ function DockResizeOptions({ api, group, containerApi, activePanel }: IDockviewH
 
 const components = {
   puzzle: PuzzlePanel, input: InputPanel, chains: toolDockPanels.chains, cellColors: toolDockPanels.colors, hint: HintPanel,
-  bookmarks: toolDockPanels.bookmarks,
+  bookmarks: toolDockPanels.bookmarks, branches: toolDockPanels.branches,
   solutionPath: toolDockPanels.solution, techniques: toolDockPanels.techniques, rules: toolDockPanels.rules, details: DetailsPanel, browser: BrowserPanel,
   subsets: toolDockPanels.subsets,
 }
@@ -188,6 +189,7 @@ const dockBindings = {
   techniques: { panelId: 'techniques', component: 'techniques' },
   colors: { panelId: 'cell-colors', component: 'cellColors' },
   chains: { panelId: 'chains', component: 'chains' },
+  branches: { panelId: 'branches', component: 'branches' },
   subsets: { panelId: 'subsets', component: 'subsets' },
   bookmarks: { panelId: 'bookmarks', component: 'bookmarks' },
   rules: { panelId: 'rules', component: 'rules' },
@@ -203,6 +205,7 @@ const dockToolIds: Record<ToolPanelTab, string> = {
   techniques: dockBindings.techniques.panelId,
   colors: dockBindings.colors.panelId,
   chains: dockBindings.chains.panelId,
+  branches: dockBindings.branches.panelId,
   subsets: dockBindings.subsets.panelId,
   bookmarks: dockBindings.bookmarks.panelId,
   rules: dockBindings.rules.panelId,
@@ -262,10 +265,10 @@ function orderToolTabs(api: DockviewApi) {
   }
 }
 
-function syncRightPanels(api: DockviewApi, { showChains, showSubsets, showBookmarks, showColors, showSolution, showTechniques, showRules }: PanelVisibility) {
+function syncRightPanels(api: DockviewApi, { showChains, showBranches, showSubsets, showBookmarks, showColors, showSolution, showTechniques, showRules }: PanelVisibility) {
   const input = api.getPanel('input')
   if (!input) return
-  const visible = { colors: showColors, subsets: showSubsets, chains: showChains, bookmarks: showBookmarks }
+  const visible = { colors: showColors, subsets: showSubsets, chains: showChains, branches: showBranches, bookmarks: showBookmarks }
   for (const tool of PUZZLE_TOOL_ORDER) {
     const options = dockTools[tool]
     const panel = api.getPanel(options.id)
@@ -390,14 +393,15 @@ export function DesktopDockLayout({
   const saveSubscription = useRef<{ dispose: () => void } | null>(null)
   const saveFrame = useRef<number | null>(null)
   const showChains = tools.chains != null
+  const showBranches = tools.branches != null
   const showSubsets = tools.subsets != null
   const showBookmarks = tools.bookmarks != null
   const showColors = tools.colors != null
   const showSolution = tools.solution != null
   const showTechniques = tools.techniques != null
   const showRules = tools.rules != null
-  const visibility = useRef<PanelVisibility>({ showLeft, showRight, showBottom, showChains, showSubsets, showBookmarks, showColors, showSolution, showTechniques, showRules })
-  visibility.current = { showLeft, showRight, showBottom, showChains, showSubsets, showBookmarks, showColors, showSolution, showTechniques, showRules }
+  const visibility = useRef<PanelVisibility>({ showLeft, showRight, showBottom, showChains, showBranches, showSubsets, showBookmarks, showColors, showSolution, showTechniques, showRules })
+  visibility.current = { showLeft, showRight, showBottom, showChains, showBranches, showSubsets, showBookmarks, showColors, showSolution, showTechniques, showRules }
 
   useEffect(() => {
     let dockInteraction = false
@@ -458,6 +462,7 @@ export function DesktopDockLayout({
     const addingTab = showRight && (
       (showColors && !api.getPanel(dockTools.colors.id)) ||
       (showChains && !api.getPanel(dockTools.chains.id)) ||
+      (showBranches && !api.getPanel(dockTools.branches.id)) ||
       (showSubsets && !api.getPanel(dockTools.subsets.id)) ||
       (showBookmarks && !api.getPanel(dockTools.bookmarks.id)) ||
       (showSolution && !api.getPanel(dockBindings.solution.panelId)) ||
@@ -473,7 +478,7 @@ export function DesktopDockLayout({
       return animation ? [animation] : []
     })
     return () => animations.forEach(animation => animation.cancel())
-  }, [showLeft, showRight, showBottom, showChains, showSubsets, showBookmarks, showColors, showSolution, showTechniques, showRules])
+  }, [showLeft, showRight, showBottom, showChains, showBranches, showSubsets, showBookmarks, showColors, showSolution, showTechniques, showRules])
 
   useEffect(() => {
     if (!focusHintRequest || !showBottom) return

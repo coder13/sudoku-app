@@ -6,6 +6,7 @@ import { validVariantSave } from './variants.ts'
 import { validActionHistory } from './action-history.ts'
 import { pruneChainsAfterMove, validChainSketchState } from './chain-sketch.ts'
 import { readSubsetWorkspace } from './subsets.ts'
+import { validBranchWorkspace } from './branches.ts'
 import { isDifficulty } from './difficulty.ts'
 import { isCollectionReference } from './collection-reference.ts'
 import { BOOKMARK_NAME_LIMIT, COLORS, createGameId, hasUniquenessProof, isSolved, makeGame, markSolveUntimed, normalizePuzzleIdentity, puzzleIdentity, shouldOfferPuzzleSave, type Game, type HistoryPosition, type Position } from './game.ts'
@@ -168,6 +169,8 @@ export function readGame(id: string, data: string | Game | null): Game | undefin
       if (value.sharedPuzzleId !== undefined && !isSharedPuzzleId(value.sharedPuzzleId)) delete value.sharedPuzzleId
       if (value.analysisUsed !== true) delete value.analysisUsed
       if (value.chainSketch !== undefined && !validChainSketchState(value.chainSketch)) delete value.chainSketch
+      if (value.branchWorkspace !== undefined && (draft || value.grid || value.variant?.fog ||
+        !validBranchWorkspace(value.branchWorkspace, value.givens))) delete value.branchWorkspace
       if (value.subsetWorkspace !== undefined) {
         const workspace = !draft && readSubsetWorkspace(value.subsetWorkspace, grid)
         if (workspace) value.subsetWorkspace = workspace

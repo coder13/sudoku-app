@@ -29,8 +29,10 @@ export type CellAnnotation = {
   ink?: string
   label?: string
   referenceHighlight?: boolean
+  branchPlacement?: 'assumption' | 'trial' | 'derived'
 }
-export type CandidateAnnotation = { color?: string; opacity?: number; mark?: 'ring' | 'emphasized' | 'strike'; strike?: boolean; emphasized?: boolean; referenceHighlight?: boolean; label?: string }
+export type CandidateAnnotation = { color?: string; opacity?: number; mark?: 'ring' | 'emphasized' | 'strike'; strike?: boolean; emphasized?: boolean; referenceHighlight?: boolean; label?: string;
+  branchLabels?: { placed?: string; removed?: string } }
 export type BoardGroup = { point: BoardPoint; color: string; opacity?: number; emphasized?: boolean; label?: string }
 
 export type BoardAnnotations = {
