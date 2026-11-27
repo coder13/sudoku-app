@@ -1064,11 +1064,11 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     : unknownCageSums ? constraints.filter(layer => record(layer) && layer.type !== 'cage' && layer.type !== 'cosmeticText')
     : guideLayers.length ? constraints.filter(layer => layer.type === 'whisper')
     : reviewedLayers.length ? constraints.filter(layer => !reviewedLayers.includes(layer)) : constraints
-  const insideGrid = exportHash === codeCrackerExport && (!publication || declaredInsideGrid)
-  const lettered = exportHash === sandwichRollExport && (!publication || declaredLettered)
+  const insideGrid = await coachConstraintPrefixHash(code, data, 14) === codeCrackerExport && (!publication || declaredInsideGrid)
+  const lettered = await coachConstraintPrefixHash(code, data, 12) === sandwichRollExport && (!publication || declaredLettered)
   if (declaredLettered && !lettered) throw new Error('The export does not match its published lettered Quadruples.')
   if (declaredInsideGrid && !insideGrid) throw new Error('The export does not match its published Inside Grid.')
-  const rawQuadArrows = !publication && exportHash === quadArrowsExport
+  const rawQuadArrows = !publication && await coachConstraintPrefixHash(code, data, 1) === quadArrowsExport
   const reviewedColorTitle = !fog && !publication?.hasAuthorInstructions && exportHash
     ? reviewedCoachColorExports.get(exportHash) : undefined
   const authoredRule = rawQuadArrows ? 'quad-arrows' : magicSquare ? 'magic-square' : unknownCageSums ? 'unknown-cage-sums' :
@@ -1651,7 +1651,7 @@ async function readCoachSized(data: Record<string, unknown>, code?: string, publ
   const distinct = isJigsawSize(size) && labels ? [...new Set<number>(labels)] : []
   const explicit = isJigsawSize(size) && labels?.length === size ** 2 && distinct.length === size
     ? { size, regions: regionsFromMembership(labels.map(label => distinct.indexOf(label)), size) } : undefined
-  const wrappedExplicit = code && await sourceHash(code, data) === coachWrappedJigsawExport && explicit &&
+  const wrappedExplicit = code && await coachConstraintPrefixHash(code, data, 2) === coachWrappedJigsawExport && explicit &&
     explicit.regions.some(region => !connectedGridCells(region, Number(size))) &&
     explicit.regions.every(region => connectedGridCells(region, Number(size), true))
     ? { ...explicit, wrapAround: true as const } satisfies JigsawGrid

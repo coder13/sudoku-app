@@ -10,6 +10,7 @@ import { coachCode as coach } from './helpers/coach-code.ts'
 import { jigsawMembership, MINI_GRID } from '../src/sudoku/grid.ts'
 import { conflictsOf, EMPTY, enter, makeGame } from '../src/sudoku/game.ts'
 import { detectPuzzle, MAX_IMPORT_LENGTH } from '../src/sudoku/puzzle-import.ts'
+import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
 import { MAX_DECODED_LENGTH } from '../src/sudoku/puzzle-import/shared.ts'
 import { jigsawLayout, variantSeeds } from '../src/sudoku/variant-generation.ts'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
@@ -230,6 +231,17 @@ test('the published Mini Jigsaw 3 short link retains its wrapped regions and com
   assert.equal(linked.givens, '0'.repeat(16))
   assert.equal(linked.grid?.size, 4)
   assert.ok(linked.grid && 'regions' in linked.grid)
+})
+
+test('the reviewed wrapped Mini Jigsaw keeps its topology when a supported rule is appended', async () => {
+  const data = await decodeSudokuCoachPayload(wrappedJigsawSource.code)
+  const combined = await detectPuzzle(coach({ ...data, givenConstraints: [
+    ...(data.givenConstraints as unknown[]), { type: 'antiKnight', segments: [], settings: {} },
+  ] }))
+
+  assert.equal(combined.grid?.size, 4)
+  assert.ok(combined.grid && 'wrapAround' in combined.grid && combined.grid.wrapAround)
+  assert.deepEqual(combined.sizedRules?.map(rule => rule.type), ['whispers', 'region-sum', 'anti-knight'])
 })
 
 test('an unrelated 4 × 4 Jigsaw with regions crossing the flat edges does not gain wraparound rules', async () => {
