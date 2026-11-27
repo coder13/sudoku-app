@@ -79,12 +79,13 @@ export function sameAuthoredArtwork(a?: readonly AuthoredMark[], b?: readonly Au
   })
 }
 
-// A drawing may carry a rule. Bind each review to the complete puzzle, independent of player progress.
+// A drawing may carry a rule. Bind each review to its exact source layers,
+// independent of player progress. Bento exports also accept appended rules.
 // Windoku I outlines four of its typed regions, and Khachkar's discs are artwork.
-const reviewedDrawings = new Map<string, { layer: string; title: string; partialRegions?: true }>([
-  ['92fb9f50af4684ebef1af0c900d104784c2b9265e9fb48b960f2511cce963804', { layer: 'cosmeticLine', title: 'AJT’s Bento 🍱 flavoured with Entropy', partialRegions: true }],
-  ['925fb0996956769908a041dd7cf20450b1f4d5bbbd873a9dfce8010b256561a1', { layer: 'cosmeticLine', title: 'Non-con 🍱', partialRegions: true }],
-  ['88426e68300e971314123430cdee9a623df296fed7c39fce9635571994d40c96', { layer: 'cosmeticLine', title: 'FUN-ky Bento II 🍱', partialRegions: true }],
+const reviewedDrawings = new Map<string, { layer: string; title: string; partialRegions?: true; constraintCount?: number }>([
+  ['92fb9f50af4684ebef1af0c900d104784c2b9265e9fb48b960f2511cce963804', { layer: 'cosmeticLine', title: 'AJT’s Bento 🍱 flavoured with Entropy', partialRegions: true, constraintCount: 12 }],
+  ['925fb0996956769908a041dd7cf20450b1f4d5bbbd873a9dfce8010b256561a1', { layer: 'cosmeticLine', title: 'Non-con 🍱', partialRegions: true, constraintCount: 16 }],
+  ['88426e68300e971314123430cdee9a623df296fed7c39fce9635571994d40c96', { layer: 'cosmeticLine', title: 'FUN-ky Bento II 🍱', partialRegions: true, constraintCount: 17 }],
   ['fb7f80c65aca408b1967c405a14b046925ceb62519f474e222d2091d69b495ba', { layer: 'cosmeticLine', title: 'Windoku I' }],
   ['683b64457ad9033e09bc3165664a7fa94564086649a3165fa3ee7a2e1cbd79ce', { layer: 'cosmeticShape', title: 'Khachkar' }],
 ])
@@ -146,6 +147,15 @@ export async function readReviewedCoachArtwork(code: string, constraints: readon
         ...payload, givenConstraints: layers.slice(0, reviewedShapeArtworkConstraintCount),
       })
       if (prefixHash && reviewedShapeArtwork.has(prefixHash)) hash = prefixHash
+    }
+  }
+  if (!hash || !reviewedDrawings.has(hash)) {
+    const layers = payload.givenConstraints
+    if (Array.isArray(layers)) for (const [reviewedHash, review] of reviewedDrawings) {
+      const count = review.constraintCount
+      if (!count || layers.length <= count) continue
+      const prefixHash = await sourceHash(code, { ...payload, givenConstraints: layers.slice(0, count) })
+      if (prefixHash === reviewedHash) { hash = reviewedHash; break }
     }
   }
   const textTitle = hash && reviewedTextArtwork.get(hash)
