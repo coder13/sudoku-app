@@ -296,8 +296,8 @@ export const BoardCell = memo(function BoardCell({ geometry, content, appearance
       const normal = <span key={digit} className={className} style={style}
         data-mark={mark} data-strike={annotation?.strike || undefined}
         data-chain-hover={annotation?.emphasized || undefined} data-reference-highlight={annotation?.referenceHighlight || undefined}>
-        {annotation?.branchLabels ? <>{digit}<small className="candidate-branch-labels" aria-hidden="true">
-          {annotation.branchLabels.placed}{annotation.branchLabels.removed && <span className="candidate-branch-removal">{annotation.branchLabels.removed}</span>}
+        {annotation?.branchPlacementLabels ? <>{digit}<small className="candidate-branch-labels" aria-hidden="true">
+          {annotation.branchPlacementLabels}
         </small></> : digit}
       </span>
       return [digit, { normal, highlighted: cloneElement(normal, { className: `${className} candidate-match` }) }] as const

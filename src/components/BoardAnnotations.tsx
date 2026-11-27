@@ -32,7 +32,7 @@ export type CellAnnotation = {
   branchPlacement?: 'assumption' | 'trial' | 'derived'
 }
 export type CandidateAnnotation = { color?: string; opacity?: number; mark?: 'ring' | 'emphasized' | 'strike'; strike?: boolean; emphasized?: boolean; referenceHighlight?: boolean; label?: string;
-  branchLabels?: { placed?: string; removed?: string } }
+  branchPlacementLabels?: string }
 export type BoardGroup = { point: BoardPoint; color: string; opacity?: number; emphasized?: boolean; label?: string }
 
 export type BoardAnnotations = {

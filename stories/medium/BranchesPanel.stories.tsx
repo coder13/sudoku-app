@@ -35,6 +35,19 @@ type Story = StoryObj<typeof meta>
 
 export const CompareOrEdit: Story = {}
 export const NarrowWorkspace: Story = { globals: { viewport: { value: 'mobile1', isRotated: false } } }
+export const ComparisonEliminations: Story = {
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Compare branches' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Branch display options' }))
+    const toggle = canvas.getByRole('menuitemcheckbox', { name: 'Show eliminations' })
+    const cell = canvas.getByRole('gridcell', { name: /^Row 2, column 2,/ })
+    await expect(toggle).toHaveAttribute('aria-checked', 'false')
+    await expect(cell).toHaveAccessibleName(/7 placed in branch A/)
+    await userEvent.click(toggle)
+    await expect(toggle).toHaveAttribute('aria-checked', 'true')
+    await expect(cell).toHaveAccessibleName(/7 placed in branch A, removed in the comparison/)
+  },
+}
 export const KeepsDigitHighlight: Story = {
   beforeEach: () => {
     const previous = playPreferenceStore.getSnapshot().selectedDigit

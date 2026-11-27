@@ -41,14 +41,15 @@ function compareFacts(entries: readonly Entry[]) {
 function comparisonAnnotations(marks: readonly ComparisonMark[], showEliminations: boolean): BoardAnnotations {
   const candidates = new Map<number, Map<number, CandidateAnnotation>>()
   for (const { cell, digit, placed, removed } of marks) {
-    const shownRemoved = showEliminations ? removed : []
-    if (!placed.length && !shownRemoved.length) continue
+    const struck = showEliminations && removed.length > 0
+    if (!placed.length && !struck) continue
     const cellMarks = candidates.get(cell) ?? new Map()
     cellMarks.set(digit, {
       mark: placed.length ? 'ring' : 'strike',
-      color: branchColor(placed[0] ?? shownRemoved[0]),
-      branchLabels: { placed: letters(placed) || undefined, removed: letters(shownRemoved) || undefined },
-      label: [placed.length && `placed in ${branchNames(placed)}`, shownRemoved.length && `removed in ${branchNames(shownRemoved)}`]
+      color: placed.length ? branchColor(placed[0]) : 'var(--chain-removal)',
+      strike: struck && placed.length > 0,
+      branchPlacementLabels: letters(placed) || undefined,
+      label: [placed.length && `placed in ${branchNames(placed)}`, struck && 'removed in the comparison']
         .filter(Boolean).join(', '),
     })
     candidates.set(cell, cellMarks)
@@ -67,7 +68,7 @@ function editorAnnotations(entry: Entry, showEliminations: boolean): BoardAnnota
         label: `${fact.kind === 'assumption' ? 'Assumed' : fact.kind === 'trial' ? 'Trial' : 'Forced'} placement in branch ${branchLetter(number)}` })
     } else if (!fact.truth && showEliminations) {
       const marks = candidates.get(fact.cell) ?? new Map()
-      marks.set(fact.digit, { mark: 'strike', color: branchColor(number),
+      marks.set(fact.digit, { mark: 'strike', color: 'var(--chain-removal)',
         label: fact.kind === 'assumption' ? 'Assumed removal' : fact.kind === 'trial' ? 'Trial removal' : 'Ruled out in this branch' })
       candidates.set(fact.cell, marks)
     }
@@ -141,7 +142,7 @@ export function usePlayBranches({ game, values, visible, open, editPanelActive, 
           if (reason.type === 'house') differences.push({ message: `Branches ${names(placed)} and ${names(other.placed)} place ${digit} in different cells in ${reason.house.name}, ${coordinate(cell)} and ${coordinate(other.cell)}.` })
         }
       }
-      if (shown && acrossBranches(placed, removed)) differences.push({ message: `${digit} in ${coordinate(cell)} is placed in ${names(placed)} and removed in ${names(removed)}.` })
+      if (shown && acrossBranches(placed, removed)) differences.push({ message: `${digit} in ${coordinate(cell)} is placed and ruled out in different branches.` })
     }
     return differences
   }, [displayed.length, marks, rules, shown])

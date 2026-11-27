@@ -1,3 +1,4 @@
+import { Eye } from 'lucide-react'
 import { branchLetter, requiredBranchFacts, sameBranchOrigin,
   type BranchAnalysis, type BranchConflict, type BranchFact, type BranchMove, type SavedBranch } from '../sudoku/branches'
 import type { HintTrace } from '../sudoku/engine'
@@ -5,13 +6,13 @@ import { cellName } from '../sudoku/lesson-diagram'
 import { Button } from './Button'
 import { CellReferenceText } from './CellReferenceHighlight'
 import { ProofTrace } from './ProofTrace'
+import { SketchActionsMenu } from './SketchActionsMenu'
 import { ToolItemCard } from './ToolItemCard'
 import { branchColor, type usePlayBranches } from './play/usePlayBranches'
 
 const digits = Array.from({ length: 9 }, (_, index) => index + 1)
 const condition = ({ cell, digit, truth }: BranchMove) => `If ${cellName(cell)} is ${truth ? '' : 'not '}${digit}`
 const action = ({ cell, digit, truth }: BranchMove) => truth ? `Place ${digit} in ${cellName(cell)}` : `Remove ${digit} from ${cellName(cell)}`
-const letters = (ids: readonly number[]) => ids.map(branchLetter).join(', ')
 
 function conflictText(conflict: BranchConflict, facts: readonly BranchFact[]) {
   if (conflict.type === 'cell') return `${cellName(conflict.cell)} has no candidates.`
@@ -49,7 +50,8 @@ export function BranchesPanel({ model, disabled, retryCandidates }: {
 }) {
   const { view, editing, selected, entries, differences, checked, shown } = model
   const compare = view.kind === 'compare' && view.all
-  const moves = model.marks.filter(mark => mark.removed.length > 0)
+  const traceBranch = !compare && selected?.analysis.moves.length ? selected.branch : undefined
+  const eliminations = model.marks.filter(mark => mark.removed.length > 0)
   const finding = view.kind === 'compare' && !sameBranchOrigin(model.origin, selected?.branch.origin ?? model.origin)
     ? 'Proved at this earlier position' : 'Proved from the starting candidates'
 
@@ -58,15 +60,18 @@ export function BranchesPanel({ model, disabled, retryCandidates }: {
       <Button variant="primary" aria-pressed={editing && !selected} disabled={disabled || !model.canCreate} onClick={model.begin}>New branch</Button>
       <Button variant="quiet" aria-pressed={compare} disabled={disabled || !compare && !model.sameOrigin.some(({ branch }) => !branch.hidden)}
         onClick={model.compare}>Compare branches</Button>
+      <div className="branch-panel-display-actions">
+        <SketchActionsMenu label="Branch display options" actions={[
+          { label: 'Show eliminations', icon: Eye, disabled, toggle: true, checked: shown, run: model.toggleEliminations },
+        ]} />
+      </div>
     </div>
     {!editing && model.unavailable && <div><p role="status">{model.unavailable}</p>
       {retryCandidates && <Button variant="quiet" onClick={retryCandidates}>Retry candidates</Button>}
     </div>}
-    {view.kind !== 'idle' && (selected || compare) && <div className="tool-toolbar branch-toolbar">
-      <label className="branch-eliminations"><input type="checkbox" checked={shown}
-        onChange={model.toggleEliminations} /> Show eliminations</label>
-      {selected?.analysis.moves.length && !compare ? <Button variant="quiet" aria-pressed={Boolean(selected.branch.trace)}
-        onClick={() => model.toggleTrace(selected.branch)}>Trace consequences</Button> : null}
+    {(traceBranch || view.kind === 'compare') && <div className="tool-toolbar branch-toolbar">
+      {traceBranch && <Button variant="quiet" aria-pressed={Boolean(traceBranch.trace)}
+        onClick={() => model.toggleTrace(traceBranch)}>Trace consequences</Button>}
       {view.kind === 'compare' && <label className="branch-digit-filter">Compare digit
         <select value={model.digit ?? ''} onChange={event => model.setDigit(Number(event.target.value) || undefined)}>
           <option value="">All digits</option>
@@ -108,14 +113,14 @@ export function BranchesPanel({ model, disabled, retryCandidates }: {
         />
       })}
     </ul>}
-    {compare && <small>Letters identify branches. A crossed-out letter marks a removal.</small>}
+    {compare && <small>Letters identify the branches that place each digit.{shown && ' A strike marks a removal in one or more shown branches.'}</small>}
     {differences.length > 0 && <details className="branch-results">
       <summary>Different outcomes ({differences.length})</summary>
       <ul>{differences.map(({ message }) => <li key={message}><CellReferenceText text={message} /></li>)}</ul>
     </details>}
-    {shown && moves.length > 0 && <details className="branch-results">
-      <summary>Eliminations by branch ({moves.length})</summary>
-      <ul>{moves.map(({ cell, digit, removed }) => <li key={`${cell}-${digit}`}><CellReferenceText text={`${digit} in ${cellName(cell)} · ${letters(removed)}`} /></li>)}</ul>
+    {shown && eliminations.length > 0 && <details className="branch-results">
+      <summary>Eliminations ({eliminations.length})</summary>
+      <ul>{eliminations.map(({ cell, digit }) => <li key={`${cell}-${digit}`}><CellReferenceText text={`${digit} in ${cellName(cell)}`} /></li>)}</ul>
     </details>}
     {checked.length > 0 && <section className="branch-proven-results" aria-label={finding}>
       <h3>{finding}</h3>
