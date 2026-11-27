@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { restoreSizedRuleGame } from '../src/sudoku/sized-rule-game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { makeGame } from '../src/sudoku/game.ts'
+import { readGame } from '../src/sudoku/storage.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { readCoachSolutionSources, standaloneCoachSolutionSources } from './helpers/coach-fixture-sources.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
@@ -62,4 +64,34 @@ test('every published 9 × 9 Coach combination preserves its completion under al
     }
   }
   assert.equal(transformed, 464)
+})
+
+test('all published 9 × 9 Coach combinations survive saved-game validation with progress and undo history', async () => {
+  let restoredCount = 0
+  for (const source of sources.values()) {
+    const imported = await detectPuzzle(source.code)
+    if (!imported.variant) continue
+    const game = makeGame(`coach-combination-${restoredCount}`, `Coach combination ${restoredCount + 1}`,
+      imported.givens, 'imported')
+    game.variant = { ...imported.variant, solution: source.solution }
+
+    const originalPosition = game.position
+    const entries = [...originalPosition.entries]
+    let placed = 0
+    for (let cell = 0; cell < imported.givens.length && placed < 3; cell++) {
+      if (imported.givens[cell] !== '0') continue
+      entries[cell] = source.solution[cell]
+      placed++
+    }
+    game.position = { ...originalPosition, entries: entries.join('') }
+    game.past = [originalPosition]
+
+    const restored = readGame(game.id, JSON.stringify(game))
+    assert.ok(restored, source.references[0])
+    assert.deepEqual(restored.variant, game.variant, `${source.references[0]}: complete rule definition`)
+    assert.deepEqual(restored.position, game.position, `${source.references[0]}: current player entries`)
+    assert.deepEqual(restored.past, game.past, `${source.references[0]}: undo history`)
+    restoredCount++
+  }
+  assert.equal(restoredCount, 58)
 })
