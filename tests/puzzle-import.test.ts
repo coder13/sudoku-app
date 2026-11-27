@@ -656,6 +656,10 @@ test('internal sharing round-trips all eight playable variants and fragment-only
       assert.deepEqual(await detectPuzzle(input), { givens: EMPTY, format: 'Puzzle link', variant }, variant.id)
     }
   }
+  const jigsaw = variants.find(variant => variant.id === 'jigsaw')!
+  assert.equal(isPlayablePuzzle(jigsaw.id, { ...jigsaw.puzzle,
+    regions: { ...jigsaw.puzzle.regions!, futureRegionSemantics: true },
+  }), false)
   assert.equal((await detectPuzzle('#puzzle=' + STARTER)).givens, STARTER)
 })
 

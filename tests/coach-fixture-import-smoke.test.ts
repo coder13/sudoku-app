@@ -8,6 +8,7 @@ import { makeGame } from '../src/sudoku/game.ts'
 import { MAX_DECODED_LENGTH, MAX_IMPORT_LENGTH } from '../src/sudoku/puzzle-import/shared.ts'
 import { puzzleExportText } from '../src/sudoku/puzzle-sharing.ts'
 import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
+import { isSizedRuleList } from '../src/sudoku/sized-rule-game.ts'
 import { isPlayablePuzzle } from '../src/sudoku/variants.ts'
 import { coachCode } from './helpers/coach-code.ts'
 
@@ -70,6 +71,24 @@ test('every imported Coach rule rejects unknown engine fields', async () => {
     })
   }
   assert.ok(mutations > 100)
+})
+
+test('every imported sized Coach rule rejects unknown engine fields', async () => {
+  let mutations = 0
+  for (const [code, source] of [...codes].sort(([, left], [, right]) => left.localeCompare(right))) {
+    if (expectedRejections.has(source)) continue
+    const imported = await detectPuzzle(code)
+    if (!imported.grid || !imported.sizedRules?.length) continue
+    assert.equal(isSizedRuleList(imported.sizedRules, imported.grid), true, source)
+    imported.sizedRules.forEach((rule, index) => {
+      const changed = imported.sizedRules!.map((candidate, ruleIndex) =>
+        ruleIndex === index ? { ...candidate, futureSemantics: true } : candidate)
+      assert.equal(isSizedRuleList(changed, imported.grid!), false,
+        `${source}: ${rule.type} sized rule ${index + 1} must reject unknown engine fields`)
+      mutations++
+    })
+  }
+  assert.equal(mutations, 128)
 })
 
 test('preserved Coach exports reject unknown fields on every populated rule layer, setting and segment', async () => {
