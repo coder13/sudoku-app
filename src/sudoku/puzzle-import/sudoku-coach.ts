@@ -28,6 +28,7 @@ import { readCoachStandaloneExclusions } from '../coach-standalone-exclusions.ts
 import { readCoachStandaloneExtrema } from '../coach-standalone-extrema.ts'
 import type { CageOperator } from '../../calcudoku/engine.ts'
 import type { LatinParity } from '../../latin/parity.ts'
+import type { LatinKropki, LatinKropkiLayer } from '../../latin/kropki.ts'
 import type { LatinDiagonal } from '../../latin/diagonals.ts'
 import { emptyNumberPosition, type NumberPosition } from '../../number-puzzles/progress.ts'
 import { insideGridColumns, validInsideGridRows } from '../inside-grid.ts'
@@ -562,8 +563,9 @@ function readCoachStandaloneRules(layers: readonly unknown[], size: number) {
   let exclusions: import('../../latin/exclusions.ts').LatinExclusion[] = readCoachStandaloneExclusions(layers.filter(layer => record(layer) &&
     ['antiKnight', 'antiKing', 'nonconsecutive'].includes(String(layer.type))), size)
   if (exclusions.includes('nonconsecutive')) {
-    const dotRules = readCoachRules(layers.filter(layer => record(layer) && layer.type === 'difference'), {})
-    const except = [...new Map(dotRules.flatMap(rule => rule.type === 'kropki' ? rule.consecutive?.pairs ?? [] : [])
+    const except = [...new Map(layers.flatMap(layer => !record(layer) || layer.type !== 'difference' ? [] :
+      readCoachPairMarkers(layer, 'difference').markers
+        .filter(marker => marker.amount === 1).map(({ cells: [a, b] }) => [a, b] as const))
       .filter(([a, b]) => Math.abs(Math.floor(a / size) - Math.floor(b / size)) + Math.abs(a % size - b % size) === 1).map(([a, b]) => {
         const pair = [Math.min(a, b), Math.max(a, b)] as const
         return [pair.join(','), pair] as const
@@ -573,7 +575,59 @@ function readCoachStandaloneRules(layers: readonly unknown[], size: number) {
   }
   const extrema = readCoachStandaloneExtrema(layers.filter(layer => record(layer) &&
     (layer.type === 'minimum' || layer.type === 'maximum')), size)
-  return { lines, exclusions, extrema }
+  const dotLayers = layers.filter(layer => record(layer) && (layer.type === 'difference' || layer.type === 'ratio'))
+  const parsedDots = readCoachRules(dotLayers, {})
+  const kropkiRules = parsedDots.filter((rule): rule is Extract<VariantRule, { type: 'kropki' }> => rule.type === 'kropki')
+  const numberedDotRules = parsedDots.filter((rule): rule is Extract<VariantRule, { type: 'labeled-dots' }> => rule.type === 'labeled-dots')
+  const kropkiLayers: LatinKropkiLayer[] = [
+    ...kropkiRules.flatMap(rule => [
+      ...(rule.consecutive ? [{ relation: 'consecutive' as const, ...rule.consecutive }] : []),
+      ...(rule.ratioTwo ? [{ relation: 'ratioTwo' as const, ...rule.ratioTwo }] : []),
+    ]),
+    ...numberedDotRules.map(rule => ({ relation: rule.relation, pairs: rule.marks, negative: rule.negative === true })),
+  ]
+  const repeatedNegativeRelations = new Set((['consecutive', 'ratioTwo', 'difference', 'ratio'] as const).filter(relation => {
+    const family = kropkiLayers.filter(layer => layer.relation === relation)
+    return family.length > 1 && family.some(layer => layer.negative === true)
+  }))
+  const mergeMarks = (family: 'consecutive' | 'ratioTwo') => {
+    if (repeatedNegativeRelations.has(family)) return
+    const declarations = kropkiRules.flatMap(rule => rule[family] ? [rule[family]!] : [])
+    if (!declarations.length) return
+    const pairs = new Map<string, [number, number]>()
+    for (const [a, b] of declarations.flatMap(mark => mark.pairs ?? [])) {
+      const pair: [number, number] = [Math.min(a, b), Math.max(a, b)]
+      pairs.set(`${pair[0]}:${pair[1]}`, pair)
+    }
+    return { pairs: [...pairs.values()], negative: declarations.some(mark => mark.negative === true) }
+  }
+  const mergeNumberedMarks = (relation: 'difference' | 'ratio') => {
+    if (repeatedNegativeRelations.has(relation)) return
+    const declarations = numberedDotRules.filter(rule => rule.relation === relation)
+    if (!declarations.length) return
+    const pairs = new Map<string, { cells: [number, number]; value: number }>()
+    for (const { cells: [a, b], value } of declarations.flatMap(rule => rule.marks)) {
+      const cells: [number, number] = [Math.min(a, b), Math.max(a, b)]
+      const key = `${cells[0]}:${cells[1]}`
+      const existing = pairs.get(key)
+      if (existing && existing.value !== value) {
+        throw new Error(`This boxless Sudoku Coach puzzle assigns conflicting numbered ${relation === 'difference' ? 'Difference' : 'Ratio'} values to one edge.`)
+      }
+      pairs.set(key, { cells, value })
+    }
+    return { pairs: [...pairs.values()], negative: declarations.some(rule => rule.negative === true) }
+  }
+  const consecutive = mergeMarks('consecutive')
+  const ratioTwo = mergeMarks('ratioTwo')
+  const difference = mergeNumberedMarks('difference')
+  const ratio = mergeNumberedMarks('ratio')
+  const layersToPreserve = kropkiLayers.filter(layer => repeatedNegativeRelations.has(layer.relation))
+  const kropki: LatinKropki | undefined = consecutive || ratioTwo || difference || ratio || layersToPreserve.length ? {
+    ...(consecutive && { consecutive }), ...(ratioTwo && { ratioTwo }),
+    ...(difference && { difference }), ...(ratio && { ratio }),
+    ...(layersToPreserve.length && { layers: layersToPreserve }),
+  } : undefined
+  return { lines, exclusions, extrema, ...(kropki && { kropki }) }
 }
 
 const calcudokuSigns = new Map<string, CageOperator>([
@@ -629,8 +683,8 @@ function readCoachStandalone(data: Record<string, unknown>): ImportResult | unde
   const isFutoshiki = hasInequalities || !hasCages
   const isCalcudoku = hasCages
   const supported = isFutoshiki
-    ? new Set(['greaterLess', 'odd', 'even', 'diagonalNegative', 'diagonalPositive', 'antiKnight', 'antiKing', 'nonconsecutive', 'difference', 'minimum', 'maximum', 'thermometer', 'renban', 'entropicLine', 'modularLine', 'betweenLine', 'lockoutLine', 'arrow'])
-    : new Set(['cage', 'cosmeticCage', 'odd', 'even', 'diagonalNegative', 'diagonalPositive', 'antiKnight', 'antiKing', 'nonconsecutive', 'difference', 'minimum', 'maximum', 'thermometer', 'renban', 'entropicLine', 'modularLine', 'betweenLine', 'lockoutLine', 'arrow'])
+    ? new Set(['greaterLess', 'odd', 'even', 'diagonalNegative', 'diagonalPositive', 'antiKnight', 'antiKing', 'nonconsecutive', 'difference', 'ratio', 'minimum', 'maximum', 'thermometer', 'renban', 'entropicLine', 'modularLine', 'betweenLine', 'lockoutLine', 'arrow'])
+    : new Set(['cage', 'cosmeticCage', 'odd', 'even', 'diagonalNegative', 'diagonalPositive', 'antiKnight', 'antiKing', 'nonconsecutive', 'difference', 'ratio', 'minimum', 'maximum', 'thermometer', 'renban', 'entropicLine', 'modularLine', 'betweenLine', 'lockoutLine', 'arrow'])
   if (types.some(type => !supported.has(type))) {
     // Let the regular importer handle boxless Sudoku variants that combine
     // Futoshiki or Calcudoku with other supported rule families.

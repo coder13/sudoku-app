@@ -48,7 +48,7 @@ export function NumberPuzzleGrid({ content, appearance, interaction, ariaLabel, 
     </div>
   }
 
-  function renderCell({ label: clue, authoredColors = [], block, decoration, edges, given, endpoint, printed }: NumberBoard['cells'][number], index: number) {
+  function renderCell({ label: clue, authoredColors = [], block, decoration, edges, given, endpoint, printed, kropki }: NumberBoard['cells'][number], index: number) {
     if (block) return renderBlock(index)
     const value = given || values[index]
     const marks = digits.filter(digit => (notes[index] ?? 0) & (1 << (digit - 1)))
@@ -79,6 +79,7 @@ export function NumberPuzzleGrid({ content, appearance, interaction, ariaLabel, 
       'data-edges': edges,
       'data-given': Boolean(given),
       'data-endpoint': endpoint,
+      'data-kropki': kropki,
       'data-decorated': Boolean(decoration),
       'data-authored-color': Boolean(colorFills.length),
       'aria-label': label,

@@ -54,6 +54,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   const generatedGame = entry.generated && generatedEntry ? game : null
   const generation = useNumberPuzzleGeneration(generatedEntry ? game : null, true)
   const board = useMemo(() => config.board(entry), [config, entry])
+  const rulesCopy = board.ruleDescription ? `${rules} ${board.ruleDescription}` : rules
   const { editable, key, load } = useMemo(() => boardPosition(game, entry.id, board), [game, entry.id, board])
   const { width, height, maxValue, cellChoices, mirrorEdgeClues } = board
   const digits = useMemo(() => Array.from({ length: maxValue }, (_, i) => i + 1), [maxValue])
@@ -570,7 +571,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
       <div className="app-menu puzzle-menu" id="mobile-actions-menu">{actionItems}</div>
     </Modal>}
     <Modal title={`${name} rules`} open={rulesOpen} onClose={() => setRulesOpen(false)}>
-      <div className="variant-rules-copy"><p>{rules}</p></div>
+      <div className="variant-rules-copy"><p>{rulesCopy}</p></div>
     </Modal>
     {checkResult && <PuzzleCheckResult result={checkResult} onClose={() => setCheckResult(null)} />}
     {mobile && mobileInsight === 'techniques' && <PuzzleAnalysis {...analysisProps} close={() => closeInsight('techniques')} />}

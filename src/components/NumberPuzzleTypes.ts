@@ -13,6 +13,7 @@ export type NumberBoardCell = {
   edges?: string
   block?: boolean
   endpoint?: boolean
+  kropki?: boolean
 }
 
 export type NumberPuzzleHint = { cell: number; value: number; marked: number[]; technique: string } & (
@@ -27,6 +28,7 @@ export type NumberBoard = {
   cells: readonly NumberBoardCell[]
   cellChoices?: { labels: readonly string[]; off: number }
   mirrorEdgeClues?: boolean
+  ruleDescription?: string
   check: (values: readonly number[], mode?: 'solution') => { complete: boolean; marked: number[] }
   hints: (values: readonly number[], limit?: number) => readonly NumberPuzzleHint[]
   solve: () => readonly number[] | null

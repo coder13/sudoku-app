@@ -1,7 +1,7 @@
 export type LatinRule = {
   label: string
   kind?: 'line' | 'parity' | 'thermometer' | 'renban' | 'entropic' | 'modular' | 'between' | 'lockout' | 'arrow' | 'minimum' | 'maximum' |
-    'anti-knight' | 'anti-king' | 'nonconsecutive'
+    'anti-knight' | 'anti-king' | 'nonconsecutive' | 'kropki' | 'labeled-dots'
   cells: readonly number[]
   support: (domains: readonly number[]) => readonly number[] | null
 }

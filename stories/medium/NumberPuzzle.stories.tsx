@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useState } from 'react'
 import { expect, within } from 'storybook/test'
 import { DifficultyOptions, PuzzleDifficultyStep } from '../../src/components/DifficultySelector'
+import { CalcudokuImportPreview } from '../../src/components/Calcudoku'
 import { FutoshikiDifficultyPage, FutoshikiImportPreview } from '../../src/components/Futoshiki'
 import { NumberPuzzleGrid as NumberPuzzleGridView } from '../../src/components/NumberPuzzleGrid'
 import { NumberPuzzlePreview as NumberPuzzlePreviewView } from '../../src/components/NumberPuzzlePreview'
@@ -9,8 +10,9 @@ import { KakuroPlay } from '../../src/components/Kakuro'
 import { RulloPlay } from '../../src/components/Rullo'
 import { futoshikiCatalog } from '../../src/futoshiki/catalog'
 import { createImportedFutoshiki } from '../../src/futoshiki/imported'
+import { createImportedCalcudoku } from '../../src/calcudoku/imported'
 import { kakuroCatalog } from '../../src/kakuro/catalog'
-import { solveLatin } from '../../src/latin/engine'
+import { checkLatin, solveLatin, type LatinPuzzle } from '../../src/latin/engine'
 import { numberPuzzleDifficulties, type NumberPuzzleDifficulty } from '../../src/number-puzzles/catalog'
 import { emptyNumberPosition } from '../../src/number-puzzles/progress'
 import { numberPositionKey } from '../../src/number-puzzles/generated-storage'
@@ -81,6 +83,74 @@ export const ImportedParityPreview: Story = {
     ], [{ cell: 0, parity: 'odd' }, { cell: 10, parity: 'even' }])} />
   </div>,
   globals: { viewport: { value: 'mobile1', isRotated: false } },
+}
+
+const ratioPreviewRules = {
+  layers: [
+    { relation: 'consecutive' as const, pairs: [[0, 1], [10, 11]] as const, negative: false },
+    { relation: 'ratioTwo' as const, pairs: [[3, 7], [8, 12]] as const, negative: false },
+    { relation: 'difference' as const, pairs: [{ cells: [0, 4] as const, value: 2 }], negative: false },
+    { relation: 'ratio' as const, pairs: [{ cells: [0, 4] as const, value: 3 }], negative: false },
+  ],
+}
+function checkedRatioPreviewSolution(puzzle: LatinPuzzle) {
+  const solution = solveLatin(puzzle).solution
+  if (!solution || !checkLatin(puzzle, solution).complete) throw new Error('The numbered Kropki preview needs a valid finished solution.')
+  return solution
+}
+const unfinishedRatioFutoshiki = createImportedFutoshiki(4, '0'.repeat(16), [], [], undefined, { kropki: ratioPreviewRules })
+const ratioSolution = checkedRatioPreviewSolution(unfinishedRatioFutoshiki.puzzle)
+const finishedRatioFutoshiki = createImportedFutoshiki(4, '0'.repeat(16), [], [], {
+  values: ratioSolution, notes: Array(16).fill(0),
+}, { kropki: ratioPreviewRules })
+
+export const ImportedFutoshikiKropki: Story = {
+  render: () => <div className="import-preview" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 24, maxWidth: 480, marginInline: 'auto' }}>
+    <section><h2>Unfinished</h2><FutoshikiImportPreview entry={unfinishedRatioFutoshiki} /></section>
+    <section><h2>Finished</h2><FutoshikiImportPreview entry={finishedRatioFutoshiki} /></section>
+  </div>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, canvasElement }) => {
+    await expect(canvas.getAllByRole('img', { name: /(?:White|Black) dot on the/ })).toHaveLength(8)
+    await expect(canvas.getAllByRole('img', { name: /White dot on the right edge requires consecutive digits/ })).toHaveLength(4)
+    await expect(canvas.getAllByRole('img', { name: /Black dot on the bottom edge requires digits in a 1:2 ratio/ })).toHaveLength(4)
+    await expect(canvas.getAllByRole('img', { name: /Difference 2 on the bottom edge requires digits separated by 2/ })).toHaveLength(2)
+    await expect(canvas.getAllByRole('img', { name: /Ratio 1:3 on the bottom edge requires digits in a 1:3 ratio/ })).toHaveLength(2)
+    const offsets = [...canvasElement.querySelectorAll('.number-puzzle-kropki[data-edge-offset]')]
+      .map(marker => Number(marker.getAttribute('data-edge-offset')))
+    await expect(offsets.filter(offset => offset !== 0)).toHaveLength(8)
+    await expect(canvas.getAllByText(/^[1-4]$/, { selector: '.number-puzzle-cell' })).toHaveLength(16)
+  },
+}
+
+const ratioPreviewCages = Array.from({ length: 4 }, (_, row) => ({
+  target: 10, operator: 'add' as const, distinct: true as const,
+  cells: Array.from({ length: 4 }, (_, column) => row * 4 + column),
+}))
+const unfinishedRatioCalcudoku = createImportedCalcudoku(4, '0'.repeat(16), ratioPreviewCages, [], undefined,
+  { kropki: ratioPreviewRules })
+const calcudokuRatioSolution = checkedRatioPreviewSolution(unfinishedRatioCalcudoku.puzzle)
+const finishedRatioCalcudoku = createImportedCalcudoku(4, '0'.repeat(16), ratioPreviewCages, [], {
+  values: calcudokuRatioSolution, notes: Array(16).fill(0),
+}, { kropki: ratioPreviewRules })
+
+export const ImportedCalcudokuKropki: Story = {
+  render: () => <div className="import-preview" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 24, maxWidth: 480, marginInline: 'auto' }}>
+    <section><h2>Unfinished</h2><CalcudokuImportPreview entry={unfinishedRatioCalcudoku} /></section>
+    <section><h2>Finished</h2><CalcudokuImportPreview entry={finishedRatioCalcudoku} /></section>
+  </div>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, canvasElement }) => {
+    await expect(canvas.getAllByRole('img', { name: /(?:White|Black) dot on the/ })).toHaveLength(8)
+    await expect(canvas.getAllByRole('img', { name: /Difference 2 on the bottom edge requires digits separated by 2/ })).toHaveLength(2)
+    await expect(canvas.getAllByRole('img', { name: /Ratio 1:3 on the bottom edge requires digits in a 1:3 ratio/ })).toHaveLength(2)
+    const offsets = [...canvasElement.querySelectorAll('.number-puzzle-kropki[data-edge-key="0:4"]')]
+      .map(marker => Number(marker.getAttribute('data-edge-offset')))
+    await expect(offsets).toHaveLength(8)
+    await expect(Math.min(...offsets)).toBeGreaterThan(0)
+    await expect(new Set(offsets).size).toBe(2)
+    await expect(canvas.getAllByText(/^[1-4]$/, { selector: '.number-puzzle-cell' })).toHaveLength(16)
+  },
 }
 
 export const ImportedCoachColorsPreview: Story = {
