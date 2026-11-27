@@ -36,10 +36,12 @@ export async function readReviewedCoachTextClues(code: string, data: Record<stri
   artwork: readonly AuthoredMark[]
   title: string
 } | undefined> {
-  const hash = await sourceHash(code, data)
+  if (!Array.isArray(data.givenConstraints) || data.givenConstraints.length < 2) return
+  const base = { ...data, givenConstraints: data.givenConstraints.slice(0, 2) }
+  const hash = await sourceHash(code, base)
   if (!hash) return
   if (hash !== '2ee02d4f7c79da6f4a4497472c22e7bfde6b0064f7f8103728a0d6517b0e2cf5') return
-  if (!Array.isArray(data.givenConstraints) || !data.givenConstraints.every(record)) return
+  if (!data.givenConstraints.every(record)) return
   const constraints = data.givenConstraints
   const layers = constraints.filter(layer => layer.type === 'cosmeticText')
   if (layers.length !== 1) return
@@ -59,7 +61,7 @@ export async function readReviewedCoachTextClues(code: string, data: Record<stri
     clues.push({ point: segment.cells[0], text: segment.parameters.text })
   }
   const otherRules = constraints.filter(layer => layer !== layers[0])
-  if (otherRules.length !== 1 || otherRules[0].type !== 'entropicLine') return
+  if (otherRules[0]?.type !== 'entropicLine') return
   const rule: Extract<VariantRule, { type: 'neighbor-match' }> = {
     type: 'neighbor-match',
     clues: clues.map(({ point: [x, y], text }) => ({ cell: Math.floor(y) * 9 + Math.floor(x), digit: Number(text) })),

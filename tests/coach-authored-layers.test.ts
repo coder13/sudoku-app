@@ -343,6 +343,19 @@ test('#545 imports authored neighbor-match clues with calibrated text positions'
   assert.deepEqual(imported.variant?.puzzle.rules.filter(rule => rule.type === 'neighbor-match'), [parsed.rule])
 })
 
+test('#545 retains supported companion rules beside its authored clues and Entropic Line', async () => {
+  const source = fixture.examples.find(example => example.issue === 545)
+  assert.ok(source)
+  const data = await decodeSudokuCoachPayload(source.code)
+  const ratio = { type: 'ratio', segments: [{ cells: [0, 1], parameters: {} }] }
+  const code = coachCode({ ...data, givenConstraints: [...data.givenConstraints, ratio] })
+  const imported = await detectPuzzle(code)
+  const rules = imported.variant?.puzzle.rules
+  assert.ok(rules?.some(rule => rule.type === 'neighbor-match'))
+  assert.ok(rules?.some(rule => rule.type === 'entropic'))
+  assert.ok(rules?.some(rule => rule.type === 'kropki' && rule.ratioTwo?.pairs.some(([a, b]) => a === 0 && b === 1)))
+})
+
 test('#542 recognizes case-insensitive Base32hex and rejects changed puzzle data', async () => {
   const source = fixture.examples.find(example => example.issue === 542)
   assert.ok(source)
