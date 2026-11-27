@@ -2,6 +2,11 @@
   "source": "https://sudoku.coach/js/jCfXtZs-1776367508519.js",
   "retrieved": "2026-11-17",
   "description": "Unmodified Odd and Even rule-help examples embedded in the public Coach serializer.",
+  "legacyOddEven": {
+    "source": "public constructor bundle Odd/Even layer example",
+    "retrieved": "2026-11-27",
+    "code": "SCv4_yyR13I10P1R13I13P1R13I16P1R13I31P2R13I39P2R13I41P2R13I49P2R13I64P1R13I67P1R13I70P1_yy0a10b1X5X30a14b20a7b4060a7b80a14b9X7X10a10b_yy0Ac80d0_0Ac80d0_0Ac80d0___y"
+  },
   "examples": [
     {
       "coach": "SCv7_32_f2e7qjhh1r13037shfjgp2829dbfg093t883b5j5l56qnl1086abvloh08328f7ptrmbnaq0gn9ob7o8o4digi5ssg6s4t9g81ucev2i50in55mearg09gap0fp5ht85iqac1g466jhvmom4d7l9mksb6mb3h8r0a6hbcplutbgqvqjvqmgsf23gko7rsraopp6dp0u17blouli7vf2f2ldjtk9buiio",
