@@ -16,8 +16,9 @@ assert.ok(Number.isInteger(warmups) && warmups >= 0 && Number.isInteger(samples)
 
 const fixture = JSON.parse(await readFile(fixturePath, 'utf8'))
 const sourceId = option('source-id')
-const source = Array.isArray(fixture)
-  ? fixture.find(value => value.url?.match(/\/s\/([^/]+)/)?.[1] === sourceId)
+const examples = Array.isArray(fixture) ? fixture : Array.isArray(fixture.examples) ? fixture.examples : undefined
+const source = examples
+  ? examples.find(value => value.url?.match(/\/s\/([^/]+)/)?.[1] === sourceId)
   : fixture
 assert.ok(source, `No source ${sourceId ?? ''} in ${fixturePath}.`)
 const imported = typeof source.coach === 'string' ? await detectPuzzle(source.coach) : undefined
