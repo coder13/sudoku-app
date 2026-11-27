@@ -2,13 +2,14 @@ import type { ImportedCellColors } from './imported-colors.ts'
 import { sourceHash, withoutCoachProgress } from './puzzle-import/shared.ts'
 
 type Point = readonly [x: number, y: number]
+type ArtworkColor = string | 'board-ink'
 
 export type AuthoredMark = { type: 'outline'; points: readonly Point[]; thickness: number }
   | { type: 'divider'; points: readonly Point[]; thickness: number }
   | { type: 'cage-caption-offset'; cell: number; offset: number }
   | { type: 'disc'; center: Point; radius: number; color: string }
-  | { type: 'tile'; center: Point; size: number; rotation: number; color: string; opacity: number }
-  | { type: 'text'; center: Point; text: string; size: number; color: string; opacity: number;
+  | { type: 'tile'; center: Point; size: number; rotation: number; color: ArtworkColor; opacity: number }
+  | { type: 'text'; center: Point; text: string; size: number; color: ArtworkColor; opacity: number;
       outlineColor: string; outlineThickness: number; offsetY: number }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -26,7 +27,11 @@ function size(value: unknown): value is number {
 
 function artworkPoint(value: unknown): value is Point {
   return Array.isArray(value) && value.length === 2 && value.every(coordinate =>
-    typeof coordinate === 'number' && Number.isFinite(coordinate) && coordinate >= 0 && coordinate <= 9)
+    typeof coordinate === 'number' && Number.isFinite(coordinate) && coordinate >= -1 && coordinate <= 10)
+}
+
+function artworkColor(value: unknown): value is ArtworkColor {
+  return value === 'board-ink' || typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)
 }
 
 export function validAuthoredArtwork(value: unknown): value is readonly AuthoredMark[] {
@@ -50,13 +55,13 @@ export function validAuthoredArtwork(value: unknown): value is readonly Authored
       typeof mark.size === 'number' && Number.isFinite(mark.size) && mark.size > 0 && mark.size <= 1 &&
       typeof mark.rotation === 'number' && Number.isFinite(mark.rotation) && Math.abs(mark.rotation) <= 360 &&
       typeof mark.opacity === 'number' && Number.isInteger(mark.opacity) && mark.opacity >= 0 && mark.opacity <= 255 &&
-      typeof mark.color === 'string' && /^#[0-9a-f]{6}$/i.test(mark.color)
+      artworkColor(mark.color)
     return mark.type === 'text' && Object.keys(mark).length === 9 && artworkPoint(mark.center) &&
       typeof mark.text === 'string' && mark.text.length > 0 && mark.text.length <= 100 &&
       typeof mark.size === 'number' && Number.isFinite(mark.size) && mark.size > 0 && mark.size <= 2 &&
       typeof mark.opacity === 'number' && Number.isInteger(mark.opacity) && mark.opacity >= 0 && mark.opacity <= 255 &&
-      typeof mark.color === 'string' && /^#[0-9a-f]{6}$/i.test(mark.color) &&
-      typeof mark.outlineColor === 'string' && /^#[0-9a-f]{6}$/i.test(mark.outlineColor) &&
+      artworkColor(mark.color) &&
+      artworkColor(mark.outlineColor) &&
       typeof mark.outlineThickness === 'number' && Number.isFinite(mark.outlineThickness) && mark.outlineThickness >= 0 && mark.outlineThickness <= .1 &&
       typeof mark.offsetY === 'number' && Number.isFinite(mark.offsetY) && Math.abs(mark.offsetY) <= 1
   })
@@ -106,6 +111,12 @@ const reviewedShapeArtworkConstraintCount = 7
 const reviewedTextArtwork = new Map([
   ['babed6a85770d81c9be91fd70f6fa688eba31fc5361639579e82d8030f01cd44',
     { title: 'Sunny with a chance of Entropy', constraintCount: 6 }],
+])
+
+// B5mt uses four outside color keys and labels to explain its Whispers guide.
+// They are tutorial artwork; the fifteen Whispers paths remain the full rule set.
+const reviewedWhispersGuideArtwork = new Map([
+  ['b1590101e64077764af0102fbe3039b11ec18e18b6adaee04688b8f332df5758', 7],
 ])
 
 // These reviews cover the complete authoring data and ordered cell shades.
@@ -187,6 +198,66 @@ export async function readReviewedCoachArtwork(code: string, constraints: readon
       const prefixHash = await sourceHash(code, { ...payload, givenConstraints: layers.slice(0, count) })
       if (prefixHash === reviewedHash) { hash = reviewedHash; break }
     }
+  }
+  if (!hash || ![...reviewedWhispersGuideArtwork.keys()].includes(hash)) {
+    const layers = payload.givenConstraints
+    if (Array.isArray(layers)) for (const [reviewedHash, count] of reviewedWhispersGuideArtwork) {
+      if (layers.length <= count) continue
+      const prefixHash = await sourceHash(code, { ...payload, givenConstraints: layers.slice(0, count) })
+      if (prefixHash === reviewedHash) { hash = reviewedHash; break }
+    }
+  }
+  const whispersGuideArtworkCount = hash ? reviewedWhispersGuideArtwork.get(hash) : undefined
+  if (whispersGuideArtworkCount !== undefined) {
+    const textLayers = constraints.filter(layer => record(layer) && layer.type === 'cosmeticText')
+    const shapeLayers = constraints.filter(layer => record(layer) && layer.type === 'cosmeticShape')
+    if (textLayers.length !== 2 || shapeLayers.length !== 4 || constraints.length < whispersGuideArtworkCount) return
+    const artwork: AuthoredMark[] = []
+    const textSpecs = [
+      { settings: { gridZoomOut: 1, gridSnapToCorners: false, textSize: 50 }, labels: [
+        { point: [7.5, 9.5], text: '= 4 unique links' }, { point: [7.5, -.5], text: '= 2 unique links' },
+        { point: [2.5, -.5], text: '= 1 unique link' }, { point: [2.5, 9.5], text: '= 3 unique links' },
+      ] },
+      { settings: { gridResolution: 5, gridSnapToCorners: false, textSize: 20, outlineThickness: 1 }, labels: [
+        { point: [.5, -.6], text: '1234' }, { point: [.5, -.4], text: '6789' },
+        { point: [5.5, -.6], text: '123' }, { point: [5.5, -.4], text: '789' },
+        { point: [.5, 9.4], text: '12' }, { point: [.5, 9.6], text: '89' },
+        { point: [5.5, 9.4], text: '1' }, { point: [5.5, 9.6], text: '9' },
+      ] },
+    ] as const
+    for (const [index, spec] of textSpecs.entries()) {
+      const layer = textLayers[index]
+      if (!record(layer) || !record(layer.settings) || !Array.isArray(layer.segments) ||
+        JSON.stringify(layer.settings) !== JSON.stringify(spec.settings) || layer.segments.length !== spec.labels.length ||
+        Object.keys(layer).some(key => !['id', 'type', 'segments', 'settings'].includes(key))) return
+      for (const [labelIndex, label] of spec.labels.entries()) {
+        const segment = layer.segments[labelIndex]
+        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 1 ||
+          !Array.isArray(segment.cells[0]) || segment.cells[0].length !== 2 ||
+          segment.cells[0][0] !== label.point[0] || segment.cells[0][1] !== label.point[1] ||
+          !record(segment.parameters) || Object.keys(segment.parameters).length !== 1 || segment.parameters.text !== label.text) return
+        artwork.push({ type: 'text', center: label.point, text: label.text, size: spec.settings.textSize / 200,
+          color: 'board-ink', opacity: 255, outlineColor: 'board-ink', outlineThickness: 0, offsetY: 0 })
+      }
+    }
+    const swatches = [
+      { color: '#f7e4c5', point: [.5, -.5] }, { color: '#f7f7c5', point: [5.5, -.5] },
+      { color: '#def7c5', point: [.5, 9.5] }, { color: '#f7c5f5', point: [5.5, 9.5] },
+    ] as const
+    for (const [index, swatch] of swatches.entries()) {
+      const layer = shapeLayers[index]
+      const segment = record(layer) && Array.isArray(layer.segments) ? layer.segments[0] : undefined
+      if (!record(layer) || !record(layer.settings) || layer.settings.colour !== swatch.color ||
+        Object.keys(layer.settings).length !== 1 || !record(segment) || !Array.isArray(segment.cells) ||
+        segment.cells.length !== 1 || !Array.isArray(segment.cells[0]) ||
+        segment.cells[0][0] !== swatch.point[0] || segment.cells[0][1] !== swatch.point[1] ||
+        !record(segment.parameters) || segment.parameters.shape !== 'rect' || Object.keys(segment.parameters).length !== 1) return
+      artwork.push({ type: 'tile', center: swatch.point, size: .45, rotation: 0, color: swatch.color, opacity: 255 })
+    }
+    const orderedArtwork = [...artwork.filter(mark => mark.type === 'tile'), ...artwork.filter(mark => mark.type === 'text')]
+    return validAuthoredArtwork(orderedArtwork) ? {
+      layers: [...textLayers, ...shapeLayers], artwork: orderedArtwork, title: 'Whispers Line Basics',
+    } : undefined
   }
   const textReview = hash && reviewedTextArtwork.get(hash)
   if (textReview) {

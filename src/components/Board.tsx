@@ -348,6 +348,8 @@ export function Board(props: BoardProps) {
     return layout
   }, [outsideRules, linkedDoubleArrows, xSumDots, gridSize])
   const hasOutside = Object.values(outside.depths).some(Boolean)
+  const hasOutsideArtwork = authoredArtwork?.some(mark => (mark.type === 'tile' || mark.type === 'text') &&
+    (mark.center[1] < 0 || mark.center[1] > 9)) ?? false
   const badgeOnFrame = hasOutside && Boolean(modeBadge)
   const rootFrameRef = useMemo(() => mergeRefs(frameRef, badgeOnFrame ? modeBoundaryRef : undefined), [badgeOnFrame, frameRef, modeBoundaryRef])
   const boardBodyRef = useMemo(() => mergeRefs(layoutBoundaryRef, badgeOnFrame ? undefined : modeBoundaryRef), [layoutBoundaryRef, badgeOnFrame, modeBoundaryRef])
@@ -762,7 +764,7 @@ export function Board(props: BoardProps) {
 
   return (
     <div
-      className={`board-frame ${showGuides ? '' : 'guides-hidden'}${hasOutside ? ' has-outside-clues' : ''}`}
+      className={`board-frame ${showGuides ? '' : 'guides-hidden'}${hasOutside ? ' has-outside-clues' : ''}${hasOutsideArtwork ? ' has-outside-artwork' : ''}`}
       data-overlay={overlay?.visible}
       data-input-mode={badgeOnFrame ? modeBorder : undefined}
       ref={rootFrameRef}

@@ -175,10 +175,43 @@ test('the Coach Whispers lesson retains every link and derives its guide from th
   const source = state.givenConstraints.find((rule: { type: string }) => rule.type === 'whisper')
   assert.deepEqual(variant.puzzle.rules, source.segments.map(({ cells }: { cells: number[] }) =>
     ({ type: 'whispers', cells, minDifference: 5 })))
+  const artwork = (await detectPuzzle(lesson.code)).authoredArtwork
+  assert.equal(artwork?.length, 16)
+  assert.deepEqual(artwork?.filter(mark => mark.type === 'tile').map(mark =>
+    mark.type === 'tile' ? [mark.center, mark.color] : []), [
+    [[.5, -.5], '#f7e4c5'], [[5.5, -.5], '#f7f7c5'], [[.5, 9.5], '#def7c5'], [[5.5, 9.5], '#f7c5f5'],
+  ])
+  assert.deepEqual(artwork?.filter(mark => mark.type === 'text').map(mark => mark.type === 'text' ? mark.text : ''), [
+    '= 4 unique links', '= 2 unique links', '= 1 unique link', '= 3 unique links',
+    '1234', '6789', '123', '789', '12', '89', '1', '9',
+  ])
+  const game = { ...makeGame('coach-b5mt-artwork', 'Whispers Line Basics', givens, 'imported'),
+    variant, authoredArtwork: artwork }
+  const definition = puzzleDefinitionForSharing(game)
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    const api = syncRequest(undefined, fetcher)
+    const { id } = await api<{ id: string }>('shares', 'POST', definition)
+    const shared = await api<typeof definition>(`shares/${id}`)
+    assert.deepEqual(shared.authoredArtwork, artwork)
+    assert.deepEqual(shared.variant?.puzzle.rules, variant.puzzle.rules)
+    const invalid = structuredClone(definition)
+    const text = invalid.authoredArtwork?.find(mark => mark.type === 'text')
+    assert.ok(text)
+    if (text.type === 'text') text.center = [-1.01, -.5]
+    await assert.rejects(api('shares', 'POST', invalid), { status: 400 })
+  } finally { sqlite.close() }
   const palette: Record<string, number> = { orange: 1, yellow: 2, lime: 3, magenta: 4 }
   const counts = state.givenColours.split(',').map((shade: string) => shade ? palette[state.colours[Number(shade)]] : 0)
   assert.equal(counts.filter(Boolean).length, 44)
   assert.deepEqual(whispersLinkCounts(variant.puzzle), counts)
+
+  const companion = await detectPuzzle(coachCode({ ...state, givenConstraints: [...state.givenConstraints,
+    { id: 'ratio', type: 'ratio', settings: {}, segments: [{ cells: [0, 1], parameters: {} }] },
+  ] }))
+  assert.deepEqual(companion.authoredArtwork, artwork)
+  assert.equal(companion.variant?.puzzle.rules?.filter(rule => rule.type === 'whispers').length, 15)
+  assert.ok(companion.variant?.puzzle.rules?.some(rule => rule.type === 'kropki' && rule.ratioTwo?.pairs?.length === 1))
 
   const colours = ['blue', ...state.colours]
   const givenColours = state.givenColours.split(',').map((shade: string) => shade ? String(Number(shade) + 1) : '').join(',')
