@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { restoreSizedRuleGame } from '../src/sudoku/sized-rule-game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { makeGame } from '../src/sudoku/game.ts'
+import { parsePuzzleExport, puzzleExportText } from '../src/sudoku/puzzle-sharing.ts'
 import { readGame } from '../src/sudoku/storage.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { readCoachSolutionSources, standaloneCoachSolutionSources } from './helpers/coach-fixture-sources.ts'
@@ -91,6 +92,12 @@ test('all published 9 × 9 Coach combinations survive saved-game validation with
     assert.deepEqual(restored.variant, game.variant, `${source.references[0]}: complete rule definition`)
     assert.deepEqual(restored.position, game.position, `${source.references[0]}: current player entries`)
     assert.deepEqual(restored.past, game.past, `${source.references[0]}: undo history`)
+
+    const exported = parsePuzzleExport(puzzleExportText(game))
+    assert.equal(exported.givens, imported.givens, `${source.references[0]}: exported givens`)
+    assert.equal(exported.variant?.id, game.variant.id, `${source.references[0]}: exported variant family`)
+    assert.deepEqual(exported.variant?.puzzle, game.variant.puzzle, `${source.references[0]}: exported complete rules`)
+    assert.deepEqual(exported.variant?.fog, game.variant.fog, `${source.references[0]}: exported fog state`)
     restoredCount++
   }
   assert.equal(restoredCount, 58)
