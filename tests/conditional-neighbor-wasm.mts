@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import lzString from 'lz-string'
 import { runEngine, type VariantPuzzle } from '../src/sudoku/engine.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 
 useWasmWorker()
@@ -56,6 +57,23 @@ test('conditional neighbor composes with Anti-Knight and rejects invalid complet
   } })
   assert.equal(combinedCandidates?.[40] & (1 << 4), 0,
     'Anti-Knight can remove both supports, so the conditional trigger must be rejected')
+  for (let symmetry = 0; symmetry < 8; symmetry++) {
+    const cell = (index: number) => {
+      let row = Math.floor(index / 9), column = index % 9
+      if (symmetry & 1) [row, column] = [column, row]
+      if (symmetry & 2) row = 8 - row
+      if (symmetry & 4) column = 8 - column
+      return row * 9 + column
+    }
+    const symmetricEntries = Array(81).fill('0')
+    for (let index = 0; index < 81; index++) symmetricEntries[cell(index)] = bothAlternativesConflict[index]
+    const symmetricCandidates = await runEngine({ type: 'variant', operation: 'candidates', position: {
+      puzzle: reflectVariant(importedPuzzle, symmetry), entries: symmetricEntries.join(''),
+    } })
+    assert.ok(symmetricCandidates)
+    assert.equal(symmetricCandidates[cell(40)] & (1 << 4), 0,
+      `the composed contradiction remains under square symmetry ${symmetry}`)
+  }
 
   const classicSolution = Array.from({ length: 81 }, (_, cell) =>
     String((Math.floor(cell / 9) * 3 + Math.floor(Math.floor(cell / 9) / 3) + cell % 9) % 9 + 1)).join('')
