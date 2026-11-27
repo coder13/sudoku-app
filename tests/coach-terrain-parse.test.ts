@@ -93,3 +93,20 @@ test('Coach Terrain keeps its reviewed rules when player Quick Draw annotations 
   assert.equal(game.variant?.puzzle.rules?.filter(rule => rule.type === 'terrain-sandwich').length, 15)
   assert.deepEqual(game.position.importedDrawings, imported.progress?.importedDrawings)
 })
+
+test('reviewed Coach Terrain composes with additional supported rules without dropping either family', async () => {
+  const ratio = { type: 'ratio', segments: [{ cells: [6, 15], parameters: {} }] }
+  const code = coachCode({ ...source.payload, givenConstraints: [...source.payload.givenConstraints, ratio] })
+  const imported = await detectPuzzle(code)
+  const rules = imported.variant?.puzzle.rules ?? []
+  assert.equal(rules.filter(rule => rule.type === 'terrain-sandwich').length, 15)
+  assert.ok(rules.some(rule => rule.type === 'kropki' && rule.ratioTwo?.pairs.some(([a, b]) => a === 6 && b === 15)))
+  const { game } = await prepareImportedPuzzle(code)
+  assert.equal(game.variant?.solution, source.source.solution)
+  assert.equal(game.variant?.puzzle.rules?.filter(rule => rule.type === 'terrain-sandwich').length, 15)
+  assert.ok(game.variant?.puzzle.rules?.some(rule => rule.type === 'kropki' && rule.ratioTwo?.pairs.some(([a, b]) => a === 6 && b === 15)))
+
+  const unsupported = coachCode({ ...source.payload, givenConstraints: [...source.payload.givenConstraints,
+    { type: 'futureRule', segments: [] }] })
+  await assert.rejects(detectPuzzle(unsupported), /unsupported rule type/)
+})

@@ -16,6 +16,7 @@ export type CoachTerrainDefinition = {
   valueChanges: readonly CoachTerrainValueChange[]
   cellColors: readonly (CoachTerrainValueChange['color'] | null)[]
   clues: readonly CoachTerrainSandwichClue[]
+  additionalConstraints: readonly unknown[]
 }
 
 type CoachTerrainPayload = Record<string, unknown>
@@ -47,7 +48,7 @@ export async function readReviewedCoachTerrain(payload: CoachTerrainPayload): Pr
   if (Object.keys(payload).some(key => !allowedFields.has(key))) return
   if (payload.gridSize !== 9 || !Array.isArray(payload.colours) ||
     payload.colours.length !== 3 || payload.colours.some((color, index) => color !== ['green', 'purple', 'yellow'][index]) ||
-    typeof payload.givenColours !== 'string' || !Array.isArray(payload.givenConstraints) || payload.givenConstraints.length !== 2) {
+    typeof payload.givenColours !== 'string' || !Array.isArray(payload.givenConstraints) || payload.givenConstraints.length < 2) {
     return
   }
   const givens = payload.givenDigits ?? '0'.repeat(81)
@@ -57,7 +58,7 @@ export async function readReviewedCoachTerrain(payload: CoachTerrainPayload): Pr
     givenDigits: givens,
     colours: payload.colours,
     givenColours: payload.givenColours,
-    givenConstraints: payload.givenConstraints,
+    givenConstraints: payload.givenConstraints.slice(0, 2),
   }))
   if (puzzleHash !== COACH_TERRAIN_D8HP_PUZZLE_HASH) return
 
@@ -102,5 +103,5 @@ export async function readReviewedCoachTerrain(payload: CoachTerrainPayload): Pr
   const keys = clues.map(({ direction, index }) => `${direction}:${index}`)
   if (new Set(keys).size !== clues.length) throw new Error('The published Terrain export repeats an authored Sandwich clue.')
 
-  return { valueChanges: changes, cellColors, clues }
+  return { valueChanges: changes, cellColors, clues, additionalConstraints: payload.givenConstraints.slice(2) }
 }

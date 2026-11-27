@@ -871,6 +871,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
       const cells = Array.from({ length: 9 }, (_, offset) => direction === 'south' ? offset * 9 + index : index * 9 + offset)
       return { type: 'terrain-sandwich', direction, cells, maximum, transforms: cells.map(cell => transforms[cell]) }
     })
+    rules.push(...readCoachRules(terrain.additionalConstraints, { grid: CLASSIC_GRID }))
     const imported = makeImportedPuzzle(givens, rules, undefined)
     const givenCellColors = Object.fromEntries(terrain.cellColors.flatMap((color, cell) => color ? [[cell, [color]]] : []))
     const progress = readCoachProgress(data, givens)
