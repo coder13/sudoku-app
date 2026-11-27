@@ -98,7 +98,8 @@ const reviewedShapeArtwork = new Map([
 const reviewedShapeArtworkConstraintCount = 7
 
 const reviewedTextArtwork = new Map([
-  ['babed6a85770d81c9be91fd70f6fa688eba31fc5361639579e82d8030f01cd44', 'Sunny with a chance of Entropy'],
+  ['babed6a85770d81c9be91fd70f6fa688eba31fc5361639579e82d8030f01cd44',
+    { title: 'Sunny with a chance of Entropy', constraintCount: 6 }],
 ])
 
 // These reviews cover the complete authoring data and ordered cell shades.
@@ -164,6 +165,14 @@ export async function readReviewedCoachArtwork(code: string, constraints: readon
       if (prefixHash && reviewedShapeArtwork.has(prefixHash)) hash = prefixHash
     }
   }
+  if (!hash || !reviewedTextArtwork.has(hash)) {
+    const layers = payload.givenConstraints
+    if (Array.isArray(layers)) for (const [reviewedHash, review] of reviewedTextArtwork) {
+      if (layers.length <= review.constraintCount) continue
+      const prefixHash = await sourceHash(code, { ...payload, givenConstraints: layers.slice(0, review.constraintCount) })
+      if (prefixHash === reviewedHash) { hash = reviewedHash; break }
+    }
+  }
   if (!hash || !reviewedDrawings.has(hash)) {
     const layers = payload.givenConstraints
     if (Array.isArray(layers)) for (const [reviewedHash, review] of reviewedDrawings) {
@@ -173,8 +182,8 @@ export async function readReviewedCoachArtwork(code: string, constraints: readon
       if (prefixHash === reviewedHash) { hash = reviewedHash; break }
     }
   }
-  const textTitle = hash && reviewedTextArtwork.get(hash)
-  if (textTitle) {
+  const textReview = hash && reviewedTextArtwork.get(hash)
+  if (textReview) {
     const layers = constraints.filter(layer => record(layer) && layer.type === 'cosmeticText')
     if (layers.length !== 1 || !record(layers[0])) return
     const layer = layers[0]
@@ -196,7 +205,7 @@ export async function readReviewedCoachArtwork(code: string, constraints: readon
       color: settings.colour as string, opacity: settings.opacity as number,
       outlineColor: settings.outlineColour as string, outlineThickness: (settings.outlineThickness as number) / 100,
       offsetY: (settings.positionVerticalOffset as number) / 100 }]
-    return validAuthoredArtwork(artwork) ? { layers, artwork, title: textTitle } : undefined
+    return validAuthoredArtwork(artwork) ? { layers, artwork, title: textReview.title } : undefined
   }
   const reviewedTitle = hash && reviewedShapeArtwork.get(hash)
   if (reviewedTitle) {
