@@ -10,15 +10,45 @@ export const MAX_DECODED_LENGTH = 128_000
 const sourceHashes = new WeakMap<object, { fingerprint: string; hash: Promise<string> }>()
 const coachProgressFields = new Set([
   'userDigits', 'userCellCandidates', 'userBoxCandidates', 'userColours', 'userCellCandidatesColours',
+  'quickDrawLineSegments', 'quickDrawSymbols',
 ])
 
-function stableCoachSource(value: unknown, topLevel = false): string {
-  if (Array.isArray(value)) return `[${value.map(item => stableCoachSource(item)).join(',')}]`
-  if (record(value)) {
-    const keys = Object.keys(value).filter(key => !(topLevel && coachProgressFields.has(key))).sort()
-    return `{${keys.map(key => `${JSON.stringify(key)}:${stableCoachSource(value[key])}`).join(',')}}`
+/** Remove only player-entered state before reviewing source-specific puzzle semantics. */
+export function withoutCoachProgress(value: unknown, topLevel = true): unknown {
+  if (Array.isArray(value)) return value.map(item => withoutCoachProgress(item, false))
+  if (!record(value)) return value
+  const result: Record<string, unknown> = {}
+  for (const [key, item] of Object.entries(value)) {
+    if (topLevel && coachProgressFields.has(key)) continue
+    if (topLevel && key === 'cells' && record(item)) {
+      const cells: Record<string, unknown> = {}
+      for (const [cell, details] of Object.entries(item)) {
+        if (cell === 'NaN,NaN' && record(details) && Object.keys(details).length === 1 &&
+          typeof details.cellCandidates === 'number' && Number.isInteger(details.cellCandidates) &&
+          details.cellCandidates >= 0 && details.cellCandidates <= 511) continue
+        if (!record(details) || !Object.hasOwn(details, 'quickSymbol')) {
+          cells[cell] = withoutCoachProgress(details, false)
+          continue
+        }
+        const { quickSymbol: _quickSymbol, ...sourceDetails } = details
+        if (Object.keys(sourceDetails).length) cells[cell] = withoutCoachProgress(sourceDetails, false)
+      }
+      if (Object.keys(cells).length) result[key] = cells
+      continue
+    }
+    result[key] = withoutCoachProgress(item, false)
   }
-  return JSON.stringify(value) ?? 'null'
+  return result
+}
+
+function stableCoachSource(value: unknown, topLevel = false): string {
+  const source = topLevel ? withoutCoachProgress(value, true) : value
+  if (Array.isArray(source)) return `[${source.map(item => stableCoachSource(item)).join(',')}]`
+  if (record(source)) {
+    const keys = Object.keys(source).sort()
+    return `{${keys.map(key => `${JSON.stringify(key)}:${stableCoachSource(source[key])}`).join(',')}}`
+  }
+  return JSON.stringify(source) ?? 'null'
 }
 
 /** Hash puzzle semantics once across reviewed-import checks, ignoring supported player progress. */

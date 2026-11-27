@@ -1,5 +1,5 @@
 import type { ImportedCellColors } from './imported-colors.ts'
-import { sourceHash } from './puzzle-import/shared.ts'
+import { sourceHash, withoutCoachProgress } from './puzzle-import/shared.ts'
 
 type Point = readonly [x: number, y: number]
 
@@ -125,7 +125,8 @@ async function reviewKey(text: string) {
 export async function reviewedCoachFillTitle(data: Record<string, unknown>, fills: ImportedCellColors) {
   // The palette also holds player shades. The normalized fills retain the
   // author's shades while entries and candidate notes may change separately.
-  const definition = Object.fromEntries(Object.entries(data).filter(([key]) => !fieldsOutsideFillReview.has(key)))
+  const progressFree = withoutCoachProgress(data) as Record<string, unknown>
+  const definition = Object.fromEntries(Object.entries(progressFree).filter(([key]) => !fieldsOutsideFillReview.has(key)))
   const material = JSON.stringify([definition, fills], (_key, value) => record(value)
     ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) : value)
   const key = await reviewKey(material)

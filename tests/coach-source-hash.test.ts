@@ -37,3 +37,17 @@ test('reviewed Sudoku Coach recognizers hash puzzle data without player progress
   assert.equal(await sourceHash('SCv4_y_legacy', legacyPayload), createHash('sha256')
     .update(`SCv4_{"givenDigits":"${'0'.repeat(81)}","gridSize":9}`).digest('hex'))
 })
+
+test('reviewed Coach hashes ignore Quick Draw progress while retaining other cell data', async () => {
+  const code = 'SCv7_32_source'
+  const puzzle = { gridSize: 9, givenDigits: '0'.repeat(81), cells: { 4: { authoredMark: 'keep' } } }
+  const progressed = { ...puzzle, quickDrawLineSegments: { '0/0=>1/1': { colour: 'blue' } },
+    quickDrawSymbols: { '1/0.5': { shape: 'cross', colour: 'red' } },
+    cells: { 4: { authoredMark: 'keep', quickSymbol: { shape: 'circle', colour: 'green' } },
+      'NaN,NaN': { cellCandidates: 3 } } }
+  assert.equal(await sourceHash(code, progressed), await sourceHash(code, puzzle))
+
+  const changedPuzzle = { ...progressed, cells: { ...progressed.cells, 4: { authoredMark: 'changed',
+    quickSymbol: { shape: 'circle', colour: 'green' } } } }
+  assert.notEqual(await sourceHash(code, changedPuzzle), await sourceHash(code, puzzle))
+})

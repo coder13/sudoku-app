@@ -159,6 +159,25 @@ test('#547 preserves CS1G authored shape artwork without dropping its active rul
   } finally { sqlite.close() }
 })
 
+test('#547 keeps reviewed artwork when the player adds Quick Draw annotations', async () => {
+  const source = fixture.examples.find(example => example.issue === 547)
+  assert.ok(source)
+  const data = await decodeSudokuCoachPayload(source.code)
+  const code = coachCode({ ...data,
+    quickDrawLineSegments: { '0/0=>1/1': { colour: 'blue' } },
+    quickDrawSymbols: { '1/0.5': { shape: 'cross', colour: 'red' } },
+    cells: { 0: { quickSymbol: { shape: 'circle', colour: 'green' } } },
+  })
+  const imported = await detectPuzzle(code)
+  assert.equal(imported.title, 'Thank RP you')
+  assert.equal(imported.authoredArtwork?.length, 405)
+  assert.deepEqual(imported.progress?.importedDrawings, [
+    { shape: 'line', from: [0, 0], to: [1, 1], color: 'blue' },
+    { shape: 'cross', at: [1, .5], color: 'red' },
+    { shape: 'circle', at: [.5, .5], color: 'green' },
+  ])
+})
+
 test('#543 and #546 import their Aqre shading, regions, and companion clues', async () => {
   const snake = fixture.examples.find(example => example.issue === 543)
   const aqrePlus = fixture.examples.find(example => example.issue === 546)
