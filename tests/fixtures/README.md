@@ -1563,6 +1563,8 @@ The published [光 (Light)](https://sudoku.coach/en/s/FzrY) export has a 3:1 Rat
 
 The published Jigsaw [*XXIV*](https://sudoku.coach/en/s/BCt9) export combines irregular regions, three Killer cages, and a Little Killer diagonal. `coach-fixture-engine-completion-wasm.mts` checks the six-given puzzle is unique with all rules and becomes multiple if either Killer family is removed. This is a concrete companion-rule dependence witness, alongside the broader 77-source completion, candidate, contradiction, symmetry, and sharing checks.
 
+The zero-given published [*AJT’s Bento flavoured with Entropy*](https://sudoku.coach/en/s/FLAb) combines partial regions with Global Entropy, XV, Arrow, Pill Arrow, Whispers, Quadruples, labeled dots, and Kropki. The same Wasm suite checks its exact solution and confirms it becomes multiple when Global Entropy or the labeled-dot rules are removed; the remaining companion clues stay in the original import.
+
 `node --experimental-strip-types scripts/bench-variants.mjs coach-ratio-3` measures the source through Wasm on macOS arm64 / Node 26.13.0, with five warmups and 40 samples (ten for exhaustive pages). Median/p95 ms: candidate update 0.024/0.027, exact verification 1.157/1.202, exact solve 0.950/1.220, default rating 0.445/0.756, default top-ten hints 0.059/0.064, app-order rating 236.425/258.155 (Extreme), app-order top-ten hints 0.129/0.169, and exhaustive first page 32.560/33.150 for 113 choices. These timings include the complete mixed puzzle, not an isolated Ratio microbenchmark; they are local observations, not a before/after speed claim.
 
 ## Sudoku Coach Crust imports

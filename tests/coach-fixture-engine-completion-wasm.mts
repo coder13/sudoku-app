@@ -140,6 +140,35 @@ test('published Jigsaw Coach combination needs both Killer and Little Killer rul
   }
 })
 
+test('zero-given published Coach Bento needs Global Entropy and labeled dots for uniqueness', async () => {
+  const source = [...sources.values()].find(({ references }) =>
+    references.includes('global-entropy-coach.json:$.examples[5]'))
+  assert.ok(source)
+  const imported = await detectPuzzle(source.code)
+  assert.ok(imported.variant)
+  assert.equal(imported.givens, '0'.repeat(81))
+  assert.equal(imported.variant.puzzle.regions?.type, 'partial')
+  assert.ok(imported.variant.puzzle.rules?.some(rule => rule.type === 'global-entropy'))
+  assert.ok(imported.variant.puzzle.rules?.some(rule => rule.type === 'labeled-dots'))
+  assert.ok(imported.variant.puzzle.rules?.some(rule => rule.type === 'kropki'))
+
+  assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: {
+    puzzle: imported.variant.puzzle,
+  } }), { status: 'unique', solution: source.solution },
+  'the complete zero-given published puzzle must retain its exact solution')
+
+  for (const ruleType of ['global-entropy', 'labeled-dots'] as const) {
+    const withoutRule = {
+      ...imported.variant.puzzle,
+      rules: imported.variant.puzzle.rules?.filter(rule => rule.type !== ruleType),
+    }
+    assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: {
+      puzzle: withoutRule,
+      entries: imported.givens,
+    } }), 'multiple', `removing the ${ruleType} family must expose alternate solutions`)
+  }
+})
+
 test('the zero-given Entropic Coach source has one exact solution from its encoded rules', async () => {
   const source = [...sources.values()].find(({ references }) => references.includes('entropic-coach.json:$.examples[6]'))
   assert.ok(source)
