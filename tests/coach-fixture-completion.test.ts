@@ -2,8 +2,10 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { restoreSizedRuleGame } from '../src/sudoku/sized-rule-game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { readCoachSolutionSources, standaloneCoachSolutionSources } from './helpers/coach-fixture-sources.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
+import { transformedBoard } from './helpers/transformed-board.ts'
 
 const sources = readCoachSolutionSources()
 
@@ -47,4 +49,17 @@ test('published completions satisfy every preserved Sudoku Coach fixture combina
   }
 
   assert.deepEqual([...standaloneSeen].sort(), [...standaloneCoachSolutionSources].sort())
+})
+
+test('every published 9 × 9 Coach combination preserves its completion under all eight symmetries', async () => {
+  let transformed = 0
+  for (const source of sources.values()) {
+    const imported = await detectPuzzle(source.code)
+    if (!imported.variant) continue
+    for (let symmetry = 0; symmetry < 8; symmetry++) {
+      assertVariantCompletion(reflectVariant(imported.variant.puzzle, symmetry), transformedBoard(source.solution, symmetry))
+      transformed++
+    }
+  }
+  assert.equal(transformed, 464)
 })
