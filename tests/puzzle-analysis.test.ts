@@ -27,7 +27,7 @@ test('the technique finder includes every detector in the Rust engine catalog', 
   const ids = [...rustCatalog.matchAll(/^\s*\w+:\s*"([^"]+)"/gm)].map((match) => match[1])
   assert.ok(ids.length >= 72)
   assert.equal(new Set(ANALYSIS_TECHNIQUES).size, ANALYSIS_TECHNIQUES.length)
-  assert.deepEqual(new Set(ANALYSIS_TECHNIQUES), new Set(ids))
+  assert.deepEqual(new Set(ANALYSIS_TECHNIQUES), new Set([...ids, 'locked-candidates']))
 
   const groups = analysisGroupsForCatalog(ids.map((id) => ({ id })))
   assert.equal(groups.length, ANALYSIS_GROUPS.filter(({ techniques }) => techniques.some((id) => ids.includes(id))).length)
@@ -37,11 +37,14 @@ test('the technique finder includes every detector in the Rust engine catalog', 
   assert.equal(futureGroups.at(-1)?.title, 'Advanced patterns')
 })
 
-test('variant deductions have a named section in the technique finder', () => {
+test('variant locked candidates share the Locked candidates section', () => {
   const groups = analysisGroupsForCatalog(['locked-candidates', 'anti-knight', 'anti-king', 'conditional-neighbor', 'future-technique']
     .map((id) => ({ id })))
-  assert.deepEqual(groups.map(({ title }) => title), ['Variant techniques', 'Other techniques'])
-  assert.deepEqual(groups[0]?.techniques, ['locked-candidates', 'anti-knight', 'anti-king', 'conditional-neighbor'])
+  assert.deepEqual(groups, [
+    { title: 'Locked candidates', techniques: ['locked-candidates'] },
+    { title: 'Variant techniques', techniques: ['anti-knight', 'anti-king', 'conditional-neighbor'] },
+    { title: 'Other techniques', techniques: ['future-technique'] },
+  ])
   assert.deepEqual(analysisGroupsForCatalog(['pattern-overlay', 'anti-knight', 'future-technique'].map(id => ({ id })))
     .map(({ title }) => title), ['Variant techniques', 'Other techniques', 'Advanced patterns'])
 })

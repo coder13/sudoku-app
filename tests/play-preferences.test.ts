@@ -26,14 +26,19 @@ test('play controls save immediately and survive a fresh app instance', () => {
   store.set('highlightCandidatePairs', true)
   store.set('multi', true)
   store.set('puzzleBrowserView', 'saved')
+  store.set('expandedTechniqueGroups', ['Locked candidates', 'Advanced patterns'])
 
   assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot(), {
     ...DEFAULT_PLAY_PREFERENCES,
     pencil: true, selectedDigit: 7, candidateKind: 'center', selectedColor: 3,
     colorTarget: 'candidate', colorBrush: 5, highlightCandidatePairs: true, multi: true, puzzleBrowserView: 'saved',
+    expandedTechniqueGroups: ['Locked candidates', 'Advanced patterns'],
   })
   assert.deepEqual(JSON.parse(storage.getItem(PLAY_PREFERENCES_KEY)!), store.getSnapshot())
   assert.deepEqual(store.getServerSnapshot(), DEFAULT_PLAY_PREFERENCES)
+
+  store.set('expandedTechniqueGroups', [])
+  assert.deepEqual(createPlayPreferenceStore(storage).getSnapshot().expandedTechniqueGroups, [])
 })
 
 test('overlay modes stay exclusive and keep the Pen or Pencil choice across reloads', () => {
