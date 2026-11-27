@@ -125,6 +125,10 @@ test('the published Every Constraint combination compiles and propagates in the 
   for (const [cell, mask] of candidates.entries()) {
     assert.ok(mask > 0 && (mask & ~0x1ff) === 0, `combined source leaves valid candidates at cell ${cell}`)
   }
+  assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: {
+    puzzle: imported.variant.puzzle,
+    entries: imported.givens,
+  } }), 'unique', 'the full-rule source has one completion under the imported combination')
 })
 
 test('published Jigsaw Coach combination needs both Killer and Little Killer rules for uniqueness', async () => {
