@@ -119,37 +119,43 @@ test('published Sudoku Coach completions pass the Rust engine with every importe
 
 test('every published Coach combination has order-independent candidate propagation', async () => {
   let checked = 0
+  let shuffleState = 0x87c0ffee
+  const shuffle = <T,>(values: readonly T[]) => {
+    const shuffled = [...values]
+    for (let index = shuffled.length - 1; index > 0; index--) {
+      shuffleState = (Math.imul(shuffleState, 1_664_525) + 1_013_904_223) >>> 0
+      const other = shuffleState % (index + 1)
+      ;[shuffled[index], shuffled[other]] = [shuffled[other], shuffled[index]]
+    }
+    return shuffled
+  }
+
   for (const source of sources.values()) {
     if (source.solution.length !== 81) continue
     const imported = await detectPuzzle(source.code)
     if (!imported.variant) continue
 
     const puzzle = imported.variant.puzzle
-    const position = { puzzle }
-    const candidates = await runEngine({ type: 'variant', operation: 'candidates', position })
-    const reversedCandidates = await runEngine({
-      type: 'variant',
-      operation: 'candidates',
-      position: { puzzle: { ...puzzle, rules: [...(puzzle.rules ?? [])].reverse() } },
-    })
-    assert.deepEqual(reversedCandidates, candidates,
-      `${source.references[0]}: candidate propagation must not depend on Coach rule ordering`)
-
     const progress = coachProgress(imported.givens, source.solution)
+    const blankCandidates = await runEngine({ type: 'variant', operation: 'candidates', position: { puzzle } })
     const progressedCandidates = await runEngine({ type: 'variant', operation: 'candidates', position: {
       puzzle,
       entries: progress.entries,
     } })
-    const reversedProgressedCandidates = await runEngine({
-      type: 'variant',
-      operation: 'candidates',
-      position: {
-        puzzle: { ...puzzle, rules: [...(puzzle.rules ?? [])].reverse() },
+    for (let permutation = 0; permutation < 8; permutation++) {
+      const shuffledPuzzle = { ...puzzle, rules: shuffle(puzzle.rules ?? []) }
+      const shuffledCandidates = await runEngine({ type: 'variant', operation: 'candidates', position: {
+        puzzle: shuffledPuzzle,
+      } })
+      assert.deepEqual(shuffledCandidates, blankCandidates,
+        `${source.references[0]}: blank-grid propagation must be order independent (shuffle ${permutation})`)
+      const shuffledProgressedCandidates = await runEngine({ type: 'variant', operation: 'candidates', position: {
+        puzzle: shuffledPuzzle,
         entries: progress.entries,
-      },
-    })
-    assert.deepEqual(reversedProgressedCandidates, progressedCandidates,
-      `${source.references[0]}: player-progress propagation must not depend on Coach rule ordering`)
+      } })
+      assert.deepEqual(shuffledProgressedCandidates, progressedCandidates,
+        `${source.references[0]}: player-progress propagation must be order independent (shuffle ${permutation})`)
+    }
     checked++
   }
   assert.equal(checked, 59)
