@@ -539,6 +539,11 @@ test('published Coach mixtures preserve exact rule dependency and redundancy', a
       ruleTypes: ['diagonal', 'anti-king', 'xv', 'kropki', 'inequality'],
     },
     {
+      reference: 'xv-coach.json:$.examples[3]',
+      ruleTypes: ['whispers', 'kropki', 'xv'],
+      redundantRuleTypes: ['xv'],
+    },
+    {
       reference: 'xv-coach.json:$.examples[2]',
       ruleTypes: ['anti-knight', 'anti-king', 'xv'],
     },
