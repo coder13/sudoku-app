@@ -129,7 +129,7 @@ Windoku and Non-Consecutive have no joint completion with standard boxes. Anti-K
 
 ## Cheaper solution paths
 
-The usual generation check runs the lower techniques in three priority orders. The optional alternate-path audit settles ordinary singles, then branches over distinct supported moves below the requested grade. It returns a replay when it finds an easier solution. If it exhausts the reachable positions, that result applies to the implemented techniques with singles played first. A budget limit leaves the difficulty bound open. Across the initial 62 deeper probes, it found no cheaper solve, exhausted 14 searches and reached the budget on 48.
+The usual generation check runs the lower techniques in three priority orders. The optional alternate-path audit settles ordinary singles, then branches over distinct supported moves below the requested grade. It returns a replay when it finds an easier solution. If it exhausts the reachable positions, that result applies to the implemented techniques with singles played first. A budget limit leaves the difficulty bound open. Across the initial 62 deeper probes, it found no cheaper solve, exhausted 14 searches and reached the budget on 48. A separate Arrow Miracle probe at every eligible grade reached the 32-position budget without finding a cheaper path.
 
 ## Reproducing the checks
 

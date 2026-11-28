@@ -59,7 +59,7 @@ export function getVariantPlayProfile(puzzle?: VariantPuzzle, layouts?: readonly
   const hasLinkedClues = hasBetweenAndPairClues(rules, layouts) || hasMatchingAndPairClues(rules, layouts)
   const hasKropki = hasPrintedKropki(rules) || layouts?.some(layout => layout.type === 'markers' && layout.family === 'kropki')
   const hasThermometer = rules.some(rule => rule.type === 'thermometer')
-  const hasMiracleArrows = puzzle?.givens === EMPTY && rules.some(rule => rule.type === 'arrow')
+  const hasMiracleArrows = puzzle?.extendedLogic && puzzle.givens === EMPTY && rules.some(rule => rule.type === 'arrow')
   const hasGroupLine = rules.some(rule => rule.type === 'entropic' || rule.type === 'modular')
   const hasGroupPairs = hasGroupLine && (rules.some(rule =>
     rule.type === 'kropki' || rule.type === 'xv' || rule.type === 'adjacent-total' || rule.type === 'inequality') ||
