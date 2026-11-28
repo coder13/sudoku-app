@@ -814,8 +814,13 @@ fn forbidden_entropic_connection_support(domains: &[u16], support: &mut [u16]) {
 
 /// Keep only assignments where every selected digit occurs once in ascending path order.
 fn digit_order_support(digits: &[u8], domains: &[u16], support: &mut [u16]) {
+    // Compiled Digit Order rules have nine cells and three ordered digits.
+    const MAX_CELLS: usize = 9;
+    const MAX_STATES: usize = 4;
+    debug_assert!(domains.len() <= MAX_CELLS);
+    debug_assert!(digits.len() < MAX_STATES);
     let states = digits.len() + 1;
-    let mut forward = vec![vec![false; states]; domains.len() + 1];
+    let mut forward = [[false; MAX_STATES]; MAX_CELLS + 1];
     forward[0][0] = true;
     for (index, &domain) in domains.iter().enumerate() {
         for state in 0..states {
@@ -833,7 +838,7 @@ fn digit_order_support(digits: &[u8], domains: &[u16], support: &mut [u16]) {
         }
     }
 
-    let mut backward = vec![vec![false; states]; domains.len() + 1];
+    let mut backward = [[false; MAX_STATES]; MAX_CELLS + 1];
     backward[domains.len()][digits.len()] = true;
     for index in (0..domains.len()).rev() {
         for state in 0..states {
