@@ -601,6 +601,10 @@ test('published Coach mixtures preserve exact rule dependency and redundancy', a
       redundantRuleTypes: ['thermometer'],
     },
     {
+      reference: 'global-entropy-coach.json:$.examples[2]',
+      ruleTypes: ['extra-house', 'global-entropy'],
+    },
+    {
       reference: 'coach-clue-styles.json:$[0]',
       ruleTypes: ['extra-house', 'kropki', 'sandwich', 'xv', 'adjacent-total', 'region-sum', 'palindrome', 'consecutive-run', 'renban', 'arrow'],
       redundantRuleTypes: ['extra-house', 'kropki', 'xv', 'adjacent-total', 'region-sum', 'palindrome', 'consecutive-run', 'renban', 'arrow'],
