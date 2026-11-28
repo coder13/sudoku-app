@@ -566,6 +566,11 @@ test('published Coach mixtures preserve exact rule dependency and redundancy', a
       ruleTypes: ['palindrome', 'inequality', 'kropki'],
     },
     {
+      reference: 'entropic-coach.json:$.examples[5]',
+      ruleTypes: ['entropic', 'forbidden-entropic-connection', 'global-entropy'],
+      redundantRuleTypes: ['forbidden-entropic-connection', 'global-entropy'],
+    },
+    {
       reference: 'sudoku-coach-noncon.json:$',
       ruleTypes: ['non-consecutive', 'xv', 'entropic', 'kropki', 'pill-arrow', 'arrow', 'minimum', 'quadruple', 'killer-cages'],
       redundantRuleTypes: ['xv', 'entropic', 'kropki', 'pill-arrow', 'arrow', 'minimum', 'quadruple', 'killer-cages'],
