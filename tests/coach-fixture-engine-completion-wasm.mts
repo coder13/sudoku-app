@@ -644,6 +644,10 @@ test('published Coach mixtures preserve exact rule dependency and redundancy', a
       ruleTypes: ['anti-knight', 'anti-king'],
     },
     {
+      reference: 'coach-forcing-rating.json:$[1]',
+      ruleTypes: ['anti-knight', 'anti-king'],
+    },
+    {
       reference: 'coach-forcing-rating.json:$[2]',
       ruleTypes: ['anti-knight', 'anti-king', 'killer-cages'],
     },
