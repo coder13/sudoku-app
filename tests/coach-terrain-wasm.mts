@@ -307,6 +307,28 @@ test('#196 Terrain clues prune manual candidates, report conflicts, and survive 
   assert.deepEqual(undo(entered).position, marked.position)
   assert.deepEqual(redo(undo(entered)).position, entered.position)
 
+  const terrainRules = parsed.variant.puzzle.rules?.filter(candidate => candidate.type === 'terrain-sandwich') ?? []
+  assert.equal(terrainRules.length, 15)
+  for (const [clueIndex, clue] of terrainRules.entries()) {
+    const cell = clue.cells[0]
+    const placedDigit = Number(source.source.solution[cell])
+    const cluePuzzle = { ...puzzle, rules: [clue] }
+    const clueGame = { ...makeGame(`terrain-play-clue-${clueIndex}`, 'Terrain', cluePuzzle.givens, 'imported'),
+      variant: { id: 'mixed' as const, puzzle: cluePuzzle, solution: source.source.solution } }
+    const clueMarked = { ...clueGame, position: { ...clueGame.position,
+      center: clueGame.position.center.map((mask, candidateCell) => clue.cells.includes(candidateCell) ? 0x1ff : mask),
+      corner: clueGame.position.corner.map((mask, candidateCell) => clue.cells.includes(candidateCell) ? 0x1ff : mask),
+    } }
+    const clueEntered = enter(clueMarked, [cell], 'value', placedDigit)
+    const clueDomains = clue.cells.map(candidateCell => candidateCell === cell ? 1 << (placedDigit - 1) : 0x1ff)
+    const clueExpected = terrainSandwichSupports(clue, clueDomains)
+    for (const [index, candidateCell] of clue.cells.entries()) {
+      if (candidateCell === cell) continue
+      assert.equal(clueEntered.position.center[candidateCell], clueExpected[index], `clue ${clueIndex + 1} center candidates at cell ${candidateCell}`)
+      assert.equal(clueEntered.position.corner[candidateCell], clueExpected[index], `clue ${clueIndex + 1} corner candidates at cell ${candidateCell}`)
+    }
+  }
+
   let badDigits: number[] | undefined
   for (let left = 0; left < rule.cells.length && !badDigits; left++) for (let right = left + 1; right < rule.cells.length; right++) {
     const digits = rule.cells.map(cell => Number(source.source.solution[cell]))
