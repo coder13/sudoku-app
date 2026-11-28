@@ -30,12 +30,18 @@ test('Coach cosmetic grid lines import as artwork without changing the rule set'
       { cells: [[6, 9], [6, 8], [6, 7]], parameters: {} },
     ],
   }
+  const secondLayer = {
+    type: 'cosmeticLine',
+    settings: { lineThickness: 4, gridSnapToCentres: false, gridSnapToCorners: true },
+    segments: [{ cells: [[3, 2], [3, 3]], parameters: {} }],
+  }
   const imported = await detectPuzzle(coachCode({ givenConstraints: [
-    { type: 'antiKnight', segments: [], settings: {} }, line,
+    { type: 'antiKnight', segments: [], settings: {} }, line, secondLayer,
   ] }))
   assert.deepEqual(imported.authoredArtwork, [
     { type: 'divider', points: [[0, 3], [1, 3], [2, 3]], thickness: .07 },
     { type: 'divider', points: [[6, 9], [6, 8], [6, 7]], thickness: .07 },
+    { type: 'divider', points: [[3, 2], [3, 3]], thickness: .04 },
   ])
   assert.deepEqual(imported.variant?.puzzle.rules?.map(rule => rule.type), ['anti-knight'])
 })
@@ -49,6 +55,7 @@ test('Coach cosmetic grid line artwork rejects unreviewed settings and geometry'
   assert.equal(readCoachCosmeticLineArtwork([{ ...valid, settings: { ...valid.settings, colour: '#000000' } }]), undefined)
   assert.equal(readCoachCosmeticLineArtwork([{ ...valid, segments: [{ cells: [[0, 3], [1.5, 3]], parameters: {} }] }]), undefined)
   assert.equal(readCoachCosmeticLineArtwork([{ ...valid, segments: [{ cells: [[0, 3], [1, 4]], parameters: {} }] }]), undefined)
+  assert.equal(readCoachCosmeticLineArtwork([valid, { ...valid, settings: { ...valid.settings, lineThickness: 0 } }]), undefined)
 })
 
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-authored-layers.json', import.meta.url), 'utf8')) as {
