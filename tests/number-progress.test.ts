@@ -26,6 +26,18 @@ test('number game progress reads old saves and saves both history stacks with th
     assert.deepEqual(parseNumberProgress(saved, editable, 4), progress)
     assert.equal(parseNumberProgress(saved, [true, true], 4), null)
 
+    const colored: NumberProgress = {
+      ...progress,
+      position: {
+        ...noted,
+        importedCellColors: { 0: ['green', 'yellow'] },
+        importedCandidateColors: { 2: { 3: 'blueHeavy' } },
+      },
+    }
+    assert.equal(saveNumberProgress(key, colored), true)
+    assert.deepEqual(loadNumberProgress(key, editable, 4), colored)
+    assert.deepEqual(parseNumberProgress(readNumberProgress(key)!, editable, 4), colored)
+
     const past = [[2, 3, 0], ...Array.from({ length: NUMBER_HISTORY_SIZE }, () => [2, 0, 0])]
     storage.setItem(key, JSON.stringify({
       ...noted, past, future: [[2, 0, 0], [1, 2, 0]],

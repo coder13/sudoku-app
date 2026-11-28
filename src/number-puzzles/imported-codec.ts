@@ -1,3 +1,5 @@
+import { isImportedColor, validImportedCellColors } from '../sudoku/imported-colors.ts'
+
 export function encodeImportedNumberPuzzle(prefix: 'f1' | 'c1', definition: unknown) {
   const bytes = new TextEncoder().encode(JSON.stringify(definition))
   let binary = ''
@@ -20,9 +22,22 @@ export function decodeImportedNumberPuzzle<T>(token: string, prefix: 'f1' | 'c1'
 
 export function isNumberPosition(value: unknown, size: number) {
   if (!value || typeof value !== 'object') return false
-  const position = value as { values?: unknown; notes?: unknown }
+  const position = value as { values?: unknown; notes?: unknown; importedCellColors?: unknown; importedCandidateColors?: unknown }
   return Array.isArray(position.values) && position.values.length === size ** 2 &&
     position.values.every(digit => Number.isInteger(digit) && digit >= 0 && digit <= size) &&
     Array.isArray(position.notes) && position.notes.length === size ** 2 &&
-    position.notes.every(mask => Number.isInteger(mask) && mask >= 0 && mask < 2 ** size)
+    position.notes.every(mask => Number.isInteger(mask) && mask >= 0 && mask < 2 ** size) &&
+    (position.importedCellColors === undefined || validNumberImportedCellColors(position.importedCellColors, size)) &&
+    (position.importedCandidateColors === undefined || validNumberImportedCandidateColors(position.importedCandidateColors, size))
+}
+
+export function validNumberImportedCellColors(value: unknown, size: number) {
+  return validImportedCellColors(value) && Object.keys(value).every(cell => Number(cell) < size ** 2)
+}
+
+export function validNumberImportedCandidateColors(value: unknown, size: number) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value) &&
+    Object.entries(value).every(([cell, colors]) => /^(?:0|[1-9]\d*)$/.test(cell) && Number(cell) < size ** 2 &&
+      colors !== null && typeof colors === 'object' && !Array.isArray(colors) &&
+      Object.entries(colors).every(([digit, color]) => /^(?:[1-9]\d*)$/.test(digit) && Number(digit) <= size && isImportedColor(color)))
 }

@@ -76,6 +76,30 @@ export const NumberPuzzlePreview: Story = {
   },
 }
 
+const importedPlayerColorsPosition = {
+  values: Array(16).fill(0),
+  notes: [0, (1 << 1) | (1 << 3), ...Array(14).fill(0)],
+  importedCellColors: { 0: ['green', 'yellow'] },
+  importedCandidateColors: { 1: { 2: 'red', 4: 'blueHeavy' } },
+}
+const importedPlayerColorsFutoshiki = createImportedFutoshiki(4, '0'.repeat(16), [], [], importedPlayerColorsPosition)
+const importedPlayerColorsCalcudoku = createImportedCalcudoku(4, '0'.repeat(16), Array.from({ length: 4 }, (_, row) => ({
+  target: 10, operator: 'add' as const, distinct: true as const,
+  cells: Array.from({ length: 4 }, (_, column) => row * 4 + column),
+})), [], importedPlayerColorsPosition)
+
+export const BoxlessPlayerColorProgress: Story = {
+  render: () => <div className="import-preview" style={{ display: 'grid', gap: 24, maxWidth: 480, marginInline: 'auto' }}>
+    <section><h2>Futoshiki</h2><FutoshikiImportPreview entry={importedPlayerColorsFutoshiki} /></section>
+    <section><h2>Calcudoku</h2><CalcudokuImportPreview entry={importedPlayerColorsCalcudoku} /></section>
+  </div>,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas }) => {
+    await expect(canvas.getAllByRole('img', { name: /R1C1, empty, colored green and yellow/ })).toHaveLength(2)
+    await expect(canvas.getAllByRole('img', { name: /R1C2, notes 2, 4, candidate 2 marked red, candidate 4 marked deep blue/ })).toHaveLength(2)
+  },
+}
+
 export const ImportedParityPreview: Story = {
   render: () => <div className="import-preview">
     <FutoshikiImportPreview entry={createImportedFutoshiki(4, '0000000000000000', [

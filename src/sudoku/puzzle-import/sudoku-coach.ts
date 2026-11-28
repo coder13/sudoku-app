@@ -496,7 +496,8 @@ function readCoachProgress(data: Record<string, unknown>, givens: string, size =
 }
 
 function readCoachNumberPosition(data: Record<string, unknown>, givens: string, size: number): NumberPosition | undefined {
-  if (![data.userDigits, data.userCellCandidates, data.userBoxCandidates].some(hasData)) return
+  if (![data.userDigits, data.userCellCandidates, data.userBoxCandidates, data.userColours,
+    data.userCellCandidatesColours].some(hasData)) return
   const digits = data.userDigits === undefined || data.userDigits === '' ? '0'.repeat(givens.length) : data.userDigits
   if (typeof digits !== 'string' || digits.length !== givens.length || !/^\d+$/.test(digits) ||
     [...digits].some(digit => Number(digit) > size)) {
@@ -510,7 +511,12 @@ function readCoachNumberPosition(data: Record<string, unknown>, givens: string, 
   const center = readCoachCandidateMasks(data.userCellCandidates, size)
   const corner = readCoachCandidateMasks(data.userBoxCandidates, size)
   position.notes = center.map((mask, cell) => givens[cell] === '0' ? mask | corner[cell] : 0)
-  return position.values.some(Boolean) || position.notes.some(Boolean) ? position : undefined
+  const importedCellColors = readCoachPlayerColors(data, size)
+  const importedCandidateColors = readCoachCandidateColors(data.colours, data.userCellCandidatesColours, size)
+  if (importedCellColors) position.importedCellColors = importedCellColors
+  if (importedCandidateColors) position.importedCandidateColors = importedCandidateColors
+  return position.values.some(Boolean) || position.notes.some(Boolean) || importedCellColors || importedCandidateColors
+    ? position : undefined
 }
 
 function readCoachParity(layers: readonly unknown[], size: number): LatinParity[] {
@@ -697,11 +703,6 @@ function readCoachStandalone(data: Record<string, unknown>): ImportResult | unde
   const givens = data.givenDigits === undefined ? '0'.repeat(Number(size) ** 2) : data.givenDigits
   if (typeof givens !== 'string' || givens.length !== Number(size) ** 2 || !/^\d+$/.test(givens) ||
     [...givens].some(digit => Number(digit) > Number(size))) throw new Error('This Sudoku Coach puzzle has invalid givens.')
-  const playerCellColors = readCoachPlayerColors(data, Number(size))
-  const playerCandidateColors = readCoachCandidateColors(data.colours, data.userCellCandidatesColours, Number(size))
-  if (playerCellColors || playerCandidateColors) {
-    throw new Error('This Sudoku Coach boxless puzzle has unsupported player color marks.')
-  }
   const position = readCoachNumberPosition(data, givens, Number(size))
   const rawCellColors = readCoachColourCells(data.colours, data.givenColours, Number(size))
   if (!rawCellColors && (hasData(data.givenColours) || hasData(data.colours))) {

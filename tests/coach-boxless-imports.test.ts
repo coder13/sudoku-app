@@ -559,7 +559,7 @@ test('boxless Coach Futoshiki cell colors survive import and saved-definition re
   })), undefined)
 })
 
-test('boxless Coach rejects unsupported player color progress instead of dropping it', async () => {
+test('boxless Coach player cell and candidate colors survive import and portable reload', async () => {
   const emptyGrid = { gridSize: 4, regions: [], givenDigits: '0'.repeat(16) }
   const emptyProgressColors = {
     colours: ['red'],
@@ -570,20 +570,41 @@ test('boxless Coach rejects unsupported player color progress instead of droppin
   const calcudoku = { ...futo, givenConstraints: Array.from({ length: 4 }, (_, row) => ({
     type: 'cage', segments: [{ cells: Array.from({ length: 4 }, (_, column) => row * 4 + column), parameters: { sum: 10 } }],
   })) }
-
-  assert.ok((await detectPuzzle(coachCode(futo))).futoshiki,
-    'empty Coach color-progress fields should remain harmless')
-  assert.ok((await detectPuzzle(coachCode(calcudoku))).calcudoku,
-    'empty Coach color-progress fields should remain harmless')
-
   const userColours = Array(16).fill('')
   userColours[0] = '0'
-  for (const puzzle of [futo, calcudoku]) {
-    await assert.rejects(detectPuzzle(coachCode({ ...puzzle, userColours: userColours.join(',') })),
-      /boxless puzzle has unsupported player color marks/)
-    await assert.rejects(detectPuzzle(coachCode({ ...puzzle, userCellCandidatesColours: '1+2+0' })),
-      /boxless puzzle has unsupported player color marks/)
+  const candidates = Array(16).fill('0')
+  candidates[1] = '4'
+  const playerProgress = {
+    userColours: userColours.join(','),
+    userCellCandidates: candidates.join('-'),
+    userCellCandidatesColours: '1+2+0',
   }
+
+  const importedFutoshiki = await detectPuzzle(coachCode({ ...futo, ...playerProgress }))
+  assert.ok(importedFutoshiki.futoshiki)
+  const uncoloredFutoshiki = await detectPuzzle(coachCode(futo))
+  assert.ok(uncoloredFutoshiki.futoshiki)
+  assert.equal(JSON.stringify(importedFutoshiki.futoshiki.puzzle), JSON.stringify(uncoloredFutoshiki.futoshiki.puzzle))
+  assert.deepEqual(importedFutoshiki.futoshiki.initialPosition, {
+    values: Array(16).fill(0), notes: [0, 2, ...Array(14).fill(0)],
+    importedCellColors: { 0: ['red'] }, importedCandidateColors: { 1: { 2: 'red' } },
+  })
+  assert.deepEqual(readImportedFutoshiki(importedFutoshiki.futoshiki.id)?.initialPosition,
+    importedFutoshiki.futoshiki.initialPosition)
+  const uniqueGivens = [...'1234341221434321']
+  uniqueGivens[1] = '0'
+  const futoPreview = await prepareImportedPuzzle(coachCode({ ...futo, givenDigits: uniqueGivens.join(''), ...playerProgress }))
+  assert.deepEqual(futoPreview.futoshiki?.initialPosition?.importedCandidateColors, { 1: { 2: 'red' } })
+
+  const importedCalcudoku = await detectPuzzle(coachCode({ ...calcudoku, ...playerProgress }))
+  assert.ok(importedCalcudoku.calcudoku)
+  const uncoloredCalcudoku = await detectPuzzle(coachCode(calcudoku))
+  assert.ok(uncoloredCalcudoku.calcudoku)
+  assert.equal(JSON.stringify(importedCalcudoku.calcudoku.puzzle), JSON.stringify(uncoloredCalcudoku.calcudoku.puzzle))
+  assert.deepEqual(importedCalcudoku.calcudoku.initialPosition?.importedCellColors, { 0: ['red'] })
+  assert.deepEqual(importedCalcudoku.calcudoku.initialPosition?.importedCandidateColors, { 1: { 2: 'red' } })
+  assert.deepEqual(readImportedCalcudoku(importedCalcudoku.calcudoku.id)?.initialPosition,
+    importedCalcudoku.calcudoku.initialPosition)
 })
 
 test('#456/#459/#460 keep Coach Thermometers, Arrows, and Renban rules in boxless Futoshiki and Calcudoku', async () => {

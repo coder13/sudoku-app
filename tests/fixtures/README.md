@@ -1659,7 +1659,7 @@ Thirty independently checked Medium recipes per style target at most twenty give
 
 `sudoku-coach-boxless-calcudoku.json` preserves the exact 6 × 6 boxless Coach export from issue #410. The import retains its one fixed digit, fourteen cage geometries and labels, including the three-cell blank-operation cage as an explicit hidden arithmetic rule, and all 26 authored cell colors. The original definition round-trips through its saved token, and the Calcudoku solver verifies its unique completion; the same source reaches Import Preview.
 
-Boxless Futoshiki and Calcudoku imports restore Coach entries and both candidate modes. Non-empty player cell-color or candidate-color progress is rejected explicitly because the number-puzzle progress model cannot preserve those marks; empty encoded color fields remain accepted.
+Boxless Futoshiki and Calcudoku imports restore Coach entries, both candidate modes, player cell colors, and candidate colors through their portable definitions and saved number-game progress. The BoxlessPlayerColorProgress Storybook story shows both puzzle types with imported cell and pencil-mark colors.
 
 The source-composition smoke test also appends solution-valid Odd and Even cell layers to each 9 × 9 SCv7 variant fixture. It checks that both layers remain typed parity rules and that every source's original rule order, region layout, givens, cell colors, and authored artwork survive.
 

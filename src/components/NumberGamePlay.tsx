@@ -189,7 +189,7 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
   }
 
   function applyMove([cell, value, marks]: NumberMove, past: NumberMove[], future: NumberMove[]) {
-    const next = { values: [...position.values], notes: [...position.notes] }
+    const next = { ...position, values: [...position.values], notes: [...position.notes] }
     next.values[cell] = value
     next.notes[cell] = marks
     update({ position: next, past, future })
@@ -358,6 +358,8 @@ function NumberPuzzleBoard<Entry extends NumberPuzzleEntry>({ config, entry }: {
       appearance={{
         values: preview?.values ?? position.values,
         notes: preview ? undefined : position.notes,
+        importedCellColors: position.importedCellColors,
+        importedCandidateColors: position.importedCandidateColors,
         conflicts: preview ? undefined : conflictCells,
         highlightedCell: shownHint?.cell,
         contextCells,
