@@ -17,13 +17,15 @@ export type SettingsValues = Record<string, string>
 type Group = { key: string; fields: Record<string, unknown>; format: 'text' | 'json' | 'fields'; metadata?: Record<string, number> }
 function groups(storage: Pick<Storage, 'getItem'>): Group[] {
   const prefs = readPreferences(storage)
+  // The mobile input height belongs to this device's viewport.
+  const { mobileInputHeight: _mobileInputHeight, ...playPreferences } = readPlayPreferences(storage)
   const single = (key: string, value: unknown, format: 'text' | 'json' = 'text'): Group => ({ key, fields: { '': value }, format })
   return [
     { key: APPEARANCE_KEY, fields: prefs.appearance, format: 'fields', metadata: { themeDefaultsVersion: 2 } },
     { key: ADVANCED_MODE_KEY, fields: prefs.advancedModes, format: 'fields' },
     { key: HIGHLIGHT_KEY, fields: prefs.highlighting, format: 'fields' },
     { key: TIMING_KEY, fields: readTiming(storage), format: 'fields' },
-    { key: PLAY_PREFERENCES_KEY, fields: readPlayPreferences(storage), format: 'fields' },
+    { key: PLAY_PREFERENCES_KEY, fields: playPreferences, format: 'fields' },
     single(ERROR_MODE_KEY, prefs.errorMode), single(CELL_REFERENCE_STYLE_KEY, prefs.cellReferenceStyle),
     single(INPUT_SIZE_KEY, prefs.inputSize), single(WORKSPACE_MODE_KEY, prefs.workspaceMode),
     single(PANEL_HEIGHT_KEY, storage.getItem(PANEL_HEIGHT_KEY)),

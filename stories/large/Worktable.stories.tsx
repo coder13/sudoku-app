@@ -1070,6 +1070,7 @@ export const SolvedMobile: Story = {
     const before = layout()
     await expect(bounds(actions)).toEqual(bounds(controls))
     await expect(within(actions).getByRole('button', { name: 'Next easy puzzle' })).toBeVisible()
+    await expect(canvas.queryByRole('button', { name: /^Undo$/ })).not.toBeInTheDocument()
     await userEvent.click(within(results).getByText('Action history'))
     await expect(layout()).toEqual(before)
 
@@ -1088,7 +1089,7 @@ export const SolvedMobile: Story = {
     await expect(layout()).toEqual(before)
 
     await userEvent.click(toggle)
-    await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
+    await userEvent.click(canvas.getByRole('button', { name: /^Undo$/ }))
     await expect(canvas.getByRole('gridcell', { name: /^Row 1, column 3, empty/ })).toBeVisible()
     await expect(toggle).toHaveAccessibleName('View results')
     const original = roomStore.getSnapshot().games.find(game => game.id === solved.id)

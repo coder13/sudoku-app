@@ -51,7 +51,6 @@ export function Controls({ digits, tools, history, actions, layout }: ControlsPr
             canUndo={history.canUndo}
             canRedo={history.canRedo}
             disabled={historyDisabled}
-            hideUndo={history.hideUndo}
           />
           {actions.onCheck && (
             <IconButton className="puzzle-check-button" onClick={actions.onCheck} disabled={editsDisabled} aria-label="Check puzzle" title="Check puzzle">

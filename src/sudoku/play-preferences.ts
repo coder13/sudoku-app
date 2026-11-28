@@ -35,6 +35,7 @@ export type PlayPreferences = {
   cardModeBadgePosition: ModeBadgePosition
   pinnedActions: readonly PinnedAction[]
   mobileHintPinned: boolean
+  mobileInputHeight?: number | null
   desktopLayoutWidth: number
   desktopPanelWidths: DesktopPanelWidths
 }
@@ -119,6 +120,7 @@ export function parsePlayPreferences(value: unknown): PlayPreferences {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return { ...DEFAULT_PLAY_PREFERENCES }
   const saved = value as Record<string, unknown>
   const expandedTechniqueGroups = saved.expandedTechniqueGroups
+  const height = saved.mobileInputHeight
   // Invalid or older records can omit fields without losing the valid settings.
   const inputTool = inputToolPreferencesFromState(inputToolStateFromPreferences({
     pencil: saved.pencil === true,
@@ -145,6 +147,8 @@ export function parsePlayPreferences(value: unknown): PlayPreferences {
     cardModeBadgePosition: parseModeBadgePosition(saved.cardModeBadgePosition),
     pinnedActions: parsePinnedActions(saved.pinnedActions),
     mobileHintPinned: saved.mobileHintPinned === true,
+    ...(height === null || typeof height === 'number' && Number.isFinite(height) && height > 0
+      ? { mobileInputHeight: height } : {}),
     desktopLayoutWidth: inRange(saved.desktopLayoutWidth, MIN_DESKTOP_LAYOUT_WIDTH, Number.MAX_SAFE_INTEGER)
       ? saved.desktopLayoutWidth : DEFAULT_DESKTOP_LAYOUT_WIDTH,
     desktopPanelWidths: parseDesktopPanelWidths(saved.desktopPanelWidths, saved.desktopInputWidth),

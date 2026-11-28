@@ -852,7 +852,8 @@ export function Board(props: BoardProps) {
         {!badgeOnFrame && modeBadge}
       </div>
       {badgeOnFrame && modeBadge}
-      {hasAqre && onAqreShade && <div className="aqre-shade-controls" role="group" aria-label="Aqre cell shading">
+      {hasAqre && (onAqreShade || overlay?.visible) && <div className="aqre-shade-controls" role="group" aria-label="Aqre cell shading"
+        inert={overlay?.visible}>
         <span>Mark cells:</span>
         {(['shaded', 'unshaded', 'unknown'] as const).map(shade => <button key={shade} type="button"
           className="aqre-shade-option" aria-pressed={aqreMode === shade}

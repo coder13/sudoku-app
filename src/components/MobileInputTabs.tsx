@@ -44,11 +44,14 @@ function settleTrack(track: HTMLElement, offset: number, duration = motionDurati
 }
 
 /** Show Digits and any open solving tools in the mobile input card. Worktable owns the saved tab selection. */
-export function MobileInputTabs({ active, open, panels, pinnedHint, activeTabRef, layoutRefs, toolsDisabled, toolToggles, onShowTools, onSelect, onClose }: {
+export function MobileInputTabs({ active, open, panels, pinnedHint, keepTabBar, retainPinnedHintSpace, activeTabRef, layoutRefs,
+  toolsDisabled, toolToggles, onShowTools, onSelect, onClose }: {
   active: ToolPanelTab
   open: PuzzleTool[]
   panels: Record<ToolPanelTab, ReactNode>
   pinnedHint?: ReactNode
+  keepTabBar?: boolean
+  retainPinnedHintSpace?: boolean
   activeTabRef: Ref<HTMLButtonElement>
   layoutRefs?: {
     inputTabs: RefObject<HTMLDivElement | null>
@@ -71,6 +74,7 @@ export function MobileInputTabs({ active, open, panels, pinnedHint, activeTabRef
   const previousPinnedHint = useRef(Boolean(pinnedHint))
   const previousActive = useRef(active)
   const hasPinnedHint = Boolean(pinnedHint)
+  const reserveToolbar = keepTabBar || retainPinnedHintSpace
   const activeTab: MobileInputTab = hasPinnedHint && hintTabActive ? 'hint' : active
   const tabs: MobileInputTab[] = ['digits', ...visibleTools, ...(hasPinnedHint ? ['hint' as const] : [])]
   const toolbarTools = open.length ? visibleTools : closingTools
@@ -78,8 +82,8 @@ export function MobileInputTabs({ active, open, panels, pinnedHint, activeTabRef
   const toolbarTool = activeTab === 'digits' ? toolbarTools.at(0) : activeTab
   const toolbarToolToClose = toolbarTool === 'digits' || toolbarTool === 'hint' ? undefined : toolbarTool
   const closingToolbar = closingTools.length > 0 || closingHint
-  const hasTabBar = Boolean(open.length || closingToolbar || hasPinnedHint)
-  const hasInputCard = Boolean(open.length || closingToolbar || toolToggles || hasPinnedHint)
+  const hasTabBar = Boolean(open.length || closingToolbar || hasPinnedHint || reserveToolbar)
+  const hasInputCard = hasTabBar || Boolean(toolToggles)
   const tabList = useRef<HTMLDivElement>(null)
   const track = useRef<HTMLDivElement>(null)
   const tabSwipe = useRef<TabSwipe | null>(null)
@@ -102,18 +106,18 @@ export function MobileInputTabs({ active, open, panels, pinnedHint, activeTabRef
     previousActive.current = active
     if (selectionChanged || !hasPinnedHint) setHintTabActive(false)
     else if (!wasPinned && hasPinnedHint) setHintTabActive(true)
-    setClosingHint(wasPinned && !hasPinnedHint && open.length === 0)
-  }, [active, hasPinnedHint, open.length])
+    setClosingHint(wasPinned && !hasPinnedHint && open.length === 0 && !reserveToolbar)
+  }, [active, hasPinnedHint, open.length, reserveToolbar])
 
   useLayoutEffect(() => {
     const previous = previousVisibleTools.current
     previousVisibleTools.current = visibleTools
-    if (previous.length > 0 && visibleTools.length === 0 && !hasPinnedHint) {
+    if (previous.length > 0 && visibleTools.length === 0 && !hasPinnedHint && !reserveToolbar) {
       setClosingTools(previous)
-    } else if (visibleTools.length > 0 || hasPinnedHint) {
+    } else if (visibleTools.length > 0 || hasPinnedHint || reserveToolbar) {
       setClosingTools(current => current.length ? [] : current)
     }
-  }, [open.length, hasPinnedHint])
+  }, [open.length, hasPinnedHint, reserveToolbar])
 
   useLayoutEffect(() => {
     if (!open.length) return
@@ -293,8 +297,8 @@ export function MobileInputTabs({ active, open, panels, pinnedHint, activeTabRef
   }
 
   return <div ref={layoutRefs?.inputTabs} className={hasInputCard ? 'surface mobile-input-tabs' : undefined}
-    data-tools-open={open.length > 0 || closingToolbar || hasPinnedHint || undefined}
-    data-hint-in-tabs={hasPinnedHint || undefined} data-closing-tools={closingToolbar || undefined}>
+    data-tools-open={hasTabBar || undefined}
+    data-hint-in-tabs={hasPinnedHint || retainPinnedHintSpace || undefined} data-closing-tools={closingToolbar || undefined}>
     {hasInputCard && <div ref={layoutRefs?.inputToolbar} className={hasTabBar ? 'mobile-input-toolbar' : 'mobile-input-menu-slot'}
       data-closing={closingToolbar || undefined} aria-hidden={closingToolbar || undefined} inert={closingToolbar || undefined}
       data-grid-click-away-exempt data-no-panel-hold>
