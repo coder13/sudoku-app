@@ -326,6 +326,8 @@ test('Coach corner-snapped cosmetic lines become artwork, not engine rules', asy
   assert.ok(imported.variant)
   assert.deepEqual(imported.variant.puzzle.rules.map(rule => rule.type), fixture.rules)
   assert.ok(!('authoredArtwork' in imported.variant.puzzle), 'cosmetic line artwork stays outside the engine puzzle')
+  const solved = await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle: imported.variant.puzzle } })
+  assert.equal(solved.status, 'unique', 'the original mixed puzzle remains solvable with the authored dividers kept out of the engine')
 })
 
 test('published Jigsaw Coach combination needs both Killer and Little Killer rules for uniqueness', async () => {
