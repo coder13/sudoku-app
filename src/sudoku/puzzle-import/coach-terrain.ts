@@ -1,4 +1,4 @@
-const COACH_TERRAIN_D8HP_PUZZLE_HASH = '127b8016b807b3f707122eb21a4a1d30c7e521e52e02d6d268af6568dbd3135e'
+const COACH_TERRAIN_D8HP_RULES_HASH = 'e72d37032f8a4451e7359be76017642111b148165914c328a431d0f8544474aa'
 const COACH_BASE62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 
 export type CoachTerrainValueChange =
@@ -43,7 +43,7 @@ async function sha256(value: string) {
   return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('')
 }
 
-/** Read the reviewed Terrain puzzle and ignore only its supported player-progress fields. */
+/** Read the reviewed Terrain value map and authored clues, independent of puzzle givens. */
 export async function readReviewedCoachTerrain(payload: CoachTerrainPayload): Promise<CoachTerrainDefinition | undefined> {
   if (Object.keys(payload).some(key => !allowedFields.has(key))) return
   if (payload.gridSize !== 9 || !Array.isArray(payload.colours) ||
@@ -51,16 +51,13 @@ export async function readReviewedCoachTerrain(payload: CoachTerrainPayload): Pr
     typeof payload.givenColours !== 'string' || !Array.isArray(payload.givenConstraints) || payload.givenConstraints.length < 2) {
     return
   }
-  const givens = payload.givenDigits ?? '0'.repeat(81)
-  if (typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens)) return
-  const puzzleHash = await sha256(JSON.stringify({
+  const rulesHash = await sha256(JSON.stringify({
     gridSize: payload.gridSize,
-    givenDigits: givens,
     colours: payload.colours,
     givenColours: payload.givenColours,
     givenConstraints: payload.givenConstraints.slice(0, 2),
   }))
-  if (puzzleHash !== COACH_TERRAIN_D8HP_PUZZLE_HASH) return
+  if (rulesHash !== COACH_TERRAIN_D8HP_RULES_HASH) return
 
   const rawColors = payload.givenColours.split(',')
   if (rawColors.length !== 81 || rawColors.some(color => color.length > 1 || color !== '' && !COACH_BASE62.slice(0, 3).includes(color))) {

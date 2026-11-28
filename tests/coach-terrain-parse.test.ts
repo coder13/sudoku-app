@@ -58,10 +58,21 @@ test('reviewed Coach Terrain parser preserves its transforms and maximum Sandwic
   assert.deepEqual(imported.givenCellColors, Object.fromEntries(terrain.cellColors.flatMap((color, cell) => color ? [[cell, [color]]] : [])))
 })
 
-test('Coach Terrain semantics are restricted to the exact reviewed puzzle data', async () => {
-  assert.equal(await readReviewedCoachTerrain({ ...source.payload, givenDigits: '1' + '0'.repeat(80) }), undefined)
+test('Coach Terrain semantics are pinned to its reviewed value map and clues, independent of givens', async () => {
+  assert.deepEqual(await readReviewedCoachTerrain({ ...source.payload, givenDigits: '1' + '0'.repeat(80) }),
+    await readReviewedCoachTerrain(source.payload))
   assert.equal(await readReviewedCoachTerrain({ ...source.payload, colours: ['green', 'purple'] }), undefined)
   assert.equal(await readReviewedCoachTerrain({ ...source.payload, customRules: 'different semantics' }), undefined)
+})
+
+test('Coach Terrain imports preserve authored rules when the puzzle givens are edited', async () => {
+  const givens = source.source.solution[0] + '0'.repeat(80)
+  const code = coachCode({ ...source.payload, givenDigits: givens })
+  const imported = await detectPuzzle(code)
+  assert.equal(imported.format, 'Sudoku Coach')
+  assert.equal(imported.givens, givens)
+  assert.equal(imported.variant?.puzzle.rules?.filter(rule => rule.type === 'terrain-sandwich').length, 15)
+  assert.deepEqual(imported.givenCellColors, await detectPuzzle(source.source.sudoku).then(result => result.givenCellColors))
 })
 
 test('Coach Terrain imports retain player progress added to the reviewed puzzle', async () => {
