@@ -253,6 +253,14 @@ test('an unrelated 4 × 4 Jigsaw with regions crossing the flat edges does not g
   assert.equal(imported.grid.wrapAround, undefined)
 })
 
+test('imports line-wrapped Sudoku Coach codes without changing their decoded puzzle', async () => {
+  const expected = await detectPuzzle(killerCode)
+  const wrapped = killerCode.match(/.{1,40}/g)!.join('\n  ')
+  assert.deepEqual(await detectPuzzle(wrapped), expected)
+  assert.deepEqual(await detectPuzzle(`\n${wrapped}\n`), expected)
+  assert.deepEqual(await decodeSudokuCoachPayload(wrapped), await decodeSudokuCoachPayload(killerCode))
+})
+
 test('imports the supplied Killer grid from a Sudoku Coach code or link', async () => {
   const puzzle = await detectPuzzle(killerCode)
   assert.equal(puzzle.format, 'Sudoku Coach')

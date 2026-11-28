@@ -42,6 +42,9 @@ test('legacy rule records produce the same typed puzzle as modern exports in the
   ] })
   const expected = await detectPuzzle(modern)
   assert.equal(expected.variant?.id, 'mixed')
+  const currentVersion = `SCv4_yy${raw}_`
+  const wrapped = currentVersion.match(/.{1,40}/g)!.join('\n  ')
+  assert.deepEqual(await detectPuzzle(wrapped), expected)
   for (const version of [4, 5, 6]) assert.deepEqual(await detectPuzzle(`SCv${version}_yy${raw}_`), expected)
   assert.deepEqual(await detectPuzzle(`SCv3_yyyyyyy0Ac80d0_0Ac80d0_0Ac80d0___y${raw}`), expected)
 })

@@ -153,6 +153,8 @@ async function inflate(bytes: Uint8Array<ArrayBuffer>, limit = MAX_DECODED_LENGT
 
 export async function decodeSudokuCoachPayload(code: string): Promise<Record<string, unknown>> {
   if (code.length > MAX_IMPORT_LENGTH) throw new Error('Paste one puzzle at a time.')
+  const compact = code.replace(/\s+/g, '')
+  if (COACH_CODE.test(compact) || LEGACY_COACH_CODE.test(compact) || COACH_WHOLE_PROGRESS.test(compact)) code = compact
   const legacy = LEGACY_COACH_CODE.exec(code)
   if (legacy) return decodeLegacyCoach(code.slice(legacy[0].length), legacy[1] as LegacyCoachVersion, MAX_DECODED_LENGTH)
   const wholeProgress = COACH_WHOLE_PROGRESS.exec(code)
