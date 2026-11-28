@@ -134,6 +134,22 @@ test('every published Coach combination has order-independent candidate propagat
     })
     assert.deepEqual(reversedCandidates, candidates,
       `${source.references[0]}: candidate propagation must not depend on Coach rule ordering`)
+
+    const progress = coachProgress(imported.givens, source.solution)
+    const progressedCandidates = await runEngine({ type: 'variant', operation: 'candidates', position: {
+      puzzle,
+      entries: progress.entries,
+    } })
+    const reversedProgressedCandidates = await runEngine({
+      type: 'variant',
+      operation: 'candidates',
+      position: {
+        puzzle: { ...puzzle, rules: [...(puzzle.rules ?? [])].reverse() },
+        entries: progress.entries,
+      },
+    })
+    assert.deepEqual(reversedProgressedCandidates, progressedCandidates,
+      `${source.references[0]}: player-progress propagation must not depend on Coach rule ordering`)
     checked++
   }
   assert.equal(checked, 59)
