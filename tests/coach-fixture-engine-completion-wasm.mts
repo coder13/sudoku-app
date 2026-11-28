@@ -551,6 +551,11 @@ test('published Coach mixtures preserve exact rule dependency and redundancy', a
       ruleTypes: ['renban', 'palindrome', 'adjacent-total', 'kropki', 'entropic'],
       redundantRuleTypes: ['palindrome', 'entropic'],
     },
+    {
+      reference: 'modular-coach.json:$.examples[7]',
+      ruleTypes: ['parity', 'whispers', 'kropki', 'xv', 'adjacent-total', 'entropic', 'killer-cages', 'renban', 'modular'],
+      redundantRuleTypes: ['parity', 'adjacent-total', 'entropic'],
+    },
   ] as const
 
   for (const testCase of cases) {
