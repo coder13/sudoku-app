@@ -895,6 +895,18 @@ type EngineConnection = {
   closed?: Error
   prepared?: boolean
 }
+
+function isEngineResponse(value: unknown): value is EngineResponse {
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+    !Number.isSafeInteger((value as { id?: unknown }).id)) return false
+  const response = value as Record<string, unknown>
+  if (Object.hasOwn(response, 'error')) {
+    return typeof response.error === 'string' &&
+      (response.code === undefined || typeof response.code === 'string') && !Object.hasOwn(response, 'value')
+  }
+  return Object.hasOwn(response, 'value')
+}
+
 const candidateEngine: EngineConnection = { pending: new Map() }
 const metadataEngine: EngineConnection = { pending: new Map() }
 const playEngine: EngineConnection = { pending: new Map() }
@@ -909,7 +921,12 @@ function connect(connection: EngineConnection) {
   const { pending } = connection
   const instance = new Worker(new URL('./engine.worker.ts', import.meta.url), { type: 'module' })
   instance.onmessage = ({ data }: MessageEvent<EngineResponse>) => {
-    if (connection.worker !== instance || connection.active !== data.id) return
+    if (connection.worker !== instance) return
+    if (!isEngineResponse(data)) {
+      closeConnection(connection, new Error('The Sudoku engine returned an invalid response. Try again.'))
+      return
+    }
+    if (connection.active !== data.id) return
     const request = pending.get(data.id)
     connection.active = undefined
     pending.delete(data.id)

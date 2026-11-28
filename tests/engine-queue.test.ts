@@ -233,6 +233,26 @@ test('engine queues isolate play work, replace waiting refreshes, and cancel own
     session.close()
   })
 
+  await t.test('malformed worker responses reject queued calls and allow a retry', async () => {
+    const session = createEngineSession()
+    const active = session.run({ type: 'rate', values }), malformedWorker = newestWorker()
+    const queued = session.run({ type: 'hints', values })
+    const failures = Promise.all([
+      assert.rejects(active, /invalid response/),
+      assert.rejects(queued, /invalid response/),
+    ])
+    malformedWorker.onmessage?.({ data: null as unknown as EngineResponse })
+    await failures
+    assert.equal(malformedWorker.closed, true)
+
+    const retry = session.run({ type: 'rate', values }), retryWorker = newestWorker()
+    assert.notEqual(retryWorker, malformedWorker)
+    malformedWorker.reply('malformed stale response')
+    retryWorker.reply({ status: 'stalled' })
+    assert.deepEqual(await retry, { status: 'stalled' })
+    session.close()
+  })
+
   await t.test('generation abort stops an active attempt without stopping another search', async () => {
     const options = { type: 'generate-targeted', seed: 1, maxAttempts: 3, target: { type: 'difficulty', level: 'medium' } } as const
     const controller = new AbortController()
