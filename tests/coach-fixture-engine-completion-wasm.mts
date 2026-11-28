@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
 import { runEngine } from '../src/sudoku/engine.ts'
 import { isPlayablePuzzle } from '../src/sudoku/variants.ts'
 import { sizedRulePosition } from '../src/sudoku/sized-rule-game.ts'
@@ -9,6 +10,7 @@ import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { readCoachSolutionSources, standaloneCoachSolutionSources } from './helpers/coach-fixture-sources.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { transformedBoard } from './helpers/transformed-board.ts'
+import { coachCode } from './helpers/coach-code.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 
 useWasmWorker()
@@ -171,17 +173,32 @@ test('published 9 × 9 Coach combinations compose with solution-valid Odd and Ev
     const imported = await detectPuzzle(source.code)
     if (!imported.variant) continue
 
-    const { puzzle } = imported.variant
-    const baseline = await runEngine({ type: 'variant', operation: 'candidates', position: { puzzle } })
     const oddCells = [...source.solution].flatMap((digit, cell) => Number(digit) % 2 === 1 ? [cell] : [])
     const evenCells = [...source.solution].flatMap((digit, cell) => Number(digit) % 2 === 0 ? [cell] : [])
-    const combined = {
-      ...puzzle,
-      rules: [...(puzzle.rules ?? []),
-        { type: 'parity' as const, cells: oddCells, parity: 'odd' as const },
-        { type: 'parity' as const, cells: evenCells, parity: 'even' as const }],
+    const { puzzle } = imported.variant
+    const baseline = await runEngine({ type: 'variant', operation: 'candidates', position: { puzzle } })
+    const parityRules = [
+      { type: 'parity' as const, cells: oddCells, parity: 'odd' as const },
+      { type: 'parity' as const, cells: evenCells, parity: 'even' as const },
+    ]
+    let combinedPuzzle: typeof puzzle = { ...puzzle, rules: [...(puzzle.rules ?? []), ...parityRules] }
+
+    if (source.code.startsWith('SCv7_32_')) {
+      const payload = await decodeSudokuCoachPayload(source.code)
+      const originalLayers = Array.isArray(payload.givenConstraints) ? payload.givenConstraints : []
+      const companions = [
+        { type: 'odd', segments: oddCells.map(cell => ({ cells: [cell], parameters: {} })) },
+        { type: 'even', segments: evenCells.map(cell => ({ cells: [cell], parameters: {} })) },
+      ]
+      const combined = await detectPuzzle(coachCode({
+        ...payload,
+        givenConstraints: [...originalLayers, ...companions],
+      }))
+      assert.ok(combined.variant, `${source.references[0]}: source re-imports with parity companions`)
+      combinedPuzzle = combined.variant.puzzle
     }
-    const candidates = await runEngine({ type: 'variant', operation: 'candidates', position: { puzzle: combined } })
+
+    const candidates = await runEngine({ type: 'variant', operation: 'candidates', position: { puzzle: combinedPuzzle } })
     for (let cell = 0; cell < 81; cell++) {
       const parityMask = Number(source.solution[cell]) % 2 ? oddMask : evenMask
       assert.ok((candidates[cell] & ~baseline[cell]) === 0,
