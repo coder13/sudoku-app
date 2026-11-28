@@ -355,7 +355,14 @@ test('zero-given published Coach Bento needs Global Entropy and labeled dots for
   const imported = await detectPuzzle(source.code)
   assert.ok(imported.variant)
   assert.equal(imported.givens, '0'.repeat(81))
-  assert.equal(imported.variant.puzzle.regions?.type, 'partial')
+  assert.deepEqual(imported.variant.puzzle.regions, {
+    type: 'partial',
+    regions: [
+      [0, 1, 2, 9, 10, 11, 18, 19, 20],
+      [3, 4, 5, 12, 13, 14, 21, 22, 23],
+      [6, 7, 8, 15, 16, 17, 24, 25, 26],
+    ],
+  }, 'all three authored Bento regions survive Coach import')
   assert.ok(imported.variant.puzzle.rules?.some(rule => rule.type === 'global-entropy'))
   assert.ok(imported.variant.puzzle.rules?.some(rule => rule.type === 'labeled-dots'))
   assert.ok(imported.variant.puzzle.rules?.some(rule => rule.type === 'kropki'))
@@ -364,6 +371,11 @@ test('zero-given published Coach Bento needs Global Entropy and labeled dots for
     puzzle: imported.variant.puzzle,
   } }), { status: 'unique', solution: source.solution },
   'the complete zero-given published puzzle must retain its exact solution')
+  const withoutBentoRegions = { ...imported.variant.puzzle, regions: { type: 'partial' as const, regions: [] } }
+  assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: {
+    puzzle: withoutBentoRegions,
+  } }), { status: 'unique', solution: source.solution },
+  'the three Bento regions are retained even though they are individually redundant for uniqueness')
   for (let symmetry = 0; symmetry < 8; symmetry++) {
     assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: {
       puzzle: reflectVariant(imported.variant.puzzle, symmetry),
