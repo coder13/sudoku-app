@@ -584,6 +584,14 @@ test('published Coach mixtures preserve exact rule dependency and redundancy', a
       ruleTypes: ['entropic', 'kropki'],
     },
     {
+      reference: 'between-coach.json:$.examples[0]',
+      ruleTypes: ['between', 'kropki'],
+    },
+    {
+      reference: 'sudoku-coach-magic-square.json:$',
+      ruleTypes: ['killer-cages', 'magic-square'],
+    },
+    {
       reference: 'coach-clue-styles.json:$[0]',
       ruleTypes: ['extra-house', 'kropki', 'sandwich', 'xv', 'adjacent-total', 'region-sum', 'palindrome', 'consecutive-run', 'renban', 'arrow'],
       redundantRuleTypes: ['extra-house', 'kropki', 'xv', 'adjacent-total', 'region-sum', 'palindrome', 'consecutive-run', 'renban', 'arrow'],
