@@ -588,6 +588,10 @@ test('published Coach mixtures preserve exact rule dependency and redundancy', a
       ruleTypes: ['between', 'kropki'],
     },
     {
+      reference: 'nonconsecutive-coach.json:$.examples[0]',
+      ruleTypes: ['kropki', 'non-consecutive'],
+    },
+    {
       reference: 'sudoku-coach-magic-square.json:$',
       ruleTypes: ['killer-cages', 'magic-square'],
     },
