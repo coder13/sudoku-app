@@ -274,14 +274,27 @@ test('#196 Terrain clues prune manual candidates, report conflicts, and survive 
   const importedPuzzle = { ...parsed.variant.puzzle, givens: '0'.repeat(81) }
   const importedGame = { ...makeGame('terrain-imported-play', 'Terrain', importedPuzzle.givens, 'imported'),
     variant: { ...parsed.variant, puzzle: importedPuzzle } }
+  const importedMarkedGame = { ...importedGame, position: { ...importedGame.position,
+    center: Array<number>(81).fill(0x1ff), corner: Array<number>(81).fill(0x1ff),
+  } }
   const importedCell = rule.cells[0]
   const importedDigit = Number(source.source.solution[importedCell])
-  const importedEntry = enter(importedGame, [importedCell], 'value', importedDigit)
+  const importedEntry = enter(importedMarkedGame, [importedCell], 'value', importedDigit)
   assert.equal(valuesOf(importedEntry)[importedCell], String(importedDigit))
   assert.deepEqual([...conflictsOf(valuesOf(importedEntry), importedPuzzle)], [],
     'a source-valid entry stays conflict-free with all fifteen Terrain clues and companion rules active')
   assert.deepEqual(importedEntry.variant?.puzzle.rules, parsed.variant.puzzle.rules,
     'manual play retains the complete imported Terrain and companion rule combination')
+  const exactCandidates = await runEngine({ type: 'variant', operation: 'candidates', position: {
+    puzzle: importedPuzzle, entries: importedEntry.position.entries,
+  } })
+  assert.ok(exactCandidates)
+  for (let cell = 0; cell < 81; cell++) if (valuesOf(importedEntry)[cell] === '0') {
+    assert.equal(exactCandidates[cell] & ~importedEntry.position.center[cell], 0,
+      `Play center marks retain every engine-supported candidate at imported cell ${cell}`)
+    assert.equal(exactCandidates[cell] & ~importedEntry.position.corner[cell], 0,
+      `Play corner marks retain every engine-supported candidate at imported cell ${cell}`)
+  }
 
   const puzzle = { ...parsed.variant.puzzle, givens: '0'.repeat(81), rules: [rule] }
   const game = { ...makeGame('terrain-play-input', 'Terrain', puzzle.givens, 'imported'),
