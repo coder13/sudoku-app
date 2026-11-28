@@ -16,6 +16,7 @@ import { pillArrowState } from './pill-arrow.ts'
 import { whispersState } from './whispers.ts'
 import { littleKillerState } from './little-killer.ts'
 import { sandwichState } from './sandwich.ts'
+import { terrainSandwichState } from './terrain-sandwich.ts'
 import { xSumState } from './x-sum.ts'
 import { skyscrapersState } from './skyscrapers.ts'
 import { regionSumState, sizedRegionSumState } from './region-sum.ts'
@@ -335,7 +336,7 @@ function placedRuleState(puzzle: VariantPuzzle | undefined, values: string, grid
   const rules = puzzle?.rules ?? sizedRules
   const states = [
     globalEntropyState(puzzle, values), endpointLineState(puzzle, values), whispersState(puzzle, values), regionSumState(puzzle, values),
-    sandwichState(puzzle, values), littleKillerState(puzzle, values), xSumState(puzzle, values), skyscrapersState(puzzle, values),
+    sandwichState(puzzle, values), terrainSandwichState(puzzle, values), littleKillerState(puzzle, values), xSumState(puzzle, values), skyscrapersState(puzzle, values),
     variantPlacedRuleState(puzzle, values), pillArrowState(puzzle, values), sizedArrowState(rules, values, grid.size, gridValueOffset(grid)),
     sizedRegionSumState(sizedRules, values, grid), sizedKillerState(rules, values, grid.size),
     sizedProductState(rules, values, grid.size, gridValueOffset(grid)),

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { runEngine } from '../src/sudoku/engine.ts'
+import { conflictsOf, enter, makeGame, redo, undo, valuesOf } from '../src/sudoku/game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { parsePuzzleExport, puzzleDefinitionForSharing, puzzleExportText } from '../src/sudoku/puzzle-sharing.ts'
@@ -12,6 +13,7 @@ import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { syncDatabase } from './helpers/sync-database.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { transformedBoard } from './helpers/transformed-board.ts'
+import { terrainSandwichMaximum } from '../src/sudoku/terrain-sandwich.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 
 useWasmWorker()
@@ -260,4 +262,48 @@ test('#196 every Terrain hint premise matches the independent numeric oracle acr
   }
 
   assert.ok(checkedHints >= 70, `the oracle replays the source's Terrain hints across progress states (got ${checkedHints})`)
+})
+
+test('#196 Terrain clues prune manual candidates, report conflicts, and survive input history', async () => {
+  const parsed = await detectPuzzle(source.source.sudoku)
+  assert.ok(parsed.variant)
+  const rule = parsed.variant.puzzle.rules?.find((candidate): candidate is Extract<typeof candidate, { type: 'terrain-sandwich' }> =>
+    candidate.type === 'terrain-sandwich' && candidate.cells[0] !== undefined)
+  assert.ok(rule)
+
+  const puzzle = { ...parsed.variant.puzzle, givens: '0'.repeat(81), rules: [rule] }
+  const game = { ...makeGame('terrain-play-input', 'Terrain', puzzle.givens, 'imported'),
+    variant: { id: 'mixed' as const, puzzle, solution: source.source.solution } }
+  const firstCell = rule.cells[0]
+  const digit = Number(source.source.solution[firstCell])
+  const domains = rule.cells.map(cell => cell === firstCell ? 1 << (digit - 1) : 0x1ff)
+  const expected = terrainSandwichSupports(rule, domains)
+  const marked = {
+    ...game,
+    position: { ...game.position,
+      center: game.position.center.map((mask, cell) => rule.cells.includes(cell) ? 0x1ff : mask),
+      corner: game.position.corner.map((mask, cell) => rule.cells.includes(cell) ? 0x1ff : mask),
+    },
+  }
+  const entered = enter(marked, [firstCell], 'value', digit)
+  assert.equal(valuesOf(entered)[firstCell], String(digit))
+  for (const [index, cell] of rule.cells.entries()) {
+    if (cell === firstCell) continue
+    assert.equal(entered.position.center[cell], expected[index], `center candidates at Terrain cell ${cell}`)
+    assert.equal(entered.position.corner[cell], expected[index], `corner candidates at Terrain cell ${cell}`)
+  }
+  assert.deepEqual(undo(entered).position, marked.position)
+  assert.deepEqual(redo(undo(entered)).position, entered.position)
+
+  let badDigits: number[] | undefined
+  for (let left = 0; left < rule.cells.length && !badDigits; left++) for (let right = left + 1; right < rule.cells.length; right++) {
+    const digits = rule.cells.map(cell => Number(source.source.solution[cell]))
+    ;[digits[left], digits[right]] = [digits[right], digits[left]]
+    if (terrainSandwichMaximum(rule, digits) !== rule.maximum) { badDigits = digits; break }
+  }
+  assert.ok(badDigits, 'a digit swap should violate this Terrain clue while keeping the ray a permutation')
+  const invalid = Array(81).fill('0')
+  rule.cells.forEach((cell, index) => { invalid[cell] = String(badDigits![index]) })
+  assert.deepEqual([...conflictsOf(invalid.join(''), puzzle)].sort((a, b) => a - b), [...rule.cells].sort((a, b) => a - b),
+    'the Play conflict path reports every placed digit in an invalid complete Terrain ray')
 })
