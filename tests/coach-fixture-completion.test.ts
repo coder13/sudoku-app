@@ -27,6 +27,8 @@ function assertClassicCompletion(givens: string, solution: string, source: strin
 test('published completions satisfy every preserved Sudoku Coach fixture combination', async () => {
   assert.equal(sources.size, 81)
   const standaloneSeen = new Set<string>()
+  const ruleFamilies = new Set<string>()
+  const ruleInventories = new Set<string>()
 
   for (const source of sources.values()) {
     const imported = await detectPuzzle(source.code)
@@ -40,6 +42,9 @@ test('published completions satisfy every preserved Sudoku Coach fixture combina
     }
 
     if (imported.variant) {
+      const families = [...new Set((imported.variant.puzzle.rules ?? []).map(rule => rule.type))].sort()
+      for (const family of families) ruleFamilies.add(family)
+      ruleInventories.add(families.join(','))
       assertVariantCompletion(imported.variant.puzzle, source.solution)
     } else if (imported.sizedRules && imported.grid) {
       assert.ok(restoreSizedRuleGame({ rules: imported.sizedRules, solution: source.solution, author: imported.sizedAuthor },
@@ -53,6 +58,8 @@ test('published completions satisfy every preserved Sudoku Coach fixture combina
   }
 
   assert.deepEqual([...standaloneSeen].sort(), [...standaloneCoachSolutionSources].sort())
+  assert.equal(ruleInventories.size, 52, 'the Coach corpus retains 52 distinct rule-family combinations')
+  assert.equal(ruleFamilies.size, 34, 'the Coach corpus covers 34 imported rule families')
 })
 
 test('every published 9 × 9 Coach combination preserves its completion under all eight symmetries', async () => {
