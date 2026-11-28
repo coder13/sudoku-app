@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import { readReviewedCoachTerrain } from '../src/sudoku/puzzle-import/coach-terrain.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
+import { parsePuzzleExport, puzzleExportText } from '../src/sudoku/puzzle-sharing.ts'
 import { coachCode } from './helpers/coach-code.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 
@@ -158,4 +159,12 @@ test('#196 Terrain imports into Play with simultaneous Ratio, Difference, Odd an
   const { game } = await prepareImportedPuzzle(code)
   assert.equal(game.variant?.solution, source.source.solution)
   assert.deepEqual(game.variant?.puzzle.rules, rules)
+
+  const exportedText = puzzleExportText(game)
+  const exported = parsePuzzleExport(exportedText)
+  assert.deepEqual(exported.variant?.puzzle, game.variant?.puzzle)
+  assert.deepEqual(exported.givenCellColors, game.givenCellColors)
+  const reimported = await detectPuzzle(exportedText)
+  assert.deepEqual(reimported.variant?.puzzle, game.variant?.puzzle)
+  assert.deepEqual(reimported.givenCellColors, game.givenCellColors)
 })
