@@ -17,6 +17,7 @@ type GradedPuzzle = Pick<Game, 'grid' | 'difficulty' | 'score' | 'variant' | 'fo
 
 function variantRatingVersion(variant: Game['variant']) {
   if (!variant) return
+  if (variant.puzzle.logicVersion) return variant.puzzle.logicVersion
   if (variant.puzzle.extendedLogic) return EXTENDED_VARIANT_RATING_VERSION
   return variant.puzzle.rules?.some(rule => rule.type === 'anti-knight' || rule.type === 'anti-king')
     ? CHESS_VARIANT_RATING_VERSION : VARIANT_RATING_VERSION

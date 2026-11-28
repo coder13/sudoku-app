@@ -27,11 +27,15 @@ mod played;
 pub(super) fn generation_key(puzzle: &VariantPuzzle) -> VariantPuzzle {
     let mut key = played::key(puzzle);
     key.extended_logic = false;
+    key.logic_version = None;
     key
 }
 
 pub(super) fn key(puzzle: &VariantPuzzle) -> VariantPuzzle {
-    key_impl(puzzle, false, |key| key.extended_logic = false)
+    key_impl(puzzle, false, |key| {
+        key.extended_logic = false;
+        key.logic_version = None;
+    })
 }
 
 fn digit_invariant(rule: &PuzzleRule) -> bool {

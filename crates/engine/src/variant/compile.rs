@@ -38,12 +38,18 @@ impl VariantPuzzle {
         if self.version != VARIANT_FORMAT_VERSION {
             return Err(VariantDefinitionError::UnsupportedVersion(self.version));
         }
+        if let Some(version) = self.logic_version
+            && version != super::REGION_LOGIC_VERSION
+        {
+            return Err(VariantDefinitionError::UnsupportedVersion(version));
+        }
         if let Some(cell) = self.givens.iter().position(|&digit| digit > 9) {
             return Err(VariantDefinitionError::InvalidGiven(cell));
         }
 
         let mut compiled = CompiledVariant {
-            extended_logic: self.extended_logic,
+            extended_logic: self.extended_logic || self.logic_version.is_some(),
+            region_logic: self.logic_version.is_some(),
             givens: self.givens,
             classic_boxes: matches!(self.regions, RegionLayout::Boxes),
             houses: Vec::new(),
@@ -404,7 +410,7 @@ impl CompiledVariant {
                 let mut covered = 0;
                 for (i, region) in regions.iter().enumerate() {
                     let kind = VariantHouseKind::Region(i);
-                    let cells = region
+                    let mut cells: [usize; 9] = region
                         .as_slice()
                         .try_into()
                         .map_err(|_| VariantDefinitionError::InvalidHouse(kind))?;
@@ -417,6 +423,10 @@ impl CompiledVariant {
                         return Err(VariantDefinitionError::DisconnectedRegion(i));
                     }
                     covered |= mask;
+                    if self.region_logic {
+                        // An imported region can list its cells in any order.
+                        cells.sort_unstable();
+                    }
                     self.add_house(kind, cells)?;
                 }
             }

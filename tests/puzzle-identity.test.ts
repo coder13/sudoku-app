@@ -56,7 +56,7 @@ test('actual givens, rule payloads, and ordered line cells remain distinct', () 
 
 test('a newer hint profile retains the original puzzle identity and uniqueness key', () => {
   const [original] = variants
-  const updated = { ...original, puzzle: { ...original.puzzle, extendedLogic: true } }
+  const updated = { ...original, puzzle: { ...original.puzzle, extendedLogic: true, logicVersion: 29 as const } }
   const identity = puzzleIdentity({ givens: EMPTY, variant: original })
   assert.equal(puzzleIdentity({ givens: EMPTY, variant: updated }), identity)
   assert.equal(normalizePuzzleIdentity(updated.id + ':' + JSON.stringify(updated.puzzle)), identity)

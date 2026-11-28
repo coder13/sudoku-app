@@ -33,11 +33,19 @@ impl CompiledVariant {
         position: &ProofPosition<'_>,
         limit: usize,
     ) -> Vec<VariantDeduction> {
-        if self.quadruples.is_empty() {
+        let region_chain = self.region_logic && !self.classic_boxes;
+        if self.quadruples.is_empty() && !region_chain {
             return Vec::new();
         }
         let eliminations: [u16; CELLS] = position.masks.map(|mask| DIGITS & !mask);
-        let Ok(base) = self.prepare(&position.board, &eliminations) else {
+        let base = if region_chain {
+            SearchPosition {
+                board: position.board,
+                masks: position.masks,
+            }
+        } else if let Ok(base) = self.prepare(&position.board, &eliminations) {
+            base
+        } else {
             return Vec::new();
         };
         if self.trial_failure(&base).is_some() {
@@ -52,16 +60,22 @@ impl CompiledVariant {
             for digit in digits(mask) {
                 // The base position already incorporates the existing digits
                 // and removals. Propagate only this placement, without another assumption.
-                let trial = self.propagate_placement(&base, cell, digit);
-                let Some(contradiction) = self.trial_failure(&trial) else {
+                let assumption = Candidate { cell, digit };
+                let mut placements = Vec::new();
+                let contradiction = if region_chain {
+                    self.region_trial(&base, assumption, &mut placements)
+                } else {
+                    self.trial_failure(&self.propagate_placement(&base, cell, digit))
+                };
+                let Some(contradiction) = contradiction else {
                     continue;
                 };
-                let assumption = Candidate { cell, digit };
                 proofs.push(VariantDeduction {
                     technique: VariantTechnique::Classic(Technique::ForcingChain),
                     actions: vec![HintAction::Eliminate(assumption)],
                     evidence: VariantEvidence::RuleForcing {
                         assumption,
+                        placements,
                         contradiction,
                     },
                 });
@@ -71,6 +85,59 @@ impl CompiledVariant {
             }
         }
         proofs
+    }
+
+    fn region_trial(
+        &self,
+        base: &SearchPosition,
+        mut placement: Candidate,
+        steps: &mut Vec<(Candidate, Option<VariantHouseKind>)>,
+    ) -> Option<VariantTrialFailure> {
+        let mut trial = base.clone();
+        loop {
+            trial.board[placement.cell] = placement.digit;
+            trial.masks[placement.cell] = 0;
+            for other in crate::variant::cells_in(self.peers[placement.cell]) {
+                trial.masks[other] &= !digit_bit(placement.digit);
+            }
+            if let Some(failure) = self.trial_failure(&trial) {
+                return Some(failure);
+            }
+            let (next, house) = self.next_trial_single(&trial)?;
+            steps.push((next, house));
+            placement = next;
+        }
+    }
+
+    fn next_trial_single(
+        &self,
+        trial: &SearchPosition,
+    ) -> Option<(Candidate, Option<VariantHouseKind>)> {
+        if let Some(cell) = trial.masks.iter().position(|m| m.is_power_of_two()) {
+            return Some((
+                Candidate {
+                    cell,
+                    digit: trial.masks[cell].trailing_zeros() as u8 + 1,
+                },
+                None,
+            ));
+        }
+        for &i in &self.search_houses {
+            let house = &self.houses[i];
+            let (mut supported, mut repeated) = (0, 0);
+            for &cell in &house.cells {
+                repeated |= supported & trial.masks[cell];
+                supported |= trial.masks[cell];
+            }
+            if let Some(digit) = digits(supported & !repeated).next() {
+                let cell = *house
+                    .cells
+                    .iter()
+                    .find(|&&c| trial.masks[c] & digit_bit(digit) != 0)?;
+                return Some((Candidate { cell, digit }, Some(house.kind)));
+            }
+        }
+        None
     }
 
     fn trial_failure(&self, position: &SearchPosition) -> Option<VariantTrialFailure> {

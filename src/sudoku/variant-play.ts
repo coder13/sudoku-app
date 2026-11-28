@@ -98,7 +98,7 @@ export function getVariantPlayProfile(puzzle?: VariantPuzzle, layouts?: readonly
       ...(hasThermometer ? ['thermometer-house-support'] : []),
       ...(hasKropki ? ['kropki-house-support'] : []),
     ])
-    if (puzzle?.extendedLogic) techniqueOrder.sort((a, b) => difficultyIndex(tiers[a] ?? 'impossible') - difficultyIndex(tiers[b] ?? 'impossible'))
+    if (puzzle?.extendedLogic || puzzle?.logicVersion) techniqueOrder.sort((a, b) => difficultyIndex(tiers[a] ?? 'impossible') - difficultyIndex(tiers[b] ?? 'impossible'))
     return { techniqueOrder, catalog, tiers, firstBeyondHard }
   })
 }
@@ -139,7 +139,7 @@ export async function tryVariantRecipe(id: PlayableVariant, difficulty: Difficul
     }
   }
 
-  const initial = seed % recipes.length
+  const initial = (seed >>> 0) % recipes.length
   for (let attempt = 0; attempt <= recipes.length; attempt++) {
     const recipe = recipes[(initial + Math.max(0, attempt - 1)) % recipes.length]
     const request = variantGenerationRequest(id, difficulty, recipe, [], attempt === 0 ? seed : recipe.seed)

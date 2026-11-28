@@ -425,7 +425,10 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
   if ('wing' in evidence) {
     const { pivot, pincers: [a, b], digits: [x, y, z] } = evidence.wing
     const cells = [pivot, a, b]
-    const why = `If ${nameCell(pivot)} is ${x}, ${nameCell(a)} must be ${z}. If ${nameCell(pivot)} is ${y}, ${nameCell(b)} must be ${z}.`
+    const pincer = (cell: number, digit: number, house?: string) => house
+      ? `If ${nameCell(pivot)} is ${digit}, ${house} rules out ${digit} in ${nameCell(cell)}, leaving ${z}.`
+      : `If ${nameCell(pivot)} is ${digit}, ${nameCell(cell)} must be ${z}.`
+    const why = [pincer(a, x, evidence.wing.pincerHouses?.[0]), pincer(b, y, evidence.wing.pincerHouses?.[1])].join(' ')
     return {
       cells, candidates: marks(cells, [x, y, z]),
       links: [link(pivot, a, x, true), link(pivot, b, y, true)],
@@ -526,7 +529,14 @@ function describePattern(deduction: Deduction, candidates: readonly number[], na
         `If the set at ${setNames(evidence.set.cells)} skips ${inside.digit}, it must use ${list.format(blocked.map(String))}. That forces ${nameCandidate(forced)}.`),
     ])]
     const group = nodes.find(node => !('candidate' in node))
-    const variantSteps = chain.flatMap(({ from, to, source }) => {
+    const variantSteps = chain.flatMap(({ from, to, source, strength }) => {
+      if ('variant-house' in source && 'region' in source['variant-house']) {
+        const region = `region ${source['variant-house'].region + 1}`
+        const digit = inferenceCandidates(from)[0].digit
+        const ends = `${nameInference(from)} and ${nameInference(to)}`
+        return [strength === 'strong' ? `In ${region}, ${ends} cover all positions for ${digit}. One must be true.`
+          : `Both ${nameInference(from)} and ${nameInference(to)} use ${digit} in ${region}. At most one can be true.`]
+      }
       if (!('variant-rule' in source)) return []
       return [`${techniqueLabel(source['variant-rule'])} prevents ${nameInference(from)} and ${nameInference(to)} from both being true.`]
     })

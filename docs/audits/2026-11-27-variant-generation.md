@@ -1,5 +1,7 @@
 # Generating Sudoku puzzles that need their variants
 
+The repeat-generation audit produced **700 verified draws across 350 targets**. Each of the 35 individual rule choices produced two distinct puzzles at each of the ten grades. Three mixed modes also passed at every grade. Killer alone and X-Sums with either diagonal each produced two zero-given puzzles at every grade from Hard through Impossible.
+
 ## What setters and solvers found
 
 * A setter trying to force an X-Wing described generating completed grids, removing givens and checking the solution path. A solver pointed out that another elimination can destroy the X-Wing before it becomes necessary. In a separate setting discussion, constructors described solving their own puzzles during construction and finding simpler paths around the intended logic. These are two separate checks for a generator. It needs a complete solve at the target grade and it must try to beat that grade. [X-Wing construction discussion](https://puzzling.stackexchange.com/questions/614/how-do-i-necessitate-the-use-of-the-x-wing-pattern-during-sudoku-creation) · [Discussion among setters](https://www.reddit.com/r/sudoku/comments/1fvatr7/dear_setters_how_do_you_do_it/)
@@ -12,6 +14,10 @@
 * Two constructors exhibited and independently checked a unique 9×9 zero-given puzzle using two Killer cages and the rule that adjacent digits can neither be consecutive nor double. Their exhaustive one-cage check illustrates the distinction between a proved minimum and an unsuccessful search. A separate enumeration in the same community discusses why distinct labelled grids count even when they are related by symmetry. [Two-cage construction and minimum](https://puzzling.stackexchange.com/questions/132979/fewest-cages-for-unique-killer-kropki-less-sudoku) · [Counting Kropki completions](https://puzzling.stackexchange.com/questions/132952/how-many-full-kropki-sudoku-solutions-are-there)
 
 HoDoKu's author separates targeting a technique for practice from assigning a configurable difficulty. Nishikawa and Toda describe an exact construction method for a *specified* strategy set and clue positions. Pelánek's comparison with human solving times finds that the difficulty of individual steps and their dependency structure both matter. The app's ten grades describe the strongest technique on its easiest verified path. They are ordinal predictions of human difficulty. [HoDoKu generator and rating](https://hodoku.sourceforge.net/en/docs_cre.php) · [Strategy-solvable clue generation](https://arxiv.org/abs/2005.14098) · [Evaluation against human solves](https://arxiv.org/abs/1403.7373)
+
+A worked Jigsaw example builds a loop through a row, column and irregular region. HoDoKu's grouped-chain examples show how two or more possible positions for the same digit can act as one link. In the app, a strong link must cover every place left for that digit in the named house. The Jigsaw test replays those links on the actual region map. [Jigsaw strategy examples](https://zitowolf.net/sudoku/strategy.html) · [HoDoKu on group nodes](https://hodoku.sourceforge.net/en/tech_chains.php)
+
+In a setting discussion, constructors describe testing and revising a cage layout as the intended solve emerges. Andrew Stuart's account of Killer generation grades the opportunities supplied by the cage sums alongside ordinary Sudoku deductions. Our zero-given constructor starts with connected cages of distinct digits and can join adjacent cages. It checks uniqueness after each proposed change and grades the resulting puzzle. [Killer setting discussion](https://www.reddit.com/r/sudoku/comments/1rca4vy/how_would_one_go_about_creating_a_sudoku_puzzle/) · [Sudoku Creation and Grading](https://www.sudokuwiki.org/Sudoku_Creation_and_Grading.pdf)
 
 ## Acceptance checks
 
@@ -41,7 +47,7 @@ The symmetry check tries reversal and simple exchanges first. For rules expresse
 
 Across the 35 builder choices, a digit symmetry proves zero-given uniqueness impossible for **24 individual choices** and **240 of 589 distinct pairs**. The pair count excludes the six selections that combine a family with one of its own subtypes. The other 11 single choices and 349 pairs have no impossibility certificate from this test. Run `node --experimental-strip-types scripts/audit-variant-generation.mts --symmetry` for the full list. Append a comma-separated ruleset to inspect a specific combination of any size.
 
-## Generation checks on 9×9 grids
+## First generation checks on 9×9 grids
 
 The audit used the browser's WebAssembly engine in a worker with the same 15-second search limit as New Puzzle. For each success it checked the labelled solution, gave the same starting digits to the classic solver, and compared the recorded rule-dependent actions with their alternative completions. Each classic grid in the following table had multiple solutions.
 
@@ -56,7 +62,7 @@ The audit used the browser's WebAssembly engine in a worker with the same 15-sec
 
 X-Sums plus the main diagonal missed Master and Extreme at seed 5 before succeeding with other seeds. Its six zero-given constructions and the ten Chess constructions now supply checked starting layouts. The generator verifies their grade, uniqueness and rule evidence again before play, excludes played layouts, and searches for fresh puzzles after the known ones. On the Master Chess path, Anti-Knight was first essential at step 5, Anti-King at step 76 and Non-Consecutive at step 130. A single Hard search also missed zero-given Kropki and zero-given Inequality. Those two searches leave feasibility open.
 
-## Coverage across the ten grades
+## Initial coverage across the ten grades
 
 We requested one ordinary puzzle at each of the ten grades for every one of the 35 choices in the builder. This includes the individual marker types, both named Whispers gaps and each diagonal direction. Seed 7 produced 322 of the 350 targets. Retrying the 28 remaining targets at seed 21 found two more, Tricky Global Entropy and Extreme V marks. In all, **324 of 350 targets** produced a puzzle with the requested grade and rule evidence. Fourteen choices produced all ten grades. The table lists every target still open after those two seeds. A search limit leaves that grade's feasibility open.
 
@@ -71,6 +77,29 @@ We requested one ordinary puzzle at each of the ten grades for every one of the 
 
 Across the 35 choices, Easy, Medium and Expert succeeded for all 35. The Impossible grade succeeded for 16. The mixed-rule and zero-given trials above were separate from this sweep.
 
+## Repeat generation after closing the 26 gaps
+
+Seed 7 produced a first puzzle and an unplayed second puzzle for **all 350 ordinary targets** within New Puzzle's 15-second search limit per request. The two draws used the same seed. The second included the first in its play history, which excludes rotations, reflections and equivalent rule descriptions. For each draw, the audit independently checked the unique variant completion and replayed the first action that ruled out each alternative. With Classic rules, 692 grids had several completions, five had none, and three already contained conflicting givens.
+
+Three changes accounted for the missing grades.
+
+* **Global Entropy at Beginner.** When three filled cells in a 2×2 area show exactly two digit groups, the fourth cell must supply the third group. This can settle which of two cells in a box holds a digit. The hint highlights the four cells and names the missing group.
+* **Jigsaw at Hard, Master and Extreme.** The first draws used an XY-Wing, a Grouped AIC and a Forcing Chain, respectively. The wing uses the actual peers of its pincers. Grouped links use intersections with the actual regions. The forcing hint records the single placements that lead from the assumption to the contradiction.
+* **Rare ordinary grades.** For a drawn clue, the constructor can exchange a given from an existing Impossible puzzle for a clue through that cell. A combination exchanges a different given for each rule. A Jigsaw construction can exchange equal digits across a border while keeping both regions connected. Each candidate must qualify under the full generation checks. The generator also keeps checked layouts for scarce grades of Non-Consecutive, Killer and other families.
+
+| Rules | Seed | Draws verified |
+| --- | --- | --- |
+| Chess | 46 | 20 across all ten grades. Each draw needed Anti-King, Anti-Knight and Non-Consecutive. |
+| Windoku + Arrows | 5 | 20 across all ten grades. |
+| Thermometers + V marks | 11 | 20 across all ten grades. A Hard draw used an XY-Wing and an Impossible draw used a Nested Forcing Net. |
+| Kropki + XV + Arrows with complete white and sum-of-10 markings | 5 for Easy and Medium, 11 for Hard | Six across the three grades. The generator stores the complete-marking choices with the construction. |
+| X-Sums + main diagonal and X-Sums + anti-diagonal | 5 | 12 zero-given puzzles for each diagonal, covering all six eligible grades. |
+| Killer | 7 | 12 zero-given puzzles across all six grades. Every grid had a full partition of connected cages with at least two cells per cage. |
+
+Killer illustrated a construction-specific symmetry. In the original horizontal partitions, every row's first cage contained columns 1 and 2. Swapping those two columns preserved every total and all the Sudoku houses. Vertical partitions had the corresponding row swap. Letting cages grow in both directions removed that restriction. The first verified zero-given Killer draws required a Naked Quadruple at Hard, 3D Medusa at Very Hard, an AIC at Expert, an ALS-XY-Wing at Master, an Advanced Forcing Net at Extreme, and Pattern Overlay at Impossible.
+
+For the other individual Miracle choices with no digit-symmetry obstruction, two Hard draws succeeded at seed 11 for X-Sums, Thermometers, Quadruples and Two-cell sums. The seed 7 Hard searches for Inequality, Region Sum Lines, Little Killer, Skyscrapers, Arrows and Kropki reached a search limit. Their status remains open in this audit. The single-rule matrix and the selected mixed examples do not establish coverage for every possible combination or every play history.
+
 ## Reproducing the checks
 
 Build the WebAssembly engine with `npm run build:wasm`. This command replays three different cases.
@@ -84,4 +113,10 @@ node --experimental-strip-types scripts/audit-variant-generation.mts \
 
 Each argument lists the selected rules, target grade and seed. The optional final fields enable zero givens or complete markings. The output identifies the strongest technique and the first action that excludes each alternative. Exact search limits and wall-clock limits yield a separate outcome.
 
-Use `node --experimental-strip-types scripts/audit-variant-generation.mts --matrix 7` to try all 350 single-rule targets. Append `windoku,arrow` to run just that combination across the ten grades.
+Run the repeat audit with the following commands. The trace check reconstructs the solution from the moves and checks every elimination against it. With `--strict` the command returns a failing exit status if a requested draw misses. Add `--include-puzzle` to retain the complete puzzle definitions alongside the results.
+
+```sh
+node --experimental-strip-types scripts/audit-variant-generation.mts --strict --repeat 2 --verify-trace --matrix 7
+node --experimental-strip-types scripts/audit-variant-generation.mts --strict --repeat 2 --verify-trace --matrix 11 thermometer,xv-five
+node --experimental-strip-types scripts/audit-variant-generation.mts --strict --repeat 2 --verify-trace --miracle --matrix 7 killer-cages
+```

@@ -1,7 +1,6 @@
 use super::*;
 
-// Keep global rules, complete markings and complete cage partitions intact.
-// A line or outside clue is an independent, removable unit.
+// Global rules and complete markings retain their original meaning.
 fn removable(rule: &PuzzleRule) -> bool {
     matches!(
         rule.id(),
@@ -24,6 +23,50 @@ fn removable(rule: &PuzzleRule) -> bool {
     )
 }
 
+enum Change<'a> {
+    Remove(&'a PuzzleRule),
+    JoinCages([usize; 2]),
+}
+
+impl Change<'_> {
+    fn apply(&self, current: &VariantPuzzle, solution: &Board) -> Option<VariantPuzzle> {
+        let mut next = current.clone();
+        match self {
+            Self::Remove(clue) => {
+                let i = next.rules.iter().position(|r| r == *clue)?;
+                next.rules.remove(i);
+            }
+            Self::JoinCages([a, b]) => {
+                let cages = next.rules.iter_mut().find_map(|rule| match rule {
+                    PuzzleRule::KillerCages {
+                        cages,
+                        cover_grid: true,
+                    } => Some(cages),
+                    _ => None,
+                })?;
+                let i = cages.iter().position(|c| c.cells.contains(a))?;
+                let j = cages.iter().position(|c| c.cells.contains(b))?;
+                if i == j
+                    || cages[i].cells.len() + cages[j].cells.len() > 5
+                    || cages[i]
+                        .cells
+                        .iter()
+                        .any(|&x| cages[j].cells.iter().any(|&y| solution[x] == solution[y]))
+                {
+                    return None;
+                }
+                let right = cages.remove(i.max(j));
+                let mut merged = cages.remove(i.min(j));
+                merged.cells.extend(right.cells);
+                merged.cells.sort_unstable();
+                merged.sum += right.sum;
+                cages.push(merged);
+            }
+        }
+        Some(next)
+    }
+}
+
 pub(super) fn thin(
     mut puzzle: VariantPuzzle,
     solution: Board,
@@ -41,20 +84,34 @@ pub(super) fn thin(
         .rules
         .iter()
         .filter(|rule| removable(rule))
-        .cloned()
+        .map(Change::Remove)
         .collect();
+    if puzzle.rules.iter().any(|r| {
+        matches!(
+            r,
+            PuzzleRule::KillerCages {
+                cover_grid: true,
+                ..
+            }
+        )
+    }) {
+        candidates.extend(crate::variant::pairs::orthogonal_pairs().map(Change::JoinCages));
+    }
     random.shuffle(&mut candidates);
     let mut current = puzzle.clone();
-    for dropped in std::iter::once(None).chain(candidates.iter().map(Some)) {
-        if let Some(clue) = dropped {
-            puzzle = current.clone();
-            let i = puzzle.rules.iter().position(|r| r == clue)?;
-            puzzle.rules.remove(i);
-        }
+    for change in std::iter::once(None).chain(candidates.iter().map(Some)) {
+        let puzzle = if let Some(change) = change {
+            let Some(next) = change.apply(&current, &solution) else {
+                continue;
+            };
+            next
+        } else {
+            current.clone()
+        };
         let compiled = puzzle.compile().ok()?;
         if compiled.analyze(&[0; CELLS], &[0; CELLS], options.max_nodes) != Ok(Analysis::Unique) {
-            // Removing more constraints cannot repair a nonunique starting layout.
-            if dropped.is_none() {
+            // Begin redesigning clues from a layout that already has one solution.
+            if change.is_none() {
                 break;
             }
             continue;

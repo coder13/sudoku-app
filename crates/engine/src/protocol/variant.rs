@@ -116,6 +116,7 @@ pub(super) struct GenerationRequest {
     #[serde(default)]
     derived_clues: Vec<VariantClueLayout>,
     givens: ClueCount,
+    given_cells: Option<Vec<usize>>,
     variant_clues: Option<ClueCount>,
     required_rule: Option<String>,
     #[serde(default)]
@@ -150,6 +151,7 @@ impl GenerationRequest {
             template: self.template,
             derived_clues: self.derived_clues,
             givens: self.givens.range(),
+            given_cells: self.given_cells,
             variant_clues: self.variant_clues.map(ClueCount::range),
             rating: rating_target(self.score, self.difficulty)?,
             required_rule: self.required_rule,
@@ -175,6 +177,10 @@ fn generation_error(error: VariantGenerationError) -> (&'static str, &'static st
         InvalidGivenCount => (
             "invalid-clue-count",
             "Choose a given count between 0 and 81.",
+        ),
+        InvalidGivenCells => (
+            "invalid-given-cells",
+            "Use distinct grid cells within the requested given count.",
         ),
         InvalidClueCount => (
             "invalid-variant-clue-count",

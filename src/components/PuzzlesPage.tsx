@@ -13,7 +13,7 @@ import { createGameId, formatTime, isPuzzleSaved, isSolved, valuesOf, type Game 
 import { inProgress, matchesSolvedFilters, solvedHistory, type SolvedPuzzleFilters } from '../sudoku/puzzle-activity'
 import {
   CUSTOM_MODES_KEY, coreSudokuModes, customModeDifficulties, customRuleIds, customRules, markerOptions, readSudokuModes,
-  selectedMarkerRules, writeSudokuModes, type CustomDifficulty, type CustomRule, type MarkerRule, type SudokuMode,
+  changeCustomRule, ruleSelectionConflict, selectedMarkerRules, writeSudokuModes, type CustomDifficulty, type CustomRule, type MarkerRule, type SudokuMode,
 } from '../sudoku/custom-modes'
 import { techniqueLabel } from '../sudoku/hints'
 import { rectangularGridForBoxRows, rectangularLayouts, type RectangularBoxRows } from '../sudoku/grid'
@@ -206,7 +206,7 @@ function CoreSudokuChooser({ modes, difficulty }: { modes: readonly SudokuMode[]
   </section>
 }
 
-function useMiracleOption(rules: readonly CustomRule[], level: Difficulty, busy: boolean) {
+function useMiracleOption(rules: readonly CustomRule[], level: Difficulty, busy: boolean, clearError: () => void) {
   const [selected, setSelected] = useState(false)
   const description = useId()
   const visible = offersMiracle(level, rules)
@@ -215,7 +215,10 @@ function useMiracleOption(rules: readonly CustomRule[], level: Difficulty, busy:
   const control = visible && <div>
     <label className="difficulty-selector-auto">
       <input type="checkbox" checked={miracle} disabled={busy || !!reason} aria-describedby={reason ? description : undefined}
-        onChange={event => setSelected(event.currentTarget.checked)} />
+        onChange={event => {
+          setSelected(event.currentTarget.checked)
+          clearError()
+        }} />
       Miracle puzzle (no givens)
     </label>
     {reason && <small id={description}>{reason}</small>}
@@ -242,42 +245,40 @@ function CustomDifficultyField({ levels, value, disabled, onChange }: {
 }
 
 function CustomModeBuilder({ mode, modes, onSave }: { mode?: SudokuMode; modes: readonly SudokuMode[]; onSave: (mode: SudokuMode) => SudokuMode }) {
-  const { busy, error, generate, cancelGeneration } = usePuzzleGeneration()
+  const { busy, error, clearError, generate, cancelGeneration } = usePuzzleGeneration()
   const [name, setName] = useState(mode?.name ?? '')
   const [rules, setRules] = useState<readonly CustomRule[]>(mode?.rules ?? [])
   const [negativeMarkers, setNegativeMarkers] = useState<readonly MarkerRule[]>(mode?.negativeMarkers ?? [])
   const [filter, setFilter] = useState('')
   const [level, setLevel] = useState<CustomDifficulty>('medium')
   const modeId = useRef(mode?.id)
-  const [savedMessage, setSavedMessage] = useState('')
   const [saveError, setSaveError] = useState('')
   const query = filter.trim().toLowerCase()
   const visible = customRuleIds.filter(rule => customRules[rule].name.toLowerCase().includes(query))
   const markerRules = selectedMarkerRules(rules)
+  const conflict = ruleSelectionConflict(rules, negativeMarkers)
   const levels = customModeDifficulties(rules)
   const difficulty = levels.includes(level) ? level : 'medium'
-  const { miracle, control } = useMiracleOption(rules, difficulty, busy)
+  const { miracle, control } = useMiracleOption(rules, difficulty, busy, clearError)
   const definition = { name: name.trim() || 'Custom Sudoku', rules, ...(negativeMarkers.length && { negativeMarkers }) }
 
   function changeRule(rule: CustomRule, enabled: boolean) {
-    const next = enabled ? [...rules, rule] : rules.filter(item => item !== rule)
+    const next = changeCustomRule(rules, rule, enabled)
     setRules(next)
     const nextMarkers = selectedMarkerRules(next)
     setNegativeMarkers(current => current.filter(marker => nextMarkers.includes(marker)))
-    setSavedMessage('')
+    clearError()
   }
 
   function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!name.trim() || !rules.length) return
+    if (!name.trim() || !rules.length || conflict) return
     try {
       modeId.current ??= createGameId()
       onSave({ id: modeId.current, ...definition })
-      setSavedMessage('Mode saved.')
       setSaveError('')
     } catch {
       setSaveError('Could not save this mode on this device.')
-      setSavedMessage('')
     }
   }
   return <section className="main-menu-section new-puzzle-step sudoku-mode-builder" aria-labelledby="puzzles-page-title">
@@ -292,7 +293,7 @@ function CustomModeBuilder({ mode, modes, onSave }: { mode?: SudokuMode; modes: 
     </section>}
     <form className="sudoku-mode-form" onSubmit={save}>
       <label className="dialog-form">Mode name
-        <input value={name} maxLength={48} onChange={event => { setName(event.currentTarget.value); setSavedMessage('') }} />
+        <input value={name} maxLength={48} onChange={event => setName(event.currentTarget.value)} />
       </label>
       <div className="sudoku-selected-rules" aria-live="polite">{rules.length
         ? rules.map(rule => customRules[rule].name).join(' · ') : 'Choose rules for a generated puzzle.'}</div>
@@ -313,18 +314,21 @@ function CustomModeBuilder({ mode, modes, onSave }: { mode?: SudokuMode; modes: 
           <input type="checkbox" checked={negativeMarkers.includes(marker)} onChange={event => {
             const enabled = event.currentTarget.checked
             setNegativeMarkers(current => enabled ? [...current, marker] : current.filter(item => item !== marker))
-            setSavedMessage('')
+            clearError()
           }} />
           {markerOptions[marker].label}
         </label>)}
       </fieldset>}
       {saveError && <p className="form-error" role="alert">{saveError}</p>}
-      {savedMessage && <p role="status">{savedMessage} It appears in the main mode list on this device and linked devices after sync.</p>}
-      <Button type="submit" disabled={busy || !name.trim() || !rules.length}>Save mode</Button>
-      <CustomDifficultyField levels={levels} value={difficulty} disabled={busy} onChange={setLevel} />
+      {conflict && <p className="form-error" role="status">{conflict}</p>}
+      <Button type="submit" disabled={busy || !name.trim() || !rules.length || !!conflict}>Save mode</Button>
+      <CustomDifficultyField levels={levels} value={difficulty} disabled={busy} onChange={next => {
+        setLevel(next)
+        clearError()
+      }} />
       {control}
       {error && <p className="form-error" role="alert">{error}</p>}
-      <Button type="button" variant="primary" disabled={busy || !rules.length} onClick={() => void generate(difficulty, undefined, 'classic', {
+      <Button type="button" variant="primary" disabled={busy || !rules.length || !!conflict} onClick={() => void generate(difficulty, undefined, 'classic', {
         customMode: definition, miracle,
       })}><Dices size={18} aria-hidden="true" />{busy ? 'Generating…' : 'Generate puzzle'}</Button>
       {busy && <Button type="button" onClick={cancelGeneration}>Cancel generation</Button>}
@@ -336,9 +340,10 @@ function CustomModeDifficulty({ mode, difficulty = DEFAULT_DIFFICULTY }: { mode:
   const navigate = useNavigate()
   const { recommended } = usePlayerRating()
   const level = currentDifficulty(difficulty === 'auto' ? recommended : difficulty)
-  const { busy, error, generate, cancelGeneration } = usePuzzleGeneration()
-  const { miracle, control } = useMiracleOption(mode.rules, level, busy)
-  return <PuzzleDifficultyStep name={mode.name} preview={<CustomModePreview mode={mode} />} busy={busy} error={error}
+  const { busy, error, clearError, generate, cancelGeneration } = usePuzzleGeneration()
+  const { miracle, control } = useMiracleOption(mode.rules, level, busy, clearError)
+  const conflict = ruleSelectionConflict(mode.rules, mode.negativeMarkers)
+  return <PuzzleDifficultyStep name={mode.name} preview={<CustomModePreview mode={mode} />} busy={busy} disabled={!!conflict} error={conflict ?? error}
     startLabel={difficulty === 'auto' ? `Start Auto (${DIFFICULTY_LABELS[level]})` : `Start ${DIFFICULTY_LABELS[level].toLowerCase()} puzzle`}
     onStart={() => void generate(difficulty, undefined, 'classic', { miracle, customMode: { name: mode.name, rules: mode.rules, negativeMarkers: mode.negativeMarkers } })}
     actions={busy ? <Button type="button" onClick={cancelGeneration}>Cancel generation</Button>
@@ -347,6 +352,7 @@ function CustomModeDifficulty({ mode, difficulty = DEFAULT_DIFFICULTY }: { mode:
     <p>{mode.rules.map(rule => customRules[rule].name).join(' · ')}</p>
     {!!mode.negativeMarkers?.length && <p>{mode.negativeMarkers.map(marker => markerOptions[marker].label).join(' · ')}</p>}
     <DifficultySelector value={difficulty} customMode={mode} recommended={recommended} disabled={busy} onChange={next => {
+      clearError()
       void navigate({ to: '/puzzles/new/difficulty', search: { mode: mode.id, difficulty: next },
         replace: true, state: true, resetScroll: false, viewTransition: false })
     }} />
@@ -447,14 +453,14 @@ function NewPuzzleDifficulty({ variant, ruleset, boxRows, difficulty, save }: {
   boxRows?: RectangularBoxRows
   save: (preference: NewPuzzlePreference) => void
 }) {
-  const { busy, error, generate, cancelGeneration } = usePuzzleGeneration()
+  const { busy, error, clearError, generate, cancelGeneration } = usePuzzleGeneration()
   const navigate = useNavigate()
   const sized = isSizedPuzzleId(variant)
   const preset = sized ? undefined : generationRuleset(variant, ruleset)
   const { recommended } = usePlayerRating()
   const autoLabel = variantDifficultyLabel(sized ? undefined : variant, 'auto', recommended)
   const rules: CustomRule[] = sized || variant === 'classic' ? [] : [preset?.id === 'dutch' ? 'dutch-whispers' : variant]
-  const { miracle, control } = useMiracleOption(rules, difficulty === 'auto' ? recommended : difficulty, busy)
+  const { miracle, control } = useMiracleOption(rules, difficulty === 'auto' ? recommended : difficulty, busy, clearError)
   function start() {
     const onGenerated = () => {
       save({ variant, difficulty, boxRows, ...(preset ? { ruleset: preset.id } : {}) })
@@ -477,6 +483,7 @@ function NewPuzzleDifficulty({ variant, ruleset, boxRows, difficulty, save }: {
         replace: true, state: true, resetScroll: false, viewTransition: false })
     }} />}
     <DifficultySelector value={difficulty} recommended={recommended} variant={variant} disabled={busy} onChange={next => {
+      clearError()
       void navigate({ to: '/puzzles/new/difficulty', search: { variant, ruleset, boxRows, difficulty: next },
         replace: true, state: true, resetScroll: false, viewTransition: false })
     }} />

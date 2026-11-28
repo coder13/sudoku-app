@@ -821,8 +821,9 @@ export function variantIdForPuzzle(puzzle: VariantPuzzle): PuzzleVariantId {
 export function isPlayablePuzzle(id: unknown, puzzle: unknown, fog?: unknown): puzzle is VariantPuzzle {
   if ((!isPuzzleVariantId(id) || id === 'classic') ||
     !puzzle || typeof puzzle !== 'object') return false
-  if (Object.keys(puzzle).some(key => !['version', 'givens', 'rules', 'regions', 'extendedLogic'].includes(key))) return false
-  const { version, givens, rules, regions, extendedLogic } = puzzle as VariantPuzzle
+  if (Object.keys(puzzle).some(key => !['version', 'givens', 'rules', 'regions', 'extendedLogic', 'logicVersion'].includes(key))) return false
+  const { version, givens, rules, regions, extendedLogic, logicVersion } = puzzle as VariantPuzzle
+  if (logicVersion !== undefined && logicVersion !== 29) return false
   if (extendedLogic !== undefined && typeof extendedLogic !== 'boolean') return false
   if (version !== 1 || typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens)) return false
   if (regions !== undefined && (!regions || typeof regions !== 'object' || Array.isArray(regions) ||

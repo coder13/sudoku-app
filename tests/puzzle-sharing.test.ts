@@ -49,7 +49,7 @@ test('sharing an in-progress variant publishes an immutable definition under a U
 
 test('exported puzzle copies round-trip through import without player progress', async () => {
   const { puzzle: authored, solution } = mixedFixtures['x-killer']
-  const puzzle = { ...authored, extendedLogic: true }
+  const puzzle = { ...authored, extendedLogic: true, logicVersion: 29 as const }
   const original = {
     ...makeGame('private-attempt', 'X-Killer', puzzle.givens, 'collection'),
     collection: { collectionId: 'x-killer', puzzleId: '1' },
@@ -77,6 +77,9 @@ test('puzzle exports reject unknown definition fields instead of silently droppi
   const variantPuzzle = variant.puzzle as Record<string, unknown>
   await assert.rejects(detectPuzzle(JSON.stringify({ ...exported, variant: {
     ...variant, puzzle: { ...variantPuzzle, extendedLogic: 'yes' },
+  } })), /unsupported definition/)
+  await assert.rejects(detectPuzzle(JSON.stringify({ ...exported, variant: {
+    ...variant, puzzle: { ...variantPuzzle, logicVersion: 99 },
   } })), /unsupported definition/)
   await assert.rejects(detectPuzzle(JSON.stringify({ ...exported, variant: {
     ...variant, puzzle: { ...variantPuzzle, futurePuzzleSemantics: true },

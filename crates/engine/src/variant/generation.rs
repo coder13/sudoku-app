@@ -31,6 +31,8 @@ pub struct VariantGenerationOptions {
     pub derived_clues: Vec<VariantClueLayout>,
     /// Inclusive range of given counts in the resulting puzzle.
     pub givens: RangeInclusive<usize>,
+    /// Keep just these cells from the sampled completion when checking a construction.
+    pub given_cells: Option<Vec<usize>>,
     /// Inclusive range of constraint clue counts, independent of the number of givens.
     pub variant_clues: Option<RangeInclusive<usize>>,
     /// Require a complete logical path within this score range or at this difficulty.
@@ -73,6 +75,7 @@ impl VariantGenerationOptions {
             template,
             derived_clues: Vec::new(),
             givens,
+            given_cells: None,
             variant_clues: None,
             rating: None,
             technique: None,
@@ -137,6 +140,8 @@ pub enum VariantGenerationError {
     ConflictingTemplate,
     /// The range is empty or contains given counts outside 0–81.
     InvalidGivenCount,
+    /// Fixed given positions must be distinct cells within the selected count.
+    InvalidGivenCells,
     /// The variant clue range is empty.
     InvalidClueCount,
     /// One derived clue layout has invalid geometry, counts, or marker settings.
@@ -199,6 +204,12 @@ pub fn start_variant_generation(
         || options.thin_clues && *options.givens.end() != 0
     {
         return Err(InvalidGivenCount);
+    }
+    if let Some(cells) = &options.given_cells {
+        if !options.givens.contains(&cells.len()) || super::cell_mask(cells).is_none() {
+            return Err(InvalidGivenCells);
+        }
+        options.givens = cells.len()..=cells.len();
     }
     if options
         .variant_clues
@@ -325,13 +336,17 @@ fn attempt(
         order.sort_by_key(|&cell| !preferred[cell]);
     }
     let mut remaining = CELLS;
-    if *options.givens.end() == 0 {
+    if options.given_cells.is_some() || *options.givens.end() == 0 {
+        let cells = options.given_cells.as_deref().unwrap_or_default();
         puzzle.givens = empty;
-        compiled.givens = empty;
+        for &cell in cells {
+            puzzle.givens[cell] = solution[cell];
+        }
+        compiled.givens = puzzle.givens;
         if compiled.analyze(&empty, &[0; CELLS], options.max_nodes) != Ok(Analysis::Unique) {
             return None;
         }
-        remaining = 0;
+        remaining = cells.len();
     }
     let mut last_checked = None;
     for next in order.into_iter().map(Some).chain(std::iter::once(None)) {
@@ -484,10 +499,14 @@ fn accept(
         // A checked recipe may retain its established walkthrough. Reject it
         // if the extended profile can finish in a cheaper tier.
         let expanded;
-        let lower_solver = if !options.required_rules.is_empty() && !compiled.extended_logic {
+        let region_profile = !compiled.classic_boxes || compiled.global_entropy.is_some();
+        let lower_solver = if !options.required_rules.is_empty()
+            && (!compiled.extended_logic || region_profile && !compiled.region_logic)
+        {
             expanded = {
                 let mut solver = compiled.clone();
                 solver.extended_logic = true;
+                solver.region_logic = region_profile;
                 solver
             };
             &expanded

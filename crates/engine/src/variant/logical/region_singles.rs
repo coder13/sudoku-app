@@ -29,30 +29,20 @@ impl CompiledVariant {
                     if sites.next().is_some() {
                         continue;
                     }
-                    let possible = [
-                        self.single_conflict(pos, a, digit),
-                        self.single_conflict(pos, b, digit),
-                    ];
-                    if possible.iter().filter(|site| site.is_some()).count() == 1 {
-                        for ((cell, excluded), conflict) in
-                            [(b, a), (a, b)].into_iter().zip(possible)
-                        {
-                            let Some((rules, witness)) = conflict else {
-                                continue;
-                            };
-                            let candidate = placement(cell);
-                            assisted.push(VariantDeduction {
-                                technique,
-                                actions: vec![HintAction::Place(candidate)],
-                                evidence: VariantEvidence::RuleSingle {
-                                    candidate,
-                                    house: house.kind,
-                                    excluded,
-                                    witness,
-                                    rules,
-                                },
-                            });
-                        }
+                    let mut moves = [(a, b), (b, a)].into_iter().filter_map(|(cell, excluded)| {
+                        let candidate = placement(cell);
+                        let evidence =
+                            self.region_single_evidence(pos, house.kind, candidate, excluded)?;
+                        Some(VariantDeduction {
+                            technique,
+                            actions: vec![HintAction::Place(candidate)],
+                            evidence,
+                        })
+                    });
+                    if let Some(step) = moves.next()
+                        && moves.next().is_none()
+                    {
+                        assisted.push(step);
                     }
                 } else if !self.classic_boxes {
                     let candidate = placement(a);
@@ -68,6 +58,53 @@ impl CompiledVariant {
             }
         }
         proofs.append(&mut assisted);
+    }
+
+    fn region_single_evidence(
+        &self,
+        pos: &ProofPosition<'_>,
+        house: VariantHouseKind,
+        candidate: Candidate,
+        excluded: usize,
+    ) -> Option<VariantEvidence> {
+        let (rules, witness, entropy_window) = if let Some((rules, witness)) =
+            self.single_conflict(pos, excluded, candidate.digit)
+        {
+            (rules, witness, None)
+        } else {
+            if !self.region_logic {
+                return None;
+            }
+            let (rule, top_left, group) = self.entropy_windows().find_map(|(rule, cells)| {
+                if !cells.contains(&excluded) {
+                    return None;
+                }
+                let mut placed = 0u16;
+                for cell in cells.into_iter().filter(|&c| c != excluded) {
+                    let d = pos.board[cell];
+                    if d == 0 {
+                        return None;
+                    }
+                    placed |= digit_bit(d);
+                }
+                let mut missing = self
+                    .global_entropy_groups
+                    .iter()
+                    .filter(|&&group| group & placed == 0);
+                let &group = missing.next()?;
+                (missing.next().is_none() && group & digit_bit(candidate.digit) == 0)
+                    .then_some((rule, cells[0], group))
+            })?;
+            (vec![rule], None, Some((top_left, group)))
+        };
+        Some(VariantEvidence::RuleSingle {
+            candidate,
+            house,
+            excluded,
+            rules,
+            witness,
+            entropy_window,
+        })
     }
 
     fn single_conflict(

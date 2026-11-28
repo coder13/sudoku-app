@@ -17,7 +17,7 @@ pub(crate) use patterns::unique_layouts;
 #[cfg(feature = "variants")]
 pub(crate) use patterns::{
     InferenceGraph, RectangleInferenceCache, has_rectangle_guardians, layouts_in_houses,
-    visit_variant_inference,
+    visit_variant_inference, visit_variant_wings,
 };
 
 #[path = "proofs.rs"]

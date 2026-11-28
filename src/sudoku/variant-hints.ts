@@ -569,9 +569,22 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
   const { actions, evidence, technique } = deduction
   const nameCell = (cell: number) => cellReference(cell, options.cellReferenceStyle ?? 'concise', options.difficulty)
   const focus = actions.map((action) => 'place' in action ? action.place : action.eliminate)
-  if (evidence.type === 'classic') return {
-    actions, technique, evidence: evidence.proof,
-    pattern: { houses: [], cells: [...new Set(focus.map(({ cell }) => cell))], candidates: focus },
+  if (evidence.type === 'classic') {
+    let proof = evidence.proof
+    const regions = puzzle.regions
+    if ('wing' in proof && regions?.type === 'jigsaw' && puzzle.logicVersion === 29) {
+      const { wing } = proof
+      const pincerHouses = wing.pincers.map(cell => {
+        const row = Math.floor(cell / 9), column = cell % 9
+        if (Math.floor(wing.pivot / 9) === row) return `row ${row + 1}`
+        if (wing.pivot % 9 === column) return `column ${column + 1}`
+        const region = regions.regions.findIndex(group => group.includes(wing.pivot) && group.includes(cell))
+        if (region >= 0) return `region ${region + 1}`
+      })
+      proof = { wing: { ...wing, pincerHouses } }
+    }
+    return { actions, technique, evidence: proof,
+      pattern: { houses: [], cells: [...new Set(focus.map(({ cell }) => cell))], candidates: focus } }
   }
   const houseLabel = (house: VariantHouse) =>
     ('diagonal' in house || 'extra' in house ? 'the ' : '') + variantHouseName(house, puzzle)
@@ -602,6 +615,13 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       const { candidate, house, excluded, witness, rules } = evidence
       cells = [candidate.cell, excluded, ...(witness === null ? [] : [witness])]
       description = `In ${houseLabel(house)}, ${candidate.digit} can go only in ${alternatives.format([nameCell(candidate.cell), nameCell(excluded)])}.`
+      if (evidence.entropyWindow) {
+        const [topLeft, group] = evidence.entropyWindow
+        cells = [...new Set([candidate.cell, topLeft, topLeft + 1, topLeft + 9, topLeft + 10])]
+        const missing = DIGITS.filter(d => group & (1 << (d - 1)))
+        reason = `The other three cells in the 2×2 area starting at ${nameCell(topLeft)} use two digit groups. ${nameCell(excluded)} needs ${alternatives.format(missing.map(String))} to supply the third group. Place ${candidate.digit} in ${nameCell(candidate.cell)}.`
+        break
+      }
       const clue = clueNames(puzzle, rules)
       const source = witness === null ? clue : `${clue} and the digit in ${nameCell(witness)}`
       const border = simpleBorderReason(puzzle.rules?.[rules[0]], excluded, candidate.digit, nameCell)
@@ -671,6 +691,12 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       const location = nameCell(assumption.cell)
       candidates = [assumption]
       description = `If ${location} is ${assumption.digit}, follow the puzzle's visible clues to update the candidates.`
+      if (evidence.placements?.length) {
+        description = `If ${location} is ${assumption.digit}, these placements follow.`
+        reasonSteps = evidence.placements.map(([{ cell, digit }, house]) => house
+          ? `Only ${nameCell(cell)} can hold ${digit} in ${houseLabel(house)}.`
+          : `Only ${digit} remains in ${nameCell(cell)}.`)
+      }
       if (contradiction.type === 'empty-cell') {
         cells = [assumption.cell, contradiction.cell]
         reason = `That leaves ${nameCell(contradiction.cell)} without a candidate. Remove ${assumption.digit} from ${location}.`
@@ -678,6 +704,7 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
         cells = [...new Set([assumption.cell, ...variantHouseCells(contradiction.house, puzzle)])]
         reason = `${contradiction.digit} has no possible cell in ${houseLabel(contradiction.house)}. Remove ${assumption.digit} from ${location}.`
       }
+      reasonSteps?.push(reason)
       break
     }
     case 'quadruple-lock': {

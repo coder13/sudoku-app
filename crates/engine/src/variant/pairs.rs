@@ -750,6 +750,7 @@ mod distant_neighbors_tests {
         let puzzle = VariantPuzzle {
             version: 1,
             extended_logic: false,
+            logic_version: None,
             givens: [0; CELLS],
             regions: super::super::RegionLayout::Boxes,
             rules: vec![PuzzleRule::DistantNeighbors {

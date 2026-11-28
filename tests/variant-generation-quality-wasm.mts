@@ -2,10 +2,14 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { generateCustomSudoku } from '../src/sudoku/custom-generation.ts'
 import { DIFFICULTY_LEVELS } from '../src/sudoku/difficulty.ts'
-import { runEngine } from '../src/sudoku/engine.ts'
+import { runEngine, type Candidate, type VariantDeduction, type VariantPuzzle } from '../src/sudoku/engine.ts'
+import { reflectVariant } from '../src/sudoku/variant-generation.ts'
+import { variantHouseCells } from '../src/sudoku/variants.ts'
+import { connectedGridCells } from '../src/sudoku/grid.ts'
+import { lessonDiagram } from '../src/sudoku/lesson-diagram.ts'
 import { getVariantPlayOrder } from '../src/sudoku/variant-play.ts'
 import { variantHintChoice } from '../src/sudoku/variant-hints.ts'
-import { EMPTY, makeGame } from '../src/sudoku/game.ts'
+import { EMPTY, makeGame, peer } from '../src/sudoku/game.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 useWasmWorker()
 
@@ -91,4 +95,160 @@ test('Chess can replay all ten grades with a separate dependency for every rule'
     assert.deepEqual(new Set(ruleDependencies?.map(proof => proof.rule)), new Set(rules))
     assert.equal(await runEngine({ type: 'analyze', values: puzzle.givens }), 'multiple')
   }
+})
+
+test('a fixed construction checks the requested cells, uniqueness and played rotations', async () => {
+  const { puzzle, solution } = await generateCustomSudoku(['non-consecutive'], 'very-hard', 7, [])
+  const givenCells = Array.from(puzzle.givens, (v, c) => v === '0' ? -1 : c).filter(c => c >= 0)
+  const request = { type: 'generate-variant', template: { ...puzzle, givens: solution },
+    seed: 7, maxNodes: 20_000, maxAttempts: 1, difficulty: 'very-hard', requiredRules: ['non-consecutive'],
+    techniqueOrder: await getVariantPlayOrder(puzzle), givenCells, givens: givenCells.length } as const
+  assert.equal((await runEngine(request)).puzzle.givens, puzzle.givens)
+  for (const invalid of [{ givenCells: [0, 0], givens: 2 }, { givenCells: [81], givens: 1 }, { givenCells: [0], givens: 2 }]) {
+    await assert.rejects(runEngine({ ...request, ...invalid }), { code: 'invalid-given-cells' })
+  }
+  await assert.rejects(runEngine({ ...request, givens: 1, givenCells: [0] }), { code: 'search-limit' })
+  await assert.rejects(runEngine({ ...request, exclude: [reflectVariant(puzzle, 2)] }), { code: 'search-limit' })
+})
+
+function stateBefore(puzzle: VariantPuzzle, earlier: VariantDeduction[]) {
+  const board = Array.from(puzzle.givens, Number)
+  const removed = Array<number>(81).fill(0)
+  for (const { actions } of earlier) for (const action of actions) {
+    if ('place' in action) board[action.place.cell] = action.place.digit
+    else removed[action.eliminate.cell] |= 1 << (action.eliminate.digit - 1)
+  }
+  const mask = (cell: number) => board[cell] ? 0 : board.reduce((available, value, other) =>
+    value && peer(cell, other, puzzle) ? available & ~(1 << (value - 1)) : available, 511 & ~removed[cell])
+  return { board, mask }
+}
+
+test('a Beginner entropy single is visible in the printed 2×2 area', async () => {
+  const { puzzle, rating } = await generateCustomSudoku(['global-entropy'], 'beginner', 7, [])
+  assert.equal(rating.scoringVersion, 29)
+  const trace = await runEngine({ type: 'variant', operation: 'trace', position: { puzzle }, techniqueOrder: rating.techniqueOrder })
+  const index = trace.steps.findIndex(step => step.evidence.type === 'rule-single' && step.evidence.entropyWindow)
+  assert.ok(index >= 0)
+  const step = trace.steps[index]
+  const { evidence } = step
+  assert.ok(evidence.type === 'rule-single' && evidence.entropyWindow)
+  const [top, missing] = evidence.entropyWindow
+  const square = [top, top + 1, top + 9, top + 10]
+  const { board } = stateBefore(puzzle, trace.steps.slice(0, index))
+  assert.equal(board[evidence.excluded], 0)
+  assert.ok(square.includes(evidence.excluded))
+  const filled = square.filter(c => c !== evidence.excluded).map(c => board[c])
+  assert.ok(filled.every(Boolean))
+  const groups = [7, 56, 448]
+  assert.deepEqual(groups.filter(group => filled.every(d => !(group & (1 << (d - 1))))), [missing])
+  assert.equal(missing & (1 << (evidence.candidate.digit - 1)), 0)
+  const hint = variantHintChoice(step, puzzle)
+  assert.ok('variant' in hint.evidence && hint.evidence.variant.reason.includes('third group'))
+  assert.ok(square.every(c => hint.pattern.cells.includes(c)))
+  const legacy = { ...puzzle, logicVersion: undefined }
+  const older = await runEngine({ type: 'variant', operation: 'rate', position: { puzzle: legacy }, techniqueOrder: rating.techniqueOrder })
+  assert.equal(older.scoringVersion, 28)
+  assert.equal(older.status, 'stalled')
+})
+
+test('Jigsaw wings, grouped links and forcing chains replay using the actual regions', async () => {
+  for (const grade of ['hard', 'master', 'extreme'] as const) {
+    const { puzzle, solution, rating } = await generateCustomSudoku(['jigsaw'], grade, 7, [])
+    assert.ok(puzzle.regions?.type === 'jigsaw')
+    assert.equal(rating.scoringVersion, 29)
+    const request = { type: 'variant', operation: 'trace', position: { puzzle }, techniqueOrder: rating.techniqueOrder } as const
+    const trace = await runEngine(request)
+    const reordered = { ...puzzle, regions: { type: 'jigsaw' as const, regions: puzzle.regions.regions.map(group => [...group].reverse()) } }
+    const replay = await runEngine({ ...request, position: { puzzle: reordered } })
+    assert.deepEqual(replay.steps, trace.steps)
+    const index = trace.steps.findIndex(step => step.technique === rating.hardest)
+    assert.ok(index >= 0)
+    const { evidence, actions } = trace.steps[index]
+    const { board, mask } = stateBefore(puzzle, trace.steps.slice(0, index))
+    if (grade === 'hard') {
+      assert.ok(evidence.type === 'classic' && 'wing' in evidence.proof)
+      const hint = variantHintChoice(trace.steps[index], puzzle)
+      const diagram = lessonDiagram({ deduction: hint, candidates: board.map((_, cell) => mask(cell)), pattern: hint.pattern })
+      assert.match(diagram.reason, /(?:row|column|region) \d+ rules out/)
+      const { pivot, pincers } = evidence.proof.wing
+      assert.ok(pincers.every(c => peer(pivot, c, puzzle)))
+      for (const action of actions) {
+        assert.ok('eliminate' in action && pincers.every(c => peer(action.eliminate.cell, c, puzzle)))
+        if (rating.hardest === 'xyz-wing') assert.ok(peer(action.eliminate.cell, pivot, puzzle))
+      }
+    } else if (grade === 'master') {
+      assert.ok(evidence.type === 'classic' && 'inference' in evidence.proof)
+      const { links } = evidence.proof.inference
+      assert.ok(links.some(link => 'group' in link.from || 'group' in link.to))
+      assert.ok(links.some(link => 'variant-house' in link.source))
+      const hint = variantHintChoice(trace.steps[index], puzzle)
+      const diagram = lessonDiagram({ deduction: hint, candidates: board.map((_, cell) => mask(cell)), pattern: hint.pattern })
+      assert.ok(diagram.reasonSteps?.some(line => /region \d+/.test(line)))
+      for (const link of links) {
+        if (!('house' in link.source || 'variant-house' in link.source)) continue
+        const house = 'house' in link.source ? link.source.house : link.source['variant-house']
+        assert.ok(!('box' in house))
+        const houseCells = variantHouseCells(house, puzzle)
+        const endpoints = [link.from, link.to].flatMap(node => 'candidate' in node ? [node.candidate]
+          : 'group' in node ? node.group.cells.map(cell => ({ cell, digit: node.group.digit })) : node['mixed-group'])
+        assert.ok(endpoints.every(({ cell, digit }) => houseCells.includes(cell) && digit === endpoints[0].digit))
+        assert.equal(new Set(endpoints.map(c => c.cell)).size, endpoints.length)
+        if (link.strength === 'strong') assert.deepEqual(new Set(endpoints.map(c => c.cell)),
+          new Set(houseCells.filter(c => mask(c) & (1 << (endpoints[0].digit - 1)))))
+      }
+    } else {
+      assert.ok(evidence.type === 'rule-forcing' && evidence.placements?.length)
+      const place = ({ cell, digit }: Candidate) => {
+        assert.equal(board[cell], 0)
+        board[cell] = digit
+      }
+      assert.notEqual(Number(solution[evidence.assumption.cell]), evidence.assumption.digit)
+      place(evidence.assumption)
+      for (const [candidate, house] of evidence.placements) {
+        const bit = 1 << (candidate.digit - 1)
+        if (house) assert.deepEqual(variantHouseCells(house, puzzle).filter(c => mask(c) & bit), [candidate.cell])
+        else assert.equal(mask(candidate.cell), bit)
+        place(candidate)
+      }
+      const failure = evidence.contradiction
+      if (failure.type === 'empty-cell') {
+        assert.equal(board[failure.cell], 0)
+        assert.equal(mask(failure.cell), 0)
+      } else assert.ok(variantHouseCells(failure.house, puzzle).every(c => board[c] !== failure.digit && !(mask(c) & (1 << (failure.digit - 1)))))
+      const hint = variantHintChoice(trace.steps[index], puzzle)
+      assert.ok('variant' in hint.evidence)
+      assert.match(hint.evidence.variant.reasonSteps!.at(-1)!, /Remove/)
+    }
+  }
+})
+
+test('Killer Miracle layouts use connected multi-cell cages and can reach every eligible grade', async () => {
+  for (const grade of DIFFICULTY_LEVELS.slice(DIFFICULTY_LEVELS.indexOf('hard'))) {
+    const { puzzle, rating, solution, ruleDependencies } = await generateCustomSudoku(['killer-cages'], grade, 7, [], { miracle: true })
+    assert.equal(puzzle.givens, EMPTY)
+    assert.deepEqual(rating.status, { solved: grade })
+    assert.deepEqual(ruleDependencies?.map(d => d.rule), ['killer-cages'])
+    const [rule] = puzzle.rules!
+    assert.ok(rule.type === 'killer-cages' && rule.coverGrid)
+    const cells = rule.cages.flatMap(c => c.cells)
+    assert.equal(cells.length, 81)
+    assert.equal(new Set(cells).size, 81)
+    for (const cage of rule.cages) {
+      assert.ok(cage.cells.length >= 2 && connectedGridCells(cage.cells, 9))
+      const digits = cage.cells.map(c => Number(solution[c]))
+      assert.equal(new Set(digits).size, digits.length)
+      assert.equal(digits.reduce((sum, d) => sum + d, 0), cage.sum)
+    }
+    assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle } }), { status: 'unique', solution })
+  }
+})
+
+test('checked mixed layouts retain the exact complete markings selected in the builder', async () => {
+  const rules = ['arrow', 'kropki', 'xv'] as const
+  const result = await generateCustomSudoku(rules, 'hard', 11, [], { negativeMarkers: ['xv-ten', 'kropki-white'] })
+  const dots = result.puzzle.rules!.find(r => r.type === 'kropki')
+  const marks = result.puzzle.rules!.find(r => r.type === 'xv')
+  assert.ok(dots?.consecutive?.negative && !dots.ratioTwo?.negative)
+  assert.ok(marks?.ten?.negative && !marks.five?.negative)
+  assert.deepEqual(new Set(result.ruleDependencies!.map(d => d.rule)), new Set(rules))
 })

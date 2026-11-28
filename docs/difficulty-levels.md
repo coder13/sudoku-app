@@ -23,7 +23,7 @@ Impossible puzzles still have exactly one solution. Some can be solved by a skil
 
 ## Grading and generation
 
-Classic scoring version 16 tries direct placements after singles and before ordinary eliminations. Direct Pointing, Direct Claiming, Direct Hidden Pair, and Direct Hidden Triple count as Easy. Each costs the same as the corresponding ordinary pattern and places one digit when the proof leaves a single spot in a house. Existing variant profiles use versions 24–27. Version 28 adds placements, locks and chain links supported by drawn clues in newly sampled puzzles. A saved puzzle records its profile so that hints, replays and shared copies use the same logic. The hardest technique sets the tier.
+Classic scoring version 16 tries direct placements after singles and before ordinary eliminations. Direct Pointing, Direct Claiming, Direct Hidden Pair, and Direct Hidden Triple count as Easy. Each costs the same as the corresponding ordinary pattern and places one digit when the proof leaves a single spot in a house. Existing variant profiles use versions 24–27. Version 28 adds placements, locks and chain links supported by drawn clues. Version 29 adds a visible Global Entropy single and uses irregular regions for wings, grouped chains and forcing chains. A saved puzzle records its profile so that hints, replays and shared copies use the same logic. The hardest technique sets the tier.
 
 The Rust technique catalog is the source of truth. The browser's technique metadata is produced by `scripts/build-wasm.mjs`. The ten selectable names and order live in `src/sudoku/difficulty.ts`.
 

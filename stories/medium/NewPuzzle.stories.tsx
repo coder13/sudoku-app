@@ -37,6 +37,21 @@ export const MiracleXSums: Story = {
   },
 }
 
+export const CustomRuleChoices: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/custom" />,
+  play: async ({ canvas, userEvent }) => {
+    const family = await canvas.findByRole('checkbox', { name: /^Kropki\b/ })
+    const white = canvas.getByRole('checkbox', { name: /^White Kropki dots/ })
+    await userEvent.click(family)
+    await userEvent.click(white)
+    await expect(family).not.toBeChecked()
+    await userEvent.click(canvas.getByRole('checkbox', { name: /^Non-Consecutive\b/ }))
+    await userEvent.click(canvas.getByRole('checkbox', { name: /No consecutive digits without a Kropki dot/ }))
+    await expect(canvas.getByRole('button', { name: 'Generate puzzle' })).toBeDisabled()
+    await expect(canvas.getByText(/already enforces Non-Consecutive/)).toBeVisible()
+  },
+}
+
 export const CombinedModeDifficulty: Story = {
   render: () => <PreviewRouter shell path="/puzzles/new?step=variant" />,
   globals: { viewport: { value: 'mobile1', isRotated: false } },

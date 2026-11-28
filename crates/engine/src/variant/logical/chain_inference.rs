@@ -7,6 +7,9 @@ use std::ops::ControlFlow;
 
 impl CompiledVariant {
     pub(super) fn uses_variant_chains(&self, technique: Technique) -> bool {
+        if self.region_logic && !self.classic_boxes && grouped_chain(technique) {
+            return true;
+        }
         matches!(
             technique,
             Technique::XChain
@@ -23,7 +26,13 @@ impl CompiledVariant {
         technique: Technique,
         visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
     ) -> ControlFlow<Deduction> {
-        let graph = position.variant_inference.get_or_init(|| {
+        let grouped = grouped_chain(technique);
+        let cache = if grouped {
+            &position.grouped_inference
+        } else {
+            &position.variant_inference
+        };
+        let graph = cache.get_or_init(|| {
             let houses = self.search_houses.iter().map(|&index| {
                 let house = self.houses[index].kind;
                 let source = match house {
@@ -44,8 +53,19 @@ impl CompiledVariant {
                 &position.masks,
                 houses,
                 conflicts,
+                &self.peers,
+                grouped,
             ))
         });
         visit_variant_inference(graph, technique, visit)
     }
+}
+
+fn grouped_chain(technique: Technique) -> bool {
+    matches!(
+        technique,
+        Technique::GroupedAic
+            | Technique::GroupedDiscontinuousNiceLoop
+            | Technique::GroupedContinuousNiceLoop
+    )
 }

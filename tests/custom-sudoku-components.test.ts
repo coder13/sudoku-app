@@ -2,8 +2,19 @@ import { DIFFICULTY_LEVELS } from '../src/sudoku/difficulty.ts'
 import assert from 'node:assert/strict'
 import { after, before, test } from 'node:test'
 import { createServer, type ViteDevServer } from 'vite'
-import { customModeDifficulties, readSudokuModes, selectedMarkerRules, writeSudokuModes } from '../src/sudoku/custom-modes.ts'
+import { changeCustomRule, customModeDifficulties, readCustomModeDefinition, readSudokuModes, ruleSelectionConflict, selectedMarkerRules, writeSudokuModes } from '../src/sudoku/custom-modes.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
+
+test('families replace overlapping choices and legacy saved modes retain their full rules', () => {
+  const both = changeCustomRule(['kropki-white', 'parity', 'kropki-black'], 'kropki', true)
+  assert.deepEqual(both, ['parity', 'kropki'])
+  const white = changeCustomRule(both, 'kropki-white', true)
+  assert.deepEqual(white, ['parity', 'kropki-white'])
+  assert.match(ruleSelectionConflict([...white, 'non-consecutive'], ['kropki-white'])!, /already enforces/)
+  assert.equal(ruleSelectionConflict([...white, 'kropki-black', 'non-consecutive'], ['kropki-white']), undefined)
+  assert.deepEqual(readCustomModeDefinition({ name: 'Saved', rules: ['diagonal-main', 'diagonal', 'xv', 'xv-five'], negativeMarkers: ['xv-ten'] }),
+    { name: 'Saved', rules: ['diagonal', 'xv'], negativeMarkers: ['xv-ten'] })
+})
 
 let server: ViteDevServer
 let renderNewPuzzle: typeof import('./helpers/new-puzzle-render.tsx').renderNewPuzzle

@@ -93,6 +93,7 @@ export type VariantRule =
 export type VariantPuzzle = {
   version: 1
   extendedLogic?: boolean
+  logicVersion?: 29
   givens: string
   regions?: { type: 'boxes' } | { type: 'jigsaw'; regions: readonly (readonly number[])[] }
     | { type: 'partial'; regions: readonly (readonly number[])[] }
@@ -118,6 +119,8 @@ export type VariantGenerationRequest = {
   template: VariantPuzzle
   derivedClues?: readonly VariantClueLayout[]
   givens: number | readonly [number, number]
+  /** Check exactly these given positions from the sampled completion. */
+  givenCells?: readonly number[]
   variantClues?: number | readonly [number, number]
   requiredRule?: string
   /** Each selected rule must independently disambiguate the final grid. */
@@ -527,7 +530,7 @@ type Evidence =
   | { fish: { digit: number; bases: House[]; covers: House[]; fins: number[] } }
   | { 'complex-fish': { digit: number; bases: House[]; covers: House[]; fins: number[] } }
   | { 'kraken-fish': { digit: number; bases: House[]; covers: House[]; fins: number[]; cover: House | null; branches: KrakenLink[][] } }
-  | { wing: { pivot: number; pincers: [number, number]; digits: [number, number, number] } }
+  | { wing: { pivot: number; pincers: [number, number]; digits: [number, number, number]; pincerHouses?: (string | undefined)[] } }
   | { 'wxyz-wing': { cells: [number, number, number, number]; digits: [number, number, number, number]; unrestricted: number | null } }
   | { 'w-wing': { wings: [number, number]; link: ConjugatePair; linkedDigit: number; digit: number } }
   | { 'single-digit-chain': { digit: number; links: [ConjugatePair, ConjugatePair]; bridge: [number, number] } }
@@ -695,7 +698,7 @@ export type VariantDeduction = {
   actions: DeductionAction[]
   evidence:
     | { type: 'single'; candidate: Candidate; house: VariantHouse | null }
-    | { type: 'rule-single'; candidate: Candidate; house: VariantHouse; excluded: number; witness: number | null; rules: number[] }
+    | { type: 'rule-single'; candidate: Candidate; house: VariantHouse; excluded: number; witness: number | null; rules: number[]; entropyWindow?: [number, number] }
     | { type: 'cage-sum'; house: VariantHouse | null; cages: [number, number][]; sum: number; cells: number[]; domains: number[] }
     | { type: 'sum-pair'; rules: [number, number]; cells: [number, number, number, number]; totals: [number, number]; domains: [number, number, number, number]; house: VariantHouse; houses: VariantHouse[] }
     | { type: 'group-line-phase-sum'; rules: [number, number]; cells: [number, number, number, number]; domains: [number, number, number, number]; total: number; house: VariantHouse }
@@ -748,7 +751,7 @@ export type VariantDeduction = {
     | { type: 'locked-digit'; clue: { rules: number[]; cells: number[] }; target: VariantHouse; cells: number[]; domains: number[]; digit: number }
     | { type: 'intersection'; source: VariantHouse; target: VariantHouse; cells: number[]; digit: number }
     | { type: 'peer-lock'; house: VariantHouse; digit: number; conflicts: [number, VariantConstraintCheck['scope']][] }
-    | { type: 'rule-forcing'; assumption: Candidate; contradiction:
+    | { type: 'rule-forcing'; assumption: Candidate; placements?: [Candidate, VariantHouse | null][]; contradiction:
         { type: 'empty-cell'; cell: number } | { type: 'missing-digit'; house: VariantHouse; digit: number } }
     | { type: 'exclusion'; premise: VariantExclusionPremise; rules: number[]; houses: VariantHouse[] }
     | { type: 'classic'; proof: Evidence; swapCells: number[] }

@@ -344,6 +344,12 @@ pub enum VariantEvidence {
         excluded: usize,
         /// Placed digit used by a binary clue, if any.
         witness: Option<usize>,
+        /// Top left cell of the entropy window and the missing group's digit mask.
+        #[cfg_attr(
+            feature = "wasm-api",
+            serde(rename = "entropyWindow", skip_serializing_if = "Option::is_none")
+        )]
+        entropy_window: Option<(usize, u16)>,
         /// Source clue indices in the puzzle.
         rules: Vec<usize>,
     },
@@ -535,6 +541,9 @@ pub enum VariantEvidence {
     RuleForcing {
         /// Candidate tried as a placement.
         assumption: Candidate,
+        /// Singles forced by the assumption and the row, column or region that supplies each hidden single.
+        #[cfg_attr(feature = "wasm-api", serde(skip_serializing_if = "Vec::is_empty"))]
+        placements: Vec<(Candidate, Option<VariantHouseKind>)>,
         /// The first empty cell or missing house digit after applying clue support.
         contradiction: VariantTrialFailure,
     },
@@ -1395,7 +1404,9 @@ impl VariantPosition {
             technique_order: order.to_vec(),
             regions: self.puzzle.regions.clone(),
             rules: self.puzzle.rules.clone(),
-            scoring_version: if compiled.extended_logic {
+            scoring_version: if compiled.region_logic {
+                super::REGION_LOGIC_VERSION
+            } else if compiled.extended_logic {
                 CLUE_LINKS_SCORING_VERSION
             } else {
                 VARIANT_SCORING_VERSION
@@ -1584,6 +1595,7 @@ pub(super) struct ProofPosition<'a> {
     rectangle_guardians: OnceCell<bool>,
     rectangle_inference: RectangleInferenceCache,
     variant_inference: OnceCell<Box<InferenceGraph>>,
+    grouped_inference: OnceCell<Box<InferenceGraph>>,
     overlay: OnceCell<Box<RefCell<OverlaySearch<'a>>>>,
 }
 
@@ -1896,6 +1908,7 @@ impl CompiledVariant {
             rectangle_guardians: OnceCell::new(),
             rectangle_inference: RectangleInferenceCache::default(),
             variant_inference: OnceCell::new(),
+            grouped_inference: OnceCell::new(),
             overlay: OnceCell::new(),
         }
     }
@@ -2165,6 +2178,9 @@ impl CompiledVariant {
     /// check the same cached uniqueness requirement before searching.
     pub fn supports_technique(&self, technique: VariantTechnique) -> bool {
         match technique {
+            VariantTechnique::Classic(
+                Technique::XYWing | Technique::XYZWing | Technique::ForcingChain,
+            ) if self.region_logic && !self.classic_boxes => true,
             VariantTechnique::Classic(Technique::HiddenSingleBox) if self.extended_logic => true,
             VariantTechnique::Classic(classic) if self.uses_variant_chains(classic) => true,
             VariantTechnique::Classic(classic) if classic.pattern_overlay_width().is_some() => true,
@@ -2186,6 +2202,25 @@ impl CompiledVariant {
         if self.extended_logic && technique == Technique::HiddenSingleBox && !self.classic_boxes {
             self.region_singles(position, proofs);
             return;
+        }
+        if self.region_logic && !self.classic_boxes {
+            if matches!(technique, Technique::XYWing | Technique::XYZWing) {
+                let _ = crate::hints::visit_variant_wings(
+                    &position.board,
+                    &position.masks,
+                    &self.peers,
+                    technique,
+                    &mut |step| {
+                        proofs.push(classic_proof(step));
+                        ControlFlow::Continue(())
+                    },
+                );
+                return;
+            }
+            // The variant forcing proof follows the actual region geometry.
+            if technique == Technique::ForcingChain {
+                return;
+            }
         }
         if !self.supports_technique(variant) {
             return;

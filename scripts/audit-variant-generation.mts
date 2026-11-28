@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
+import { isDeepStrictEqual, parseArgs } from 'node:util'
+import { makeGame, type Game } from '../src/sudoku/game.ts'
 import { isMainThread, parentPort, Worker } from 'node:worker_threads'
 import { generateCustomSudoku } from '../src/sudoku/custom-generation.ts'
 import { customRuleIds, hasOverlappingRuleChoices, isCustomDifficulty, markerOptions, type CustomRule, type MarkerRule } from '../src/sudoku/custom-modes.ts'
@@ -41,12 +43,20 @@ if (!isMainThread) {
   }
   Object.defineProperty(globalThis, 'Worker', { value: AuditWorker })
   try {
-    let specs = process.argv.slice(2)
-    if (specs[0] === '--matrix') {
-      const [, seed, ...selected] = specs
+    const { values, positionals } = parseArgs({ allowPositionals: true, options: {
+      matrix: { type: 'boolean' }, miracle: { type: 'boolean' }, repeat: { type: 'string', default: '1' },
+      strict: { type: 'boolean' },
+      'verify-trace': { type: 'boolean' }, 'include-puzzle': { type: 'boolean' },
+    } })
+    const repeats = Number(values.repeat)
+    assert.ok(Number.isSafeInteger(repeats) && repeats > 0, 'Supply a positive integer after --repeat.')
+    let specs = positionals
+    if (values.matrix) {
+      const [seed, ...selected] = specs
       assert.ok(seed && /^\d+$/.test(seed), 'Supply a numeric seed after --matrix.')
       const choices = selected.length ? selected : customRuleIds
-      specs = choices.flatMap(rules => DIFFICULTY_LEVELS.map(grade => `${rules}/${grade}/${seed}`))
+      const levels = values.miracle ? DIFFICULTY_LEVELS.slice(DIFFICULTY_LEVELS.indexOf('hard')) : DIFFICULTY_LEVELS
+      specs = choices.flatMap(rules => levels.map(grade => `${rules}/${grade}/${seed}`))
     }
     for (const spec of specs) {
       const [choices, grade, seedText, ...options] = spec.split('/')
@@ -55,31 +65,71 @@ if (!isMainThread) {
       assert.ok(rules.every(rule => customRuleIds.includes(rule)))
       const seed = Number(seedText)
       assert.ok(Number.isInteger(seed))
-      const start = performance.now()
       assert.ok(options.every(option => option === 'miracle' || option.startsWith('negative=')))
-      const miracle = options.includes('miracle')
+      const miracle = values.miracle || options.includes('miracle')
       const negativeMarkers = options.flatMap(option => option.startsWith('negative=') ? option.slice(9).split(',') : []) as MarkerRule[]
       assert.ok(negativeMarkers.every(marker => Object.hasOwn(markerOptions, marker)))
-      try {
-        const { puzzle, solution, rating, givens, ruleDependencies } = await generateCustomSudoku(rules, grade, seed, [], { miracle, negativeMarkers })
-        assert.deepEqual(rating.status, { solved: grade })
-        assert.equal(givens, puzzle.givens.replaceAll('0', '').length)
-        if (miracle) assert.equal(givens, 0)
-        assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle } }), { status: 'unique', solution })
-        const classic = await runEngine({ type: 'analyze', values: puzzle.givens })
-        assert.ok(['multiple', 'unsolvable', 'conflict'].includes(classic))
-        const expected = rules.map(rule => rule === 'windoku' ? 'extra-house' : rule === 'whispers' ? 'german-whispers' : rule)
-        assert.deepEqual(new Set(ruleDependencies?.map(dep => dep.rule)), new Set(expected))
-        const required = ruleDependencies!.map(({ rule, step, technique, action, alternative }) => {
-          const candidate = 'place' in action ? action.place : action.eliminate
-          assert.equal(alternative[candidate.cell] === String(candidate.digit), 'eliminate' in action)
-          assert.equal(solution[candidate.cell] === String(candidate.digit), 'place' in action)
-          return { rule, step, technique }
-        })
-        console.log(JSON.stringify({ spec, status: 'verified', givens, classic, hardest: rating.hardest, required, ms: Math.round(performance.now() - start) }))
-      } catch (error) {
-        if (!(error instanceof EngineError)) throw error
-        console.log(JSON.stringify({ spec, status: error.code, reason: error.message, ms: Math.round(performance.now() - start) }))
+      const history: Game[] = []
+      for (let draw = 1; draw <= repeats; draw++) {
+        const start = performance.now()
+        try {
+          const { puzzle, solution, rating, givens, ruleDependencies } = await generateCustomSudoku(rules, grade, seed, history, { miracle, negativeMarkers })
+          assert.deepEqual(rating.status, { solved: grade })
+          assert.equal(givens, puzzle.givens.replaceAll('0', '').length)
+          if (miracle) assert.equal(givens, 0)
+          const complete = new Set<MarkerRule>()
+          for (const rule of puzzle.rules ?? []) {
+            if (rule.type === 'kropki') {
+              if (rule.consecutive?.negative) complete.add('kropki-white')
+              if (rule.ratioTwo?.negative) complete.add('kropki-black')
+            } else if (rule.type === 'xv') {
+              if (rule.five?.negative) complete.add('xv-five')
+              if (rule.ten?.negative) complete.add('xv-ten')
+            }
+          }
+          assert.deepEqual(complete, new Set(negativeMarkers))
+          assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle } }), { status: 'unique', solution })
+          const classic = await runEngine({ type: 'analyze', values: puzzle.givens })
+          assert.ok(['multiple', 'unsolvable', 'conflict'].includes(classic))
+          const expected = rules.map(rule => rule === 'windoku' ? 'extra-house' : rule === 'whispers' ? 'german-whispers' : rule)
+          assert.deepEqual(new Set(ruleDependencies?.map(dep => dep.rule)), new Set(expected))
+          const trace = values['verify-trace'] && await runEngine({ type: 'variant', operation: 'trace', position: { puzzle }, techniqueOrder: rating.techniqueOrder })
+          if (trace) {
+            assert.deepEqual(trace.rating.status, rating.status)
+            const board = [...puzzle.givens]
+            for (const { actions } of trace.steps) for (const action of actions) {
+              if ('place' in action) {
+                const { cell, digit } = action.place
+                assert.equal(board[cell], '0')
+                assert.equal(solution[cell], String(digit))
+                board[cell] = String(digit)
+              } else {
+                assert.notEqual(solution[action.eliminate.cell], String(action.eliminate.digit))
+              }
+            }
+            assert.equal(board.join(''), solution)
+          }
+          const required = ruleDependencies!.map(({ rule, step, technique, action, alternative }) => {
+            const candidate = 'place' in action ? action.place : action.eliminate
+            assert.equal(alternative[candidate.cell] === String(candidate.digit), 'eliminate' in action)
+            assert.equal(solution[candidate.cell] === String(candidate.digit), 'place' in action)
+            if (trace) {
+              assert.equal(trace.steps[step - 1]?.technique, technique)
+              assert.ok(trace.steps[step - 1].actions.some(a => isDeepStrictEqual(a, action)))
+              assert.ok(trace.steps.slice(0, step - 1).every(move => move.actions.every(a =>
+                'place' in a ? Number(alternative[a.place.cell]) === a.place.digit : Number(alternative[a.eliminate.cell]) !== a.eliminate.digit)))
+            }
+            return { rule, step, technique }
+          })
+          assert.ok(history.every(game => !isDeepStrictEqual(game.variant?.puzzle, puzzle)))
+          history.push({ ...makeGame(String(draw), spec, puzzle.givens, 'generated'), variant: { id: 'mixed', puzzle, solution } })
+          console.log(JSON.stringify({ spec, draw, ...(values['include-puzzle'] && { puzzle }), status: 'verified', givens, classic, hardest: rating.hardest, required, ms: Math.round(performance.now() - start) }))
+        } catch (error) {
+          if (!(error instanceof EngineError)) throw error
+          if (values.strict) process.exitCode = 1
+          console.log(JSON.stringify({ spec, draw, status: error.code, reason: error.message, ms: Math.round(performance.now() - start) }))
+          break
+        }
       }
     }
   } finally {

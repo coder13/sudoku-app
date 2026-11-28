@@ -235,7 +235,7 @@ export function puzzleIdentity(game: Pick<Game, 'givens'> & {
   if (!variant) return game.givens
   // A solver profile changes the hint path, but the same grid and clues still
   // identify one puzzle when checking for replays and existing uniqueness proofs.
-  const { extendedLogic: _profile, ...puzzle } = variant.puzzle
+  const { extendedLogic: _extended, logicVersion: _version, ...puzzle } = variant.puzzle
   const definition = variant.fog
     ? { ...puzzle, fog: { ...variant.fog, initialCells: [...variant.fog.initialCells].sort((a, b) => a - b) } }
     : puzzle
@@ -280,7 +280,7 @@ export function normalizePuzzleIdentity(identity: string): string {
   try {
     const puzzle: unknown = JSON.parse(identity.slice(separator + 1))
     if (puzzle && typeof puzzle === 'object' && !Array.isArray(puzzle)) {
-      const { extendedLogic: _profile, ...definition } = puzzle as Record<string, unknown>
+      const { extendedLogic: _extended, logicVersion: _version, ...definition } = puzzle as Record<string, unknown>
       return identity.slice(0, separator + 1) + JSON.stringify(orderedPuzzleFields(definition))
     }
   } catch { /* An unrecognized historical key remains unchanged. */ }

@@ -165,42 +165,12 @@ impl InferenceGraph {
             positions,
             variant_links: false,
         };
-        let mut constraint = Vec::with_capacity(18);
-        for (cell, &mask) in masks.iter().enumerate() {
-            constraint.clear();
-            constraint.extend(bit_indices(mask).map(|digit| indices[cell * 9 + digit]));
-            let bivalue = constraint.len() == 2;
-            for (i, &a) in constraint.iter().enumerate() {
-                for &b in &constraint[i + 1..] {
-                    graph.connect(a, b, LinkSource::Cell(cell), bivalue);
-                }
-            }
-        }
-        for house in House::all() {
-            let house_mask = house_cells(house);
-            for (digit, &positions) in positions.iter().enumerate() {
-                let present = positions & house_mask;
-                if present.count_ones() < 2 {
-                    continue;
-                }
-                constraint.clear();
-                constraint.extend(cells(present).map(|cell| indices[cell * 9 + digit]));
-                constraint.extend(
-                    groups[digit]
-                        .clone()
-                        .filter(|&id| graph.nodes[id].members & !present == 0),
-                );
-                for (i, &a) in constraint.iter().enumerate() {
-                    for &b in &constraint[i + 1..] {
-                        let left = graph.nodes[a].members;
-                        let right = graph.nodes[b].members;
-                        if left & right == 0 {
-                            graph.connect(a, b, LinkSource::House(house), left | right == present);
-                        }
-                    }
-                }
-            }
-        }
+        graph.add_cell_links(masks, &indices);
+        graph.add_house_links(
+            House::all().map(|h| (house_cells(h), LinkSource::House(h))),
+            &indices,
+            &groups,
+        );
         graph.sort_edges();
         graph
     }
@@ -210,39 +180,43 @@ impl InferenceGraph {
         masks: &[u16; CELLS],
         houses: impl IntoIterator<Item = (u128, LinkSource)>,
         conflicts: impl IntoIterator<Item = (Candidate, Candidate, LinkSource)>,
+        peers: &[u128; CELLS],
+        grouped: bool,
     ) -> Self {
-        let (nodes, indices) = Self::single_nodes(masks);
+        let houses: Vec<_> = houses.into_iter().collect();
+        let (mut nodes, indices) = Self::single_nodes(masks);
         let singles = nodes.len();
         let positions = super::candidate_positions(masks);
+        let groups = std::array::from_fn(|digit| {
+            let start = nodes.len();
+            if grouped {
+                for (i, &(house, _)) in houses.iter().enumerate() {
+                    for &(other, _) in &houses[..i] {
+                        let members = positions[digit] & house & other;
+                        if members.count_ones() >= 2
+                            && !nodes[start..].iter().any(|n| n.members == members)
+                        {
+                            nodes.push(Node::new(digit as u8 + 1, members));
+                        }
+                    }
+                }
+            }
+            start..nodes.len()
+        });
+        for node in &mut nodes {
+            node.peers = cells(node.members).fold(u128::MAX, |common, c| common & peers[c]);
+        }
         let mut graph = Self {
+            strong: vec![Vec::new(); nodes.len()],
+            weak: vec![Vec::new(); nodes.len()],
             nodes,
             singles,
             mixed: Vec::new(),
-            strong: vec![Vec::new(); singles],
-            weak: vec![Vec::new(); singles],
             positions,
             variant_links: true,
         };
-        let mut constraint = Vec::with_capacity(9);
-        let mut add_constraint = |members: &[usize], source| {
-            for (i, &a) in members.iter().enumerate() {
-                for &b in &members[i + 1..] {
-                    graph.connect(a, b, source, members.len() == 2);
-                }
-            }
-        };
-        for (cell, &mask) in masks.iter().enumerate() {
-            constraint.clear();
-            constraint.extend(bit_indices(mask).map(|digit| indices[cell * 9 + digit]));
-            add_constraint(&constraint, LinkSource::Cell(cell));
-        }
-        for (house, source) in houses {
-            for (digit, &sites) in positions.iter().enumerate() {
-                constraint.clear();
-                constraint.extend(cells(house & sites).map(|cell| indices[cell * 9 + digit]));
-                add_constraint(&constraint, source);
-            }
-        }
+        graph.add_cell_links(masks, &indices);
+        graph.add_house_links(houses, &indices, &groups);
         for (left, right, source) in conflicts {
             let a = indices[links::index(left)];
             let b = indices[links::index(right)];
@@ -250,6 +224,54 @@ impl InferenceGraph {
         }
         graph.sort_edges();
         graph
+    }
+
+    fn add_cell_links(&mut self, masks: &[u16; CELLS], indices: &[usize; links::CANDIDATE_COUNT]) {
+        for (cell, &mask) in masks.iter().enumerate() {
+            for digit in bit_indices(mask) {
+                for other in bit_indices(mask).filter(|&other| other < digit) {
+                    self.connect(
+                        indices[cell * 9 + other],
+                        indices[cell * 9 + digit],
+                        LinkSource::Cell(cell),
+                        mask.count_ones() == 2,
+                    );
+                }
+            }
+        }
+    }
+
+    fn add_house_links(
+        &mut self,
+        houses: impl IntoIterator<Item = (u128, LinkSource)>,
+        indices: &[usize; links::CANDIDATE_COUNT],
+        groups: &[std::ops::Range<usize>; 9],
+    ) {
+        let mut constraint = Vec::with_capacity(18);
+        for (house, source) in houses {
+            for (digit, range) in groups.iter().enumerate() {
+                let present = house & self.positions[digit];
+                if present.count_ones() < 2 {
+                    continue;
+                }
+                constraint.clear();
+                constraint.extend(cells(present).map(|cell| indices[cell * 9 + digit]));
+                constraint.extend(
+                    range
+                        .clone()
+                        .filter(|&i| self.nodes[i].members & !present == 0),
+                );
+                for (i, &a) in constraint.iter().enumerate() {
+                    for &b in &constraint[i + 1..] {
+                        let left = self.nodes[a].members;
+                        let right = self.nodes[b].members;
+                        if left & right == 0 {
+                            self.connect(a, b, source, left | right == present);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     pub(super) fn for_almost_locked_sets(search: &PatternSearch<'_>) -> Option<Self> {
@@ -468,10 +490,9 @@ impl InferenceGraph {
         let variant_targets = self.variant_links.then(|| {
             let mut masks = [0; 9];
             for edge in &self.weak[a] {
-                if self.edge(b, edge.to, LinkStrength::Weak).is_some() {
-                    let target = self.nodes[edge.to]
-                        .single()
-                        .expect("variant graph has only candidates");
+                if let Some(target) = self.nodes[edge.to].single()
+                    && self.edge(b, edge.to, LinkStrength::Weak).is_some()
+                {
                     masks[usize::from(target.digit - 1)] |= cell_bit(target.cell);
                 }
             }

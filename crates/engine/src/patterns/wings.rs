@@ -6,6 +6,7 @@ use super::{
 
 pub(super) fn visit_pivot_wings(
     search: &PatternSearch<'_>,
+    peers: &[u128; crate::CELLS],
     technique: Technique,
     visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
 ) -> ControlFlow<Deduction> {
@@ -29,7 +30,7 @@ pub(super) fn visit_pivot_wings(
 
     for pivot in cells(pivots) {
         let pivot_mask = masks[pivot];
-        let mut pincers = PEERS[pivot] & bivalue;
+        let mut pincers = peers[pivot] & bivalue;
         for first in cells(pincers) {
             pincers &= !cell_bit(first);
             let first_mask = masks[first];
@@ -48,9 +49,9 @@ pub(super) fn visit_pivot_wings(
 
                 let digit_index = common.trailing_zeros() as usize;
                 let mut targets =
-                    search.positions_by_digit()[digit_index] & PEERS[first] & PEERS[second];
+                    search.positions_by_digit()[digit_index] & peers[first] & peers[second];
                 if xyz {
-                    targets &= PEERS[pivot];
+                    targets &= peers[pivot];
                 }
                 let z = digit_index as u8 + 1;
                 report(visit, technique, targets, z, || HintEvidence::Wing {

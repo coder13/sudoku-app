@@ -199,7 +199,7 @@ export function usePuzzleGeneration() {
       : 'The engine couldn’t find a puzzle at this difficulty. Try again or choose an easier difficulty.')
   }
 
-  return { busy, error, generate, generatePractice, cancelGeneration: () => customSearch.current?.abort() }
+  return { busy, error, clearError: () => setError(''), generate, generatePractice, cancelGeneration: () => customSearch.current?.abort() }
 }
 
 
