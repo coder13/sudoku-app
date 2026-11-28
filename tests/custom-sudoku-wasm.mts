@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { generateCustomSudoku } from '../src/sudoku/custom-generation.ts'
-import { customModeDifficulties, customRuleIds, type CustomRule, type MarkerRule } from '../src/sudoku/custom-modes.ts'
+import { customRuleIds, isCustomDifficulty, type CustomRule, type MarkerRule } from '../src/sudoku/custom-modes.ts'
+import { DIFFICULTY_LEVELS } from '../src/sudoku/difficulty.ts'
+import { variantSeeds } from '../src/sudoku/variant-generation.ts'
 import { runEngine, type VariantPuzzle } from '../src/sudoku/engine.ts'
 import { applyDeduction, makeGame, restartGame, undo, valuesOf } from '../src/sudoku/game.ts'
 import { prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
@@ -17,10 +19,13 @@ import { useWasmWorker } from './helpers/wasm-worker.ts'
 
 useWasmWorker()
 
-test('all 35 rule choices generate unique puzzles at each offered difficulty', async () => {
+test('all 35 rule choices generate a unique puzzle that requires the selected rule', async () => {
   assert.equal(customRuleIds.length, 35)
-  for (const rule of customRuleIds) for (const difficulty of customModeDifficulties([rule])) {
+  for (const rule of customRuleIds) {
+    const bank = Object.hasOwn(variantSeeds, rule) ? variantSeeds[rule as keyof typeof variantSeeds] : undefined
+    const difficulty = bank ? Object.keys(bank).find(isCustomDifficulty)! : rule === 'dutch-whispers' ? 'medium' : 'easy'
     const result = await generateCustomSudoku([rule], difficulty, 5, [])
+    assert.equal(result.ruleDependencies?.length, 1, rule)
     assert.deepEqual(result.rating.status, { solved: difficulty }, rule)
     assertVariantCompletion(result.puzzle, result.solution)
     const actual = result.puzzle.rules ?? []
@@ -47,7 +52,8 @@ test('all 35 rule choices generate unique puzzles at each offered difficulty', a
 test('the same mixed mode generates each standard difficulty grade with all selected rules', async () => {
   const rules = ['windoku', 'arrow'] as const satisfies readonly CustomRule[]
   const completions = new Set<string>()
-  for (const level of customModeDifficulties(rules)) {
+  const levels = DIFFICULTY_LEVELS
+  for (const level of levels) {
     const result = await generateCustomSudoku(rules, level, 5, [])
     assert.deepEqual(result.rating.status, { solved: level })
     assert.equal(result.puzzle.rules?.filter(rule => rule.type === 'extra-house').length, 4)
@@ -74,11 +80,16 @@ test('the same mixed mode generates each standard difficulty grade with all sele
       assert.deepEqual(next.rating.status, { solved: level })
     }
   }
-  assert.equal(completions.size, customModeDifficulties(rules).length)
+  assert.equal(completions.size, levels.length)
 })
 
 test('white dots and Non-Consecutive use the same exception edges with either setting', async () => {
   for (const negative of [false, true]) {
+    if (negative) {
+      await assert.rejects(generateCustomSudoku(['non-consecutive', 'kropki-white'], 'easy', 5, [],
+        { negativeMarkers: ['kropki-white'] }), { code: 'unsupported' })
+      continue
+    }
     const result = await generateCustomSudoku(['non-consecutive', 'kropki-white'], 'easy', 5, [],
       { negativeMarkers: negative ? ['kropki-white'] : [] })
     const rules = result.puzzle.rules!
@@ -134,8 +145,10 @@ const mixedMarkers = ['kropki-white', 'xv-ten'] as const satisfies readonly Mark
 const mixedRules = ['kropki', 'xv', 'arrow'] as const satisfies readonly CustomRule[]
 
 test('mixed complete marks retain all edge meanings, hints, and exact ratings', async () => {
-  for (const difficulty of customModeDifficulties(mixedRules)) {
-    const { puzzle, solution, rating } = await generateCustomSudoku(mixedRules, difficulty, 5, [], { negativeMarkers: mixedMarkers })
+  for (const difficulty of ['easy', 'medium', 'hard'] as const) {
+    const seed = difficulty === 'hard' ? 11 : 5
+    const { puzzle, solution, rating, ruleDependencies } = await generateCustomSudoku(mixedRules, difficulty, seed, [], { negativeMarkers: mixedMarkers })
+    assert.deepEqual(new Set(ruleDependencies?.map(item => item.rule)), new Set(mixedRules))
     assert.deepEqual(rating.status, { solved: difficulty })
     assertVariantCompletion(puzzle, solution)
     const markers = puzzle.rules?.filter(rule => rule.type === 'kropki' || rule.type === 'xv')

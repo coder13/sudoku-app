@@ -21,7 +21,7 @@ after(async () => { await server?.close() })
 
 test('New Puzzle offers Easy and Medium Inequality with directed signs and actual navigation', async () => {
   assert.ok(isVariantId('inequality'))
-  assert.deepEqual(variantDifficulties('inequality'), ['easy', 'medium'])
+  assert.deepEqual(variantDifficulties('inequality'), variantDifficulties('classic'))
   const preview = renderToStaticMarkup(createElement(VariantPreview, { variant: 'inequality' }))
   assert.equal([...preview.matchAll(/class="variant-inequality"/g)].length, 1)
   assert.match(preview, /data-less="30" data-greater="31"/)
@@ -36,8 +36,8 @@ test('New Puzzle offers Easy and Medium Inequality with directed signs and actua
   assert.match(difficulty, /Choose difficulty/)
   assert.match(difficulty, /\/puzzles\/new\?variant=inequality/)
   assert.match(difficulty, /value="easy"/); assert.match(difficulty, /value="medium"/)
-  assert.doesNotMatch(difficulty, /value="(?:tricky|hard)"/)
-  assert.match(await renderNewPuzzle('/puzzles/new/difficulty', { variant: 'inequality', difficulty: 'hard' }), /Start medium puzzle/)
+  assert.match(difficulty, /value="(?:tricky|hard)"/)
+  assert.match(await renderNewPuzzle('/puzzles/new/difficulty', { variant: 'inequality', difficulty: 'hard' }), /Start hard puzzle/)
 })
 
 test('completed pure Inequality offers another puzzle and the full Palindrome 14 source retains its companions', () => {

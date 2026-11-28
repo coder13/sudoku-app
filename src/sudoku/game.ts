@@ -233,9 +233,12 @@ export function puzzleIdentity(game: Pick<Game, 'givens'> & {
   }
   const { variant } = game
   if (!variant) return game.givens
+  // A solver profile changes the hint path, but the same grid and clues still
+  // identify one puzzle when checking for replays and existing uniqueness proofs.
+  const { extendedLogic: _extended, logicVersion: _version, ...puzzle } = variant.puzzle
   const definition = variant.fog
-    ? { ...variant.puzzle, fog: { ...variant.fog, initialCells: [...variant.fog.initialCells].sort((a, b) => a - b) } }
-    : variant.puzzle
+    ? { ...puzzle, fog: { ...variant.fog, initialCells: [...variant.fog.initialCells].sort((a, b) => a - b) } }
+    : puzzle
   const rules = definition.rules?.map(rule => rule.type === 'digit-restriction'
     ? { ...rule, cells: [...rule.cells].sort((a, b) => a - b) }
     : rule.type === 'neighbor-match' ? { ...rule, clues: [...rule.clues].sort((a, b) => a.cell - b.cell) } : rule)
@@ -277,7 +280,8 @@ export function normalizePuzzleIdentity(identity: string): string {
   try {
     const puzzle: unknown = JSON.parse(identity.slice(separator + 1))
     if (puzzle && typeof puzzle === 'object' && !Array.isArray(puzzle)) {
-      return identity.slice(0, separator + 1) + JSON.stringify(orderedPuzzleFields(puzzle))
+      const { extendedLogic: _extended, logicVersion: _version, ...definition } = puzzle as Record<string, unknown>
+      return identity.slice(0, separator + 1) + JSON.stringify(orderedPuzzleFields(definition))
     }
   } catch { /* An unrecognized historical key remains unchanged. */ }
   return identity

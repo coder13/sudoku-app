@@ -2,10 +2,9 @@ import { Button, buttonClassName } from './Button'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ArrowRight, Check, CircleHelp, Lightbulb, Search } from 'lucide-react'
-import { isCustomDifficulty } from '../sudoku/custom-modes'
-import { DIFFICULTY_LABELS, formatPuzzleRating, type DifficultyPreference } from '../sudoku/difficulty'
+import { DIFFICULTY_LABELS, difficultyIndex, formatPuzzleRating, type DifficultyPreference } from '../sudoku/difficulty'
 import { pointsPerSecondForSolve } from '../sudoku/difficulty-statistics'
-import { formatTime, isSolved, type Game } from '../sudoku/game'
+import { EMPTY, formatTime, isSolved, type Game } from '../sudoku/game'
 import { cellReference, techniqueLabel, type CellReferenceStyle } from '../sudoku/hints'
 import { practiceTechniqueResult } from '../sudoku/action-history'
 import { inProgress } from '../sudoku/puzzle-activity'
@@ -112,7 +111,7 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
   const pairedActions = Boolean(nextActive && !inCollection)
   const sizedRecipe = isSizedPuzzleId(recipe)
   const difficultyPreference = game.difficulty ?? preferredDifficulty
-  const nextDifficulty = game.customMode ? (isCustomDifficulty(difficultyPreference) ? difficultyPreference : 'medium')
+  const nextDifficulty = game.customMode && game.generatedWithAuto ? 'auto'
     : sizedRecipe ? miniDifficulty(difficultyPreference) : variantDifficulty(recipe, difficultyPreference)
   const nextGrade = nextDifficulty === 'auto' ? variantDifficulty(sizedRecipe ? undefined : recipe, recommended) : nextDifficulty
   const nextLabel = game.practiceTechnique ? 'Next practice puzzle'
@@ -149,9 +148,10 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
         nextRequest.current = null
         setLoadingNext(false)
       })
-    } else void generate(nextDifficulty, undefined, recipe, { ruleset, boxRows, customMode: game.customMode })
+    } else void generate(nextDifficulty, undefined, recipe, { ruleset, boxRows, customMode: game.customMode,
+      miracle: game.source === 'generated' && !!game.variant && game.givens === EMPTY && difficultyIndex(nextGrade) >= difficultyIndex('hard') })
   }, [canPlayNext, inCollection, needsChoice, game, recipe, ruleset, boxRows,
-    generate, generatePractice, onChooseVariant, online, nextDifficulty])
+    generate, generatePractice, onChooseVariant, online, nextDifficulty, nextGrade])
   const canResume = !busy && !loadingNext
   const resume = () => { if (nextActive && canResume) onResumePuzzle(nextActive.id) }
   const continuePlaying = resumeFirst ? resume : playNext

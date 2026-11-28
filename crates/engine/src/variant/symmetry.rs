@@ -25,11 +25,17 @@ mod played;
 
 #[cfg(any(feature = "generation", test))]
 pub(super) fn generation_key(puzzle: &VariantPuzzle) -> VariantPuzzle {
-    played::key(puzzle)
+    let mut key = played::key(puzzle);
+    key.extended_logic = false;
+    key.logic_version = None;
+    key
 }
 
 pub(super) fn key(puzzle: &VariantPuzzle) -> VariantPuzzle {
-    key_impl(puzzle, false, |_| {})
+    key_impl(puzzle, false, |key| {
+        key.extended_logic = false;
+        key.logic_version = None;
+    })
 }
 
 fn digit_invariant(rule: &PuzzleRule) -> bool {
@@ -226,9 +232,15 @@ impl SquareTransform {
             ConditionalNeighbor { alternatives, .. } => {
                 for alternative in alternatives.iter_mut() {
                     let (mut row, mut column) = (alternative.row_offset, alternative.column_offset);
-                    if self.0 & 1 != 0 { (row, column) = (column, row); }
-                    if self.0 & 2 != 0 { row = -row; }
-                    if self.0 & 4 != 0 { column = -column; }
+                    if self.0 & 1 != 0 {
+                        (row, column) = (column, row);
+                    }
+                    if self.0 & 2 != 0 {
+                        row = -row;
+                    }
+                    if self.0 & 4 != 0 {
+                        column = -column;
+                    }
                     alternative.row_offset = row;
                     alternative.column_offset = column;
                 }

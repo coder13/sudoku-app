@@ -72,6 +72,7 @@ function prerenderPages() {
     '/puzzles/new',
     '/puzzles/new/custom',
     '/puzzles/new/difficulty',
+    '/puzzles/new/save',
     '/puzzles/games',
     '/puzzles/calcudoku',
     '/puzzles/calcudoku/generated',

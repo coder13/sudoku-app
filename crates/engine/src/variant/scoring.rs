@@ -26,7 +26,9 @@ pub(super) fn deduction_cost(deduction: &VariantDeduction, puzzle: &VariantPuzzl
             };
             return proof.estimated_cost(technique);
         }
-        VariantEvidence::Single { .. } => return deduction.technique.cost(),
+        VariantEvidence::Single { .. } | VariantEvidence::RuleSingle { .. } => {
+            return deduction.technique.cost();
+        }
         VariantEvidence::PeerLock { conflicts, .. } => return 14 + 4 * conflicts.len() as u16,
         VariantEvidence::Exclusion { premise, .. } => {
             let (base, alternatives, mut cells) = match premise {

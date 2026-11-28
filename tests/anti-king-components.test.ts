@@ -28,7 +28,7 @@ test('New Puzzle offers Anti-King with a distinct king preview and verified Easy
   assert.ok(isVariantId('anti-king'))
   assert.equal(VARIANTS['anti-king'].name, 'Anti-King')
   assert.match(VARIANTS['anti-king'].rule, /one row and one column apart/)
-  assert.deepEqual(variantDifficulties('anti-king'), ['easy', 'medium'])
+  assert.deepEqual(variantDifficulties('anti-king'), variantDifficulties('classic'))
   const html = renderToStaticMarkup(createElement(VariantPreview, { variant: 'anti-king' }))
   assert.match(html, /data-variant="anti-king"/)
   assert.match(html, /lucide-crown/)

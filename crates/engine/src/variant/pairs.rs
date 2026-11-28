@@ -192,10 +192,12 @@ pub(crate) const KROPKI: [Relation; 2] =
 pub(super) const XV: [Relation; 2] = [|a, b| a + b == 5, |a, b| a + b == 10];
 
 impl PairCompiler {
-    pub(super) fn exempt_xv_edges(&mut self, edges: &[[usize; 2]]) {
-        self.xv
-            .exemptions
-            .extend(edges.iter().map(|&[a, b]| [a.min(b), a.max(b)]));
+    pub(super) fn exempt_edges(&mut self, xv: &[[usize; 2]], kropki: &[[usize; 2]]) {
+        for (markers, edges) in [(&mut self.xv, xv), (&mut self.kropki, kropki)] {
+            markers
+                .exemptions
+                .extend(edges.iter().map(|&[a, b]| [a.min(b), a.max(b)]));
+        }
     }
 
     pub fn compile_rule(
@@ -747,6 +749,8 @@ mod distant_neighbors_tests {
     fn box_identity_rules_cover_markers_and_both_sides_of_each_border() {
         let puzzle = VariantPuzzle {
             version: 1,
+            extended_logic: false,
+            logic_version: None,
             givens: [0; CELLS],
             regions: super::super::RegionLayout::Boxes,
             rules: vec![PuzzleRule::DistantNeighbors {

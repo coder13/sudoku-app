@@ -1,8 +1,8 @@
 import { playVariantPuzzle } from './fog.ts'
 import { puzzleForVariantTools, type VariantToolId } from './variants.ts'
-import { difficultyIndex } from './difficulty.ts'
+import { currentDifficulty, difficultyIndex } from './difficulty.ts'
 import { EngineError, runEngine, type Difficulty, type EngineRunner, type TechniqueCatalog, type VariantClueLayout, type VariantGenerationRequest, type VariantPosition, type VariantPuzzle } from './engine.ts'
-import { type Game, valuesOf } from './game.ts'
+import { EMPTY, type Game, valuesOf } from './game.ts'
 import { sizedRuleCandidates } from './sized-rule-play.ts'
 import { miniCandidates } from './mini-play.ts'
 import { algebraicCandidates } from './algebraic-play.ts'
@@ -10,6 +10,7 @@ import { readDisabledHintTechniques } from './hint-preferences.ts'
 import { variantGenerationRequest, variantSeeds, variantTechniqueOrder, withMediumVariantTechniques } from './variant-generation.ts'
 import { hasBetweenAndPairClues, hasMatchingAndPairClues, hasPrintedKropki, type PlayableVariant, type VariantGame } from './variants.ts'
 import { generationRuleset, isGenerationRulesetId, type VariantGenerationOptions } from './variant-rulesets.ts'
+import { hasGeneratedVariantLayout } from './variant-layout-quality.ts'
 
 let playProfile: Promise<{ techniqueOrder: string[]; catalog: TechniqueCatalog; tiers: Record<string, Difficulty>; firstBeyondHard: string | undefined }> | undefined
 
@@ -51,16 +52,19 @@ export function getVariantPlayProfile(puzzle?: VariantPuzzle, layouts?: readonly
     })
   const rules = puzzle?.rules ?? []
   const renbans = rules.filter(rule => rule.type === 'renban').filter(rule => rule.cells.length >= 2)
-  const rays = rules.filter(rule => rule.type === 'little-killer')
+  const rays = [...rules.filter(rule => rule.type === 'little-killer'), ...(layouts ?? []).flatMap(
+    layout => layout.type === 'outside' && layout.clue === 'little-killer' ? [layout] : [])]
   const regionSumLines = rules.filter(rule => rule.type === 'region-sum')
   const hasMatchingCells = rules.some(rule => rule.type === 'palindrome' || rule.type === 'clone')
   const hasLinkedClues = hasBetweenAndPairClues(rules, layouts) || hasMatchingAndPairClues(rules, layouts)
-  const hasKropki = hasPrintedKropki(rules)
+  const hasKropki = hasPrintedKropki(rules) || layouts?.some(layout => layout.type === 'markers' && layout.family === 'kropki')
   const hasThermometer = rules.some(rule => rule.type === 'thermometer')
+  const hasMiracleArrows = puzzle?.extendedLogic && puzzle.givens === EMPTY && rules.some(rule => rule.type === 'arrow')
   const hasGroupLine = rules.some(rule => rule.type === 'entropic' || rule.type === 'modular')
-  const hasGroupPairs = hasGroupLine && rules.some(rule =>
-    rule.type === 'kropki' || rule.type === 'xv' || rule.type === 'adjacent-total' || rule.type === 'inequality')
-  if (!renbans.length && !rays.length && !hasGroupLine && !regionSumLines.length && !hasThermometer && !hasKropki && !hasLinkedClues && !hasMatchingCells) return playProfile
+  const hasGroupPairs = hasGroupLine && (rules.some(rule =>
+    rule.type === 'kropki' || rule.type === 'xv' || rule.type === 'adjacent-total' || rule.type === 'inequality') ||
+    layouts?.some(layout => layout.type === 'markers' || layout.type === 'adjacent-total' || layout.type === 'inequality'))
+  if (!renbans.length && !rays.length && !hasGroupLine && !regionSumLines.length && !hasThermometer && !hasMiracleArrows && !hasKropki && !hasLinkedClues && !hasMatchingCells) return playProfile
 
   const joined = rays.filter(ray =>
     renbans.some(renban => renban.cells.every(cell => ray.cells.includes(cell))))
@@ -94,8 +98,10 @@ export function getVariantPlayProfile(puzzle?: VariantPuzzle, layouts?: readonly
     ]
     const techniqueOrder = withMediumVariantTechniques(withLateChecks, tiers, [
       ...(hasThermometer ? ['thermometer-house-support'] : []),
+      ...(hasMiracleArrows ? ['arrow-house-support'] : []),
       ...(hasKropki ? ['kropki-house-support'] : []),
     ])
+    if (puzzle?.extendedLogic || puzzle?.logicVersion) techniqueOrder.sort((a, b) => difficultyIndex(tiers[a] ?? 'impossible') - difficultyIndex(tiers[b] ?? 'impossible'))
     return { techniqueOrder, catalog, tiers, firstBeyondHard }
   })
 }
@@ -104,26 +110,28 @@ export async function getVariantPlayOrder(puzzle?: VariantPuzzle, layouts?: read
   return (await getVariantPlayProfile(puzzle, layouts)).techniqueOrder
 }
 
-export async function generatePlayableVariant(id: PlayableVariant, difficulty: Difficulty, seed: number, games: readonly Game[], options?: VariantGenerationOptions, run: EngineRunner = runEngine) {
+export async function generatePlayableVariant(id: PlayableVariant, difficulty: Difficulty, seed: number, games: readonly Game[], options?: VariantGenerationOptions, run?: EngineRunner) {
   if (options?.ruleset !== undefined && !isGenerationRulesetId(id, options.ruleset))
     throw new EngineError('This ruleset is unavailable for this variant.', 'unsupported')
-  const { techniqueOrder: order, tiers } = await getVariantPlayProfile()
-  const techniqueOrder = id === 'renban' ? withRenbanTechniques(order)
-    : id === 'little-killer' ? withLittleKillerHouses(order)
-      : id === 'entropic' ? withGroupLineHouses(order)
-        : id === 'region-sum' ? withRegionSumTechniques(order, true)
-          : id === 'thermometer' ? withMediumVariantTechniques(order, tiers, ['thermometer-house-support'])
-            : id === 'kropki' ? withMediumVariantTechniques(order, tiers, ['kropki-house-support']) : order
+  const { generateCustomSudoku } = await import('./custom-generation.ts')
+  const rule = id === 'whispers' && options?.ruleset === 'dutch' ? 'dutch-whispers' : id
+  return generateCustomSudoku([rule], currentDifficulty(difficulty), seed, games, options, run)
+}
+
+export async function tryVariantRecipe(id: PlayableVariant, difficulty: Difficulty, seed: number, games: readonly Game[], options: VariantGenerationOptions, run: EngineRunner) {
   const ruleset = generationRuleset(id, options?.ruleset)
   const recipes = variantSeeds[id][difficulty]?.filter(recipe => !ruleset || recipe.minDifference === ruleset.minDifference)
-  if (!recipes?.length) throw new EngineError('This difficulty is unavailable for this variant.', 'unsupported')
+  if (!recipes?.length) return
   // Equivalent clues can give an imported puzzle a different variant label.
   // Let the native logical key compare complete definitions across that history.
   const excluded = games.flatMap(game => game.variant ? [game.variant.puzzle] : [])
   const tryGenerate = async (request: VariantGenerationRequest) => {
+    if (!hasGeneratedVariantLayout(request.template)) return
+    request.techniqueOrder = await getVariantPlayOrder(request.template, request.derivedClues)
     if (excluded.length) request.exclude = excluded
     try {
-      const result = await run(request)
+      const result = await run(request, { signal: options.signal })
+      if (result.givens === 0 || !hasGeneratedVariantLayout(result.puzzle)) return
       // A sampled positive marker layout can contain only one symbol.
       if (id === 'xv' && !result.puzzle.rules?.some(rule =>
         rule.type === 'xv' && rule.five?.pairs?.length && rule.ten?.pairs?.length)) return
@@ -136,23 +144,22 @@ export async function generatePlayableVariant(id: PlayableVariant, difficulty: D
     }
   }
 
-  const initial = seed % recipes.length
+  const initial = (seed >>> 0) % recipes.length
   for (let attempt = 0; attempt <= recipes.length; attempt++) {
     const recipe = recipes[(initial + Math.max(0, attempt - 1)) % recipes.length]
-    const request = variantGenerationRequest(id, difficulty, recipe, techniqueOrder, attempt === 0 ? seed : recipe.seed)
+    const request = variantGenerationRequest(id, difficulty, recipe, [], attempt === 0 ? seed : recipe.seed)
     if (attempt === 0) request.maxNodes = 20_000
     const result = await tryGenerate(request)
     if (result) return result
   }
   const recipe = recipes[initial]
   if (recipe.retryAttempts) {
-    const request = variantGenerationRequest(id, difficulty, recipe, techniqueOrder, seed)
+    const request = variantGenerationRequest(id, difficulty, recipe, [], seed)
     request.maxNodes = 20_000
     request.maxAttempts = recipe.retryAttempts
     const result = await tryGenerate(request)
     if (result) return result
   }
-  throw new EngineError('No puzzle found for this difficulty.', 'search-limit')
 }
 
 export function variantPosition(

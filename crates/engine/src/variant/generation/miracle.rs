@@ -1,0 +1,190 @@
+use super::*;
+
+// Global rules and complete markings retain their original meaning.
+fn removable(rule: &PuzzleRule) -> bool {
+    matches!(
+        rule.id(),
+        "arrow"
+            | "between"
+            | "thermometer"
+            | "inequality"
+            | "adjacent-total"
+            | "renban"
+            | "whispers"
+            | "modular"
+            | "entropic"
+            | "palindrome"
+            | "region-sum"
+            | "quadruple"
+            | "little-killer"
+            | "sandwich"
+            | "x-sum"
+            | "skyscrapers"
+    )
+}
+
+enum Change<'a> {
+    Remove(&'a PuzzleRule),
+    RemoveKropkiDot { cells: [usize; 2], black: bool },
+    JoinCages([usize; 2]),
+}
+
+impl Change<'_> {
+    fn apply(&self, current: &VariantPuzzle, solution: &Board) -> Option<VariantPuzzle> {
+        let mut next = current.clone();
+        match self {
+            Self::Remove(clue) => {
+                let i = next.rules.iter().position(|r| r == *clue)?;
+                next.rules.remove(i);
+            }
+            Self::RemoveKropkiDot { cells, black } => {
+                let pairs = next.rules.iter_mut().find_map(|rule| {
+                    let PuzzleRule::Kropki {
+                        consecutive,
+                        ratio_two,
+                    } = rule
+                    else {
+                        return None;
+                    };
+                    let layer = if *black { ratio_two } else { consecutive };
+                    (layer.pairs.len() > 1 && layer.pairs.contains(cells))
+                        .then_some(&mut layer.pairs)
+                })?;
+                pairs.retain(|pair| pair != cells);
+            }
+            Self::JoinCages([a, b]) => {
+                let cages = next.rules.iter_mut().find_map(|rule| match rule {
+                    PuzzleRule::KillerCages {
+                        cages,
+                        cover_grid: true,
+                    } => Some(cages),
+                    _ => None,
+                })?;
+                let i = cages.iter().position(|c| c.cells.contains(a))?;
+                let j = cages.iter().position(|c| c.cells.contains(b))?;
+                if i == j
+                    || cages[i].cells.len() + cages[j].cells.len() > 5
+                    || cages[i]
+                        .cells
+                        .iter()
+                        .any(|&x| cages[j].cells.iter().any(|&y| solution[x] == solution[y]))
+                {
+                    return None;
+                }
+                let right = cages.remove(i.max(j));
+                let mut merged = cages.remove(i.min(j));
+                merged.cells.extend(right.cells);
+                merged.cells.sort_unstable();
+                merged.sum += right.sum;
+                cages.push(merged);
+            }
+        }
+        Some(next)
+    }
+}
+
+pub(super) fn thin(
+    mut puzzle: VariantPuzzle,
+    solution: Board,
+    excluded: &HashSet<VariantPuzzle>,
+    options: &VariantGenerationOptions,
+    random: &mut Random,
+) -> Option<GeneratedVariant> {
+    // Check the derived clues against the sampled completion before relaxing anything.
+    puzzle.givens = solution;
+    if puzzle.compile().ok()?.analyze(&[0; CELLS], &[0; CELLS], 1) != Ok(Analysis::Unique) {
+        return None;
+    }
+    puzzle.givens = [0; CELLS];
+    let mut candidates: Vec<_> = puzzle
+        .rules
+        .iter()
+        .filter(|rule| removable(rule))
+        .map(Change::Remove)
+        .collect();
+    // An unmarked edge can change the meaning of a negative rule. White dots
+    // can also define the exceptions to Non-Consecutive.
+    if !puzzle.rules.iter().any(|rule| match rule {
+        PuzzleRule::NonConsecutive { .. } => true,
+        PuzzleRule::Kropki {
+            consecutive,
+            ratio_two,
+        } => consecutive.negative || ratio_two.negative,
+        _ => false,
+    }) {
+        for rule in &puzzle.rules {
+            if let PuzzleRule::Kropki {
+                consecutive,
+                ratio_two,
+            } = rule
+            {
+                for (layer, black) in [(consecutive, false), (ratio_two, true)] {
+                    candidates.extend(
+                        layer
+                            .pairs
+                            .iter()
+                            .map(|&cells| Change::RemoveKropkiDot { cells, black }),
+                    );
+                }
+            }
+        }
+    }
+    if puzzle.rules.iter().any(|r| {
+        matches!(
+            r,
+            PuzzleRule::KillerCages {
+                cover_grid: true,
+                ..
+            }
+        )
+    }) {
+        candidates.extend(crate::variant::pairs::orthogonal_pairs().map(Change::JoinCages));
+    }
+    random.shuffle(&mut candidates);
+    let mut current = puzzle.clone();
+    for change in std::iter::once(None).chain(candidates.iter().map(Some)) {
+        let puzzle = if let Some(change) = change {
+            let Some(next) = change.apply(&current, &solution) else {
+                continue;
+            };
+            next
+        } else {
+            current.clone()
+        };
+        let compiled = puzzle.compile().ok()?;
+        if compiled.analyze(&[0; CELLS], &[0; CELLS], options.max_nodes) != Ok(Analysis::Unique) {
+            // Begin redesigning clues from a layout that already has one solution.
+            if change.is_none() {
+                break;
+            }
+            continue;
+        }
+        let Some(mut without) = reduced_profiles(options, &puzzle) else {
+            continue;
+        };
+        current = puzzle.clone();
+        let variant_clues = puzzle.variant_clue_count();
+        if options
+            .variant_clues
+            .as_ref()
+            .is_some_and(|range| !range.contains(&variant_clues))
+            || !excluded.is_empty() && excluded.contains(&symmetry::generation_key(&puzzle))
+        {
+            continue;
+        }
+        if let Some((rating, rule_dependencies)) =
+            accept(&compiled, &puzzle, &solution, &mut without, options)
+        {
+            return Some(GeneratedVariant {
+                seed: options.seed,
+                puzzle,
+                solution,
+                givens: 0,
+                variant_clues,
+                rating,
+                rule_dependencies,
+            });
+        }
+    }
+    None
+}

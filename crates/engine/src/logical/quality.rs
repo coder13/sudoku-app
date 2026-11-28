@@ -44,14 +44,23 @@ pub(super) fn lower_tier_orders(level: Difficulty) -> Vec<Vec<Technique>> {
         .copied()
         .filter(|technique| technique.difficulty() < level)
         .collect();
-    let mut orders = vec![canonical];
+    tier_orders(canonical, |technique| technique.difficulty())
+}
+
+/// Try different priorities among techniques of equal difficulty.
+pub(crate) fn tier_orders<T: Copy + Eq>(
+    mut canonical: Vec<T>,
+    tier: impl Fn(T) -> Difficulty,
+) -> Vec<Vec<T>> {
+    canonical.sort_by_key(|&technique| tier(technique));
+    let mut orders = vec![canonical.clone()];
     for reverse in [true, false] {
         let mut order = Vec::new();
-        for tier in Difficulty::ALL.into_iter().filter(|tier| *tier < level) {
-            let mut group: Vec<_> = Technique::DIFFICULTY_ORDER
+        for level in Difficulty::ALL {
+            let mut group: Vec<_> = canonical
                 .iter()
                 .copied()
-                .filter(|technique| technique.difficulty() == tier)
+                .filter(|&technique| tier(technique) == level)
                 .collect();
             if reverse {
                 group.reverse();

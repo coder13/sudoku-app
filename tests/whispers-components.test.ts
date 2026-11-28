@@ -198,7 +198,7 @@ test('a closed line is drawn through its last edge and names both neighbors at i
 
 test('New Puzzle exposes Medium Whispers with accurate line previews and accessible preset radios', () => {
   assert.ok(isVariantId('whispers'))
-  assert.deepEqual(variantDifficulties('whispers'), ['medium'])
+  assert.deepEqual(variantDifficulties('whispers'), variantDifficulties('classic'))
   for (const [ruleset, gap] of [['german', 5], ['dutch', 4]]) {
     const preview = renderToStaticMarkup(createElement(VariantPreview, { variant: 'whispers', ruleset }))
     assert.match(preview, new RegExp(`data-min-difference="${gap}"`))
@@ -227,7 +227,7 @@ test('actual New Puzzle routes preserve styles in Continue/Back links, saved cho
     assert.match(difficulty, new RegExp(`${ruleset === 'german' ? 'German' : 'Dutch'} Whispers`))
     assert.match(difficulty, new RegExp(`/puzzles/new\\?variant=whispers&amp;ruleset=${ruleset}`))
     assert.match(difficulty, /Start medium puzzle/)
-    assert.doesNotMatch(difficulty, /value="easy"/)
+    assert.match(difficulty, /value="easy"/)
   }
   const saved = await renderNewPuzzle('/puzzles/new/difficulty', { variant: 'whispers', difficulty: 'medium', ruleset: 'dutch' })
   assert.match(saved, /Dutch Whispers/)

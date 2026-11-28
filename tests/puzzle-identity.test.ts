@@ -54,6 +54,14 @@ test('actual givens, rule payloads, and ordered line cells remain distinct', () 
   assert.notEqual(identity([first, second]), identity([second, first]), 'rule-array normalization remains deliberately conservative')
 })
 
+test('a newer hint profile retains the original puzzle identity and uniqueness key', () => {
+  const [original] = variants
+  const updated = { ...original, puzzle: { ...original.puzzle, extendedLogic: true, logicVersion: 29 as const } }
+  const identity = puzzleIdentity({ givens: EMPTY, variant: original })
+  assert.equal(puzzleIdentity({ givens: EMPTY, variant: updated }), identity)
+  assert.equal(normalizePuzzleIdentity(updated.id + ':' + JSON.stringify(updated.puzzle)), identity)
+})
+
 test('unrecognized historical identities and Classic keys are retained verbatim', () => {
   for (const identity of [EMPTY, 'not-an-identity', 'arrow:broken-json', 'future-format:[1,2]', 'future-format:{"b":2,"a":1}']) {
     assert.equal(normalizePuzzleIdentity(identity), identity)

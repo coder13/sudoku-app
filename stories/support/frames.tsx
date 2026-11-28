@@ -91,6 +91,7 @@ export function PreviewRouter({ children, path = '/', shell = false }: {
     })
     const difficulty = createRoute({ getParentRoute: () => newPuzzle, path: 'difficulty' })
     const custom = createRoute({ getParentRoute: () => newPuzzle, path: 'custom' })
+    const save = createRoute({ getParentRoute: () => newPuzzle, path: 'save' })
     const learn = createRoute({
       getParentRoute: () => root,
       path: 'learn',
@@ -107,7 +108,7 @@ export function PreviewRouter({ children, path = '/', shell = false }: {
     return createRouter({
       routeTree: root.addChildren([
         index, settings.addChildren([settingsSection, sync.addChildren([syncStep])]), importPuzzle,
-        puzzles.addChildren([newPuzzle.addChildren([difficulty, custom]), gameTypes, ...numberGames]), learn.addChildren([overview, lesson]),
+        puzzles.addChildren([newPuzzle.addChildren([difficulty, custom, save]), gameTypes, ...numberGames]), learn.addChildren([overview, lesson]),
       ]),
       history: createMemoryHistory({ initialEntries: [path] }),
       defaultPreload: false,

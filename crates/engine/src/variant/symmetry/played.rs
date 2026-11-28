@@ -1,6 +1,6 @@
 //! Logical keys for generation exclusions, separate from public source data.
 
-use super::{PuzzleRule, VariantPuzzle, digit_invariant, key_impl};
+use super::{ClueDirection, PuzzleRule, VariantPuzzle, digit_invariant, key_impl};
 use crate::CELLS;
 
 mod comparisons;
@@ -59,6 +59,7 @@ pub(super) fn key(puzzle: &VariantPuzzle) -> VariantPuzzle {
             _ => {}
         }
     }
+    normalize_sum_paths(&mut logical.rules);
     // Repeated conjunctive rules add no restriction. Source rule lists and
     // public canonical definitions keep their original structure.
     logical.rules.sort_unstable();
@@ -66,6 +67,7 @@ pub(super) fn key(puzzle: &VariantPuzzle) -> VariantPuzzle {
     let partition = group_partition(&logical.rules);
     let renban_length = renban::minimum_length(&logical.rules);
     key_impl(&logical, true, |copy| {
+        normalize_sum_paths(&mut copy.rules);
         if let Some(partition) = partition {
             rename_groups(&mut copy.givens, partition);
         } else if let Some(length) = renban_length {
@@ -78,6 +80,27 @@ pub(super) fn key(puzzle: &VariantPuzzle) -> VariantPuzzle {
             quadruples::rename(copy);
         }
     })
+}
+
+fn normalize_sum_paths(rules: &mut [PuzzleRule]) {
+    for rule in rules {
+        match rule {
+            PuzzleRule::Arrow { cells, .. } => cells.sort_unstable(),
+            PuzzleRule::RegionSum { cells, .. } if cells.first() > cells.last() => cells.reverse(),
+            PuzzleRule::LittleKiller {
+                cells, direction, ..
+            } => {
+                let opposite = match direction {
+                    ClueDirection::NorthEast => ClueDirection::SouthWest,
+                    ClueDirection::NorthWest => ClueDirection::SouthEast,
+                    _ => continue,
+                };
+                cells.reverse();
+                *direction = opposite;
+            }
+            _ => {}
+        }
+    }
 }
 
 // Sliding triples require three different groups. Their pairwise restrictions

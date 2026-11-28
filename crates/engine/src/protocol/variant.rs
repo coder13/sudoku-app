@@ -75,6 +75,7 @@ pub(super) enum Operation {
     SolveUnique,
     Hints,
     Rate,
+    SearchLowerGrade,
     Trace,
     ReplayStep,
     #[cfg(feature = "teaching")]
@@ -97,6 +98,7 @@ pub(super) struct Options {
     #[serde(default)]
     prefer_progress: bool,
     difficulty: Option<Difficulty>,
+    max_positions: Option<u32>,
     step_index: Option<usize>,
     stop_after_placement_in: Option<Vec<usize>>,
     include_steps: Option<bool>,
@@ -116,8 +118,13 @@ pub(super) struct GenerationRequest {
     #[serde(default)]
     derived_clues: Vec<VariantClueLayout>,
     givens: ClueCount,
+    given_cells: Option<Vec<usize>>,
     variant_clues: Option<ClueCount>,
     required_rule: Option<String>,
+    #[serde(default)]
+    required_rules: Vec<String>,
+    #[serde(default)]
+    thin_clues: bool,
     score: Option<[u32; 2]>,
     difficulty: Option<Difficulty>,
     technique: Option<TechniqueRequest>,
@@ -146,9 +153,12 @@ impl GenerationRequest {
             template: self.template,
             derived_clues: self.derived_clues,
             givens: self.givens.range(),
+            given_cells: self.given_cells,
             variant_clues: self.variant_clues.map(ClueCount::range),
             rating: rating_target(self.score, self.difficulty)?,
             required_rule: self.required_rule,
+            required_rules: self.required_rules,
+            thin_clues: self.thin_clues,
             technique,
             technique_order: order.clone(),
             exclude: self.exclude,
@@ -169,6 +179,10 @@ fn generation_error(error: VariantGenerationError) -> (&'static str, &'static st
         InvalidGivenCount => (
             "invalid-clue-count",
             "Choose a given count between 0 and 81.",
+        ),
+        InvalidGivenCells => (
+            "invalid-given-cells",
+            "Use distinct grid cells within the requested given count.",
         ),
         InvalidClueCount => (
             "invalid-variant-clue-count",
@@ -271,6 +285,17 @@ pub(super) fn execute(operation: Operation, input: Value, options: Options) -> R
     }
     match operation {
         Operation::Rate => return Ok(json!(position.rate(&order()?).map_err(logical_error)?)),
+        Operation::SearchLowerGrade => {
+            let difficulty = options
+                .difficulty
+                .ok_or(("invalid-difficulty", "Choose a difficulty to check."))?;
+            let max = options.max_positions.unwrap_or(32).min(256);
+            return Ok(json!(
+                position
+                    .search_lower_grade(&order()?, difficulty, max)
+                    .map_err(logical_error)?
+            ));
+        }
         Operation::Trace => {
             let stop = crate::variant::cell_mask(
                 options

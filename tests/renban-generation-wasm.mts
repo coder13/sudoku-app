@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { EngineError, runEngine, type GeneratedVariant, type VariantPuzzle } from '../src/sudoku/engine.ts'
 import { applyDeduction, enter, isSolved, makeGame, redo, undo, valuesOf, type Game } from '../src/sudoku/game.ts'
-import { generatePlayableVariant, getVariantPlayOrder } from '../src/sudoku/variant-play.ts'
+import { tryVariantRecipe, generatePlayableVariant, getVariantPlayOrder } from '../src/sudoku/variant-play.ts'
 import { reflectVariant, variantGenerationRequest, variantSeeds } from '../src/sudoku/variant-generation.ts'
 import { variantHouseMasks, variantIdForPuzzle } from '../src/sudoku/variants.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
@@ -149,7 +149,7 @@ test('a bounded Renban fresh miss reaches its deterministic checked fallback and
   const value = await generatePlayableVariant('renban', 'medium', seed, [])
   assert.deepEqual(value, await runEngine(variantGenerationRequest('renban', 'medium', recipe, order)))
   assert.deepEqual(value, await generatePlayableVariant('renban', 'medium', seed, []))
-  await assert.rejects(generatePlayableVariant('renban', 'easy', 1, []), error => error instanceof EngineError && error.code === 'unsupported')
+  assert.equal(await tryVariantRecipe('renban', 'easy', 1, [], {}, runEngine), undefined)
 })
 
 test('generated Renban definitions, progress, history, exact solutions and UUID shares survive actual storage', async () => {

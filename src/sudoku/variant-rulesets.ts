@@ -9,7 +9,7 @@ const whispersRulesets = [
 ] as const
 
 export type GenerationRulesetId = typeof whispersRulesets[number]['id']
-export type VariantGenerationOptions = { ruleset?: GenerationRulesetId }
+export type VariantGenerationOptions = { ruleset?: GenerationRulesetId; miracle?: boolean; signal?: AbortSignal }
 
 export function generationRulesets(variant: VariantId | undefined) {
   return variant === 'whispers' ? whispersRulesets : []

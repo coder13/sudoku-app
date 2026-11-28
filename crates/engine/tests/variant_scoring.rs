@@ -21,7 +21,9 @@ fn estimate(deduction: &VariantDeduction, puzzle: &VariantPuzzle) -> u16 {
     use VariantTechnique::*;
     let (cells, domains, supporting_rules): (&[usize], &[u16], u16) = match &deduction.evidence {
         VariantEvidence::Classic { .. } => return deduction.cost(puzzle),
-        VariantEvidence::Single { .. } => return deduction.technique.cost(),
+        VariantEvidence::Single { .. } | VariantEvidence::RuleSingle { .. } => {
+            return deduction.technique.cost();
+        }
         VariantEvidence::PeerLock { conflicts, .. } => return 14 + 4 * conflicts.len() as u16,
         VariantEvidence::Exclusion { premise, .. } => {
             let (base, alternatives, mut cells) = match premise {
@@ -254,6 +256,23 @@ fn focused_examples_keep_their_technique_and_bill_once_per_deduction() {
                     Technique::LockedPair,
                     Technique::NakedPair,
                     Technique::HiddenPair,
+                ]
+                .map(VariantTechnique::Classic),
+            );
+        }
+        if technique == VariantTechnique::ArrowHouseSupport {
+            // The zero-given Arrow profile also allows ordinary subsets and wings.
+            order.extend(
+                [
+                    Technique::LockedPair,
+                    Technique::NakedPair,
+                    Technique::HiddenPair,
+                    Technique::NakedTriple,
+                    Technique::HiddenTriple,
+                    Technique::XWing,
+                    Technique::WWing,
+                    Technique::XYWing,
+                    Technique::XYZWing,
                 ]
                 .map(VariantTechnique::Classic),
             );

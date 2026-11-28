@@ -158,7 +158,7 @@ test('sharing after progress preserves all outside clues and companion rules', a
 })
 
 test('New Puzzle exposes the calibrated Hard level and a preview explaining an outside total', () => {
-  assert.deepEqual(variantDifficulties('skyscrapers'), ['hard'])
+  assert.deepEqual(variantDifficulties('skyscrapers'), variantDifficulties('classic'))
   const html = renderToStaticMarkup(createElement(VariantPreview, { variant: 'skyscrapers' }))
   assert.match(html, /variant-skyscrapers-preview/)
   assert.ok(html.includes('>3</text>'))

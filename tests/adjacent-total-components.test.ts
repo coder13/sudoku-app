@@ -141,7 +141,7 @@ test('New Puzzle offers Two-cell sums with its own clue preview and both calibra
   const difficulty = await renderNewPuzzle('/puzzles/new/difficulty?variant=adjacent-total')
   assert.match(difficulty, /Easy/)
   assert.match(difficulty, /Medium/)
-  assert.doesNotMatch(difficulty, />Hard</)
+  assert.match(difficulty, />Hard</)
   assert.match(difficulty, /Start medium puzzle/)
 })
 

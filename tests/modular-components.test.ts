@@ -208,7 +208,7 @@ test('the real lesson and hint/solution components explain an independently chec
 
 test('New Puzzle offers Medium Modular Lines with complete geometry, valid remainder digits and actual navigation', async () => {
   assert.ok(isVariantId('modular'))
-  assert.deepEqual(variantDifficulties('modular'), ['medium'])
+  assert.deepEqual(variantDifficulties('modular'), variantDifficulties('classic'))
   const construction = JSON.parse(readFileSync(new URL('./fixtures/modular-generation.json', import.meta.url), 'utf8')).sources[0]
   const preview = renderToStaticMarkup(createElement(VariantPreview, { variant: 'modular' }))
   const paths = [...preview.matchAll(/class="variant-modular"><polyline points="([^"]+)"/g)].map(match => match[1])
@@ -226,8 +226,8 @@ test('New Puzzle offers Medium Modular Lines with complete geometry, valid remai
   assert.match(difficulty, /Choose difficulty/)
   assert.match(difficulty, /\/puzzles\/new\?variant=modular/)
   assert.match(difficulty, /value="medium"/)
-  assert.doesNotMatch(difficulty, /value="(?:easy|hard)"/)
-  assert.match(await renderNewPuzzle('/puzzles/new/difficulty', { variant: 'modular', difficulty: 'easy' }), /Start medium puzzle/)
+  assert.match(difficulty, /value="(?:easy|hard)"/)
+  assert.match(await renderNewPuzzle('/puzzles/new/difficulty', { variant: 'modular', difficulty: 'easy' }), /Start easy puzzle/)
 })
 
 test('completed constructed Modular puzzles offer another puzzle while full published mixed originals retain every companion', () => {

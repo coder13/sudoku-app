@@ -23,7 +23,7 @@ Impossible puzzles still have exactly one solution. Some can be solved by a skil
 
 ## Grading and generation
 
-Classic scoring version 16 tries direct placements after singles and before ordinary eliminations. Direct Pointing, Direct Claiming, Direct Hidden Pair, and Direct Hidden Triple count as Easy. Each costs the same as the corresponding ordinary pattern and places one digit when the proof leaves a single spot in a house. Variant scoring uses version 24, or 25 for Group Order Elimination. The hardest technique sets the tier. Re-rating under a newer scoring version can change both the path and the rating.
+Classic scoring version 16 tries direct placements after singles and before ordinary eliminations. Direct Pointing, Direct Claiming, Direct Hidden Pair, and Direct Hidden Triple count as Easy. Each costs the same as the corresponding ordinary pattern and places one digit when the proof leaves a single spot in a house. Existing variant profiles use versions 24–27. Version 28 adds placements, locks and chain links supported by drawn clues. Version 29 adds a visible Global Entropy single and uses irregular regions for wings, grouped chains and forcing chains. A saved puzzle records its profile so that hints, replays and shared copies use the same logic. The hardest technique sets the tier.
 
 The Rust technique catalog is the source of truth. The browser's technique metadata is produced by `scripts/build-wasm.mjs`. The ten selectable names and order live in `src/sudoku/difficulty.ts`.
 
@@ -56,7 +56,9 @@ Generic score-targeted and technique-only engine APIs remain useful for experime
 
 Variant rules need their own technique definitions. Rule deductions retain their assigned skill tiers, and classic deductions use the same catalog as classic puzzles. Variant ratings also stop using point-total promotion. Generation checks the lower profile and the result's reported tier.
 
-The app only offers variant levels backed by checked generation recipes. A classic tier should not be advertised for a variant merely because its name exists in the shared enum. Recheck recipes whenever the catalog, profile order, or scoring version changes. Jigsaw does not inherit classic box assumptions.
+The 9×9 variant builder, saved modes and individual variants all offer the ten target grades. Checked recipes supply starting layouts. The generator can also sample new layouts at the requested grade. Every accepted puzzle needs a complete logical path at that grade, a different completion when each selected rule is removed, and a classic grid that cannot determine a unique solution. The first trace action that rules out each alternative identifies where the selected rule matters. An exhausted search leaves the selection available for another attempt.
+
+Hard and higher also offer Miracle generation with zero givens. The generator checks digit symmetries before searching, then tests the variant clues alone for uniqueness. The construction research records community examples, proofs and reproducible measurements. [Variant generation research](audits/2026-11-27-variant-generation.md)
 
 ## Selecting a level
 

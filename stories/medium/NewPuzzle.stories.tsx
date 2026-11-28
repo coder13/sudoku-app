@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect } from 'storybook/test'
+import { CUSTOM_MODES_KEY } from '../../src/sudoku/custom-modes'
 import { NEW_PUZZLE_KEY } from '../../src/sudoku/preferences'
 import { PreviewRouter } from '../support/frames'
 import { solved } from '../support/fixtures'
@@ -24,6 +25,126 @@ export const ChooseDifficulty: Story = {
 export const DifficultyResults: Story = {
   render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=classic&difficulty=hard" />,
   beforeEach: () => { seedRoom([{ ...solved, difficulty: 'hard', elapsed: 249 }]) },
+}
+
+export const MiracleXSums: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=x-sum&difficulty=hard" />,
+  play: async ({ canvas, userEvent }) => {
+    const checkbox = await canvas.findByRole('checkbox', { name: 'Miracle puzzle (no givens)' })
+    await expect(checkbox).toBeEnabled()
+    await userEvent.click(checkbox)
+    await expect(checkbox).toBeChecked()
+  },
+}
+
+function seedChessMode() {
+  const previous = localStorage.getItem(CUSTOM_MODES_KEY)
+  localStorage.setItem(CUSTOM_MODES_KEY, JSON.stringify([{
+    id: '00000000-0000-4000-8000-000000000000', name: 'Chess', rules: ['anti-king', 'anti-knight', 'non-consecutive'],
+  }]))
+  return () => {
+    if (previous === null) localStorage.removeItem(CUSTOM_MODES_KEY)
+    else localStorage.setItem(CUSTOM_MODES_KEY, previous)
+  }
+}
+
+export const CustomRuleChoices: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/custom" />,
+  beforeEach: seedChessMode,
+  play: async ({ canvas, userEvent }) => {
+    const family = await canvas.findByRole('checkbox', { name: /^Kropki\b/ })
+    const white = canvas.getByRole('checkbox', { name: /^White Kropki dots/ })
+    const continueButton = canvas.getByRole('button', { name: 'Continue' })
+    await expect(continueButton).toBeDisabled()
+    await expect(canvas.getByRole('button', { name: 'Save mode' })).toBeDisabled()
+    await expect(canvas.queryByRole('combobox', { name: 'Difficulty' })).not.toBeInTheDocument()
+    await expect(canvas.queryByRole('textbox', { name: 'Mode name' })).not.toBeInTheDocument()
+    await expect(canvas.queryByRole('searchbox', { name: 'Find a rule' })).not.toBeInTheDocument()
+    await expect(canvas.queryByRole('link', { name: 'Chess' })).not.toBeInTheDocument()
+    await userEvent.click(family)
+    await userEvent.click(white)
+    await expect(family).not.toBeChecked()
+    await userEvent.click(canvas.getByRole('checkbox', { name: /^Non-Consecutive\b/ }))
+    await userEvent.click(canvas.getByRole('checkbox', { name: /No consecutive digits without a Kropki dot/ }))
+    await expect(continueButton).toBeDisabled()
+    await expect(canvas.getByRole('button', { name: 'Save mode' })).toBeDisabled()
+    await expect(canvas.getByText(/already enforces Non-Consecutive/)).toBeVisible()
+    await userEvent.click(white)
+    await userEvent.click(canvas.getByRole('checkbox', { name: /^Windoku\b/ }))
+    await expect(canvas.getByText(/Windoku and Non-Consecutive cannot share/)).toBeVisible()
+    await expect(continueButton).toBeDisabled()
+    await userEvent.click(canvas.getByRole('checkbox', { name: /^Arrows?\b/ }))
+    await userEvent.click(canvas.getByRole('checkbox', { name: /^Jigsaw\b/ }))
+    await userEvent.click(canvas.getByRole('checkbox', { name: /^V marks\b/ }))
+    const negativeV = 'No sum of 5 without a V or X'
+    await userEvent.click(canvas.getByRole('checkbox', { name: negativeV }))
+    await expect(canvas.getByRole('button', { name: 'Save mode' })).toBeEnabled()
+    await userEvent.click(continueButton)
+
+    await expect(await canvas.findByRole('heading', { name: 'Choose difficulty' })).toHaveFocus()
+    await expect(canvas.getByText('Custom Sudoku', { exact: true })).toBeVisible()
+    await expect(canvas.getByText(negativeV)).toBeVisible()
+    await expect(canvas.getByRole('button', { name: 'Start medium puzzle' })).toBeEnabled()
+    await expect(canvas.queryByRole('checkbox', { name: 'Miracle puzzle (no givens)' })).not.toBeInTheDocument()
+    const increase = canvas.queryByRole('button', { name: 'Increase difficulty' })
+    if (increase) {
+      await userEvent.click(increase)
+      await userEvent.click(increase)
+    } else await userEvent.click(canvas.getByRole('radio', { name: 'Hard' }))
+    await expect(await canvas.findByRole('button', { name: 'Start hard puzzle' })).toBeEnabled()
+    await expect(canvas.getByRole('checkbox', { name: 'Miracle puzzle (no givens)' })).toBeEnabled()
+    await userEvent.click(canvas.getByRole('button', { name: 'Back' }))
+
+    await expect(await canvas.findByRole('heading', { name: 'Generate a custom puzzle' })).toHaveFocus()
+    await expect(canvas.getByRole('checkbox', { name: /^Jigsaw\b/ })).toBeChecked()
+    await expect(canvas.getByRole('checkbox', { name: negativeV })).toBeChecked()
+    await userEvent.click(canvas.getByRole('button', { name: 'Save mode' }))
+
+    await expect(await canvas.findByRole('heading', { name: 'Save mode' })).toHaveFocus()
+    await expect(canvas.getByText(/Non-Consecutive.*Jigsaw.*V marks/)).toBeVisible()
+    await expect(canvas.getByText(negativeV)).toBeVisible()
+    const name = canvas.getByRole('textbox', { name: 'Mode name' })
+    const save = canvas.getByRole('button', { name: 'Save mode' })
+    await expect(name).toHaveValue('')
+    await expect(save).toBeDisabled()
+    await userEvent.type(name, 'Mixed Jigsaw')
+    await userEvent.click(save)
+
+    await expect(await canvas.findByRole('heading', { name: 'Choose a Sudoku mode' })).toHaveFocus()
+    await expect(canvas.getByRole('link', { name: 'Mixed Jigsaw' })).toBeVisible()
+    await expect(canvas.getByRole('link', { name: 'Chess' })).toBeVisible()
+  },
+}
+
+export const CombinedModeDifficulty: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new?step=variant" />,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: seedChessMode,
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('link', { name: 'Chess' }))
+    await expect(await canvas.findByRole('heading', { name: 'Choose difficulty' })).toHaveFocus()
+    await expect(canvas.getByText('Anti-King · Anti-Knight · Non-Consecutive')).toBeVisible()
+    const auto = canvas.getByRole('checkbox', { name: 'Adjust difficulty automatically' })
+    await userEvent.click(auto)
+    await expect(canvas.getByRole('button', { name: /Start Auto/ })).toBeEnabled()
+    await userEvent.click(auto)
+    const increase = canvas.queryByRole('button', { name: 'Increase difficulty' })
+    if (increase) {
+      await userEvent.click(increase)
+      await userEvent.click(increase)
+    } else await userEvent.click(canvas.getByRole('radio', { name: 'Hard' }))
+    await expect(await canvas.findByRole('button', { name: 'Start hard puzzle' })).toBeEnabled()
+    await expect(canvas.getByRole('checkbox', { name: 'Miracle puzzle (no givens)' })).toBeDisabled()
+    await userEvent.click(canvas.getByRole('link', { name: 'Edit mode' }))
+    await expect(await canvas.findByRole('heading', { name: 'Generate a custom puzzle' })).toHaveFocus()
+    await expect(canvas.getByRole('checkbox', { name: /^Anti-King\b/ })).toBeChecked()
+    await userEvent.click(canvas.getByRole('button', { name: 'Save mode' }))
+    await expect(await canvas.findByRole('textbox', { name: 'Mode name' })).toHaveValue('Chess')
+    await userEvent.click(canvas.getByRole('button', { name: /^Back$/ }))
+    await expect(await canvas.findByRole('heading', { name: 'Generate a custom puzzle' })).toHaveFocus()
+    await userEvent.click(canvas.getByRole('button', { name: /^Back$/ }))
+    await expect(await canvas.findByRole('button', { name: 'Start hard puzzle' })).toBeEnabled()
+  },
 }
 
 export const RememberedDifficulty: Story = {

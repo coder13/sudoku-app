@@ -100,7 +100,8 @@ impl CompiledConditionalNeighbor {
             return (masks[self.source] != 0).then_some(true).ok_or(());
         }
 
-        let source_forced = board[self.source] == self.trigger_digit || masks[self.source] == trigger;
+        let source_forced =
+            board[self.source] == self.trigger_digit || masks[self.source] == trigger;
         if source_forced && possible.len() == 1 {
             let (cell, digit) = possible[0];
             let required = digit_bit(digit);
@@ -174,12 +175,28 @@ mod tests {
     fn rejects_invalid_relative_positions() {
         for alternatives in [
             vec![],
-            vec![ConditionalNeighborAlternative { row_offset: 0, column_offset: 0, digit: 1 }],
+            vec![ConditionalNeighborAlternative {
+                row_offset: 0,
+                column_offset: 0,
+                digit: 1,
+            }],
             vec![
-                ConditionalNeighborAlternative { row_offset: -1, column_offset: 0, digit: 1 },
-                ConditionalNeighborAlternative { row_offset: -1, column_offset: 0, digit: 9 },
+                ConditionalNeighborAlternative {
+                    row_offset: -1,
+                    column_offset: 0,
+                    digit: 1,
+                },
+                ConditionalNeighborAlternative {
+                    row_offset: -1,
+                    column_offset: 0,
+                    digit: 9,
+                },
             ],
-            vec![ConditionalNeighborAlternative { row_offset: 0, column_offset: 2, digit: 1 }],
+            vec![ConditionalNeighborAlternative {
+                row_offset: 0,
+                column_offset: 2,
+                digit: 1,
+            }],
         ] {
             assert!(CompiledConditionalNeighbor::compile(0, 5, &alternatives).is_err());
         }

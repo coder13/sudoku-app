@@ -26,14 +26,22 @@ pub const VARIANT_SCORING_VERSION: u32 = 24;
 const GROUP_ORDER_ELIMINATION_SCORING_VERSION: u32 = 25;
 const CONDITIONAL_NEIGHBOR_SCORING_VERSION: u32 = 26;
 const VARIANT_LINKS_SCORING_VERSION: u32 = 27;
+const CLUE_LINKS_SCORING_VERSION: u32 = 28;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
 
+mod arrow_houses;
 mod cages;
 mod chain_inference;
+mod clue_links;
+mod lower_paths;
+pub use lower_paths::VariantLowerPath;
+#[cfg(any(feature = "generation", test))]
+pub(super) use lower_paths::lower_techniques;
 mod conditional_neighbors;
 mod quadruples;
+mod region_singles;
 mod rule_proofs;
 pub(super) use rule_proofs::RuleProofIndex;
 mod exclusions;
@@ -234,6 +242,8 @@ catalog! {
     RegionSumHouse: "region-sum-house", 133, Hard;
     /// Fit increasing digits on a Thermometer together with the rest of one shared house.
     ThermometerHouseSupport: "thermometer-house-support", 64, Medium;
+    /// Fit an arrow's sum together with the distinct digits of its shared houses.
+    ArrowHouseSupport: "arrow-house-support", 64, Medium;
     /// Fit the digits on a printed Kropki dot together with the rest of one shared house.
     KropkiHouseSupport: "kropki-house-support", 48, Medium;
     /// Reject a candidate using a bounded sequence of line, pair and house checks.
@@ -252,11 +262,12 @@ impl serde::Serialize for VariantTechnique {
 }
 
 impl VariantTechnique {
-    /// Optional Classic techniques are available to custom profiles but do not
-    /// participate in the default variant difficulty search.
-    #[cfg(any(feature = "generation", test))]
+    /// Techniques used when the selected solver profile explicitly includes them.
     pub(super) const fn is_optional(self) -> bool {
-        matches!(self, Self::Classic(Technique::MultiColoring))
+        matches!(
+            self,
+            Self::Classic(Technique::MultiColoring) | Self::ArrowHouseSupport
+        )
     }
 
     /// Every technique that can be requested in a variant profile.
@@ -329,6 +340,26 @@ pub enum VariantEvidence {
         candidate: Candidate,
         /// House for a Full House or Hidden Single.
         house: Option<VariantHouseKind>,
+    },
+    /// Of two candidate sites in a region, a printed clue or a placed
+    /// neighbor rules out the other site in one check.
+    RuleSingle {
+        /// Candidate to place.
+        candidate: Candidate,
+        /// Region that requires the digit.
+        house: VariantHouseKind,
+        /// Cell rejected by the clue.
+        excluded: usize,
+        /// Placed digit used by a binary clue, if any.
+        witness: Option<usize>,
+        /// Top left cell of the entropy window and the missing group's digit mask.
+        #[cfg_attr(
+            feature = "wasm-api",
+            serde(rename = "entropyWindow", skip_serializing_if = "Option::is_none")
+        )]
+        entropy_window: Option<(usize, u16)>,
+        /// Source clue indices in the puzzle.
+        rules: Vec<usize>,
     },
     /// The digit assignments that fit a cage or a sum derived from its neighboring cages.
     CageSum {
@@ -518,6 +549,9 @@ pub enum VariantEvidence {
     RuleForcing {
         /// Candidate tried as a placement.
         assumption: Candidate,
+        /// Singles forced by the assumption and the row, column or region that supplies each hidden single.
+        #[cfg_attr(feature = "wasm-api", serde(skip_serializing_if = "Vec::is_empty"))]
+        placements: Vec<(Candidate, Option<VariantHouseKind>)>,
         /// The first empty cell or missing house digit after applying clue support.
         contradiction: VariantTrialFailure,
     },
@@ -617,13 +651,13 @@ pub struct VariantGroupSumChainProof {
     pub locked: u16,
 }
 
-/// Replayable support for a binary line and its shared houses.
+/// Replayable support for a line and its shared houses.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
 pub struct VariantLineHouseProof {
-    /// Ordered rule indices supplying the line's binary relations.
+    /// Ordered rule indices supplying the line's relations.
     pub rules: Vec<usize>,
-    /// Distinct line cells in first-visit order.
+    /// Distinct cells, with the line first and any other cells of the last house after it.
     pub cells: Vec<usize>,
     /// Current candidate masks, including placed digits.
     pub domains: Vec<u16>,
@@ -631,7 +665,7 @@ pub struct VariantLineHouseProof {
     pub supported: Vec<u16>,
     /// Shared houses forbidding equal digits in line cells.
     pub houses: Vec<VariantHouseKind>,
-    /// Number of valid assignments in the complete enumeration.
+    /// Number of line assignments that can extend through the checked houses.
     pub assignments: u32,
 }
 
@@ -1378,7 +1412,13 @@ impl VariantPosition {
             technique_order: order.to_vec(),
             regions: self.puzzle.regions.clone(),
             rules: self.puzzle.rules.clone(),
-            scoring_version: VARIANT_SCORING_VERSION,
+            scoring_version: if compiled.region_logic {
+                super::REGION_LOGIC_VERSION
+            } else if compiled.extended_logic {
+                CLUE_LINKS_SCORING_VERSION
+            } else {
+                VARIANT_SCORING_VERSION
+            },
             points: 0,
             counts: BTreeMap::new(),
             hardest: None,
@@ -1476,6 +1516,7 @@ impl VariantDeduction {
         };
         let cells = match &self.evidence {
             VariantEvidence::Single { .. } => 1,
+            VariantEvidence::RuleSingle { .. } => 2,
             VariantEvidence::CageSum { cells, .. }
             | VariantEvidence::Constraint { cells, .. }
             | VariantEvidence::Intersection { cells, .. } => cells.len(),
@@ -1562,6 +1603,7 @@ pub(super) struct ProofPosition<'a> {
     rectangle_guardians: OnceCell<bool>,
     rectangle_inference: RectangleInferenceCache,
     variant_inference: OnceCell<Box<InferenceGraph>>,
+    grouped_inference: OnceCell<Box<InferenceGraph>>,
     overlay: OnceCell<Box<RefCell<OverlaySearch<'a>>>>,
 }
 
@@ -1874,6 +1916,7 @@ impl CompiledVariant {
             rectangle_guardians: OnceCell::new(),
             rectangle_inference: RectangleInferenceCache::default(),
             variant_inference: OnceCell::new(),
+            grouped_inference: OnceCell::new(),
             overlay: OnceCell::new(),
         }
     }
@@ -2126,6 +2169,7 @@ impl CompiledVariant {
             RegionSumDistinct => self.region_sum_distinct_proofs(position, &mut proofs),
             RegionSumHouse => self.region_sum_house_proofs(position, &mut proofs),
             ThermometerHouseSupport => self.thermometer_house_proofs(position, &mut proofs),
+            ArrowHouseSupport => self.arrow_house_proofs(position, &mut proofs),
             KropkiHouseSupport => self.kropki_house_proofs(position, &mut proofs),
             Arrow | PillArrow | Between | Lockout | ConsecutiveRun | InsideGrid | DistinctCells
             | Entropic | Modular | DigitOrder | LittleKiller | RegionSum | Renban | Sandwich
@@ -2143,6 +2187,10 @@ impl CompiledVariant {
     /// check the same cached uniqueness requirement before searching.
     pub fn supports_technique(&self, technique: VariantTechnique) -> bool {
         match technique {
+            VariantTechnique::Classic(
+                Technique::XYWing | Technique::XYZWing | Technique::ForcingChain,
+            ) if self.region_logic && !self.classic_boxes => true,
+            VariantTechnique::Classic(Technique::HiddenSingleBox) if self.extended_logic => true,
             VariantTechnique::Classic(classic) if self.uses_variant_chains(classic) => true,
             VariantTechnique::Classic(classic) if classic.pattern_overlay_width().is_some() => true,
             VariantTechnique::Classic(
@@ -2160,6 +2208,29 @@ impl CompiledVariant {
         proofs: &mut Vec<VariantDeduction>,
     ) {
         let variant = VariantTechnique::Classic(technique);
+        if self.extended_logic && technique == Technique::HiddenSingleBox && !self.classic_boxes {
+            self.region_singles(position, proofs);
+            return;
+        }
+        if self.region_logic && !self.classic_boxes {
+            if matches!(technique, Technique::XYWing | Technique::XYZWing) {
+                let _ = crate::hints::visit_variant_wings(
+                    &position.board,
+                    &position.masks,
+                    &self.peers,
+                    technique,
+                    &mut |step| {
+                        proofs.push(classic_proof(step));
+                        ControlFlow::Continue(())
+                    },
+                );
+                return;
+            }
+            // The variant forcing proof follows the actual region geometry.
+            if technique == Technique::ForcingChain {
+                return;
+            }
+        }
         if !self.supports_technique(variant) {
             return;
         }
@@ -2266,6 +2337,9 @@ impl CompiledVariant {
                     swap_cells,
                 },
             });
+        }
+        if self.extended_logic && technique == Technique::HiddenSingleBox {
+            self.region_singles(position, proofs);
         }
     }
 

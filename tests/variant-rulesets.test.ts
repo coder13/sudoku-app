@@ -18,14 +18,14 @@ test('saved New Puzzle choices retain a valid style and migrate old or malformed
   const storage = new MemoryStorage()
   for (const ruleset of ['german', 'dutch'] as const) {
     storage.setItem(NEW_PUZZLE_KEY, JSON.stringify({ variant: 'whispers', difficulty: 'easy', ruleset }))
-    assert.deepEqual(readNewPuzzlePreference(storage), { variant: 'whispers', difficulty: 'medium', ruleset })
+    assert.deepEqual(readNewPuzzlePreference(storage), { variant: 'whispers', difficulty: 'easy', ruleset })
   }
   for (const ruleset of [undefined, 'other', 4, {}, null]) {
     storage.setItem(NEW_PUZZLE_KEY, JSON.stringify({ variant: 'whispers', difficulty: 'auto', ruleset }))
     assert.deepEqual(readNewPuzzlePreference(storage), { variant: 'whispers', difficulty: 'auto', ruleset: 'german' })
   }
   storage.setItem(NEW_PUZZLE_KEY, JSON.stringify({ variant: 'parity', difficulty: 'hard', ruleset: 'dutch' }))
-  assert.deepEqual(readNewPuzzlePreference(storage), { variant: 'parity', difficulty: 'medium' })
+  assert.deepEqual(readNewPuzzlePreference(storage), { variant: 'parity', difficulty: 'hard' })
   storage.setItem(NEW_PUZZLE_KEY, '{broken')
   assert.equal(readNewPuzzlePreference(storage), null)
   assert.equal(readNewPuzzlePreference({ getItem() { throw Error('Blocked') } }), null)

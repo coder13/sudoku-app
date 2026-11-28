@@ -247,7 +247,7 @@ test('the group-order lesson shows its candidate-count contradiction in both hel
 
 test('New Puzzle offers Medium Entropic Lines with complete published preview paths and actual navigation', async () => {
   assert.ok(isVariantId('entropic'))
-  assert.deepEqual(variantDifficulties('entropic'), ['medium'])
+  assert.deepEqual(variantDifficulties('entropic'), variantDifficulties('classic'))
   const preview = renderToStaticMarkup(createElement(VariantPreview, { variant: 'entropic' }))
   const paths = [...preview.matchAll(/<g class="variant-entropic">([\s\S]*?)<\/g>/g)].map(([, line]) =>
     [...line.matchAll(/<polyline[^>]*points="([^"]+)"/g)].at(-1)![1])
@@ -262,8 +262,8 @@ test('New Puzzle offers Medium Entropic Lines with complete published preview pa
   assert.match(difficulty, /Choose difficulty/)
   assert.match(difficulty, /\/puzzles\/new\?variant=entropic/)
   assert.match(difficulty, /value="medium"/)
-  assert.doesNotMatch(difficulty, /value="(?:easy|hard)"/)
-  assert.match(await renderNewPuzzle('/puzzles/new/difficulty', { variant: 'entropic', difficulty: 'easy' }), /Start medium puzzle/)
+  assert.match(difficulty, /value="(?:easy|hard)"/)
+  assert.match(await renderNewPuzzle('/puzzles/new/difficulty', { variant: 'entropic', difficulty: 'easy' }), /Start easy puzzle/)
 })
 
 test('completed pure Entropic Lines offers another puzzle and a mixed Coach source retains every companion', () => {

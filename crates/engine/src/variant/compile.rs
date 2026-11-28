@@ -3,10 +3,10 @@
 use std::sync::OnceLock;
 
 use super::{
-    AqreConstraint, CompiledConditionalNeighbor, CompiledMagicSquare, CompiledNeighborMatch, CompiledUnknownCageSums,
-    CompiledVariant, LetteredQuadruples, LineConstraint, PuzzleRule, Quadruple, RegionLayout,
-    VARIANT_FORMAT_VERSION, VariantDefinitionError, VariantHouse, VariantHouseKind, VariantPuzzle,
-    cell_mask, cells_in,
+    AqreConstraint, CompiledConditionalNeighbor, CompiledMagicSquare, CompiledNeighborMatch,
+    CompiledUnknownCageSums, CompiledVariant, LetteredQuadruples, LineConstraint, PuzzleRule,
+    Quadruple, RegionLayout, VARIANT_FORMAT_VERSION, VariantDefinitionError, VariantHouse,
+    VariantHouseKind, VariantPuzzle, cell_mask, cells_in,
     lines::compile_line_sums,
     pairs::{PairCompiler, positive_sums},
 };
@@ -24,24 +24,32 @@ impl VariantPuzzle {
         &self,
         enforce_regions: bool,
     ) -> Result<CompiledVariant, VariantDefinitionError> {
-        self.compile_with_xv_exemptions(enforce_regions, &[])
+        self.compile_with_marker_exemptions(enforce_regions, &[], &[])
     }
 
-    // A dependency check removes mathematical constraints, not the visible
-    // locations of V/X marks that exempt edges from a negative rule.
-    pub(super) fn compile_with_xv_exemptions(
+    // Preserve originally marked edges when relaxing a layer of V/X marks or
+    // Kropki dots, so its removal cannot strengthen a surviving negative rule.
+    pub(super) fn compile_with_marker_exemptions(
         &self,
         enforce_regions: bool,
-        exemptions: &[[usize; 2]],
+        xv_exemptions: &[[usize; 2]],
+        kropki_exemptions: &[[usize; 2]],
     ) -> Result<CompiledVariant, VariantDefinitionError> {
         if self.version != VARIANT_FORMAT_VERSION {
             return Err(VariantDefinitionError::UnsupportedVersion(self.version));
+        }
+        if let Some(version) = self.logic_version
+            && version != super::REGION_LOGIC_VERSION
+        {
+            return Err(VariantDefinitionError::UnsupportedVersion(version));
         }
         if let Some(cell) = self.givens.iter().position(|&digit| digit > 9) {
             return Err(VariantDefinitionError::InvalidGiven(cell));
         }
 
         let mut compiled = CompiledVariant {
+            extended_logic: self.extended_logic || self.logic_version.is_some(),
+            region_logic: self.logic_version.is_some(),
             givens: self.givens,
             classic_boxes: matches!(self.regions, RegionLayout::Boxes),
             houses: Vec::new(),
@@ -104,7 +112,7 @@ impl VariantPuzzle {
         }
         let mut occupied_cages = 0;
         let mut pairs = PairCompiler::default();
-        pairs.exempt_xv_edges(exemptions);
+        pairs.exempt_edges(xv_exemptions, kropki_exemptions);
         for (index, rule) in self.rules.iter().enumerate() {
             match rule {
                 PuzzleRule::Diagonal { diagonal } => {
@@ -226,10 +234,17 @@ impl VariantPuzzle {
                         .neighbor_matches
                         .extend(CompiledNeighborMatch::compile(index, clues)?);
                 }
-                PuzzleRule::ConditionalNeighbor { trigger_digit, alternatives } => {
-                    compiled.conditional_neighbors.extend(CompiledConditionalNeighbor::compile(
-                        index, *trigger_digit, alternatives,
-                    )?);
+                PuzzleRule::ConditionalNeighbor {
+                    trigger_digit,
+                    alternatives,
+                } => {
+                    compiled
+                        .conditional_neighbors
+                        .extend(CompiledConditionalNeighbor::compile(
+                            index,
+                            *trigger_digit,
+                            alternatives,
+                        )?);
                 }
                 PuzzleRule::MagicSquare { cells } => {
                     compiled
@@ -395,7 +410,7 @@ impl CompiledVariant {
                 let mut covered = 0;
                 for (i, region) in regions.iter().enumerate() {
                     let kind = VariantHouseKind::Region(i);
-                    let cells = region
+                    let mut cells: [usize; 9] = region
                         .as_slice()
                         .try_into()
                         .map_err(|_| VariantDefinitionError::InvalidHouse(kind))?;
@@ -408,6 +423,10 @@ impl CompiledVariant {
                         return Err(VariantDefinitionError::DisconnectedRegion(i));
                     }
                     covered |= mask;
+                    if self.region_logic {
+                        // An imported region can list its cells in any order.
+                        cells.sort_unstable();
+                    }
                     self.add_house(kind, cells)?;
                 }
             }

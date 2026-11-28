@@ -40,6 +40,16 @@ pub(crate) fn visit_variant_inference(
         .visit(graph, visit)
 }
 mod kraken;
+#[cfg(feature = "variants")]
+pub(crate) fn visit_variant_wings(
+    board: &Board,
+    masks: &[u16; CELLS],
+    peers: &[u128; CELLS],
+    technique: Technique,
+    visit: &mut impl FnMut(Deduction) -> ControlFlow<Deduction>,
+) -> ControlFlow<Deduction> {
+    wings::visit_pivot_wings(&PatternSearch::new(board, masks), peers, technique, visit)
+}
 mod links;
 mod multi_coloring;
 mod multi_sector;
@@ -175,7 +185,7 @@ impl<'a> PatternSearch<'a> {
         }
         match technique {
             Technique::XYWing | Technique::XYZWing => {
-                wings::visit_pivot_wings(self, technique, visit)
+                wings::visit_pivot_wings(self, &PEERS, technique, visit)
             }
             Technique::WWing => wings::visit_w_wings(self, visit),
             Technique::WxyzWing => wings::visit_wxyz_wings(self, visit),

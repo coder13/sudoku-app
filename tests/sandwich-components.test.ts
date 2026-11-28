@@ -94,7 +94,7 @@ test('sharing after progress preserves all outside clues and companion thermomet
 })
 
 test('New Puzzle exposes the calibrated Hard level and a preview explaining an outside total', () => {
-  assert.deepEqual(variantDifficulties('sandwich'), ['hard'])
+  assert.deepEqual(variantDifficulties('sandwich'), variantDifficulties('classic'))
   const html = renderToStaticMarkup(createElement(VariantPreview, { variant: 'sandwich' }))
   assert.match(html, /variant-sandwich-preview/)
   assert.ok(html.includes('1 · 2 3 5 · 9'))

@@ -1,8 +1,31 @@
+import { DIFFICULTY_LEVELS } from '../src/sudoku/difficulty.ts'
 import assert from 'node:assert/strict'
 import { after, before, test } from 'node:test'
 import { createServer, type ViteDevServer } from 'vite'
-import { customModeDifficulties, readSudokuModes, selectedMarkerRules, writeSudokuModes } from '../src/sudoku/custom-modes.ts'
+import { changeCustomRule, customModeDifficulties, readCustomModeDefinition, readSudokuModes, ruleSelectionConflict, selectedMarkerRules, writeSudokuModes } from '../src/sudoku/custom-modes.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
+
+test('families replace overlapping choices and legacy saved modes retain their full rules', () => {
+  const both = changeCustomRule(['kropki-white', 'parity', 'kropki-black'], 'kropki', true)
+  assert.deepEqual(both, ['parity', 'kropki'])
+  const white = changeCustomRule(both, 'kropki-white', true)
+  assert.deepEqual(white, ['parity', 'kropki-white'])
+  assert.match(ruleSelectionConflict([...white, 'non-consecutive'], ['kropki-white'])!, /already enforces/)
+  assert.equal(ruleSelectionConflict([...white, 'kropki-black', 'non-consecutive'], ['kropki-white']), undefined)
+  assert.deepEqual(readCustomModeDefinition({ name: 'Saved', rules: ['diagonal-main', 'diagonal', 'xv', 'xv-five'], negativeMarkers: ['xv-ten'] }),
+    { name: 'Saved', rules: ['diagonal', 'xv'], negativeMarkers: ['xv-ten'] })
+})
+
+test('proved conflicts distinguish standard boxes and white-dot exceptions', () => {
+  assert.match(ruleSelectionConflict(['windoku', 'arrow', 'non-consecutive'])!, /cannot share a completed grid/)
+  assert.equal(ruleSelectionConflict(['windoku', 'non-consecutive', 'kropki-white']), undefined)
+  assert.equal(ruleSelectionConflict(['windoku', 'non-consecutive', 'jigsaw']), undefined)
+  for (const diagonal of ['diagonal', 'diagonal-main', 'diagonal-anti'] as const) {
+    const chess = ['anti-king', 'anti-knight', diagonal] as const
+    assert.match(ruleSelectionConflict(chess)!, /cannot share a completed grid/)
+    assert.equal(ruleSelectionConflict([...chess, 'jigsaw']), undefined)
+  }
+})
 
 let server: ViteDevServer
 let renderNewPuzzle: typeof import('./helpers/new-puzzle-render.tsx').renderNewPuzzle
@@ -32,16 +55,36 @@ test('the chooser offers five 9×9 modes, Import, and separate custom generation
   for (const grid of ['mini', 'jigsaw-five', 'six', 'jigsaw-seven', 'eight', 'algebraic-cages']) {
     assert.ok(builder.includes(`<option value="${grid}">`), grid)
   }
-  assert.doesNotMatch(builder, /Show in core modes/)
+  assert.doesNotMatch(builder, /Show in core modes|Saved modes|Find a rule|Mode name/)
   assert.match(builder, /Save mode/)
-  assert.match(builder, /Generate puzzle/)
-  assert.match(builder, /<option value="hard">Hard<\/option>/)
+  assert.match(builder, /<button[^>]*disabled[^>]*>Continue/)
+  assert.doesNotMatch(builder, /Generate puzzle|Miracle puzzle|<option value="hard">/)
   const saved = await renderNewPuzzle('/puzzles/new/difficulty?mode=00000000-0000-4000-8000-000000000000')
   assert.match(saved, /Loading saved mode/)
   const xSudoku = await renderNewPuzzle('/puzzles/new/difficulty?variant=diagonal')
   assert.match(xSudoku, /Each of the two marked diagonals/)
-  assert.deepEqual(customModeDifficulties(['jigsaw']), ['easy', 'medium', 'tricky'])
-  assert.deepEqual(customModeDifficulties(['jigsaw', 'x-sum']), ['beginner', 'easy', 'medium', 'hard'])
+  assert.deepEqual(customModeDifficulties(['jigsaw']), DIFFICULTY_LEVELS)
+  assert.deepEqual(customModeDifficulties(['jigsaw', 'x-sum']), DIFFICULTY_LEVELS)
+})
+
+test('direct custom next steps without a draft link back to rule selection', async () => {
+  for (const step of ['difficulty?draft=true', 'save']) {
+    const markup = await renderNewPuzzle(`/puzzles/new/${step}`, { variant: 'six', difficulty: 'medium', boxRows: 3 })
+    assert.match(markup, /href="\/puzzles\/new\/custom"[^>]*>Choose rules<\/a>/)
+    assert.match(markup, /aria-label="Back to custom puzzle setup"/)
+    assert.doesNotMatch(markup, /Start medium puzzle|6 × 6 Sudoku|Mode name/)
+  }
+})
+
+test('the naming step can restore rule choices from a fresh navigation', async () => {
+  const draft = encodeURIComponent(JSON.stringify({ rules: ['kropki-black', 'dutch-whispers'],
+    negativeMarkers: ['kropki-black'] }))
+  const markup = await renderNewPuzzle(`/puzzles/new/save?draft=${draft}`)
+  assert.match(markup, /<h1[^>]*>Save mode<\/h1>/)
+  assert.match(markup, /Black Kropki dots · Dutch Whispers/)
+  assert.match(markup, /No doubling without a Kropki dot/)
+  assert.match(markup, /Mode name/)
+  assert.doesNotMatch(markup, /Choose rules|No consecutive digits without a Kropki dot/)
 })
 
 test('smaller grids are configured inside custom generation and retain their difficulty links', async () => {

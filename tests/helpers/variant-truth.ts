@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import type { VariantPuzzle } from '../../src/sudoku/engine.ts'
 
-/** Check completed digits directly from rule definitions, without engine search or candidates. */
-export function assertVariantCompletion(puzzle: VariantPuzzle, completion: string) {
+/** Check completed digits directly from rule definitions, optionally relaxing one builder rule. */
+export function assertVariantCompletion(puzzle: VariantPuzzle, completion: string, omittedRule?: string) {
   assert.match(completion, /^[1-9]{81}$/)
   const digits = [...completion].map(Number)
   const distinct = (cells: readonly number[]) => new Set(cells.map(cell => digits[cell])).size === cells.length
@@ -13,13 +13,18 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
     ...(puzzle.regions && puzzle.regions.type !== 'boxes' ? puzzle.regions.regions : Array.from({ length: 9 }, (_, box) =>
       Array.from({ length: 9 }, (_, i) => Math.floor(box / 3) * 27 + box % 3 * 3 + Math.floor(i / 3) * 9 + i % 3))),
   ]
-  for (const house of houses) assert.ok(distinct(house), 'Every house needs nine distinct digits')
+  const enforcedHouses = omittedRule === 'jigsaw' ? houses.slice(0, 18) : houses
+  for (const house of enforcedHouses) assert.ok(distinct(house), 'Every house needs nine distinct digits')
   const adjacent = Array.from({ length: 81 }, (_, cell) => [
     ...(cell % 9 < 8 ? [[cell, cell + 1]] : []), ...(cell < 72 ? [[cell, cell + 9]] : []),
   ]).flat()
   const marked = (pairs: readonly (readonly [number, number])[] | undefined, a: number, b: number) =>
     pairs?.some(([c, d]) => c === a && d === b || c === b && d === a) ?? false
   for (const rule of puzzle.rules ?? []) {
+    if (omittedRule === rule.type ||
+        rule.type === 'diagonal' && omittedRule === 'diagonal-' + rule.diagonal ||
+        rule.type === 'whispers' && (rule.minDifference === 4 && omittedRule === 'dutch-whispers' ||
+          rule.minDifference === 5 && omittedRule === 'german-whispers')) continue
     switch (rule.type) {
       case 'skyscrapers': {
         let maximum = 0, visible = 0
@@ -99,12 +104,11 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
         rule.cells.forEach((cell, i) => assert.equal(digits[cell], digits[rule.cells[rule.cells.length - 1 - i]]))
         break
       case 'global-entropy': {
+        const groups = rule.groups?.length ? rule.groups : [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
         for (let row = 0; row < 8; row++) for (let col = 0; col < 8; col++) {
           const first = row * 9 + col
           const area = [first, first + 1, first + 9, first + 10].map(cell => digits[cell])
-          assert.ok(area.some(digit => digit <= 3))
-          assert.ok(area.some(digit => digit >= 4 && digit <= 6))
-          assert.ok(area.some(digit => digit >= 7))
+          assert.ok(groups.every(group => area.some(digit => group.includes(digit))))
         }
         break
       }
@@ -282,8 +286,14 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
         break
       }
       case 'xv':
-      case 'kropki':
-        for (const [kind, marks] of (rule.type === 'xv' ? [rule.five, rule.ten] : [rule.consecutive, rule.ratioTwo]).entries()) {
+      case 'kropki': {
+        const layers = rule.type === 'xv'
+          ? [['xv-five', rule.five], ['xv-ten', rule.ten]] as const
+          : [['kropki-white', rule.consecutive], ['kropki-black', rule.ratioTwo]] as const
+        for (const [kind, [id, marks]] of layers.entries()) {
+          // The disappearing layer's printed dots still exempt their edges
+          // from the surviving negative rule in the relaxation.
+          if (id === omittedRule) continue
           const matches = (a: number, b: number) => rule.type === 'xv' ? digits[a] + digits[b] === (kind === 0 ? 5 : 10) : kind === 0 ? Math.abs(digits[a] - digits[b]) === 1 :
             digits[a] === digits[b] * 2 || digits[b] === digits[a] * 2
           for (const [a, b] of marks?.pairs ?? []) assert.ok(matches(a, b))
@@ -298,6 +308,7 @@ export function assertVariantCompletion(puzzle: VariantPuzzle, completion: strin
           }
         }
         break
+      }
       default: {
         const unsupported: never = rule
         throw new Error(`Independent completion check does not support ${JSON.stringify(unsupported)}`)

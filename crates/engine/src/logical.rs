@@ -17,6 +17,8 @@ pub use paths::{
 };
 #[cfg(any(feature = "generation", test))]
 mod quality;
+#[cfg(all(feature = "variants", any(feature = "generation", test)))]
+pub(crate) use quality::tier_orders;
 mod rank_fallback;
 #[cfg(any(feature = "generation", test))]
 use crate::{GenerationRating, TechniqueTargetMode};

@@ -3,18 +3,14 @@ import { DIFFICULTY_LEVELS, type CurrentDifficulty } from './difficulty.ts'
 import { notifySettingsEdit } from './settings-events.ts'
 
 export const coreSudokuModes = ['classic', 'diagonal', 'windoku', 'killer-cages', 'jigsaw'] as const
-const customDifficulties = ['easy', 'medium', 'hard'] as const
-const combinedDifficulties = ['beginner', ...customDifficulties] as const
-const jigsawDifficulties = ['easy', 'medium', 'tricky'] as const
 export type CustomDifficulty = CurrentDifficulty
 
 export function isCustomDifficulty(value: unknown): value is CustomDifficulty {
   return typeof value === 'string' && (DIFFICULTY_LEVELS as readonly string[]).includes(value)
 }
 
-export function customModeDifficulties(rules: readonly CustomRule[]): readonly CustomDifficulty[] {
-  if (rules.length > 1) return combinedDifficulties
-  return rules[0] === 'jigsaw' ? jigsawDifficulties : customDifficulties
+export function customModeDifficulties(_rules: readonly CustomRule[]): readonly CustomDifficulty[] {
+  return DIFFICULTY_LEVELS
 }
 
 const additionalRules = {
@@ -41,11 +37,12 @@ export function selectedMarkerRules(rules: readonly CustomRule[]): MarkerRule[] 
     rules.includes(rule) || rules.includes(markerOptions[rule].family))
 }
 
-export type CustomModeDefinition = {
-  name: string
+export type CustomModeSelection = {
   rules: readonly CustomRule[]
   negativeMarkers?: readonly MarkerRule[]
 }
+
+export type CustomModeDefinition = CustomModeSelection & { name: string }
 
 export type SudokuMode = CustomModeDefinition & { id: string }
 
@@ -57,6 +54,71 @@ export const customRules: Record<CustomRule, { name: string; rule: string }> = {
 }
 export const customRuleIds = Object.keys(customRules) as CustomRule[]
 
+const families: readonly (readonly [CustomRule, CustomRule, CustomRule])[] = [
+  ['diagonal', 'diagonal-main', 'diagonal-anti'], ['kropki', 'kropki-white', 'kropki-black'], ['xv', 'xv-five', 'xv-ten'],
+]
+// Each set is unsatisfiable over standard boxes without any givens.
+// See scripts/variant-compatibility-cnf.py for the independent formula.
+const standardBoxConflicts: readonly (readonly CustomRule[])[] = [
+  ['windoku', 'non-consecutive'],
+  ['anti-king', 'anti-knight', 'windoku'],
+  ['anti-king', 'anti-knight', 'diagonal-main'],
+  ['anti-king', 'anti-knight', 'diagonal-anti'],
+  ['anti-king', 'global-entropy', 'windoku'],
+  ['anti-knight', 'global-entropy', 'windoku'],
+  ['anti-knight', 'global-entropy', 'diagonal-main'],
+  ['anti-knight', 'global-entropy', 'diagonal-anti'],
+  ['anti-knight', 'windoku', 'diagonal-main'],
+  ['anti-knight', 'windoku', 'diagonal-anti'],
+  ['anti-knight', 'non-consecutive', 'diagonal-main'],
+  ['anti-knight', 'non-consecutive', 'diagonal-anti'],
+  ['anti-king', 'non-consecutive', 'diagonal-main', 'diagonal-anti'],
+  ['global-entropy', 'windoku', 'diagonal-main', 'diagonal-anti'],
+]
+const andList = new Intl.ListFormat('en', { type: 'conjunction' })
+
+export function hasOverlappingRuleChoices(chosen: ReadonlySet<CustomRule>) {
+  return families.some(([family, a, b]) => chosen.has(family) && (chosen.has(a) || chosen.has(b)))
+}
+
+export function changeCustomRule(rules: readonly CustomRule[], rule: CustomRule, enabled: boolean) {
+  const next = new Set(rules)
+  if (!enabled) next.delete(rule)
+  else {
+    for (const [family, a, b] of families) {
+      if (rule === family) {
+        next.delete(a)
+        next.delete(b)
+      }
+      if (rule === a || rule === b) next.delete(family)
+    }
+    next.add(rule)
+  }
+  return [...next]
+}
+
+export function ruleSelectionConflict(rules: readonly CustomRule[], negative: readonly MarkerRule[] = []) {
+  const selected = new Set(rules)
+  if (hasOverlappingRuleChoices(selected))
+    return 'This mode selects the same rule twice. Choose the family or its individual rules.'
+  const markers = selectedMarkerRules(rules)
+  const whiteDots = markers.includes('kropki-white')
+  if (selected.has('non-consecutive') && negative.includes('kropki-white') && whiteDots && !markers.includes('kropki-black'))
+    return 'The negative white-dot rule already enforces Non-Consecutive on every unmarked edge. Choose one of these rules.'
+
+  if (!selected.has('jigsaw')) {
+    const active = (id: CustomRule) => {
+      if (id === 'non-consecutive' && whiteDots) return false
+      return selected.has(id) || (id === 'diagonal-main' || id === 'diagonal-anti') && selected.has('diagonal')
+    }
+    const conflict = standardBoxConflicts.find(set => set.every(active))
+    if (conflict) {
+      const names = andList.format(conflict.map(rule => customRules[rule].name))
+      return `${names} cannot share a completed grid with standard boxes.`
+    }
+  }
+}
+
 export const CUSTOM_MODES_KEY = 'sudoku-app:v1:custom-modes'
 // Keep reading existing local-only saves after moving modes into the settings namespace.
 const legacyStorageKey = 'sudoku.custom-modes.v1'
@@ -64,15 +126,29 @@ const modePattern = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-
 export const isSudokuModeId = (value: unknown): value is string => typeof value === 'string' && modePattern.test(value)
 export const isCustomRule = (value: unknown): value is CustomRule => typeof value === 'string' && Object.hasOwn(customRules, value)
 
-export function readCustomModeDefinition(value: unknown): CustomModeDefinition | undefined {
+export function readCustomModeSelection(value: unknown): CustomModeSelection | undefined {
   if (!value || typeof value !== 'object') return
-  const { name, rules, negativeMarkers } = value as { name?: unknown; rules?: unknown; negativeMarkers?: unknown }
-  if (typeof name !== 'string' || !name.trim() || name.length > 48 || !Array.isArray(rules) ||
-      !rules.length || !rules.every(isCustomRule)) return
+  const { rules, negativeMarkers } = value as { rules?: unknown; negativeMarkers?: unknown }
+  if (!Array.isArray(rules) || !rules.length || !rules.every(isCustomRule)) return
   if (negativeMarkers !== undefined && (!Array.isArray(negativeMarkers) ||
       negativeMarkers.some(marker => typeof marker !== 'string' || !Object.hasOwn(markerOptions, marker)))) return
   const selected = Array.isArray(negativeMarkers) ? selectedMarkerRules(rules).filter(marker => negativeMarkers.includes(marker)) : []
-  return { name: name.trim(), rules: [...new Set<CustomRule>(rules)], ...(selected.length && { negativeMarkers: selected }) }
+  const distinct = new Set<CustomRule>(rules)
+  for (const [family, a, b] of families) {
+    if (distinct.has(family)) {
+      distinct.delete(a)
+      distinct.delete(b)
+    }
+  }
+  return { rules: [...distinct], ...(selected.length && { negativeMarkers: selected }) }
+}
+
+export function readCustomModeDefinition(value: unknown): CustomModeDefinition | undefined {
+  if (!value || typeof value !== 'object') return
+  const { name } = value as { name?: unknown }
+  if (typeof name !== 'string' || !name.trim() || name.length > 48) return
+  const selection = readCustomModeSelection(value)
+  if (selection) return { name: name.trim(), ...selection }
 }
 
 export function readSudokuModes(storage?: Pick<Storage, 'getItem'>): SudokuMode[] {

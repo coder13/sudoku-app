@@ -888,7 +888,7 @@ const rule = value => {
 const variantRules = value => list(rule, 0)(value) && value.filter(rule => rule.type === 'lettered-quadruples').length <= 1
 const variant = (value, grid) => fields(value, {
   id: id => typeof id === 'string' && (['jigsaw', 'windoku', 'mixed'].includes(id) || Object.hasOwn(ruleFields, id)),
-  puzzle: puzzle => fields(puzzle, { version: oneOf(1), givens: oneOf(grid) }, { regions, rules: variantRules }),
+  puzzle: puzzle => fields(puzzle, { version: oneOf(1), givens: oneOf(grid) }, { regions, rules: variantRules, extendedLogic: boolean }),
 }, { fog: fog => value.id === 'mixed' && fields(fog, { initialCells: cells }, { cellColors }) && new Set(fog.initialCells).size === fog.initialCells.length })
 const collection = value => fields(value, {
   collectionId: id => typeof id === 'string' && /^[a-z0-9-]{1,64}$/.test(id),

@@ -28,8 +28,8 @@ pub use aqre::{AqreCount, AqreGivenShade, AqreKind, AqrePositionError, AqreRegio
 use cages::{CageHouseSum, CompiledCage};
 #[cfg(any(feature = "generation", test))]
 pub use generation::{
-    GeneratedVariant, MarkerFamily, OutsideClueKind, VariantClueLayout, VariantGenerationError,
-    VariantGenerationOptions, start_variant_generation,
+    GeneratedVariant, MarkerFamily, OutsideClueKind, RuleDependency, VariantClueLayout,
+    VariantGenerationError, VariantGenerationOptions, start_variant_generation,
 };
 use lines::{
     DisjointGroupSum, GroupSumChain, GroupSumHouse, GroupSumPhase, LineConstraint, ModularSum,
@@ -47,14 +47,14 @@ pub use logical::{
     VariantGroupOrderProof, VariantGroupOrderRefutation, VariantGroupOrderScope,
     VariantGroupSumChainProof, VariantGroupSumLink, VariantGroupSumLinkSource,
     VariantKropkiHouseProof, VariantLineHouseProof, VariantLinkedClueProof, VariantLogicalError,
-    VariantMatchingDigitBlock, VariantMatchingDigitCheck, VariantMatchingDigitProof,
-    VariantMatchingLayoutCase, VariantMatchingLayoutProof, VariantRating, VariantRayHouseProof,
-    VariantRegionSumHouseLine, VariantRegionSumHouseProof, VariantRegionSumPart,
-    VariantRegionSumProof, VariantRenbanGroupConflict, VariantRenbanGroupPlacement,
-    VariantRenbanGroupProjection, VariantRenbanGroupProof, VariantRenbanHouseProof,
-    VariantRenbanSumHouseProof, VariantRenbanSumHouseWitness, VariantRenbanSumProof, VariantReplay,
-    VariantSumPairProof, VariantTechnique, VariantThermometerHouseProof, VariantTrace,
-    VariantTrialFailure,
+    VariantLowerPath, VariantMatchingDigitBlock, VariantMatchingDigitCheck,
+    VariantMatchingDigitProof, VariantMatchingLayoutCase, VariantMatchingLayoutProof,
+    VariantRating, VariantRayHouseProof, VariantRegionSumHouseLine, VariantRegionSumHouseProof,
+    VariantRegionSumPart, VariantRegionSumProof, VariantRenbanGroupConflict,
+    VariantRenbanGroupPlacement, VariantRenbanGroupProjection, VariantRenbanGroupProof,
+    VariantRenbanHouseProof, VariantRenbanSumHouseProof, VariantRenbanSumHouseWitness,
+    VariantRenbanSumProof, VariantReplay, VariantSumPairProof, VariantTechnique,
+    VariantThermometerHouseProof, VariantTrace, VariantTrialFailure,
 };
 use pairs::{DigitRestrictionClue, PairClue, ParityClue, PositiveSum};
 #[cfg(all(
@@ -85,6 +85,8 @@ pub use visibility::{VariantVisibility, VariantVisibilityError};
 
 /// The version of the structured puzzle and position format.
 pub const VARIANT_FORMAT_VERSION: u32 = 1;
+/// Profile that enables irregular-house wings, grouped links, forcing chains and entropy singles.
+pub const REGION_LOGIC_VERSION: u32 = 29;
 /// Default maximum nodes for a variant exact search.
 pub const DEFAULT_VARIANT_SEARCH_NODES: u32 = crate::SEARCH_LIMIT;
 
@@ -702,6 +704,27 @@ pub struct KillerCage {
 pub struct VariantPuzzle {
     /// Structured format version.
     pub version: u32,
+    /// Replay the extended variant deductions used to construct this puzzle.
+    /// Older puzzles retain their established walkthrough and scoring profile.
+    #[cfg_attr(
+        feature = "wasm-api",
+        serde(
+            rename = "extendedLogic",
+            default,
+            skip_serializing_if = "std::ops::Not::not"
+        )
+    )]
+    pub extended_logic: bool,
+    /// Pin a newer logical profile for hints and grading. Absent on older puzzles.
+    #[cfg_attr(
+        feature = "wasm-api",
+        serde(
+            rename = "logicVersion",
+            default,
+            skip_serializing_if = "Option::is_none"
+        )
+    )]
+    pub logic_version: Option<u32>,
     /// Fixed digits in row-major order.
     #[cfg_attr(feature = "wasm-api", serde(with = "wire::grid"))]
     pub givens: Board,
@@ -718,6 +741,8 @@ impl VariantPuzzle {
     pub fn classic(givens: Board) -> Self {
         Self {
             version: VARIANT_FORMAT_VERSION,
+            extended_logic: false,
+            logic_version: None,
             givens,
             regions: RegionLayout::Boxes,
             rules: Vec::new(),
@@ -898,6 +923,8 @@ pub enum VariantDefinitionError {
 /// Validated topology and rule data reusable across positions of one puzzle.
 #[derive(Clone, Debug)]
 pub struct CompiledVariant {
+    extended_logic: bool,
+    region_logic: bool,
     givens: Board,
     classic_boxes: bool,
     houses: Vec<VariantHouse>,

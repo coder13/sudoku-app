@@ -83,6 +83,52 @@ enum OutsideClue {
 }
 
 impl LineConstraint {
+    /// Candidate exclusions a player can read directly from the edge, without
+    /// enumerating the possible rows for an outside clue.
+    pub(super) fn simple_outside_conflict(
+        &self,
+        cell: usize,
+        digit: u8,
+        board: &crate::Board,
+    ) -> bool {
+        let LineKind::Outside(clue) = self.kind else {
+            return false;
+        };
+        let Some(index) = self.cells.iter().position(|&c| c == cell) else {
+            return false;
+        };
+        match clue {
+            OutsideClue::XSum(total) if index == 0 => {
+                // A leading 1 sums only itself. The least two-cell total is 3,
+                // and only all nine cells can reach 45.
+                (digit == 1) != (total == 1)
+                    || total == 3 && digit != 2
+                    || (digit == 9) != (total == 45)
+            }
+            OutsideClue::Skyscrapers(visible) => {
+                visible == 9 && digit != index as u8 + 1
+                    || index == 0 && (digit > 10 - visible || visible == 1 && digit != 9)
+            }
+            OutsideClue::Sandwich(total) => {
+                let end = index == 0 || index == 8;
+                let crust = digit == 1 || digit == 9;
+                if total == 35 {
+                    return crust != end;
+                }
+                if end && (2..=4).contains(&total) && digit == total {
+                    return true;
+                }
+                if crust
+                    && let Some(other) = self.cells.iter().position(|&c| board[c] == 10 - digit)
+                {
+                    return (index.abs_diff(other) == 1) != (total == 0);
+                }
+                false
+            }
+            _ => false,
+        }
+    }
+
     pub(super) fn region_sum_parts(&self) -> Option<&[Range<usize>]> {
         match &self.kind {
             LineKind::EqualSums { parts, .. } if self.technique == VariantTechnique::RegionSum => {
@@ -1513,6 +1559,48 @@ mod renban_support_tests {
 #[cfg(test)]
 mod fixed_outside_tests {
     use super::*;
+
+    #[test]
+    fn elementary_edge_exclusions_agree_with_complete_row_support() {
+        let clues = (1..=45)
+            .map(OutsideClue::XSum)
+            .chain((0..=35).map(OutsideClue::Sandwich))
+            .chain((1..=9).map(OutsideClue::Skyscrapers));
+        for clue in clues {
+            let technique = match clue {
+                OutsideClue::XSum(_) => VariantTechnique::XSum,
+                OutsideClue::Sandwich(_) => VariantTechnique::Sandwich,
+                OutsideClue::Skyscrapers(_) => VariantTechnique::Skyscrapers,
+            };
+            let line = LineConstraint {
+                cells: (0..9).collect(),
+                technique,
+                rule_index: 0,
+                kind: LineKind::Outside(clue),
+            };
+            for placed in [0, 1, 9] {
+                let mut board = [0; CELLS];
+                board[3] = placed;
+                let domains: [u16; 9] = std::array::from_fn(|cell| {
+                    if board[cell] == 0 {
+                        DIGITS
+                    } else {
+                        digit_bit(board[cell])
+                    }
+                });
+                let mut support = [0; 9];
+                line.support(&domains, &mut support);
+                for cell in 0..9 {
+                    for digit in digits(support[cell]) {
+                        assert!(
+                            !line.simple_outside_conflict(cell, digit, &board),
+                            "{clue:?} {cell} {digit}"
+                        );
+                    }
+                }
+            }
+        }
+    }
 
     #[test]
     fn outside_clues_check_fixed_rows_and_reject_duplicate_digits() {

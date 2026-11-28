@@ -7,7 +7,7 @@ import { prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { isSharedPuzzleId, publishSharedPuzzle } from '../src/sudoku/puzzle-sharing.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
 import { reflectVariant, variantGenerationRequest, variantSeeds } from '../src/sudoku/variant-generation.ts'
-import { generatePlayableVariant, getVariantPlayOrder, variantPosition } from '../src/sudoku/variant-play.ts'
+import { tryVariantRecipe, generatePlayableVariant, getVariantPlayOrder, variantPosition } from '../src/sudoku/variant-play.ts'
 import { variantHouseMasks } from '../src/sudoku/variants.ts'
 import { countLineSolutions } from './helpers/line-oracle.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
@@ -65,8 +65,7 @@ test('all thirty Medium recipes preserve the circle layout and require Quadruple
   assert.equal(completions.size, 30)
   assert.equal(repeated, 20)
   for (const difficulty of ['easy', 'hard'] as const) {
-    await assert.rejects(generatePlayableVariant('quadruple', difficulty, 1, []),
-      error => error instanceof EngineError && error.code === 'unsupported')
+    assert.equal(await tryVariantRecipe('quadruple', difficulty, 1, [], {}, runEngine), undefined)
   }
 })
 

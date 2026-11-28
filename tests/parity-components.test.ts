@@ -27,7 +27,7 @@ test('New Puzzle offers Odd/Even with both marker kinds and verified Easy/Medium
   assert.ok(isVariantId('parity'))
   assert.equal(VARIANTS.parity.name, 'Odd/Even')
   assert.match(VARIANTS.parity.rule, /Unmarked cells allow either/)
-  assert.deepEqual(variantDifficulties('parity'), ['easy', 'medium'])
+  assert.deepEqual(variantDifficulties('parity'), variantDifficulties('classic'))
   const html = renderToStaticMarkup(createElement(VariantPreview, { variant: 'parity' }))
   assert.match(html, /data-variant="parity"/)
   assert.match(html, /variant-parity-odd/)

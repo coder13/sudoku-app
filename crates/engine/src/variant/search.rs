@@ -63,7 +63,7 @@ impl CompiledVariant {
             eliminations,
             max_nodes,
             SearchMode::Verify(&renban_sums),
-            &mut None,
+            &mut |_| {},
         )
     }
 
@@ -83,7 +83,9 @@ impl CompiledVariant {
             eliminations,
             max_nodes,
             SearchMode::Verify(&renban_sums),
-            &mut solution,
+            &mut |board| {
+                solution.get_or_insert(board);
+            },
         )?;
         if analysis == Analysis::Unique {
             Ok(solution.expect("a completed count of one records its solution"))
@@ -105,7 +107,7 @@ impl CompiledVariant {
             eliminations,
             max_nodes,
             SearchMode::PreserveTraversal,
-            &mut None,
+            &mut |_| {},
         )
     }
 
@@ -115,29 +117,44 @@ impl CompiledVariant {
         eliminations: &[u16; CELLS],
         mut max_nodes: u32,
         mode: SearchMode<'_>,
-        solution: &mut Option<Board>,
+        receive: &mut impl FnMut(Board),
     ) -> Result<Analysis, VariantPositionError> {
         let position = match self.prepare_search(entries, eliminations, max_nodes, mode) {
             Ok(position) => position,
             Err(VariantPositionError::Puzzle(analysis)) => return Ok(analysis),
             Err(error) => return Err(error),
         };
-        let count = self.search(
-            position,
-            2,
-            &mut max_nodes,
-            &mut |board| {
-                solution.get_or_insert(board);
-            },
-            mode,
-            &mut digits,
-        );
+        let count = self.search(position, 2, &mut max_nodes, receive, mode, &mut digits);
         Ok(match count {
             None => Analysis::SearchLimit,
             Some(0) => Analysis::Unsolvable,
             Some(1) => Analysis::Unique,
             Some(_) => Analysis::Multiple,
         })
+    }
+
+    #[cfg(any(feature = "generation", test))]
+    pub(super) fn alternative_to(&self, known: &Board, max_nodes: u32) -> Option<Board> {
+        let mut alternative = None;
+        let joins: Vec<_> = contained_joins(self).collect();
+        let status = self
+            .analyze_with_mode(
+                &[0; CELLS],
+                &[0; CELLS],
+                max_nodes,
+                SearchMode::Verify(&joins),
+                &mut |board| {
+                    if board != *known {
+                        alternative = Some(board);
+                    }
+                },
+            )
+            .ok()?;
+        if status == Analysis::Multiple {
+            alternative
+        } else {
+            None
+        }
     }
 
     /// Find one completion under all rules and the supplied removal masks.
@@ -425,7 +442,10 @@ impl CompiledVariant {
                 .neighbor_matches
                 .iter()
                 .any(|clue| !clue.permits(&position.board))
-                || self.conditional_neighbors.iter().any(|rule| !rule.permits(&position.board))
+                || self
+                    .conditional_neighbors
+                    .iter()
+                    .any(|rule| !rule.permits(&position.board))
             {
                 return Some(0);
             }

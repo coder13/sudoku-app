@@ -161,7 +161,8 @@ test('actual Hard New Puzzle generation yields twenty distinct independently uni
   const distinct = new Set<string>()
   for (let seed = 1; seed <= 20; seed++) {
     const result = await generatePlayableVariant('sandwich', 'hard', seed, [])
-    assert.ok(result.givens >= 29 && result.givens <= 30)
+    assert.ok(result.givens > 0 && result.givens <= 30)
+    assert.equal(result.ruleDependencies?.[0].rule, 'sandwich')
     assert.deepEqual(result.rating.status, { solved: 'hard' })
     assert.ok(result.rating.counts.sandwich)
     assertVariantCompletion(result.puzzle, result.solution)
