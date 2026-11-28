@@ -58,15 +58,18 @@ test('default playing fields, short macros and both repeat syntaxes retain the p
   assert.deepEqual(importedLegacyDefinition, expected)
   assert.equal(importedLegacyDigits.progress?.entries[0], '9', 'the serializer writes placed digits in this field')
   for (const [version, tail] of [
+    [3, []],
     [4, [...state, '']],
     [5, [...state, zero, '']],
     [6, [...state, zero, masks, '', '', '', '']],
   ] as const) {
-    assert.deepEqual(await detectPuzzle(`SCv${version}_yyR30_` + tail.join('_')), expected)
+    const code = version === 3 ? `SCv3_yy${[...state, 'R30'].join('_')}`
+      : `SCv${version}_yyR30_${tail.join('_')}`
+    assert.deepEqual(await detectPuzzle(code), expected)
   }
 })
 
-test('SCv4–SCv6 restore placed digits and both candidate styles from verified legacy slots', async () => {
+test('SCv3–SCv6 restore placed digits and both candidate styles from verified legacy slots', async () => {
   const zero = '0a81b'
   const zeroMasks = '0Ac80d0'
   const userDigits = '1' + '0'.repeat(80)
@@ -75,11 +78,14 @@ test('SCv4–SCv6 restore placed digits and both candidate styles from verified 
   const state = [zero, zero, userDigits, zero, zero, userCellCandidates, zeroMasks, userBoxCandidates, '', '', zero]
 
   for (const [version, tail] of [
+    [3, []],
     [4, ['']],
     [5, [zero, '']],
     [6, [zero, zeroMasks, '', '', '', '']],
   ] as const) {
-    const imported = await detectPuzzle(`SCv${version}_yyR30_${[...state, ...tail].join('_')}`)
+    const code = version === 3 ? `SCv3_yy${[...state, 'R30'].join('_')}`
+      : `SCv${version}_yyR30_${[...state, ...tail].join('_')}`
+    const imported = await detectPuzzle(code)
     assert.equal(imported.progress?.entries[0], '1', `SCv${version} placed digit`)
     assert.equal(imported.progress?.center[1], 1, `SCv${version} center candidate`)
     assert.equal(imported.progress?.corner[1], 4, `SCv${version} corner candidate`)

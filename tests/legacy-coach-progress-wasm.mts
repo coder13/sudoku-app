@@ -5,7 +5,7 @@ import { useWasmWorker } from './helpers/wasm-worker.ts'
 
 useWasmWorker()
 
-test('SCv4–SCv6 progress reaches the verified Play preview without changing puzzle givens', async () => {
+test('SCv3–SCv6 progress reaches the verified Play preview without changing puzzle givens', async () => {
   const zero = '0a81b'
   const zeroMasks = '0Ac80d0'
   const userDigits = '1' + '0'.repeat(80)
@@ -14,11 +14,13 @@ test('SCv4–SCv6 progress reaches the verified Play preview without changing pu
   const state = [zero, zero, userDigits, zero, zero, userCellCandidates, zeroMasks, userBoxCandidates, '', '', zero]
 
   for (const [version, tail] of [
+    [3, []],
     [4, ['']],
     [5, [zero, '']],
     [6, [zero, zeroMasks, '', '', '', '']],
   ] as const) {
-    const code = `SCv${version}_yyR30_${[...state, ...tail].join('_')}`
+    const code = version === 3 ? `SCv3_yy${[...state, 'R30'].join('_')}`
+      : `SCv${version}_yyR30_${[...state, ...tail].join('_')}`
     const preview = await prepareImportedPuzzle(code, [], { deferRating: true })
     assert.equal(preview.hasProgress, true, `SCv${version} preview recognizes saved progress`)
     assert.equal(preview.game.givens, '0'.repeat(81), `SCv${version} keeps entries out of puzzle givens`)
