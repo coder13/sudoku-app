@@ -40,6 +40,8 @@ const appHintsRequest = { type: 'variant', operation: 'hints', position, techniq
   preferProgress: true, difficulty: 'medium', limit: 10 }
 const exhaustiveRequest = { ...appHintsRequest, limit: 0xffff_ffff, collection: 100 }
 const finderHandler = await engineHandler()
+const pageHandler = await engineHandler()
+let pageRequestId = 0
 
 const analyze = await request({ type: 'variant', operation: 'analyze', position, maxNodes: 1_000_000 })
 assert.equal(analyze, 'unique')
@@ -70,6 +72,31 @@ async function finderCounts() {
   } finally {
     scan.close()
   }
+}
+
+async function pageRequest(request) {
+  const response = await pageHandler({ id: ++pageRequestId, request })
+  assert.ok('value' in response, JSON.stringify(response))
+  return response.value
+}
+
+let collectionId = 500
+async function completeHintPages() {
+  const collection = ++collectionId
+  const first = await pageRequest({ type: 'variant', operation: 'hints', position,
+    techniqueOrder, preferProgress: true, difficulty: 'medium', limit: 0xffff_ffff, collection })
+  const choices = [...first.choices]
+  let index = 1
+  while (choices.length < first.available) {
+    const page = await pageRequest({ type: 'hint-page', collection, index: choices.length, variant: true })
+    assert.equal(page.offset, choices.length)
+    assert.ok(page.choices.length > 0, `Hint page ${index} should contain choices.`)
+    choices.push(...page.choices)
+    index++
+  }
+  assert.equal(choices.length, first.available)
+  await pageRequest({ type: 'release-hints', collection })
+  return choices
 }
 
 async function prefixFinderCounts() {
@@ -115,11 +142,13 @@ async function measure(label, input, samples) {
 
 console.log(`Coach Terrain app Wasm ${process.platform} ${process.arch}, Node ${process.version}; ${wasmBytes.length} raw/${gzipSync(wasmBytes).length} gzip bytes; ${techniqueOrder.length} app-order techniques.`)
 console.log(`Published completion: unique; rating ${JSON.stringify(rating.status)}, ${rating.points} points; ${hints.length} top-ten hints; ${exhaustive.available} exhaustive choices (${exhaustive.choices.length} transferred).`)
-console.log('Five warmups; 20 samples for rating/hints and 10 for exhaustive collection. Direct Node/Wasm timings exclude worker startup, transfer and rendering.')
+console.log('Five warmups; 10 samples for Finder, paged hints and exhaustive collection; 20 for rating and top-ten hints. Direct Node/Wasm timings exclude worker startup, transfer and rendering.')
 const expectedFinderCounts = await prefixFinderCounts()
 assert.deepEqual(await finderCounts(), expectedFinderCounts)
 console.log(`Technique Finder: ${techniqueOrder.length} app-order counts match cumulative-prefix reference.`)
 await measureFunction('Technique Finder full app-order counts', finderCounts, 10)
+assert.equal((await completeHintPages()).length, exhaustive.available)
+await measureFunction('App-order complete hint pages', completeHintPages, 10)
 await measure('App-order rating', appRateRequest, 20)
 await measure('App-order top-ten hints', appHintsRequest, 20)
 await measure('App-order exhaustive first collection', exhaustiveRequest, 10)
