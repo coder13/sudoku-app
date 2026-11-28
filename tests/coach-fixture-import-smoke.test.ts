@@ -11,11 +11,72 @@ import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coa
 import { isSizedRuleList } from '../src/sudoku/sized-rule-game.ts'
 import { isPlayablePuzzle } from '../src/sudoku/variants.ts'
 import { coachCode } from './helpers/coach-code.ts'
+import { readCoachSolutionSources } from './helpers/coach-fixture-sources.ts'
 
 const fixtureRoot = new URL('./fixtures/', import.meta.url)
 const fixturePath = new URL(fixtureRoot).pathname
 const codes = new Map<string, string>()
 const publicCoachLinks = new Map<string, { code: string; source: string; title?: string }>()
+
+type CoachDotMark = { relation: string; cells: [number, number]; value?: number; negative: boolean }
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function collectCoachDotMarks(value: unknown): CoachDotMark[] {
+  const marks: CoachDotMark[] = []
+  const readMarkGroup = (relation: string, group: unknown) => {
+    if (!isRecord(group)) return
+    const negative = group.negative === true
+    if (Array.isArray(group.pairs)) for (const pair of group.pairs) {
+      if (Array.isArray(pair) && pair.length === 2 && pair.every(Number.isInteger)) {
+        marks.push({ relation, cells: [Number(pair[0]), Number(pair[1])], negative })
+      }
+    }
+    if (Array.isArray(group.marks)) for (const mark of group.marks) {
+      if (isRecord(mark) && Array.isArray(mark.cells) && mark.cells.length === 2 && mark.cells.every(Number.isInteger) &&
+        Number.isInteger(mark.value)) {
+        marks.push({ relation, cells: [Number(mark.cells[0]), Number(mark.cells[1])], value: Number(mark.value), negative })
+      }
+    }
+  }
+  const readKropki = (value: unknown) => {
+    if (!isRecord(value)) return
+    for (const relation of ['consecutive', 'ratioTwo', 'difference', 'ratio']) readMarkGroup(relation, value[relation])
+    if (Array.isArray(value.layers)) for (const layer of value.layers) {
+      if (isRecord(layer) && typeof layer.relation === 'string') readMarkGroup(layer.relation, layer)
+    }
+  }
+  const visit = (item: unknown) => {
+    if (Array.isArray(item)) {
+      item.forEach(visit)
+      return
+    }
+    if (!isRecord(item)) return
+    if (item.type === 'labeled-dots' && typeof item.relation === 'string') readMarkGroup(item.relation, item)
+    if (item.type === 'kropki') readKropki(item)
+    if ('kropki' in item) readKropki(item.kropki)
+    for (const [key, child] of Object.entries(item)) if (key !== 'kropki') visit(child)
+  }
+  visit(value)
+  return marks
+}
+
+function withoutCoachDotRules(value: unknown): unknown {
+  if (Array.isArray(value)) return value.filter(item => !isRecord(item) ||
+    item.type !== 'kropki' && item.type !== 'labeled-dots' && item.kind !== 'kropki' &&
+    !(isRecord(item.rule) && item.rule.kind === 'kropki')).map(withoutCoachDotRules)
+  if (!isRecord(value)) return value
+  const normalized = Object.fromEntries(Object.entries(value).filter(([key]) => key !== 'kropki' && key !== 'id' && key !== 'support')
+    .map(([key, child]) => [key, withoutCoachDotRules(child)]))
+  const variant = normalized.variant
+  if (isRecord(variant) && isRecord(variant.puzzle) && Array.isArray(variant.puzzle.rules) &&
+    variant.puzzle.rules.length === 0 && variant.puzzle.regions === undefined && variant.fog === undefined) {
+    delete normalized.variant
+  }
+  return normalized
+}
 
 function visit(value: unknown, file: string, keyPath = '$') {
   if (typeof value === 'string' && value.startsWith('SCv7_32_')) {
@@ -66,6 +127,60 @@ test('every preserved raw Coach fixture imports or matches its explicit unsuppor
   }
 
   assert.deepEqual([...rejected].sort(), [...expectedRejections.keys()].sort())
+})
+
+test('SCv7 Coach solution sources preserve authored data with an appended solution-valid Ratio clue', async () => {
+  let checked = 0
+  for (const source of readCoachSolutionSources().values()) {
+    if (!source.code.startsWith('SCv7_32_')) continue
+    const payload = await decodeSudokuCoachPayload(source.code)
+    const size = Math.sqrt(source.solution.length)
+    if (!Number.isInteger(size)) continue
+    const imported = await detectPuzzle(source.code)
+    const importedMarks = collectCoachDotMarks(imported)
+    const ratioKeys = new Set(importedMarks.filter(mark => mark.relation === 'ratio' || mark.relation === 'ratioTwo')
+      .map(mark => [...mark.cells].sort((a, b) => a - b).join(':')))
+    let cells: [number, number] | undefined
+    for (let cell = 0; cell < size ** 2 && !cells; cell++) {
+      const row = Math.floor(cell / size), column = cell % size
+      for (const other of [row + 1 < size ? cell + size : -1, column + 1 < size ? cell + 1 : -1]) {
+        if (other < 0) continue
+        const first = Number(source.solution[cell]), second = Number(source.solution[other])
+        const key = [cell, other].sort((a, b) => a - b).join(':')
+        if (Math.max(first, second) === 2 * Math.min(first, second) && !ratioKeys.has(key)) {
+          cells = [cell, other]
+          break
+        }
+      }
+    }
+    if (!cells) continue
+
+    const originalLayers = Array.isArray(payload.givenConstraints) ? payload.givenConstraints : []
+    const companion = { type: 'ratio', segments: [{ cells, parameters: {} }] }
+    const rewritten = await detectPuzzle(coachCode(payload))
+    const combined = await detectPuzzle(coachCode({ ...payload, givenConstraints: [...originalLayers, companion] }))
+    const edgeKey = [...cells].sort((a, b) => a - b).join(':')
+    const combinedMarks = collectCoachDotMarks(combined)
+    assert.ok(combinedMarks.some(mark => (mark.relation === 'ratio' && mark.value === 2 || mark.relation === 'ratioTwo') &&
+      [...mark.cells].sort((a, b) => a - b).join(':') === edgeKey),
+    `${source.references.join(', ')}: appended Ratio clue must survive import`)
+
+    const markCounts = new Map<string, number>()
+    for (const mark of combinedMarks) {
+      const key = JSON.stringify([mark.relation, [...mark.cells].sort((a, b) => a - b), mark.value, mark.negative])
+      markCounts.set(key, (markCounts.get(key) ?? 0) + 1)
+    }
+    for (const mark of importedMarks) {
+      const key = JSON.stringify([mark.relation, [...mark.cells].sort((a, b) => a - b), mark.value, mark.negative])
+      const count = markCounts.get(key) ?? 0
+      assert.ok(count > 0, `${source.references.join(', ')}: existing ${mark.relation} marker must survive`)
+      markCounts.set(key, count - 1)
+    }
+    assert.deepEqual(withoutCoachDotRules(combined), withoutCoachDotRules(rewritten),
+      `${source.references.join(', ')}: original clues, colors, and artwork must remain unchanged`)
+    checked++
+  }
+  assert.ok(checked >= 70, `expected broad coverage of current Coach combinations, checked ${checked}`)
 })
 
 test('the published Every Constraint Coach source retains every mixed rule family', async () => {
