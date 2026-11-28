@@ -649,6 +649,11 @@ test('published Coach mixtures preserve exact rule dependency and redundancy', a
       redundantRuleTypes: ['kropki', 'arrow', 'pill-arrow', 'consecutive-run', 'renban', 'palindrome', 'region-sum', 'adjacent-total'],
     },
     {
+      reference: 'global-entropy-coach.json:$.examples[5]',
+      ruleTypes: ['global-entropy', 'xv', 'arrow', 'pill-arrow', 'whispers', 'quadruple', 'labeled-dots', 'kropki'],
+      redundantRuleTypes: ['xv', 'arrow', 'pill-arrow', 'whispers', 'quadruple', 'kropki'],
+    },
+    {
       reference: 'entropic-coach.json:$.examples[5]',
       ruleTypes: ['entropic', 'forbidden-entropic-connection', 'global-entropy'],
       redundantRuleTypes: ['forbidden-entropic-connection', 'global-entropy'],
