@@ -524,6 +524,44 @@ test('Coach carved out source needs Entropic, Whispers, Thermometer, and XV toge
   }
 })
 
+test('published Coach mixtures need each imported rule family for uniqueness', async () => {
+  const cases = [
+    {
+      reference: 'entropic-coach.json:$.examples[3]',
+      ruleTypes: ['entropic', 'xv', 'kropki'],
+    },
+    {
+      reference: 'global-entropy-coach.json:$.examples[4]',
+      ruleTypes: ['adjacent-total', 'global-entropy', 'kropki'],
+    },
+    {
+      reference: 'xv-coach.json:$.examples[1]',
+      ruleTypes: ['diagonal', 'anti-king', 'xv', 'kropki', 'inequality'],
+    },
+  ] as const
+
+  for (const { reference, ruleTypes } of cases) {
+    const source = [...sources.values()].find(({ references }) => references.includes(reference))
+    assert.ok(source, reference)
+    const imported = await detectPuzzle(source.code)
+    assert.ok(imported.variant, reference)
+    assert.deepEqual(new Set(imported.variant.puzzle.rules?.map(rule => rule.type)), new Set(ruleTypes), reference)
+    assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: {
+      puzzle: imported.variant.puzzle,
+    } }), { status: 'unique', solution: source.solution }, reference)
+
+    for (const ruleType of ruleTypes) {
+      const withoutRule = {
+        ...imported.variant.puzzle,
+        rules: imported.variant.puzzle.rules?.filter(rule => rule.type !== ruleType),
+      }
+      assert.equal((await runEngine({ type: 'variant', operation: 'solve-unique', position: {
+        puzzle: withoutRule,
+      } })).status, 'multiple', `${reference}: removing ${ruleType} must expose alternate solutions`)
+    }
+  }
+})
+
 test('99Eu keeps its complete Anti-Royal and XV combination with exact rule dependencies', async () => {
   const source = [...sources.values()].find(({ references }) => references.includes('xv-coach.json:$.examples[4]'))
   assert.ok(source)
