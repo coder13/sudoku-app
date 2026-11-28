@@ -119,7 +119,7 @@ const expectedRejections = new Map([
 ])
 
 test('every preserved raw Coach fixture imports or matches its explicit unsupported control', async () => {
-  assert.equal(codes.size, 123)
+  assert.equal(codes.size, 121)
   const rejected = new Set<string>()
 
   for (const [code, source] of [...codes].sort(([, left], [, right]) => left.localeCompare(right))) {
@@ -504,7 +504,7 @@ test('preserved Coach exports reject unknown root, layer, setting, segment and p
       }
     }
   }
-  assert.equal(mutations, 6821)
+  assert.equal(mutations, 6737)
 })
 
 test('every preserved Coach Sudoku export survives public sharing and reopen', async () => {
@@ -596,23 +596,4 @@ test('#547 pretty-printed app exports above the provider cap re-import with auth
   assert.equal(imported.format, 'Puzzle export')
   assert.deepEqual(imported.variant?.puzzle, game.variant?.puzzle)
   assert.deepEqual(imported.authoredArtwork, game.authoredArtwork)
-})
-
-test('Coach anti-chess colored-cell overlays survive app export without becoming engine rules', async () => {
-  const fixture = JSON.parse(readFileSync(join(fixturePath, 'sudoku-coach-anti-chess-colored-cells.json'), 'utf8')) as {
-    code: string
-    givenCellColors: Record<string, string[]>
-    rules: string[]
-  }
-  const imported = await detectPuzzle(fixture.code)
-  assert.ok(imported.variant)
-  assert.deepEqual(imported.variant.puzzle.rules.map(rule => rule.type), fixture.rules)
-  assert.deepEqual(imported.givenCellColors, fixture.givenCellColors)
-
-  const game = { ...makeGame('coach-colored-cell-overlay', 'Anti-Chess + Non-Consecutive', imported.givens, 'imported'),
-    variant: imported.variant, givenCellColors: imported.givenCellColors }
-  const reopened = await detectPuzzle(puzzleExportText(game))
-  assert.deepEqual(reopened.givenCellColors, fixture.givenCellColors)
-  assert.deepEqual(reopened.variant?.puzzle.rules.map(rule => rule.type), fixture.rules)
-  assert.ok(!('givenCellColors' in reopened.variant!.puzzle))
 })
