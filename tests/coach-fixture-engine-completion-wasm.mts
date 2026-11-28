@@ -548,6 +548,10 @@ test('published Coach mixtures preserve exact rule dependency and redundancy', a
       ruleTypes: ['anti-knight', 'anti-king', 'xv'],
     },
     {
+      reference: 'modular-coach.json:$.examples[2]',
+      ruleTypes: ['adjacent-total', 'modular', 'kropki'],
+    },
+    {
       reference: 'renban-coach.json:$.examples[4]',
       ruleTypes: ['renban', 'consecutive-run', 'kropki', 'xv'],
     },
