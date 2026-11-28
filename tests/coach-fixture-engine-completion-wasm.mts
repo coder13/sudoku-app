@@ -594,6 +594,10 @@ test('published Coach mixtures preserve exact rule dependency and redundancy', a
       redundantRuleTypes: ['thermometer', 'between', 'renban'],
     },
     {
+      reference: 'coach-clue-styles.json:$[5]',
+      ruleTypes: ['killer-cages', 'quadruple'],
+    },
+    {
       reference: 'palindrome-coach.json:$.examples[1]',
       ruleTypes: ['palindrome', 'inequality', 'kropki'],
     },
