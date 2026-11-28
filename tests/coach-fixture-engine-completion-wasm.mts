@@ -636,6 +636,10 @@ test('published Coach mixtures preserve exact rule dependency and redundancy', a
       ruleTypes: ['whispers', 'palindrome'],
     },
     {
+      reference: 'coach-forcing-rating.json:$[0]',
+      ruleTypes: ['anti-knight', 'anti-king'],
+    },
+    {
       reference: 'entropic-coach.json:$.examples[5]',
       ruleTypes: ['entropic', 'forbidden-entropic-connection', 'global-entropy'],
       redundantRuleTypes: ['forbidden-entropic-connection', 'global-entropy'],
