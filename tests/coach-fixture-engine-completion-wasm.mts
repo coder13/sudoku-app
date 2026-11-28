@@ -292,6 +292,15 @@ test('HBR9 imports Jigsaw and Anti-Royal rules together without promoting colors
     'cosmetic cell colors stay outside the engine while the original rules compose with typed parity companions')
 })
 
+test('Coach colored cells for Anti-Chess + Non-Consecutive remain visual metadata', async () => {
+  const fixture = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-anti-chess-colored-cells.json', import.meta.url), 'utf8'))
+  const imported = await detectPuzzle(fixture.code)
+  assert.deepEqual(imported.givenCellColors, fixture.givenCellColors)
+  assert.ok(imported.variant)
+  assert.deepEqual(imported.variant.puzzle.rules.map(rule => rule.type), fixture.rules)
+  assert.ok(!('givenCellColors' in imported.variant.puzzle), 'cell colors are kept out of the engine puzzle')
+})
+
 test('published Jigsaw Coach combination needs both Killer and Little Killer rules for uniqueness', async () => {
   const source = [...sources.values()].find(({ references }) =>
     references.includes('disconnected-jigsaw-coach.json:$'))
