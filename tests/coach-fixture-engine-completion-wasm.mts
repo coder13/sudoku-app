@@ -117,6 +117,28 @@ test('published Sudoku Coach completions pass the Rust engine with every importe
   assert.deepEqual([...standaloneSeen].sort(), [...standaloneCoachSolutionSources].sort())
 })
 
+test('every published Coach combination has order-independent candidate propagation', async () => {
+  let checked = 0
+  for (const source of sources.values()) {
+    if (source.solution.length !== 81) continue
+    const imported = await detectPuzzle(source.code)
+    if (!imported.variant) continue
+
+    const puzzle = imported.variant.puzzle
+    const position = { puzzle }
+    const candidates = await runEngine({ type: 'variant', operation: 'candidates', position })
+    const reversedCandidates = await runEngine({
+      type: 'variant',
+      operation: 'candidates',
+      position: { puzzle: { ...puzzle, rules: [...(puzzle.rules ?? [])].reverse() } },
+    })
+    assert.deepEqual(reversedCandidates, candidates,
+      `${source.references[0]}: candidate propagation must not depend on Coach rule ordering`)
+    checked++
+  }
+  assert.equal(checked, 59)
+})
+
 test('the published Every Constraint combination compiles and propagates in the Rust engine', async () => {
   const fixture = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-every-constraint.json', import.meta.url), 'utf8'))
   const imported = await detectPuzzle(fixture.examples[0].code)
