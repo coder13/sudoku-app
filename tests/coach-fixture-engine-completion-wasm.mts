@@ -524,7 +524,7 @@ test('Coach carved out source needs Entropic, Whispers, Thermometer, and XV toge
   }
 })
 
-test('published Coach mixtures need each imported rule family for uniqueness', async () => {
+test('published Coach mixtures preserve exact rule dependency and redundancy', async () => {
   const cases = [
     {
       reference: 'entropic-coach.json:$.examples[3]',
@@ -546,9 +546,16 @@ test('published Coach mixtures need each imported rule family for uniqueness', a
       reference: 'renban-coach.json:$.examples[4]',
       ruleTypes: ['renban', 'consecutive-run', 'kropki', 'xv'],
     },
+    {
+      reference: 'entropic-coach.json:$.examples[4]',
+      ruleTypes: ['renban', 'palindrome', 'adjacent-total', 'kropki', 'entropic'],
+      redundantRuleTypes: ['palindrome', 'entropic'],
+    },
   ] as const
 
-  for (const { reference, ruleTypes } of cases) {
+  for (const testCase of cases) {
+    const { reference, ruleTypes } = testCase
+    const redundantRuleTypes = 'redundantRuleTypes' in testCase ? testCase.redundantRuleTypes : []
     const source = [...sources.values()].find(({ references }) => references.includes(reference))
     assert.ok(source, reference)
     const imported = await detectPuzzle(source.code)
@@ -563,9 +570,13 @@ test('published Coach mixtures need each imported rule family for uniqueness', a
         ...imported.variant.puzzle,
         rules: imported.variant.puzzle.rules?.filter(rule => rule.type !== ruleType),
       }
-      assert.equal((await runEngine({ type: 'variant', operation: 'solve-unique', position: {
+      const withoutResult = await runEngine({ type: 'variant', operation: 'solve-unique', position: {
         puzzle: withoutRule,
-      } })).status, 'multiple', `${reference}: removing ${ruleType} must expose alternate solutions`)
+      } })
+      const expected = redundantRuleTypes.includes(ruleType) ? 'unique' : 'multiple'
+      assert.equal(withoutResult.status, expected,
+        `${reference}: removing ${ruleType} must ${expected === 'unique' ? 'retain the exact source solution' : 'expose alternate solutions'}`)
+      if (expected === 'unique') assert.deepEqual(withoutResult, { status: 'unique', solution: source.solution })
     }
   }
 })
