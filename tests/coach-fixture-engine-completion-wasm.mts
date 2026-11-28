@@ -557,6 +557,15 @@ test('published Coach mixtures preserve exact rule dependency and redundancy', a
       redundantRuleTypes: ['modular'],
     },
     {
+      reference: 'region-sum-coach.json:$.examples[1]',
+      ruleTypes: ['anti-king', 'anti-knight', 'non-consecutive', 'region-sum'],
+      redundantRuleTypes: ['anti-king', 'anti-knight', 'non-consecutive', 'region-sum'],
+    },
+    {
+      reference: 'region-sum-coach.json:$.examples[2]',
+      ruleTypes: ['kropki', 'region-sum'],
+    },
+    {
       reference: 'coach-clue-styles.json:$[0]',
       ruleTypes: ['extra-house', 'kropki', 'sandwich', 'xv', 'adjacent-total', 'region-sum', 'palindrome', 'consecutive-run', 'renban', 'arrow'],
       redundantRuleTypes: ['extra-house', 'kropki', 'xv', 'adjacent-total', 'region-sum', 'palindrome', 'consecutive-run', 'renban', 'arrow'],
