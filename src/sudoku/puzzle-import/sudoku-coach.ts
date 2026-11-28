@@ -697,6 +697,11 @@ function readCoachStandalone(data: Record<string, unknown>): ImportResult | unde
   const givens = data.givenDigits === undefined ? '0'.repeat(Number(size) ** 2) : data.givenDigits
   if (typeof givens !== 'string' || givens.length !== Number(size) ** 2 || !/^\d+$/.test(givens) ||
     [...givens].some(digit => Number(digit) > Number(size))) throw new Error('This Sudoku Coach puzzle has invalid givens.')
+  const playerCellColors = readCoachPlayerColors(data, Number(size))
+  const playerCandidateColors = readCoachCandidateColors(data.colours, data.userCellCandidatesColours, Number(size))
+  if (playerCellColors || playerCandidateColors) {
+    throw new Error('This Sudoku Coach boxless puzzle has unsupported player color marks.')
+  }
   const position = readCoachNumberPosition(data, givens, Number(size))
   const rawCellColors = readCoachColourCells(data.colours, data.givenColours, Number(size))
   if (!rawCellColors && (hasData(data.givenColours) || hasData(data.colours))) {
