@@ -10,6 +10,7 @@ import { readGame } from '../src/sudoku/storage.ts'
 import { syncRequest } from '../src/sudoku/sync-engine.ts'
 import { variantHintChoice } from '../src/sudoku/variant-hints.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
+import { MemoryStorage } from './helpers/memory-storage.ts'
 import { syncDatabase } from './helpers/sync-database.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { transformedBoard } from './helpers/transformed-board.ts'
@@ -354,6 +355,36 @@ test('#196 Terrain clues prune manual candidates, report conflicts, and survive 
     'undo after reload restores the prior Terrain progress')
   assert.deepEqual(redo(undo(restoredProgress)).position, importedProgress.position,
     'redo after reload restores the imported Terrain progress')
+
+  const local = new MemoryStorage()
+  const storageKeys = ['window', 'localStorage', 'sessionStorage'] as const
+  const storageGlobals = storageKeys.map(key => Object.getOwnPropertyDescriptor(globalThis, key))
+  Object.defineProperties(globalThis, {
+    window: { value: {}, configurable: true },
+    localStorage: { value: local, configurable: true },
+    sessionStorage: { value: new MemoryStorage(), configurable: true },
+  })
+  try {
+    const { roomStore } = await import('../src/sudoku/storage.ts?coach-terrain-library-save')
+    roomStore.add(importedProgress)
+    const reloadedRoom = (await import('../src/sudoku/storage.ts?coach-terrain-library-reload')).roomStore.getSnapshot()
+    const reopenedGame = reloadedRoom.games.find(game => game.id === importedProgress.id)
+    assert.ok(reopenedGame, 'the imported Terrain game returns from a saved library reload')
+    assert.deepEqual(reopenedGame.variant, importedProgress.variant,
+      'the saved library retains all imported Terrain and companion rules')
+    assert.deepEqual(reopenedGame.position, importedProgress.position,
+      'the saved library retains placed digits and candidate marks')
+    assert.deepEqual(reopenedGame.past, importedProgress.past,
+      'the saved library retains undo history')
+    assert.deepEqual(redo(undo(reopenedGame)).position, importedProgress.position,
+      'the saved library restores working undo and redo history')
+  } finally {
+    storageKeys.forEach((key, index) => {
+      const descriptor = storageGlobals[index]
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor)
+      else Reflect.deleteProperty(globalThis, key)
+    })
+  }
 
   const puzzle = { ...parsed.variant.puzzle, givens: '0'.repeat(81), rules: [rule] }
   const game = { ...makeGame('terrain-play-input', 'Terrain', puzzle.givens, 'imported'),
