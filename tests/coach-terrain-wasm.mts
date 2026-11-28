@@ -199,3 +199,65 @@ test('#196 Terrain hint evidence names the actual value changes', async () => {
   assert.ok('variant' in doubledHint.evidence)
   assert.match(doubledHint.evidence.variant.description, /double the digits in/)
 })
+
+test('#196 every Terrain hint premise matches the independent numeric oracle across player progress', async () => {
+  const parsed = await detectPuzzle(source.source.sudoku)
+  assert.ok(parsed.variant)
+  const puzzle = parsed.variant.puzzle
+  const emptyCells = [...parsed.givens].flatMap((digit, cell) => digit === '0' ? [cell] : [])
+  let checkedHints = 0
+
+  for (const enteredCount of [0, 10, 20, 30, 40, 50, 60]) {
+    const entries = Array(81).fill('0')
+    for (const cell of emptyCells.slice(0, enteredCount)) entries[cell] = source.source.solution[cell]
+    const deductions = await runEngine({ type: 'variant', operation: 'hints', position: {
+      puzzle, entries: entries.join(''),
+    }, techniqueOrder: ['sandwich'], limit: 100 })
+    assert.ok(deductions.length, `Terrain hints remain available after ${enteredCount} correct entries`)
+
+    for (const [deductionIndex, deduction] of deductions.entries()) {
+      if (deduction.evidence.type !== 'constraint') continue
+      const terrainIndices = deduction.evidence.rules.filter(index => puzzle.rules?.[index]?.type === 'terrain-sandwich')
+      if (!terrainIndices.length) continue
+      assert.equal(terrainIndices.length, 1, `hint ${deductionIndex} has one Terrain premise`)
+      assert.deepEqual(deduction.evidence.rules, terrainIndices, `hint ${deductionIndex} is attributed only to Terrain`)
+      const rule = puzzle.rules![terrainIndices[0]]
+      assert.equal(rule.type, 'terrain-sandwich')
+
+      const domainsByCell = new Map(deduction.evidence.cells.map((cell, index) => [cell, deduction.evidence.domains[index]]))
+      for (const cell of rule.cells) {
+        assert.ok(domainsByCell.has(cell), `hint ${deductionIndex} includes the current domain for clue cell ${cell}`)
+      }
+      const ruleDomains = rule.cells.map(cell => domainsByCell.get(cell) ?? 0x1ff)
+      const support = terrainSandwichSupports(rule, ruleDomains)
+      const eliminations = deduction.actions.filter((action): action is Extract<typeof action, { eliminate: unknown }> => 'eliminate' in action)
+      assert.ok(eliminations.length && eliminations.length === deduction.actions.length,
+        `hint ${deductionIndex} contains only candidate removals`)
+      for (const action of eliminations) {
+        const offset = rule.cells.indexOf(action.eliminate.cell)
+        assert.notEqual(offset, -1, `hint ${deductionIndex} removes a candidate in its Terrain clue`)
+        assert.equal(support[offset] & (1 << (action.eliminate.digit - 1)), 0,
+          `hint ${deductionIndex} after ${enteredCount} entries: clue ${terrainIndices[0] + 1} supports no ${action.eliminate.digit} at cell ${action.eliminate.cell}`)
+      }
+
+      const choice = variantHintChoice(deduction, puzzle)
+      assert.ok('variant' in choice.evidence)
+      const description = choice.evidence.variant.description
+      assert.ok(description.includes(`maximum is ${rule.maximum}`), `hint ${deductionIndex} names its authored maximum`)
+      for (const [index, transform] of rule.transforms.entries()) {
+        const operation = transform.multiplier === 2 ? /double the digits in/
+          : transform.offset > 0 ? /add 3 to the digits in/
+            : transform.offset < 0 ? /subtract 3 from the digits in/ : undefined
+        if (operation) {
+          assert.match(description, operation, `hint ${deductionIndex} names the transformation at clue cell ${rule.cells[index]}`)
+          const cell = rule.cells[index]
+          assert.ok(description.includes(`r${Math.floor(cell / 9) + 1}c${cell % 9 + 1}`),
+            `hint ${deductionIndex} names transformed cell ${cell}`)
+        }
+      }
+      checkedHints++
+    }
+  }
+
+  assert.ok(checkedHints >= 70, `the oracle replays the source's Terrain hints across progress states (got ${checkedHints})`)
+})
