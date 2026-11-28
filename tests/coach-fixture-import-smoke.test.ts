@@ -183,6 +183,52 @@ test('SCv7 Coach solution sources preserve authored data with an appended soluti
   assert.ok(checked >= 70, `expected broad coverage of current Coach combinations, checked ${checked}`)
 })
 
+test('SCv7 9 × 9 Coach variants preserve their rules with appended solution-valid Odd and Even layers', async () => {
+  let checked = 0
+  for (const source of readCoachSolutionSources().values()) {
+    if (!source.code.startsWith('SCv7_32_') || source.solution.length !== 81) continue
+    const imported = await detectPuzzle(source.code)
+    if (!imported.variant) continue
+
+    const payload = await decodeSudokuCoachPayload(source.code)
+    const odd = [...source.solution].flatMap((digit, cell) => Number(digit) % 2 === 1 ? [cell] : [])
+    const even = [...source.solution].flatMap((digit, cell) => Number(digit) % 2 === 0 ? [cell] : [])
+    const companions = [
+      { type: 'odd', segments: odd.map(cell => ({ cells: [cell], parameters: {} })) },
+      { type: 'even', segments: even.map(cell => ({ cells: [cell], parameters: {} })) },
+    ]
+    const originalLayers = Array.isArray(payload.givenConstraints) ? payload.givenConstraints : []
+    const combined = await detectPuzzle(coachCode({ ...payload, givenConstraints: [...originalLayers, ...companions] }))
+    assert.ok(combined.variant, `${source.references.join(', ')}: combined source remains a Sudoku variant`)
+
+    const originalRules = imported.variant.puzzle.rules ?? []
+    const combinedRules = combined.variant.puzzle.rules ?? []
+    const companionRules = [
+      { type: 'parity', cells: odd, parity: 'odd' },
+      { type: 'parity', cells: even, parity: 'even' },
+    ] as const
+    const remainingRules = [...combinedRules]
+    for (const companion of companionRules) {
+      const index = remainingRules.findIndex(rule => rule.type === 'parity' && rule.parity === companion.parity &&
+        rule.cells.length === companion.cells.length && rule.cells.every((cell, cellIndex) => cell === companion.cells[cellIndex]))
+      assert.notEqual(index, -1,
+        `${source.references.join(', ')}: added ${companion.parity} layer remains a typed engine rule`)
+      remainingRules.splice(index, 1)
+    }
+    assert.deepEqual(remainingRules, originalRules,
+      `${source.references.join(', ')}: original engine rules remain unchanged and in order`)
+    assert.deepEqual(combined.variant.puzzle.regions, imported.variant.puzzle.regions,
+      `${source.references.join(', ')}: original region layout remains unchanged`)
+    assert.equal(combined.givens, imported.givens, `${source.references.join(', ')}: original givens remain unchanged`)
+    assert.deepEqual(combined.givenCellColors, imported.givenCellColors,
+      `${source.references.join(', ')}: original color overlays remain unchanged`)
+    assert.deepEqual(combined.authoredArtwork, imported.authoredArtwork,
+      `${source.references.join(', ')}: original authored artwork remains unchanged`)
+    checked++
+  }
+  assert.ok(checked >= 50, `expected broad 9 × 9 Coach variant coverage, checked ${checked}`)
+})
+
 test('the published Every Constraint Coach source retains every mixed rule family', async () => {
   const fixture = JSON.parse(readFileSync(join(fixturePath, 'sudoku-coach-every-constraint.json'), 'utf8'))
   const source = fixture.examples[0]
