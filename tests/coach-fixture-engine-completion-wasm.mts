@@ -396,6 +396,45 @@ test('zero-given published Coach Bento needs Global Entropy and labeled dots for
   }
 })
 
+test('7HQD Jigsaw Fog requires its regions and all six Killer cages', async () => {
+  const source = [...sources.values()].find(({ references }) => references.includes('fog-jigsaw-coach.json:$'))
+  assert.ok(source)
+  const imported = await detectPuzzle(source.code)
+  assert.ok(imported.variant)
+  assert.equal(imported.variant.puzzle.regions?.type, 'jigsaw')
+  assert.equal(imported.variant.fog?.cellColors && Object.keys(imported.variant.fog.cellColors).length, 72)
+  const killer = imported.variant.puzzle.rules?.find(rule => rule.type === 'killer-cages')
+  assert.ok(killer?.type === 'killer-cages')
+  assert.equal(killer.cages.length, 6)
+
+  assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: {
+    puzzle: imported.variant.puzzle,
+  } }), { status: 'unique', solution: source.solution })
+
+  const withoutJigsaw = { ...imported.variant.puzzle, regions: { type: 'boxes' as const } }
+  assert.equal((await runEngine({ type: 'variant', operation: 'solve-unique', position: {
+    puzzle: withoutJigsaw,
+  } })).status, 'multiple', 'removing the Jigsaw regions must expose alternate solutions')
+
+  const withoutKiller = {
+    ...imported.variant.puzzle,
+    rules: imported.variant.puzzle.rules?.filter(rule => rule.type !== 'killer-cages'),
+  }
+  assert.equal((await runEngine({ type: 'variant', operation: 'solve-unique', position: {
+    puzzle: withoutKiller,
+  } })).status, 'multiple', 'removing the Killer cages must expose alternate solutions')
+
+  const changedTotal = {
+    ...imported.variant.puzzle,
+    rules: imported.variant.puzzle.rules?.map(rule => rule.type === 'killer-cages'
+      ? { ...rule, cages: rule.cages.map((cage, index) => index === 0 ? { ...cage, sum: cage.sum + 1 } : cage) }
+      : rule),
+  }
+  assert.equal((await runEngine({ type: 'variant', operation: 'solve-unique', position: {
+    puzzle: changedTotal,
+  } })).status, 'unsolvable', 'changing a published cage total must invalidate the completion')
+})
+
 test('Coach Anti-Royal Killer source needs every imported rule family for uniqueness', async () => {
   const source = [...sources.values()].find(({ references }) => references.includes('coach-forcing-rating.json:$[2]'))
   assert.ok(source)
