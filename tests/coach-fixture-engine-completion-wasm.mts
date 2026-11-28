@@ -396,6 +396,28 @@ test('zero-given published Coach Bento needs Global Entropy and labeled dots for
   }
 })
 
+test('Coach Anti-Royal Killer source needs every imported rule family for uniqueness', async () => {
+  const source = [...sources.values()].find(({ references }) => references.includes('coach-forcing-rating.json:$[2]'))
+  assert.ok(source)
+  const imported = await detectPuzzle(source.code)
+  assert.ok(imported.variant)
+  assert.deepEqual(new Set(imported.variant.puzzle.rules?.map(rule => rule.type)),
+    new Set(['anti-knight', 'anti-king', 'killer-cages']))
+  assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: {
+    puzzle: imported.variant.puzzle,
+  } }), { status: 'unique', solution: source.solution })
+
+  for (const ruleType of ['anti-knight', 'anti-king', 'killer-cages'] as const) {
+    const withoutRule = {
+      ...imported.variant.puzzle,
+      rules: imported.variant.puzzle.rules?.filter(rule => rule.type !== ruleType),
+    }
+    assert.equal((await runEngine({ type: 'variant', operation: 'solve-unique', position: {
+      puzzle: withoutRule,
+    } })).status, 'multiple', `removing ${ruleType} must expose alternate solutions`)
+  }
+})
+
 test('99Eu keeps its complete Anti-Royal and XV combination with exact rule dependencies', async () => {
   const source = [...sources.values()].find(({ references }) => references.includes('xv-coach.json:$.examples[4]'))
   assert.ok(source)

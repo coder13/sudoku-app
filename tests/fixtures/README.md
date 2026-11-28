@@ -79,6 +79,10 @@ The Rust source and rebuilt app Wasm are unchanged from main at `4811a05`; the W
 
 Fixed operations use five warmups and 40 samples; exhaustive collection uses five warmups and ten samples, ranking 438 choices before transferring eight. Generation uses 20 seeds, 30 givens, the Anti-King rule required, six attempts and 20,000 nodes per attempt. Repeat with `node --experimental-strip-types scripts/bench-variants.mjs`. Direct Node/Wasm timings exclude browser startup, worker transfer and rendering. Local combined-tree checks pass 361 app tests, 220 Wasm tests, TypeScript and the production/offline build.
 
+## Anti-Royal and Killer combination source
+
+The Coach Anti-Royal arithmetic source `J6TH` retains Anti-Knight, Anti-King and Killer cages together. Its exact completion is unique only with the full combination: removing any one family produces multiple solutions. The source already participates in deferred-import rating and complete-proof checks; this dedicated Wasm regression makes the source-rule dependency explicit.
+
 ## Repeating the mixed-rule checks
 
 Run `npm test` for decoder, independent-counter, and storage contracts. Run `npm run test:wasm` for the compiled browser engine, imported-game flow, and family-subset matrix. The original mixed-rule suite is `../variant-import-wasm.mts`; Quadruple and Odd/Even have separate suites. Browser verification of the original eight-family stage on 2026-11-17 covered desktop Play and preview, 390-by-844 preview and rule dialogs, overlapping dot visibility, move/undo/redo, reload, multiple hints, the full share payload, and completion returning to the puzzle chooser.
