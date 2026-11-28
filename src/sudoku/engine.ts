@@ -153,6 +153,7 @@ type VariantRequest = {
   | { operation: 'analyze'; maxNodes?: number }
   | { operation: 'solve'; maxNodes?: number; seed?: number }
   | { operation: 'solve-unique'; maxNodes?: number }
+  | { operation: 'search-lower-grade'; difficulty: Difficulty; maxPositions?: number; techniqueOrder?: readonly string[] }
   | ({ visibility?: VariantVisibility } & (
     | { operation?: 'normalize' }
     | { operation: 'candidates' }
@@ -652,6 +653,9 @@ export type TechniqueCatalog = {
 type VariantResult<T extends VariantRequest> =
   T extends { operation: 'analyze' } ? Analysis :
   T extends { operation: 'solve-unique' } ? { status: 'unique'; solution: string } | { status: Exclude<Analysis, 'unique'> } :
+  T extends { operation: 'search-lower-grade' } ? {
+    status: AlternatePath['status']; positionsSearched: number; steps: VariantDeduction[]
+  } :
   T extends { operation: 'solve' | 'solve-singles' } ? string :
   T extends { operation: 'candidates' } ? number[] :
   T extends { operation: 'hints'; collection: number } ? HintPage<VariantDeduction> :

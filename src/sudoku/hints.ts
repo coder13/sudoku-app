@@ -94,6 +94,7 @@ const TECHNIQUE_LABELS: Record<string, string> = {
   'region-sum-distinct': 'Region Sum with distinct digits',
   'region-sum-house': 'Region Sum lines in one region',
   'thermometer-house-support': 'Thermometer and house',
+  'arrow-house-support': 'Arrow and house',
   'linked-clue-contradiction': 'Linked clue contradiction',
   'matching-digit-contradiction': 'Matching cell contradiction',
   'matching-layout-forcing': 'Matching digit layouts',

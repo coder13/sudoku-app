@@ -1174,10 +1174,19 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
     }
     case 'line-houses': {
       cells = evidence.cells
-      const gap = evidence.rules.map(index => puzzle.rules?.[index]).find(rule => rule?.type === 'whispers')
+      const sourceRules = evidence.rules.map(index => puzzle.rules?.[index])
+      const arrow = sourceRules.find(rule => rule?.type === 'arrow')
+      const gap = sourceRules.find(rule => rule?.type === 'whispers')
       const minimum = gap?.type === 'whispers' ? gap.minDifference : 5
-      description = `Neighbors on this line must differ by at least ${minimum}. Its cells must also use different digits where they share ${new Intl.ListFormat('en', { type: 'conjunction' }).format(evidence.houses.map(houseLabel))}.`
-      reason = `Check the line assignments against both rules. ${evidence.assignments} ${evidence.assignments === 1 ? 'assignment fits' : 'assignments fit'}, and none uses the crossed-out candidates.`
+      const houses = new Intl.ListFormat('en', { type: 'conjunction' }).format(evidence.houses.map(houseLabel))
+      if (arrow) {
+        description = `The digits along the arrow must add up to the digit in its circle at ${nameCell(arrow.circle)}. Its cells must use different digits where they share ${houses}.`
+        const remainder = cells.length > arrow.cells.length + 1 ? evidence.houses.at(-1) : undefined
+        reason = `Check which digits can make the arrow sum.${remainder ? ` Fit the digits it leaves into the rest of ${houseLabel(remainder)}.` : ''} None of the assignments that fit uses the crossed-out candidates.`
+      } else {
+        description = `Neighbors on this line must differ by at least ${minimum}. Its cells must also use different digits where they share ${houses}.`
+        reason = `Check the line assignments against both rules. ${evidence.assignments} ${evidence.assignments === 1 ? 'assignment fits' : 'assignments fit'}, and none uses the crossed-out candidates.`
+      }
       candidates = evidence.domains.flatMap((mask, i) => DIGITS.filter(digit => mask & 1 << (digit - 1))
         .map(digit => ({ cell: cells[i], digit })))
       break

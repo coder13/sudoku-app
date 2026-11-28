@@ -2,7 +2,7 @@ import { playVariantPuzzle } from './fog.ts'
 import { puzzleForVariantTools, type VariantToolId } from './variants.ts'
 import { currentDifficulty, difficultyIndex } from './difficulty.ts'
 import { EngineError, runEngine, type Difficulty, type EngineRunner, type TechniqueCatalog, type VariantClueLayout, type VariantGenerationRequest, type VariantPosition, type VariantPuzzle } from './engine.ts'
-import { type Game, valuesOf } from './game.ts'
+import { EMPTY, type Game, valuesOf } from './game.ts'
 import { sizedRuleCandidates } from './sized-rule-play.ts'
 import { miniCandidates } from './mini-play.ts'
 import { algebraicCandidates } from './algebraic-play.ts'
@@ -10,6 +10,7 @@ import { readDisabledHintTechniques } from './hint-preferences.ts'
 import { variantGenerationRequest, variantSeeds, variantTechniqueOrder, withMediumVariantTechniques } from './variant-generation.ts'
 import { hasBetweenAndPairClues, hasMatchingAndPairClues, hasPrintedKropki, type PlayableVariant, type VariantGame } from './variants.ts'
 import { generationRuleset, isGenerationRulesetId, type VariantGenerationOptions } from './variant-rulesets.ts'
+import { hasReadableArrowLayout } from './arrow-layout.ts'
 
 let playProfile: Promise<{ techniqueOrder: string[]; catalog: TechniqueCatalog; tiers: Record<string, Difficulty>; firstBeyondHard: string | undefined }> | undefined
 
@@ -58,11 +59,12 @@ export function getVariantPlayProfile(puzzle?: VariantPuzzle, layouts?: readonly
   const hasLinkedClues = hasBetweenAndPairClues(rules, layouts) || hasMatchingAndPairClues(rules, layouts)
   const hasKropki = hasPrintedKropki(rules) || layouts?.some(layout => layout.type === 'markers' && layout.family === 'kropki')
   const hasThermometer = rules.some(rule => rule.type === 'thermometer')
+  const hasMiracleArrows = puzzle?.givens === EMPTY && rules.some(rule => rule.type === 'arrow')
   const hasGroupLine = rules.some(rule => rule.type === 'entropic' || rule.type === 'modular')
   const hasGroupPairs = hasGroupLine && (rules.some(rule =>
     rule.type === 'kropki' || rule.type === 'xv' || rule.type === 'adjacent-total' || rule.type === 'inequality') ||
     layouts?.some(layout => layout.type === 'markers' || layout.type === 'adjacent-total' || layout.type === 'inequality'))
-  if (!renbans.length && !rays.length && !hasGroupLine && !regionSumLines.length && !hasThermometer && !hasKropki && !hasLinkedClues && !hasMatchingCells) return playProfile
+  if (!renbans.length && !rays.length && !hasGroupLine && !regionSumLines.length && !hasThermometer && !hasMiracleArrows && !hasKropki && !hasLinkedClues && !hasMatchingCells) return playProfile
 
   const joined = rays.filter(ray =>
     renbans.some(renban => renban.cells.every(cell => ray.cells.includes(cell))))
@@ -96,6 +98,7 @@ export function getVariantPlayProfile(puzzle?: VariantPuzzle, layouts?: readonly
     ]
     const techniqueOrder = withMediumVariantTechniques(withLateChecks, tiers, [
       ...(hasThermometer ? ['thermometer-house-support'] : []),
+      ...(hasMiracleArrows ? ['arrow-house-support'] : []),
       ...(hasKropki ? ['kropki-house-support'] : []),
     ])
     if (puzzle?.extendedLogic || puzzle?.logicVersion) techniqueOrder.sort((a, b) => difficultyIndex(tiers[a] ?? 'impossible') - difficultyIndex(tiers[b] ?? 'impossible'))
@@ -123,10 +126,12 @@ export async function tryVariantRecipe(id: PlayableVariant, difficulty: Difficul
   // Let the native logical key compare complete definitions across that history.
   const excluded = games.flatMap(game => game.variant ? [game.variant.puzzle] : [])
   const tryGenerate = async (request: VariantGenerationRequest) => {
+    if (id === 'arrow' && !hasReadableArrowLayout(request.template.rules)) return
     request.techniqueOrder = await getVariantPlayOrder(request.template, request.derivedClues)
     if (excluded.length) request.exclude = excluded
     try {
       const result = await run(request, { signal: options.signal })
+      if (result.givens === 0) return
       // A sampled positive marker layout can contain only one symbol.
       if (id === 'xv' && !result.puzzle.rules?.some(rule =>
         rule.type === 'xv' && rule.five?.pairs?.length && rule.ten?.pairs?.length)) return

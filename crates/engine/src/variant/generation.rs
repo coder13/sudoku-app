@@ -62,6 +62,8 @@ pub struct VariantGenerationOptions {
     /// Inequalities and Thermometers compare the same implied strict order, including
     /// redundant comparisons. With only digit-invariant companions, complementing all
     /// digits and reversing every comparison preserves the played-puzzle identity.
+    /// Arrow shafts compare the cells they sum. Region Sum lines and Little Killer
+    /// rays compare equally in either direction.
     pub exclude: Vec<VariantPuzzle>,
 }
 
@@ -404,13 +406,10 @@ fn accept(
     options: &VariantGenerationOptions,
 ) -> Option<(VariantRating, Vec<RuleDependency>)> {
     use TechniqueTargetMode::*;
-    let mut alternatives = Vec::new();
-    for (id, reduced) in without {
-        reduced.givens = puzzle.givens;
-        let alternative = reduced.alternative_to(solution, options.max_nodes)?;
-        if options.required_rules.iter().any(|rule| rule == id) {
-            alternatives.push((*id, alternative));
-        }
+    if matches!(options.rating, Some(GenerationRating::Difficulty(_)))
+        && puzzle.givens.iter().filter(|&&d| d != 0).count() > 40
+    {
+        return None;
     }
     // A standard-box completion can differ from a jigsaw completion. Test the
     // actual classic grid independently. A budget limit supplies no evidence.
@@ -421,6 +420,14 @@ fn accept(
         )
     {
         return None;
+    }
+    let mut alternatives = Vec::new();
+    for (id, reduced) in without {
+        reduced.givens = puzzle.givens;
+        let alternative = reduced.alternative_to(solution, options.max_nodes)?;
+        if options.required_rules.iter().any(|rule| rule == id) {
+            alternatives.push((*id, alternative));
+        }
     }
     if let Some((technique, ExclusiveOpening)) = options.technique
         && !compiled.has_exclusive_opening(technique)
@@ -480,22 +487,7 @@ fn accept(
         }
     }
     if let Some(GenerationRating::Difficulty(level)) = options.rating {
-        if puzzle.givens.iter().filter(|&&d| d != 0).count() > 40 {
-            return None;
-        }
-        let mut lower: Vec<_> = options
-            .technique_order
-            .iter()
-            .copied()
-            .filter(|t| t.difficulty() < level)
-            .collect();
-        for technique in
-            VariantTechnique::all().filter(|t| !t.is_optional() && t.difficulty() < level)
-        {
-            if !lower.contains(&technique) {
-                lower.push(technique);
-            }
-        }
+        let lower = super::logical::lower_techniques(&options.technique_order, level);
         // A checked recipe may retain its established walkthrough. Reject it
         // if the extended profile can finish in a cheaper tier.
         let expanded;
@@ -505,8 +497,7 @@ fn accept(
         {
             expanded = {
                 let mut solver = compiled.clone();
-                solver.extended_logic = true;
-                solver.region_logic = region_profile;
+                solver.enable_generation_logic();
                 solver
             };
             &expanded

@@ -7,8 +7,25 @@ import { generateCustomSudoku } from '../src/sudoku/custom-generation.ts'
 import { customRuleIds, hasOverlappingRuleChoices, isCustomDifficulty, markerOptions, type CustomRule, type MarkerRule } from '../src/sudoku/custom-modes.ts'
 import { DIFFICULTY_LEVELS } from '../src/sudoku/difficulty.ts'
 import { miracleSymmetry } from '../src/sudoku/miracle.ts'
-import { EngineError, runEngine, type EngineRequest, type EngineResponse } from '../src/sudoku/engine.ts'
+import { EngineError, runEngine, type EngineRequest, type EngineResponse, type VariantDeduction } from '../src/sudoku/engine.ts'
 import { createEngineHandler, type EngineExports } from '../src/sudoku/engine-protocol.ts'
+import { assertVariantCompletion } from '../tests/helpers/variant-truth.ts'
+import { hasReadableArrowLayout } from '../src/sudoku/arrow-layout.ts'
+
+function verifySolutionPath(givens: string, solution: string, steps: readonly VariantDeduction[]) {
+  const board = [...givens]
+  for (const { actions } of steps) for (const action of actions) {
+    if ('place' in action) {
+      const { cell, digit } = action.place
+      assert.equal(board[cell], '0')
+      assert.equal(solution[cell], String(digit))
+      board[cell] = String(digit)
+    } else {
+      assert.notEqual(solution[action.eliminate.cell], String(action.eliminate.digit))
+    }
+  }
+  assert.equal(board.join(''), solution)
+}
 
 // Use real workers so the generation deadline can interrupt synchronous Wasm.
 if (!isMainThread) {
@@ -44,14 +61,25 @@ if (!isMainThread) {
   Object.defineProperty(globalThis, 'Worker', { value: AuditWorker })
   try {
     const { values, positionals } = parseArgs({ allowPositionals: true, options: {
-      matrix: { type: 'boolean' }, miracle: { type: 'boolean' }, repeat: { type: 'string', default: '1' },
+      matrix: { type: 'boolean' }, pairs: { type: 'string' }, miracle: { type: 'boolean' }, repeat: { type: 'string', default: '1' },
       strict: { type: 'boolean' },
+      'lower-positions': { type: 'string' },
       'verify-trace': { type: 'boolean' }, 'include-puzzle': { type: 'boolean' },
     } })
     const repeats = Number(values.repeat)
     assert.ok(Number.isSafeInteger(repeats) && repeats > 0, 'Supply a positive integer after --repeat.')
+    const lowerPositions = values['lower-positions'] === undefined ? undefined : Number(values['lower-positions'])
+    assert.ok(lowerPositions === undefined || Number.isInteger(lowerPositions) && lowerPositions >= 0 && lowerPositions <= 256,
+      'Supply a position budget from 0 through 256 after --lower-positions.')
     let specs = positionals
-    if (values.matrix) {
+    if (values.pairs !== undefined) {
+      const [seed] = specs
+      const grade = values.pairs
+      assert.ok(isCustomDifficulty(grade) && !values.matrix && specs.length === 1 && /^\d+$/.test(seed),
+        'Supply a difficulty and seed after --pairs.')
+      specs = customRuleIds.flatMap((first, i) => customRuleIds.slice(i + 1).flatMap(second =>
+        hasOverlappingRuleChoices(new Set([first, second])) ? [] : [`${first},${second}/${grade}/${seed}`]))
+    } else if (values.matrix) {
       const [seed, ...selected] = specs
       assert.ok(seed && /^\d+$/.test(seed), 'Supply a numeric seed after --matrix.')
       const choices = selected.length ? selected : customRuleIds
@@ -77,6 +105,7 @@ if (!isMainThread) {
           assert.deepEqual(rating.status, { solved: grade })
           assert.equal(givens, puzzle.givens.replaceAll('0', '').length)
           if (miracle) assert.equal(givens, 0)
+          assert.ok(hasReadableArrowLayout(puzzle.rules), 'Generated arrows should have clear separate paths.')
           const complete = new Set<MarkerRule>()
           for (const rule of puzzle.rules ?? []) {
             if (rule.type === 'kropki') {
@@ -89,6 +118,7 @@ if (!isMainThread) {
           }
           assert.deepEqual(complete, new Set(negativeMarkers))
           assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle } }), { status: 'unique', solution })
+          assertVariantCompletion(puzzle, solution)
           const classic = await runEngine({ type: 'analyze', values: puzzle.givens })
           assert.ok(['multiple', 'unsolvable', 'conflict'].includes(classic))
           const expected = rules.map(rule => rule === 'windoku' ? 'extra-house' : rule === 'whispers' ? 'german-whispers' : rule)
@@ -96,20 +126,11 @@ if (!isMainThread) {
           const trace = values['verify-trace'] && await runEngine({ type: 'variant', operation: 'trace', position: { puzzle }, techniqueOrder: rating.techniqueOrder })
           if (trace) {
             assert.deepEqual(trace.rating.status, rating.status)
-            const board = [...puzzle.givens]
-            for (const { actions } of trace.steps) for (const action of actions) {
-              if ('place' in action) {
-                const { cell, digit } = action.place
-                assert.equal(board[cell], '0')
-                assert.equal(solution[cell], String(digit))
-                board[cell] = String(digit)
-              } else {
-                assert.notEqual(solution[action.eliminate.cell], String(action.eliminate.digit))
-              }
-            }
-            assert.equal(board.join(''), solution)
+            verifySolutionPath(puzzle.givens, solution, trace.steps)
           }
           const required = ruleDependencies!.map(({ rule, step, technique, action, alternative }) => {
+            assertVariantCompletion(puzzle, alternative, rule)
+            assert.throws(() => assertVariantCompletion(puzzle, alternative), { name: 'AssertionError' })
             const candidate = 'place' in action ? action.place : action.eliminate
             assert.equal(alternative[candidate.cell] === String(candidate.digit), 'eliminate' in action)
             assert.equal(solution[candidate.cell] === String(candidate.digit), 'place' in action)
@@ -123,7 +144,14 @@ if (!isMainThread) {
           })
           assert.ok(history.every(game => !isDeepStrictEqual(game.variant?.puzzle, puzzle)))
           history.push({ ...makeGame(String(draw), spec, puzzle.givens, 'generated'), variant: { id: 'mixed', puzzle, solution } })
-          console.log(JSON.stringify({ spec, draw, ...(values['include-puzzle'] && { puzzle }), status: 'verified', givens, classic, hardest: rating.hardest, required, ms: Math.round(performance.now() - start) }))
+          const lower = lowerPositions === undefined ? undefined : await runEngine({ type: 'variant', operation: 'search-lower-grade',
+            position: { puzzle }, difficulty: grade, maxPositions: lowerPositions, techniqueOrder: rating.techniqueOrder })
+          if (lower?.status === 'found') {
+            verifySolutionPath(puzzle.givens, solution, lower.steps)
+            if (values.strict) process.exitCode = 1
+          }
+          console.log(JSON.stringify({ spec, draw, ...(values['include-puzzle'] && { puzzle }), status: 'verified', givens, classic,
+            hardest: rating.hardest, required, ...(lower && { lower }), ms: Math.round(performance.now() - start) }))
         } catch (error) {
           if (!(error instanceof EngineError)) throw error
           if (values.strict) process.exitCode = 1

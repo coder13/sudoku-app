@@ -1,9 +1,9 @@
 import type { CustomDifficulty } from './custom-modes.ts'
 import type { VariantRule } from './engine.ts'
-import { EMPTY } from './game.ts'
 import { clueDelta } from './outside-clues.ts'
 
 type Construction = { givens: string; regions?: string; rules?: readonly VariantRule[] }
+export type VariantConstructionBank = Readonly<Record<string, Partial<Record<CustomDifficulty, readonly Construction[]>>>>
 
 function killer(parts: readonly (readonly [sum: number, ...cells: number[]])[]): VariantRule {
   return { type: 'killer-cages', coverGrid: true, cages: parts.map(([sum, ...cells]) => ({ sum, cells })) }
@@ -15,11 +15,21 @@ function xSum(first: number, direction: Extract<VariantRule, { type: 'x-sum' }>[
   return { type: 'x-sum', cells, direction, sum }
 }
 
+function skyscraper(first: number, direction: Extract<VariantRule, { type: 'skyscrapers' }>['direction'], count: number): VariantRule {
+  const [row, column] = clueDelta(direction)
+  const cells = Array.from({ length: 9 }, (_, offset) => first + offset * (9 * row + column))
+  return { type: 'skyscrapers', cells, direction, count }
+}
+
+function arrows(paths: readonly (readonly [number, ...number[]])[]): VariantRule[] {
+  return paths.map(([circle, ...cells]) => ({ type: 'arrow', circle, cells }))
+}
+
 const chess: readonly VariantRule[] = [{ type: 'anti-knight' }, { type: 'anti-king' }, { type: 'non-consecutive' }]
 
 // Reproducible starting layouts for grades that are costly to find by carving.
 // Generation rechecks uniqueness, difficulty, rule evidence and play history.
-export const checkedVariantPuzzles: Readonly<Record<string, Partial<Record<CustomDifficulty, readonly Construction[]>>>> = {
+export const checkedVariantPuzzles: VariantConstructionBank = {
   'adjacent-total': {
     'extreme': [
       { givens: '000000000090050001408010000060000090000001080000860500000000700050000400080000600', rules: [{ cells: [4, 5], sum: 9, type: 'adjacent-total' }, { cells: [63, 64], sum: 8, type: 'adjacent-total' }, { cells: [77, 78], sum: 15, type: 'adjacent-total' }, { cells: [52, 61], sum: 6, type: 'adjacent-total' }, { cells: [0, 1], sum: 7, type: 'adjacent-total' }] },
@@ -28,6 +38,12 @@ export const checkedVariantPuzzles: Readonly<Record<string, Partial<Record<Custo
     'impossible': [
       { givens: '000000001000002000004050600006000010040007002500040800009300000060080900805700040', rules: [{ cells: [15, 16], sum: 7, type: 'adjacent-total' }] },
       { givens: '000000001000002030000530600007000060060020008400690700040900500709000000506203070', rules: [{ cells: [20, 21], sum: 9, type: 'adjacent-total' }] },
+    ],
+  },
+  'adjacent-total,non-consecutive': {
+    'medium': [
+      { givens: '000000000000000000000000000008094710900130200003000400000000900000000000060000030', rules: [{ type: 'non-consecutive' }, { cells: [29, 30], sum: 14, type: 'adjacent-total' }, { cells: [65, 66], sum: 8, type: 'adjacent-total' }, { cells: [6, 7], sum: 13, type: 'adjacent-total' }, { cells: [77, 78], sum: 6, type: 'adjacent-total' }, { cells: [28, 37], sum: 6, type: 'adjacent-total' }] },
+      { givens: '000000000000000200000570800000000000000000000900000000009008000080690700000007008', rules: [{ type: 'non-consecutive' }, { cells: [39, 48], sum: 9, type: 'adjacent-total' }, { cells: [72, 73], sum: 8, type: 'adjacent-total' }, { cells: [56, 65], sum: 13, type: 'adjacent-total' }, { cells: [2, 3], sum: 8, type: 'adjacent-total' }, { cells: [9, 18], sum: 14, type: 'adjacent-total' }] },
     ],
   },
   'anti-king,anti-knight,non-consecutive': {
@@ -94,10 +110,37 @@ export const checkedVariantPuzzles: Readonly<Record<string, Partial<Record<Custo
       { givens: '000300000000700000000000009000000000000057020700000000000801570000070300000003060', rules: [{ type: 'anti-knight' }] },
     ],
   },
+  'anti-knight,diagonal-main': {
+    'master': [
+      { givens: '000000000000000000000008205090000000800500000000986000000000000000210700907050300', rules: [{ diagonal: 'main', type: 'diagonal' }, { type: 'anti-knight' }] },
+      { givens: '000000000000000000000008205000000030800500000000086000000000000000210000907000300', rules: [{ diagonal: 'main', type: 'diagonal' }, { type: 'anti-knight' }] },
+    ],
+    'extreme': [
+      { givens: '000400080007000000640000010204080130000100000800000090000004000000000000000001000', rules: [{ diagonal: 'main', type: 'diagonal' }, { type: 'anti-knight' }] },
+      { givens: '000400080007000000600000010204080130000100000800000090000004000000000000000001000', rules: [{ diagonal: 'main', type: 'diagonal' }, { type: 'anti-knight' }] },
+    ],
+    'impossible': [
+      { givens: '000400080007000000600000010204080130000100000800000090000000000000000000000001000', rules: [{ diagonal: 'main', type: 'diagonal' }, { type: 'anti-knight' }] },
+      { givens: '000400080007000000600000010204080130000100000000007090000000000000000000000001000', rules: [{ diagonal: 'main', type: 'diagonal' }, { type: 'anti-knight' }] },
+    ],
+  },
+  'anti-knight,sandwich': {
+    'medium': [
+      { givens: '400000009300000000900426030704200986632009000890604200070040600200000000000060000', rules: [{ type: 'anti-knight' }, { cells: [35, 34, 33, 32, 31, 30, 29, 28, 27], direction: 'west', sum: 0, type: 'sandwich' }] },
+      { givens: '000040000500300004080025006000200701000060000000000002002010050007602840050030007', rules: [{ type: 'anti-knight' }, { cells: [74, 65, 56, 47, 38, 29, 20, 11, 2], direction: 'north', sum: 0, type: 'sandwich' }] },
+    ],
+  },
   'arrow': {
     'impossible': [
       { givens: '000000001000000020003040500006003000050067300300810006005700090074100000600054700', rules: [{ cells: [13, 23], circle: 5, type: 'arrow' }] },
       { givens: '000000001000002340003010520002000005060000070070600000005001004010800900800090000', rules: [{ cells: [32, 40], circle: 31, type: 'arrow' }] },
+    ],
+  },
+  'arrow,jigsaw': {
+    'impossible': [
+      { givens: '000000001000023040005600000008000009000008600650900000007500800020004000500010030', regions: '000112222000111122300111222303344555333444555334444555666777888666777888666777888', rules: arrows([
+        [37, 38, 28],
+      ]) },
     ],
   },
   'arrow,kropki,xv/negative=kropki-white,xv-ten': {
@@ -138,11 +181,66 @@ export const checkedVariantPuzzles: Readonly<Record<string, Partial<Record<Custo
       { givens: '000000000002003040050060032000000400005020076060807000027000100036900000500070063', rules: [{ cells: [8, 7, 15], type: 'between' }] },
     ],
   },
+  'between,non-consecutive': {
+    'medium': [
+      { givens: '000020006000100800000006000150000030000001000000000100000000000900000084000000020', rules: [{ type: 'non-consecutive' }, { cells: [22, 13, 4], type: 'between' }, { cells: [66, 76, 67], type: 'between' }, { cells: [57, 48, 56], type: 'between' }] },
+    ],
+  },
   'clone': {
     'impossible': [
       { givens: '000000001000002030004050670006000010000040500400800027007008000095000003600090700', rules: [{ groups: [[68, 37]], type: 'clone' }] },
       { givens: '000000001000002030004050600000001002040000078900070400070090500409000080506300000', rules: [{ groups: [[0, 29]], type: 'clone' }] },
       { givens: '000001002003000040050060700000002004007030500500800000076100000090600080300090600', rules: [{ groups: [[65, 80]], type: 'clone' }] },
+    ],
+  },
+  'clone,non-consecutive': {
+    'medium': [
+      { givens: '000040000000005000000000004000090008028070900000000000009107000000000000010000630', rules: [{ type: 'non-consecutive' }, { groups: [[15, 0], [25, 33], [12, 71]], type: 'clone' }] },
+      { givens: '500400003800000000300000008000500000000000000090020000050000001000003000000000800', rules: [{ type: 'non-consecutive' }, { groups: [[20, 51], [24, 57], [47, 17]], type: 'clone' }] },
+    ],
+  },
+  'clone,sandwich': {
+    'medium': [
+      { givens: '002004030500082010000100002080000000600207804400009000100000209000970600000403100', rules: [{ groups: [[40, 35], [58, 74], [49, 55]], type: 'clone' }, { cells: [18, 19, 20, 21, 22, 23, 24, 25, 26], direction: 'east', sum: 11, type: 'sandwich' }] },
+      { givens: '900000006000006090701900840000400020030002000006000000005008001000090260009300070', rules: [{ groups: [[58, 29], [37, 22], [4, 65]], type: 'clone' }, { cells: [17, 16, 15, 14, 13, 12, 11, 10, 9], direction: 'west', sum: 0, type: 'sandwich' }] },
+    ],
+  },
+  'diagonal,non-consecutive': {
+    'medium': [
+      { givens: '000000000008000000090000000000000000000000000800957000301790000900460000604130000', rules: [{ diagonal: 'main', type: 'diagonal' }, { diagonal: 'anti', type: 'diagonal' }, { type: 'non-consecutive' }] },
+      { givens: '420005030000060004000000000060000000000000000000906400000600000006000100000800300', rules: [{ diagonal: 'main', type: 'diagonal' }, { diagonal: 'anti', type: 'diagonal' }, { type: 'non-consecutive' }] },
+    ],
+    'tricky': [
+      { givens: '000930000000000000002000000050070000000000500900000000000000000000040000000360008', rules: [{ diagonal: 'main', type: 'diagonal' }, { diagonal: 'anti', type: 'diagonal' }, { type: 'non-consecutive' }] },
+      { givens: '009000000000305206000600814000000000000000000000000007000800000400000000000000000', rules: [{ diagonal: 'main', type: 'diagonal' }, { diagonal: 'anti', type: 'diagonal' }, { type: 'non-consecutive' }] },
+    ],
+    'hard': [
+      { givens: '040290008000000000000000000850000000000000000000070000000009000020080600380000200', rules: [{ diagonal: 'main', type: 'diagonal' }, { diagonal: 'anti', type: 'diagonal' }, { type: 'non-consecutive' }] },
+      { givens: '000000000070000903000000000060000800000000007040028030000000300000001000000000070', rules: [{ diagonal: 'main', type: 'diagonal' }, { diagonal: 'anti', type: 'diagonal' }, { type: 'non-consecutive' }] },
+    ],
+    'master': [
+      { givens: '007900805000000000000014090000000000000000000030000000600000000005000030000000000', rules: [{ diagonal: 'main', type: 'diagonal' }, { diagonal: 'anti', type: 'diagonal' }, { type: 'non-consecutive' }] },
+      { givens: '070000008000000000000002000000000100000090080008000000000000003300200000000006020', rules: [{ diagonal: 'main', type: 'diagonal' }, { diagonal: 'anti', type: 'diagonal' }, { type: 'non-consecutive' }] },
+    ],
+    'extreme': [
+      { givens: '000000000000900000006000000000000005400000060005300000900100000000700601000000050', rules: [{ diagonal: 'main', type: 'diagonal' }, { diagonal: 'anti', type: 'diagonal' }, { type: 'non-consecutive' }] },
+      { givens: '000800000000000000600300100280000000000150080000000900000000000000000049000000000', rules: [{ diagonal: 'main', type: 'diagonal' }, { diagonal: 'anti', type: 'diagonal' }, { type: 'non-consecutive' }] },
+    ],
+    'impossible': [
+      { givens: '000702000000000000000000030000010000010000000050000000000000060006000000702000500', rules: [{ diagonal: 'main', type: 'diagonal' }, { diagonal: 'anti', type: 'diagonal' }, { type: 'non-consecutive' }] },
+      { givens: '000080000070000030800100000000000060090800000000000000000000000305000009000000000', rules: [{ diagonal: 'main', type: 'diagonal' }, { diagonal: 'anti', type: 'diagonal' }, { type: 'non-consecutive' }] },
+    ],
+  },
+  'diagonal,skyscrapers': {
+    'medium': [
+      { givens: '206418730100732000734965002023100070007003200000297003000000327075020000002070456', rules: [{ diagonal: 'main', type: 'diagonal' }, { diagonal: 'anti', type: 'diagonal' }, skyscraper(77, 'north', 3)] },
+      { givens: '000950040009004005740360090093020004480095320007430609902573400350040970000209500', rules: [{ diagonal: 'main', type: 'diagonal' }, { diagonal: 'anti', type: 'diagonal' }, skyscraper(72, 'east', 4)] },
+    ],
+  },
+  'diagonal,x-sum': {
+    'medium': [
+      { givens: '000950040009004005740360090090020004480090300007400009902073400350040970000209500', rules: [{ diagonal: 'main', type: 'diagonal' }, { diagonal: 'anti', type: 'diagonal' }, xSum(72, 'east', 1)] },
+      { givens: '206418730100732000734965002023100070007003200000297003000000327075020000002070456', rules: [{ diagonal: 'main', type: 'diagonal' }, { diagonal: 'anti', type: 'diagonal' }, xSum(77, 'north', 1)] },
     ],
   },
   'diagonal-anti': {
@@ -161,40 +259,27 @@ export const checkedVariantPuzzles: Readonly<Record<string, Partial<Record<Custo
       { givens: '000059000500000200000040100700000001003000004000000073200000000006200018008301900', rules: [{ diagonal: 'main', type: 'diagonal' }] },
     ],
   },
-  'diagonal-main,x-sum/miracle': {
-    'hard': [
-      { givens: EMPTY, rules: [{ diagonal: 'main', type: 'diagonal' }, xSum(76, 'north', 1), xSum(63, 'east', 1), xSum(4, 'south', 44), xSum(7, 'south', 26), xSum(44, 'west', 18), xSum(72, 'east', 27), xSum(18, 'east', 39), xSum(9, 'east', 38), xSum(36, 'east', 19), xSum(71, 'west', 16), xSum(6, 'south', 12), xSum(8, 'west', 30), xSum(0, 'east', 45), xSum(54, 'east', 21), xSum(79, 'north', 10), xSum(78, 'north', 45), xSum(80, 'west', 18), xSum(73, 'north', 36), xSum(53, 'west', 39), xSum(77, 'north', 20), xSum(2, 'south', 5), xSum(8, 'south', 37), xSum(80, 'north', 16), xSum(5, 'south', 33)] },
-      { givens: EMPTY, rules: [{ diagonal: 'main', type: 'diagonal' }, xSum(1, 'south', 23), xSum(63, 'east', 1), xSum(17, 'west', 32), xSum(7, 'south', 26), xSum(18, 'east', 39), xSum(35, 'west', 45), xSum(36, 'east', 19), xSum(27, 'east', 10), xSum(4, 'south', 44), xSum(73, 'north', 36), xSum(9, 'east', 38), xSum(62, 'west', 1), xSum(71, 'west', 16), xSum(44, 'west', 18), xSum(8, 'west', 30), xSum(54, 'east', 21), xSum(6, 'south', 12), xSum(79, 'north', 10), xSum(26, 'west', 6), xSum(45, 'east', 30), xSum(74, 'north', 43), xSum(77, 'north', 20), xSum(0, 'south', 45)] },
-      { givens: EMPTY, rules: [{ diagonal: 'main', type: 'diagonal' }, xSum(1, 'south', 23), xSum(18, 'east', 39), xSum(72, 'east', 27), xSum(6, 'south', 12), xSum(63, 'east', 1), xSum(73, 'north', 36), xSum(78, 'north', 45), xSum(71, 'west', 16), xSum(27, 'east', 10), xSum(9, 'east', 38), xSum(62, 'west', 1), xSum(79, 'north', 10), xSum(8, 'west', 30), xSum(4, 'south', 44), xSum(0, 'east', 45), xSum(7, 'south', 26), xSum(44, 'west', 18), xSum(17, 'west', 32), xSum(76, 'north', 1), xSum(54, 'east', 21), xSum(80, 'west', 18), xSum(74, 'north', 43), xSum(80, 'north', 16)] },
-      { givens: EMPTY, rules: [{ diagonal: 'main', type: 'diagonal' }, xSum(44, 'west', 18), xSum(36, 'east', 19), xSum(6, 'south', 12), xSum(78, 'north', 45), xSum(76, 'north', 1), xSum(4, 'south', 44), xSum(80, 'west', 18), xSum(72, 'east', 27), xSum(1, 'south', 23), xSum(73, 'north', 36), xSum(71, 'west', 16), xSum(63, 'east', 1), xSum(54, 'east', 21), xSum(62, 'west', 1), xSum(79, 'north', 10), xSum(7, 'south', 26), xSum(27, 'east', 10), xSum(35, 'west', 45), xSum(0, 'east', 45), xSum(8, 'west', 30), xSum(18, 'east', 39), xSum(26, 'west', 6), xSum(17, 'west', 32), xSum(9, 'east', 38)] },
+  'diagonal-main,non-consecutive': {
+    'medium': [
+      { givens: '008009000300000026900000108200900000000005001000000000000000000000204000000000000', rules: [{ diagonal: 'main', type: 'diagonal' }, { type: 'non-consecutive' }] },
     ],
-    'very-hard': [
-      { givens: EMPTY, rules: [{ diagonal: 'main', type: 'diagonal' }, xSum(35, 'west', 1), xSum(27, 'east', 18), xSum(53, 'west', 25), xSum(5, 'south', 29), xSum(77, 'north', 40), xSum(17, 'west', 18), xSum(9, 'east', 9), xSum(0, 'south', 1), xSum(80, 'north', 10), xSum(8, 'south', 28), xSum(80, 'west', 5), xSum(79, 'north', 8), xSum(7, 'south', 7), xSum(73, 'north', 29), xSum(1, 'south', 24), xSum(4, 'south', 31)] },
-      { givens: EMPTY, rules: [{ diagonal: 'main', type: 'diagonal' }, xSum(53, 'west', 25), xSum(8, 'south', 28), xSum(77, 'north', 40), xSum(5, 'south', 29), xSum(80, 'west', 5), xSum(0, 'south', 1), xSum(73, 'north', 29), xSum(35, 'west', 1), xSum(4, 'south', 31), xSum(27, 'east', 18), xSum(17, 'west', 18), xSum(7, 'south', 7), xSum(9, 'east', 9), xSum(75, 'north', 28), xSum(36, 'east', 29)] },
-      { givens: EMPTY, rules: [{ diagonal: 'main', type: 'diagonal' }, xSum(8, 'south', 28), xSum(27, 'east', 18), xSum(5, 'south', 29), xSum(53, 'west', 25), xSum(9, 'east', 9), xSum(17, 'west', 18), xSum(35, 'west', 1), xSum(79, 'north', 8), xSum(4, 'south', 31), xSum(0, 'south', 1), xSum(7, 'south', 7), xSum(80, 'north', 10), xSum(73, 'north', 29), xSum(63, 'east', 33), xSum(72, 'east', 18)] },
-      { givens: EMPTY, rules: [{ diagonal: 'main', type: 'diagonal' }, xSum(5, 'south', 29), xSum(73, 'north', 29), xSum(9, 'east', 9), xSum(8, 'south', 28), xSum(53, 'west', 25), xSum(0, 'south', 1), xSum(17, 'west', 18), xSum(35, 'west', 1), xSum(27, 'east', 18), xSum(80, 'north', 10), xSum(77, 'north', 40), xSum(80, 'west', 5), xSum(6, 'south', 40), xSum(63, 'east', 33), xSum(3, 'south', 45)] },
+  },
+  'diagonal-main,sandwich': {
+    'medium': [
+      { givens: '810005070000107000000800910724683159081004230000000840102300000008070300390208060', rules: [{ diagonal: 'main', type: 'diagonal' }, { cells: [75, 66, 57, 48, 39, 30, 21, 12, 3], direction: 'north', sum: 21, type: 'sandwich' }] },
+      { givens: '050000900100437020040005000000190065090000000470003092000600403000320600000708000', rules: [{ diagonal: 'main', type: 'diagonal' }, { cells: [53, 52, 51, 50, 49, 48, 47, 46, 45], direction: 'west', sum: 0, type: 'sandwich' }] },
     ],
-    'expert': [
-      { givens: EMPTY, rules: [{ diagonal: 'main', type: 'diagonal' }, xSum(44, 'west', 18), xSum(6, 'south', 12), xSum(76, 'north', 1), xSum(72, 'east', 27), xSum(1, 'south', 23), xSum(71, 'west', 16), xSum(63, 'east', 1), xSum(54, 'east', 21), xSum(62, 'west', 1), xSum(7, 'south', 26), xSum(27, 'east', 10), xSum(35, 'west', 45), xSum(8, 'west', 30), xSum(18, 'east', 39), xSum(17, 'west', 32), xSum(9, 'east', 38)] },
-      { givens: EMPTY, rules: [{ diagonal: 'main', type: 'diagonal' }, xSum(76, 'north', 1), xSum(6, 'south', 12), xSum(27, 'east', 10), xSum(18, 'east', 39), xSum(1, 'south', 23), xSum(54, 'east', 21), xSum(71, 'west', 16), xSum(44, 'west', 18), xSum(7, 'south', 26), xSum(9, 'east', 38), xSum(17, 'west', 32), xSum(35, 'west', 45), xSum(2, 'south', 5), xSum(53, 'west', 39), xSum(0, 'south', 45)] },
-      { givens: EMPTY, rules: [{ diagonal: 'main', type: 'diagonal' }, xSum(17, 'west', 32), xSum(7, 'south', 26), xSum(54, 'east', 21), xSum(44, 'west', 18), xSum(6, 'south', 12), xSum(18, 'east', 39), xSum(8, 'west', 30), xSum(63, 'east', 1), xSum(9, 'east', 38), xSum(76, 'north', 1), xSum(1, 'south', 23), xSum(72, 'east', 27), xSum(27, 'east', 10), xSum(79, 'north', 10), xSum(77, 'north', 20), xSum(53, 'west', 39), xSum(0, 'east', 45)] },
-      { givens: EMPTY, rules: [{ diagonal: 'main', type: 'diagonal' }, xSum(9, 'east', 38), xSum(62, 'west', 1), xSum(7, 'south', 26), xSum(8, 'west', 30), xSum(76, 'north', 1), xSum(44, 'west', 18), xSum(35, 'west', 45), xSum(72, 'east', 27), xSum(1, 'south', 23), xSum(54, 'east', 21), xSum(18, 'east', 39), xSum(71, 'west', 16), xSum(27, 'east', 10), xSum(0, 'east', 45), xSum(4, 'south', 44), xSum(78, 'north', 45), xSum(75, 'north', 33)] },
+  },
+  'diagonal-main,skyscrapers': {
+    'medium': [
+      { givens: '000000002084019003009008050100000600000000040030000000693000104807003500500080000', rules: [{ diagonal: 'main', type: 'diagonal' }, skyscraper(78, 'north', 1)] },
+      { givens: '000001076701083000050007140060000009070308001504200000020000004036070000005000000', rules: [{ diagonal: 'main', type: 'diagonal' }, skyscraper(79, 'north', 1)] },
     ],
-    'master': [
-      { givens: EMPTY, rules: [{ diagonal: 'main', type: 'diagonal' }, xSum(76, 'north', 1), xSum(4, 'south', 38), xSum(35, 'west', 16), xSum(6, 'south', 25), xSum(72, 'north', 40), xSum(8, 'south', 34), xSum(9, 'east', 23), xSum(45, 'east', 38), xSum(27, 'east', 29), xSum(77, 'north', 28), xSum(53, 'west', 1), xSum(1, 'south', 16), xSum(72, 'east', 43), xSum(8, 'west', 28)] },
-      { givens: EMPTY, rules: [{ diagonal: 'main', type: 'diagonal' }, xSum(1, 'south', 16), xSum(72, 'north', 40), xSum(36, 'east', 45), xSum(9, 'east', 23), xSum(45, 'east', 38), xSum(53, 'west', 1), xSum(77, 'north', 28), xSum(78, 'north', 29), xSum(6, 'south', 25), xSum(27, 'east', 29), xSum(35, 'west', 16), xSum(76, 'north', 1), xSum(4, 'south', 38), xSum(8, 'south', 34), xSum(80, 'north', 7)] },
-      { givens: EMPTY, rules: [{ diagonal: 'main', type: 'diagonal' }, xSum(45, 'east', 38), xSum(78, 'north', 29), xSum(53, 'west', 1), xSum(1, 'south', 16), xSum(80, 'north', 7), xSum(9, 'east', 23), xSum(76, 'north', 1), xSum(77, 'north', 28), xSum(8, 'south', 34), xSum(6, 'south', 25), xSum(62, 'west', 23), xSum(5, 'south', 40), xSum(75, 'north', 14), xSum(54, 'east', 1), xSum(63, 'east', 12), xSum(17, 'west', 45)] },
-      { givens: EMPTY, rules: [{ diagonal: 'main', type: 'diagonal' }, xSum(76, 'north', 1), xSum(36, 'east', 45), xSum(1, 'south', 16), xSum(53, 'west', 1), xSum(27, 'east', 29), xSum(9, 'east', 23), xSum(45, 'east', 38), xSum(4, 'south', 38), xSum(77, 'north', 28), xSum(72, 'east', 43), xSum(62, 'west', 23), xSum(0, 'south', 26), xSum(79, 'north', 42), xSum(26, 'west', 43), xSum(18, 'east', 9)] },
-    ],
-    'extreme': [
-      { givens: EMPTY, rules: [{ diagonal: 'main', type: 'diagonal' }, xSum(27, 'east', 33), xSum(72, 'east', 31), xSum(35, 'west', 38), xSum(6, 'south', 14), xSum(4, 'south', 45), xSum(9, 'east', 25), xSum(2, 'south', 20), xSum(17, 'west', 45), xSum(79, 'north', 17), xSum(62, 'west', 7), xSum(75, 'north', 43), xSum(73, 'north', 45), xSum(71, 'west', 32), xSum(7, 'south', 33), xSum(45, 'east', 32)] },
-      { givens: EMPTY, rules: [{ diagonal: 'main', type: 'diagonal' }, xSum(9, 'east', 25), xSum(17, 'west', 45), xSum(27, 'east', 33), xSum(35, 'west', 38), xSum(4, 'south', 45), xSum(76, 'north', 7), xSum(44, 'west', 1), xSum(79, 'north', 17), xSum(62, 'west', 7), xSum(75, 'north', 43), xSum(2, 'south', 20), xSum(71, 'west', 32), xSum(6, 'south', 14), xSum(78, 'north', 1), xSum(72, 'east', 31), xSum(73, 'north', 45)] },
-    ],
-    'impossible': [
-      { givens: EMPTY, rules: [{ diagonal: 'main', type: 'diagonal' }, xSum(44, 'west', 18), xSum(6, 'south', 12), xSum(76, 'north', 1), xSum(72, 'east', 27), xSum(71, 'west', 16), xSum(63, 'east', 1), xSum(54, 'east', 21), xSum(62, 'west', 1), xSum(7, 'south', 26), xSum(27, 'east', 10), xSum(35, 'west', 45), xSum(8, 'west', 30), xSum(18, 'east', 39), xSum(17, 'west', 32), xSum(9, 'east', 38)] },
-      { givens: EMPTY, rules: [{ diagonal: 'main', type: 'diagonal' }, xSum(44, 'west', 18), xSum(7, 'south', 26), xSum(35, 'west', 45), xSum(17, 'west', 32), xSum(27, 'east', 10), xSum(9, 'east', 38), xSum(8, 'west', 30), xSum(6, 'south', 12), xSum(72, 'east', 27), xSum(62, 'west', 1), xSum(36, 'east', 19), xSum(26, 'west', 6), xSum(1, 'south', 23), xSum(77, 'north', 20)] },
-      { givens: EMPTY, rules: [{ diagonal: 'main', type: 'diagonal' }, xSum(27, 'east', 10), xSum(76, 'north', 1), xSum(8, 'west', 30), xSum(63, 'east', 1), xSum(62, 'west', 1), xSum(44, 'west', 18), xSum(6, 'south', 12), xSum(72, 'east', 27), xSum(7, 'south', 26), xSum(9, 'east', 38), xSum(5, 'south', 33), xSum(73, 'north', 36), xSum(78, 'north', 45), xSum(26, 'west', 6), xSum(45, 'east', 30)] },
-      { givens: EMPTY, rules: [{ diagonal: 'main', type: 'diagonal' }, xSum(6, 'south', 12), xSum(54, 'east', 21), xSum(17, 'west', 32), xSum(8, 'west', 30), xSum(63, 'east', 1), xSum(72, 'east', 27), xSum(62, 'west', 1), xSum(18, 'east', 39), xSum(27, 'east', 10), xSum(2, 'south', 5), xSum(74, 'north', 43), xSum(75, 'north', 33), xSum(5, 'south', 33), xSum(8, 'south', 37), xSum(36, 'east', 19), xSum(73, 'north', 36)] },
+  },
+  'diagonal-main,x-sum': {
+    'medium': [
+      { givens: '000000002084019003009008050100000600000000040030000000693000104807003500500080000', rules: [{ diagonal: 'main', type: 'diagonal' }, xSum(78, 'north', 45)] },
+      { givens: '500000000070601800008000450810006000004000560003004000087000690006000000002000000', rules: [{ diagonal: 'main', type: 'diagonal' }, xSum(63, 'east', 1)] },
     ],
   },
   'dutch-whispers': {
@@ -242,11 +327,40 @@ export const checkedVariantPuzzles: Readonly<Record<string, Partial<Record<Custo
       { givens: '300000068005000900000900000000000006000080000000006805003001000090007300040000790', rules: [{ type: 'global-entropy' }] },
     ],
   },
+  'global-entropy,inequality': {
+    'medium': [
+      { givens: '000800100000000032000090470000050000000010080008073000094300008080709000000000300', rules: [{ type: 'global-entropy' }, { greater: 76, less: 67, type: 'inequality' }, { greater: 30, less: 21, type: 'inequality' }, { greater: 36, less: 37, type: 'inequality' }, { greater: 24, less: 23, type: 'inequality' }, { greater: 0, less: 1, type: 'inequality' }] },
+      { givens: '500010000800400100000000900000020730000003005300000000083001500000007340000030000', rules: [{ type: 'global-entropy' }, { greater: 17, less: 26, type: 'inequality' }, { greater: 50, less: 41, type: 'inequality' }, { greater: 40, less: 31, type: 'inequality' }, { greater: 54, less: 45, type: 'inequality' }, { greater: 42, less: 51, type: 'inequality' }] },
+    ],
+  },
+  'global-entropy,non-consecutive': {
+    'medium': [
+      { givens: '000000000000000000001000000500300800070900000000000000000030500000260000000000000', rules: [{ type: 'global-entropy' }, { type: 'non-consecutive' }] },
+    ],
+  },
+  'global-entropy,skyscrapers': {
+    'medium': [
+      { givens: '020003070000000002036000000180500000300007000000002600000000000798001050000000700', rules: [{ type: 'global-entropy' }, skyscraper(0, 'south', 1)] },
+      { givens: '020003070000000002036000000100500000300007000000002600000000000790001050005000700', rules: [{ type: 'global-entropy' }, skyscraper(0, 'south', 1)] },
+    ],
+  },
+  'global-entropy,windoku': {
+    'medium': [
+      { givens: '900000804000300000017008003000010000001080000000000169000000020009003000106050000', rules: [{ cells: [10, 11, 12, 19, 20, 21, 28, 29, 30], type: 'extra-house' }, { cells: [14, 15, 16, 23, 24, 25, 32, 33, 34], type: 'extra-house' }, { cells: [46, 47, 48, 55, 56, 57, 64, 65, 66], type: 'extra-house' }, { cells: [50, 51, 52, 59, 60, 61, 68, 69, 70], type: 'extra-house' }, { type: 'global-entropy' }] },
+      { givens: '010000030300000060000000000000000000700400006480000000000060007500080390000000000', rules: [{ cells: [10, 11, 12, 19, 20, 21, 28, 29, 30], type: 'extra-house' }, { cells: [14, 15, 16, 23, 24, 25, 32, 33, 34], type: 'extra-house' }, { cells: [46, 47, 48, 55, 56, 57, 64, 65, 66], type: 'extra-house' }, { cells: [50, 51, 52, 59, 60, 61, 68, 69, 70], type: 'extra-house' }, { type: 'global-entropy' }] },
+    ],
+  },
   'inequality': {
     'impossible': [
       { givens: '000000012000003004004000500006020005070006020800900600001060050090008000300700000', rules: [{ greater: 31, less: 22, type: 'inequality' }] },
       { givens: '000000001000002340004010250000670000005020003080030060003001005500080930970000000', rules: [{ greater: 42, less: 41, type: 'inequality' }] },
       { givens: '000000001000021034031400500000006700000090000067300010014500007800000000600004050', rules: [{ greater: 38, less: 39, type: 'inequality' }] },
+    ],
+  },
+  'inequality,non-consecutive': {
+    'medium': [
+      { givens: '639000204000000000000000000000360000005000963900500020390200000000000000000000000', rules: [{ type: 'non-consecutive' }, { greater: 14, less: 5, type: 'inequality' }, { greater: 48, less: 57, type: 'inequality' }, { greater: 70, less: 79, type: 'inequality' }, { greater: 15, less: 6, type: 'inequality' }, { greater: 42, less: 43, type: 'inequality' }] },
+      { givens: '000000000000000000000000000008094710900130200003000400000000900000060000060000030', rules: [{ type: 'non-consecutive' }, { greater: 29, less: 30, type: 'inequality' }, { greater: 75, less: 66, type: 'inequality' }, { greater: 6, less: 15, type: 'inequality' }, { greater: 78, less: 77, type: 'inequality' }, { greater: 29, less: 28, type: 'inequality' }] },
     ],
   },
   'jigsaw': {
@@ -318,34 +432,10 @@ export const checkedVariantPuzzles: Readonly<Record<string, Partial<Record<Custo
       { givens: '000000000000000000000006020000000000000000000000000040000500000000000000750300600', rules: [killer([[5, 24, 25], [40, 56, 57, 58, 59, 60, 61, 62], [13, 22, 23], [39, 0, 1, 2, 3, 4, 5, 6], [45, 72, 73, 74, 75, 76, 77, 78, 79, 80], [15, 32, 31, 30], [21, 43, 44, 53, 52, 51, 50], [45, 71, 70, 69, 68, 67, 66, 65, 64, 63], [12, 13, 12, 11, 10], [29, 38, 39, 40, 41, 42], [11, 26, 35], [36, 49, 48, 47, 46, 45, 54, 55], [17, 9, 18, 19], [36, 7, 8, 17, 16, 15, 14], [5, 20, 21], [16, 34, 33], [20, 29, 28, 27, 36, 37]])] },
     ],
   },
-  'killer-cages/miracle': {
-    'hard': [
-      { givens: EMPTY, rules: [killer([[18, 0, 9, 18, 27], [19, 1, 10, 11], [5, 4, 13], [19, 5, 6, 7], [8, 8, 16, 17], [10, 14, 15], [5, 19, 28], [21, 22, 30, 31], [13, 32, 41], [12, 33, 42, 51], [11, 35, 44], [11, 36, 37], [13, 45, 54], [19, 46, 47, 48], [4, 50, 59], [15, 55, 56], [18, 60, 61, 69, 62], [5, 65, 74], [18, 70, 71, 80], [17, 68, 77, 78, 79], [22, 34, 43, 52, 53], [20, 2, 3, 12, 21], [13, 20, 29, 38, 39], [26, 66, 75, 67, 76], [18, 40, 49, 57, 58], [17, 63, 72, 64, 73], [28, 23, 24, 25, 26]])] },
-      { givens: EMPTY, rules: [killer([[14, 3, 4], [4, 12, 13], [9, 21, 22], [7, 23, 32], [11, 24, 33], [9, 27, 28], [15, 29, 30, 31], [11, 36, 37], [6, 42, 51], [9, 50, 59], [11, 52, 53], [17, 54, 55, 64], [9, 63, 72], [7, 66, 75], [7, 67, 68], [11, 73, 74], [15, 76, 77], [23, 69, 70, 78, 79], [20, 45, 46, 38, 47], [25, 39, 40, 41, 48, 49], [23, 56, 65, 57, 58], [22, 60, 61, 62, 71, 80], [24, 7, 16, 25, 8, 17], [27, 10, 19, 11, 20], [30, 34, 43, 26, 35, 44], [21, 5, 14, 6, 15], [18, 0, 9, 18, 1, 2]])] },
-    ],
-    'very-hard': [
-      { givens: EMPTY, rules: [killer([[14, 3, 4, 5], [14, 7, 8], [7, 9, 18], [4, 11, 12], [12, 20, 21], [5, 27, 28], [11, 29, 30], [5, 31, 32], [13, 36, 45], [16, 38, 39], [13, 40, 41], [17, 54, 63], [9, 55, 56, 57], [10, 64, 72, 73], [23, 77, 78, 79, 80], [24, 13, 14, 22, 23], [16, 59, 60, 69], [19, 33, 34, 42, 43], [22, 49, 58, 67, 68, 76], [14, 6, 15, 16, 17], [23, 65, 66, 74, 75], [16, 61, 62, 70, 71], [22, 37, 46, 47, 48], [29, 24, 25, 26, 35, 44], [18, 50, 51, 52, 53], [29, 0, 1, 2, 10, 19]])] },
-      { givens: EMPTY, rules: [killer([[16, 0, 1, 2], [14, 3, 4, 5], [14, 7, 8], [7, 9, 18], [13, 10, 19], [4, 11, 12], [12, 20, 21], [5, 27, 28], [11, 29, 30], [5, 31, 32], [13, 36, 45], [16, 38, 39], [13, 40, 41], [17, 54, 63], [9, 55, 56, 57], [10, 64, 72, 73], [23, 77, 78, 79, 80], [24, 13, 14, 22, 23], [16, 59, 60, 69], [19, 33, 34, 42, 43], [22, 49, 58, 67, 68, 76], [14, 6, 15, 16, 17], [23, 65, 66, 74, 75], [16, 61, 62, 70, 71], [22, 37, 46, 47, 48], [29, 24, 25, 26, 35, 44], [18, 50, 51, 52, 53]])] },
-      { givens: EMPTY, rules: [killer([[9, 0, 9], [14, 1, 2], [12, 3, 12], [14, 6, 7, 15], [10, 8, 17], [14, 10, 11], [4, 18, 27], [5, 19, 28], [22, 21, 22, 30, 31], [15, 23, 24], [7, 42, 51], [12, 49, 50], [15, 54, 63], [3, 59, 68], [20, 16, 25, 26, 35], [24, 57, 58, 66, 67], [21, 64, 65, 72, 73], [21, 39, 48, 40, 41], [21, 20, 29, 36, 37, 38], [28, 69, 70, 71, 79, 80], [12, 4, 13, 5, 14], [21, 52, 53, 60, 61, 62], [30, 32, 33, 34, 43, 44], [21, 74, 75, 76, 77, 78], [30, 45, 46, 47, 55, 56]])] },
-    ],
-    'expert': [
-      { givens: EMPTY, rules: [killer([[15, 0, 9], [11, 1, 2], [5, 3, 4], [20, 5, 14, 23], [10, 6, 15], [10, 7, 8], [7, 16, 25], [11, 17, 26], [12, 18, 19], [6, 20, 21], [6, 27, 36], [4, 28, 29], [16, 30, 31, 40], [3, 32, 41], [13, 37, 46], [17, 38, 39], [8, 45, 54], [17, 48, 49, 50], [5, 52, 53], [13, 55, 64], [7, 63, 72], [14, 65, 66, 75], [10, 67, 68], [15, 73, 74], [14, 76, 77], [23, 69, 78, 60, 61, 70], [21, 10, 11, 12, 13, 22], [23, 24, 33, 42, 51], [22, 62, 71, 79, 80], [23, 47, 56, 57, 58, 59], [24, 34, 35, 43, 44]])] },
-      { givens: EMPTY, rules: [killer([[15, 0, 9], [11, 1, 2], [5, 3, 4], [20, 5, 14, 23], [10, 6, 15], [10, 7, 8], [7, 16, 25], [11, 17, 26], [12, 18, 19], [6, 20, 21], [6, 27, 36], [4, 28, 29], [16, 30, 31, 40], [3, 32, 41], [13, 37, 46], [17, 38, 39], [8, 45, 54], [17, 48, 49, 50], [5, 52, 53], [7, 63, 72], [14, 65, 66, 75], [10, 67, 68], [14, 76, 77], [23, 69, 78, 60, 61, 70], [21, 10, 11, 12, 13, 22], [23, 24, 33, 42, 51], [22, 62, 71, 79, 80], [23, 47, 56, 57, 58, 59], [24, 34, 35, 43, 44], [28, 55, 64, 73, 74]])] },
-      { givens: EMPTY, rules: [killer([[14, 0, 9], [3, 5, 6], [18, 7, 16, 8, 17], [29, 12, 21, 22, 23, 24], [15, 18, 27, 28, 37], [3, 19, 20], [13, 25, 26, 35], [4, 29, 38], [31, 30, 31, 32, 33, 34], [11, 39, 40, 48], [28, 41, 42, 50, 43], [6, 44, 53], [29, 46, 47, 55, 64, 56], [9, 51, 52], [16, 57, 66], [13, 60, 61, 62], [16, 71, 80], [12, 75, 76, 77], [16, 69, 70, 78, 79], [21, 49, 58, 67, 59, 68], [25, 1, 10, 2, 11], [22, 36, 45, 54, 63], [23, 72, 73, 65, 74], [28, 3, 4, 13, 14, 15]])] },
-    ],
-    'master': [
-      { givens: EMPTY, rules: [killer([[14, 3, 4, 5], [14, 7, 8], [7, 9, 18], [4, 11, 12], [12, 20, 21], [5, 27, 28], [11, 29, 30], [5, 31, 32], [13, 36, 45], [16, 38, 39], [13, 40, 41], [17, 54, 63], [9, 55, 56, 57], [10, 72, 64, 73], [23, 77, 78, 79, 80], [24, 13, 14, 22, 23], [22, 59, 60, 68, 69], [19, 33, 42, 34, 43], [16, 49, 58, 67, 76], [14, 6, 15, 16, 17], [23, 65, 66, 74, 75], [16, 61, 70, 62, 71], [22, 37, 46, 47, 48], [29, 24, 25, 26, 35, 44], [18, 50, 51, 52, 53], [29, 0, 1, 2, 10, 19]])] },
-      { givens: EMPTY, rules: [killer([[16, 0, 1, 2], [14, 3, 4, 5], [14, 7, 8], [7, 9, 18], [13, 10, 19], [4, 11, 12], [12, 20, 21], [5, 27, 28], [11, 29, 30], [5, 31, 32], [13, 36, 45], [16, 38, 39], [13, 40, 41], [17, 54, 63], [9, 55, 56, 57], [10, 72, 64, 73], [23, 77, 78, 79, 80], [24, 13, 14, 22, 23], [22, 59, 60, 68, 69], [19, 33, 42, 34, 43], [16, 49, 58, 67, 76], [14, 6, 15, 16, 17], [23, 65, 66, 74, 75], [16, 61, 70, 62, 71], [22, 37, 46, 47, 48], [29, 24, 25, 26, 35, 44], [18, 50, 51, 52, 53]])] },
-      { givens: EMPTY, rules: [killer([[19, 0, 9, 1], [9, 7, 8], [5, 10, 19], [8, 14, 15], [18, 18, 27, 36], [11, 21, 22], [6, 23, 24], [11, 28, 29, 30], [3, 31, 40], [9, 37, 46], [13, 45, 54, 55], [17, 49, 50], [18, 56, 65, 66], [15, 58, 67], [5, 59, 68], [14, 60, 61], [5, 63, 64], [16, 69, 70, 79], [14, 72, 73], [12, 74, 75], [16, 76, 77, 78], [31, 34, 43, 52, 35, 44], [26, 16, 25, 17, 26], [25, 2, 3, 4, 5, 6], [24, 32, 33, 41, 42, 51], [26, 38, 39, 47, 48, 57], [19, 11, 20, 12, 13], [10, 53, 62, 71, 80]])] },
-    ],
-    'extreme': [
-      { givens: EMPTY, rules: [killer([[15, 0, 9], [11, 1, 2], [5, 3, 4], [20, 5, 14, 23], [10, 6, 15], [10, 7, 8], [7, 16, 25], [11, 17, 26], [12, 18, 19], [6, 20, 21], [6, 27, 36], [4, 28, 29], [13, 37, 46], [17, 38, 39], [8, 45, 54], [17, 48, 49, 50], [5, 52, 53], [7, 63, 72], [14, 65, 66, 75], [10, 67, 68], [14, 76, 77], [23, 69, 78, 60, 61, 70], [21, 10, 11, 12, 13, 22], [23, 24, 33, 42, 51], [22, 62, 71, 79, 80], [23, 47, 56, 57, 58, 59], [24, 34, 35, 43, 44], [28, 55, 64, 73, 74], [19, 30, 31, 40, 32, 41]])] },
-      { givens: EMPTY, rules: [killer([[15, 0, 9], [11, 1, 2], [5, 3, 4], [20, 5, 14, 23], [10, 6, 15], [10, 7, 8], [7, 16, 25], [11, 17, 26], [12, 18, 19], [6, 20, 21], [13, 37, 46], [17, 38, 39], [8, 45, 54], [17, 48, 49, 50], [5, 52, 53], [7, 63, 72], [14, 65, 66, 75], [10, 67, 68], [14, 76, 77], [23, 69, 78, 60, 61, 70], [21, 10, 11, 12, 13, 22], [23, 24, 33, 42, 51], [22, 62, 71, 79, 80], [23, 47, 56, 57, 58, 59], [24, 34, 35, 43, 44], [28, 55, 64, 73, 74], [19, 30, 31, 40, 32, 41], [10, 27, 36, 28, 29]])] },
-    ],
-    'impossible': [
-      { givens: EMPTY, rules: [killer([[7, 0, 1], [11, 6, 7], [11, 8, 17], [8, 9, 10], [16, 13, 14], [14, 30, 31], [10, 33, 34], [8, 47, 48], [8, 59, 68], [18, 66, 67, 76, 77], [23, 15, 24, 16, 25, 26], [12, 11, 12, 21, 22], [27, 28, 37, 29, 38, 39], [19, 23, 32, 41, 50], [21, 46, 55, 56, 65], [20, 40, 49, 57, 58], [27, 42, 43, 51, 60], [16, 35, 44, 52, 53], [26, 18, 27, 19, 20], [25, 64, 73, 74, 75], [22, 2, 3, 4, 5], [17, 69, 70, 78, 79], [20, 61, 62, 71, 80], [19, 36, 45, 54, 63, 72]])] },
-      { givens: EMPTY, rules: [killer([[12, 0, 9], [10, 1, 10], [6, 6, 15], [15, 7, 8], [10, 17, 26], [16, 18, 27, 36], [14, 24, 16, 25], [12, 38, 47], [15, 39, 40], [10, 41, 33, 42], [8, 44, 53], [10, 45, 54, 63], [8, 48, 57], [11, 61, 62], [13, 72, 73], [8, 74, 75, 76], [30, 68, 69, 77, 78], [27, 49, 50, 59, 51, 60], [13, 70, 71, 79, 80], [18, 37, 46, 55, 64, 56], [11, 2, 3, 11, 12], [27, 19, 28, 20, 29], [24, 65, 66, 58, 67], [23, 34, 35, 43, 52], [29, 4, 13, 5, 14, 23], [25, 21, 30, 22, 31, 32]])] },
-      { givens: EMPTY, rules: [killer([[12, 0, 9], [10, 1, 10], [10, 17, 26], [16, 18, 27, 36], [14, 24, 16, 25], [12, 38, 47], [15, 39, 40], [10, 41, 33, 42], [8, 44, 53], [10, 45, 54, 63], [8, 48, 57], [11, 61, 62], [13, 72, 73], [8, 74, 75, 76], [30, 68, 69, 77, 78], [27, 49, 50, 59, 51, 60], [13, 70, 71, 79, 80], [18, 37, 46, 55, 64, 56], [11, 2, 3, 11, 12], [27, 19, 28, 20, 29], [24, 65, 66, 58, 67], [23, 34, 35, 43, 52], [29, 4, 13, 5, 14, 23], [25, 21, 30, 22, 31, 32], [21, 6, 15, 7, 8]])] },
+  'killer-cages,non-consecutive': {
+    'medium': [
+      { givens: '005000000008000000000000000000000000000000010003000000000000000000000000000000007', rules: [{ type: 'non-consecutive' }, { cages: [{ cells: [0, 9, 18], sum: 16 }, { cells: [27, 36], sum: 14 }, { cells: [45, 54, 63, 72], sum: 15 }, { cells: [1, 10, 19, 28], sum: 16 }, { cells: [37, 46], sum: 14 }, { cells: [55, 64, 73], sum: 15 }, { cells: [2, 11, 20, 29], sum: 18 }, { cells: [38, 47, 56], sum: 19 }, { cells: [65, 74], sum: 8 }, { cells: [3, 12], sum: 10 }, { cells: [21, 30, 39, 48], sum: 22 }, { cells: [57, 66, 75], sum: 13 }, { cells: [4, 13, 22, 31], sum: 18 }, { cells: [40, 49, 58], sum: 16 }, { cells: [67, 76], sum: 11 }, { cells: [5, 14], sum: 14 }, { cells: [23, 32, 41], sum: 12 }, { cells: [50, 59, 68, 77], sum: 19 }, { cells: [6, 15, 24, 33], sum: 19 }, { cells: [42, 51, 60], sum: 16 }, { cells: [69, 78], sum: 10 }, { cells: [7, 16], sum: 11 }, { cells: [25, 34, 43, 52], sum: 17 }, { cells: [61, 70, 79], sum: 17 }, { cells: [8, 17, 26], sum: 15 }, { cells: [35, 44, 53, 62], sum: 19 }, { cells: [71, 80], sum: 11 }], coverGrid: true, type: 'killer-cages' }] },
+      { givens: '000000000000000000000000050000000001000000000000000000000000000030000000000000000', rules: [{ type: 'non-consecutive' }, { cages: [{ cells: [0, 1], sum: 10 }, { cells: [2, 3, 4, 5], sum: 18 }, { cells: [6, 7, 8], sum: 17 }, { cells: [9, 10], sum: 10 }, { cells: [11, 12, 13], sum: 20 }, { cells: [14, 15, 16, 17], sum: 15 }, { cells: [18, 19], sum: 10 }, { cells: [20, 21, 22], sum: 14 }, { cells: [23, 24, 25, 26], sum: 21 }, { cells: [27, 28, 29], sum: 15 }, { cells: [30, 31], sum: 10 }, { cells: [32, 33, 34, 35], sum: 20 }, { cells: [36, 37], sum: 16 }, { cells: [38, 39, 40, 41], sum: 16 }, { cells: [42, 43, 44], sum: 13 }, { cells: [45, 46, 47, 48], sum: 14 }, { cells: [49, 50, 51], sum: 21 }, { cells: [52, 53], sum: 10 }, { cells: [54, 55, 56], sum: 15 }, { cells: [57, 58, 59, 60], sum: 21 }, { cells: [61, 62], sum: 9 }, { cells: [63, 64, 65], sum: 10 }, { cells: [66, 67, 68, 69], sum: 19 }, { cells: [70, 71], sum: 16 }, { cells: [72, 73], sum: 11 }, { cells: [74, 75, 76, 77], sum: 19 }, { cells: [78, 79, 80], sum: 15 }], coverGrid: true, type: 'killer-cages' }] },
     ],
   },
   'kropki': {
@@ -427,6 +517,18 @@ export const checkedVariantPuzzles: Readonly<Record<string, Partial<Record<Custo
       { givens: '000902004000040000000503000000000000500600800100200000800005900000000000000030000', rules: [{ type: 'non-consecutive' }] },
     ],
   },
+  'non-consecutive,parity': {
+    'medium': [
+      { givens: '000000000008000010000803000040300000000004003000900040307000020000030001000005000', rules: [{ type: 'non-consecutive' }, { cells: [53, 60, 61, 28, 12, 57], parity: 'even', type: 'parity' }, { cells: [56, 18, 16, 25], parity: 'odd', type: 'parity' }] },
+      { givens: '000000000008000000000803070040300000000004000000900040300400000000000001400005000', rules: [{ type: 'non-consecutive' }, { cells: [53, 60, 61, 28, 12, 57], parity: 'even', type: 'parity' }, { cells: [56, 18, 16, 25], parity: 'odd', type: 'parity' }] },
+    ],
+  },
+  'non-consecutive,thermometer': {
+    'medium': [
+      { givens: '000000000000006000000800000000000002000950000000004705001002009000000000590000000', rules: [{ type: 'non-consecutive' }, { cells: [22, 30, 29], type: 'thermometer' }, { cells: [37, 28, 18], type: 'thermometer' }, { cells: [12, 3, 4], type: 'thermometer' }] },
+      { givens: '000000000000006000000800000000000002000950000000004705001002009000000000590030000', rules: [{ type: 'non-consecutive' }, { cells: [22, 30, 29], type: 'thermometer' }, { cells: [37, 28, 18], type: 'thermometer' }, { cells: [12, 3, 4], type: 'thermometer' }] },
+    ],
+  },
   'palindrome': {
     'impossible': [
       { givens: '000001002003000010040050600000070004070500060000608700009005000064080500200900030', rules: [{ cells: [65, 55, 45], type: 'palindrome' }] },
@@ -443,13 +545,6 @@ export const checkedVariantPuzzles: Readonly<Record<string, Partial<Record<Custo
     'impossible': [
       { givens: '000000001002003040010050600000007000003820007070340080008004070060900504900000000', rules: [{ digits: [2, 5, 8], topLeft: 68, type: 'quadruple' }] },
       { givens: '000000001000002030004050670006000010070040500400800027007008000090000003600090700', rules: [{ digits: [4, 5, 9], topLeft: 55, type: 'quadruple' }] },
-    ],
-  },
-  'quadruple/miracle': {
-    'hard': [
-      { givens: EMPTY, rules: [{ digits: [3, 4, 6], topLeft: 47, type: 'quadruple' }, { digits: [1, 5, 9], topLeft: 34, type: 'quadruple' }, { digits: [4, 5, 8], topLeft: 65, type: 'quadruple' }, { digits: [2, 3, 8], topLeft: 41, type: 'quadruple' }, { digits: [2, 7, 9], topLeft: 12, type: 'quadruple' }, { digits: [2, 6, 7], topLeft: 52, type: 'quadruple' }, { digits: [2, 9, 9], topLeft: 21, type: 'quadruple' }, { digits: [4, 6, 8], topLeft: 33, type: 'quadruple' }, { digits: [4, 5, 7], topLeft: 18, type: 'quadruple' }, { digits: [2, 5, 7], topLeft: 19, type: 'quadruple' }, { digits: [1, 4, 9], topLeft: 22, type: 'quadruple' }, { digits: [1, 5, 8], topLeft: 49, type: 'quadruple' }, { digits: [2, 3, 5], topLeft: 42, type: 'quadruple' }, { digits: [2, 3, 8], topLeft: 40, type: 'quadruple' }, { digits: [2, 2, 6], topLeft: 20, type: 'quadruple' }, { digits: [5, 7, 9], topLeft: 2, type: 'quadruple' }, { digits: [5, 8, 9], topLeft: 1, type: 'quadruple' }, { digits: [2, 6, 9], topLeft: 7, type: 'quadruple' }, { digits: [3, 8, 9], topLeft: 50, type: 'quadruple' }, { digits: [4, 6, 7], topLeft: 36, type: 'quadruple' }, { digits: [8, 9, 9], topLeft: 59, type: 'quadruple' }, { digits: [3, 8, 9], topLeft: 16, type: 'quadruple' }] },
-      { givens: EMPTY, rules: [{ digits: [3, 4, 6], topLeft: 47, type: 'quadruple' }, { digits: [1, 5, 9], topLeft: 34, type: 'quadruple' }, { digits: [4, 5, 8], topLeft: 65, type: 'quadruple' }, { digits: [2, 3, 8], topLeft: 41, type: 'quadruple' }, { digits: [2, 7, 9], topLeft: 12, type: 'quadruple' }, { digits: [2, 6, 7], topLeft: 52, type: 'quadruple' }, { digits: [2, 9, 9], topLeft: 21, type: 'quadruple' }, { digits: [4, 6, 8], topLeft: 33, type: 'quadruple' }, { digits: [4, 5, 7], topLeft: 18, type: 'quadruple' }, { digits: [2, 5, 7], topLeft: 19, type: 'quadruple' }, { digits: [1, 4, 9], topLeft: 22, type: 'quadruple' }, { digits: [1, 5, 8], topLeft: 49, type: 'quadruple' }, { digits: [2, 3, 5], topLeft: 42, type: 'quadruple' }, { digits: [2, 3, 8], topLeft: 40, type: 'quadruple' }, { digits: [5, 7, 9], topLeft: 2, type: 'quadruple' }, { digits: [5, 8, 9], topLeft: 1, type: 'quadruple' }, { digits: [2, 6, 9], topLeft: 7, type: 'quadruple' }, { digits: [3, 8, 9], topLeft: 50, type: 'quadruple' }, { digits: [4, 6, 7], topLeft: 36, type: 'quadruple' }, { digits: [8, 9, 9], topLeft: 59, type: 'quadruple' }, { digits: [3, 8, 9], topLeft: 16, type: 'quadruple' }] },
-      { givens: EMPTY, rules: [{ digits: [4, 7, 9], topLeft: 54, type: 'quadruple' }, { digits: [3, 4, 7], topLeft: 3, type: 'quadruple' }, { digits: [1, 4, 9], topLeft: 45, type: 'quadruple' }, { digits: [1, 3, 7], topLeft: 16, type: 'quadruple' }, { digits: [2, 3, 9], topLeft: 49, type: 'quadruple' }, { digits: [3, 8, 9], topLeft: 33, type: 'quadruple' }, { digits: [1, 5, 9], topLeft: 1, type: 'quadruple' }, { digits: [3, 4, 5], topLeft: 10, type: 'quadruple' }, { digits: [4, 5, 8], topLeft: 18, type: 'quadruple' }, { digits: [1, 4, 7], topLeft: 60, type: 'quadruple' }, { digits: [2, 4, 9], topLeft: 48, type: 'quadruple' }, { digits: [1, 3, 4], topLeft: 59, type: 'quadruple' }, { digits: [2, 8, 9], topLeft: 20, type: 'quadruple' }, { digits: [5, 6, 8], topLeft: 69, type: 'quadruple' }, { digits: [3, 6, 8], topLeft: 9, type: 'quadruple' }, { digits: [1, 6, 8], topLeft: 30, type: 'quadruple' }, { digits: [1, 2, 5], topLeft: 0, type: 'quadruple' }] },
     ],
   },
   'region-sum': {
@@ -484,6 +579,11 @@ export const checkedVariantPuzzles: Readonly<Record<string, Partial<Record<Custo
     'impossible': [
       { givens: '000000001000012030004500200000006020007800500630000008009008000070040900450900000', rules: [{ cells: [80, 71, 62, 53, 44, 35, 26, 17, 8], count: 5, direction: 'north', type: 'skyscrapers' }] },
       { givens: '000001002000003450002060007004008000020600004760040030006080003010500900000000020', rules: [{ cells: [72, 73, 74, 75, 76, 77, 78, 79, 80], count: 1, direction: 'east', type: 'skyscrapers' }] },
+    ],
+  },
+  'skyscrapers,x-sum': {
+    'medium': [
+      { givens: '008304600000900004600500080400032007000005300090100000384600700900000036005000000', rules: [xSum(1, 'south', 1), skyscraper(7, 'south', 1)] },
     ],
   },
   'thermometer': {

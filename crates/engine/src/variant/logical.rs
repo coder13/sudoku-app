@@ -31,9 +31,14 @@ const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
 
+mod arrow_houses;
 mod cages;
 mod chain_inference;
 mod clue_links;
+mod lower_paths;
+pub use lower_paths::VariantLowerPath;
+#[cfg(any(feature = "generation", test))]
+pub(super) use lower_paths::lower_techniques;
 mod conditional_neighbors;
 mod quadruples;
 mod region_singles;
@@ -237,6 +242,8 @@ catalog! {
     RegionSumHouse: "region-sum-house", 133, Hard;
     /// Fit increasing digits on a Thermometer together with the rest of one shared house.
     ThermometerHouseSupport: "thermometer-house-support", 64, Medium;
+    /// Fit an arrow's sum together with the distinct digits of its shared houses.
+    ArrowHouseSupport: "arrow-house-support", 64, Medium;
     /// Fit the digits on a printed Kropki dot together with the rest of one shared house.
     KropkiHouseSupport: "kropki-house-support", 48, Medium;
     /// Reject a candidate using a bounded sequence of line, pair and house checks.
@@ -257,7 +264,6 @@ impl serde::Serialize for VariantTechnique {
 impl VariantTechnique {
     /// Optional Classic techniques are available to custom profiles but do not
     /// participate in the default variant difficulty search.
-    #[cfg(any(feature = "generation", test))]
     pub(super) const fn is_optional(self) -> bool {
         matches!(self, Self::Classic(Technique::MultiColoring))
     }
@@ -643,13 +649,13 @@ pub struct VariantGroupSumChainProof {
     pub locked: u16,
 }
 
-/// Replayable support for a binary line and its shared houses.
+/// Replayable support for a line and its shared houses.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
 pub struct VariantLineHouseProof {
-    /// Ordered rule indices supplying the line's binary relations.
+    /// Ordered rule indices supplying the line's relations.
     pub rules: Vec<usize>,
-    /// Distinct line cells in first-visit order.
+    /// Distinct cells, with the line first and any other cells of the last house after it.
     pub cells: Vec<usize>,
     /// Current candidate masks, including placed digits.
     pub domains: Vec<u16>,
@@ -657,7 +663,7 @@ pub struct VariantLineHouseProof {
     pub supported: Vec<u16>,
     /// Shared houses forbidding equal digits in line cells.
     pub houses: Vec<VariantHouseKind>,
-    /// Number of valid assignments in the complete enumeration.
+    /// Number of line assignments that can extend through the checked houses.
     pub assignments: u32,
 }
 
@@ -2161,6 +2167,7 @@ impl CompiledVariant {
             RegionSumDistinct => self.region_sum_distinct_proofs(position, &mut proofs),
             RegionSumHouse => self.region_sum_house_proofs(position, &mut proofs),
             ThermometerHouseSupport => self.thermometer_house_proofs(position, &mut proofs),
+            ArrowHouseSupport => self.arrow_house_proofs(position, &mut proofs),
             KropkiHouseSupport => self.kropki_house_proofs(position, &mut proofs),
             Arrow | PillArrow | Between | Lockout | ConsecutiveRun | InsideGrid | DistinctCells
             | Entropic | Modular | DigitOrder | LittleKiller | RegionSum | Renban | Sandwich

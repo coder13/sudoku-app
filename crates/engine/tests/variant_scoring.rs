@@ -260,6 +260,23 @@ fn focused_examples_keep_their_technique_and_bill_once_per_deduction() {
                 .map(VariantTechnique::Classic),
             );
         }
+        if technique == VariantTechnique::ArrowHouseSupport {
+            // The zero-given Arrow profile also allows ordinary subsets and wings.
+            order.extend(
+                [
+                    Technique::LockedPair,
+                    Technique::NakedPair,
+                    Technique::HiddenPair,
+                    Technique::NakedTriple,
+                    Technique::HiddenTriple,
+                    Technique::XWing,
+                    Technique::WWing,
+                    Technique::XYWing,
+                    Technique::XYZWing,
+                ]
+                .map(VariantTechnique::Classic),
+            );
+        }
         if technique == VariantTechnique::MatchingLayoutForcing {
             order.extend([
                 VariantTechnique::MatchingDigitContradiction,

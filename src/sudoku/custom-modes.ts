@@ -56,6 +56,25 @@ export const customRuleIds = Object.keys(customRules) as CustomRule[]
 const families: readonly (readonly [CustomRule, CustomRule, CustomRule])[] = [
   ['diagonal', 'diagonal-main', 'diagonal-anti'], ['kropki', 'kropki-white', 'kropki-black'], ['xv', 'xv-five', 'xv-ten'],
 ]
+// Each set is unsatisfiable over standard boxes without any givens.
+// See scripts/variant-compatibility-cnf.py for the independent formula.
+const standardBoxConflicts: readonly (readonly CustomRule[])[] = [
+  ['windoku', 'non-consecutive'],
+  ['anti-king', 'anti-knight', 'windoku'],
+  ['anti-king', 'anti-knight', 'diagonal-main'],
+  ['anti-king', 'anti-knight', 'diagonal-anti'],
+  ['anti-king', 'global-entropy', 'windoku'],
+  ['anti-knight', 'global-entropy', 'windoku'],
+  ['anti-knight', 'global-entropy', 'diagonal-main'],
+  ['anti-knight', 'global-entropy', 'diagonal-anti'],
+  ['anti-knight', 'windoku', 'diagonal-main'],
+  ['anti-knight', 'windoku', 'diagonal-anti'],
+  ['anti-knight', 'non-consecutive', 'diagonal-main'],
+  ['anti-knight', 'non-consecutive', 'diagonal-anti'],
+  ['anti-king', 'non-consecutive', 'diagonal-main', 'diagonal-anti'],
+  ['global-entropy', 'windoku', 'diagonal-main', 'diagonal-anti'],
+]
+const andList = new Intl.ListFormat('en', { type: 'conjunction' })
 
 export function hasOverlappingRuleChoices(chosen: ReadonlySet<CustomRule>) {
   return families.some(([family, a, b]) => chosen.has(family) && (chosen.has(a) || chosen.has(b)))
@@ -78,11 +97,25 @@ export function changeCustomRule(rules: readonly CustomRule[], rule: CustomRule,
 }
 
 export function ruleSelectionConflict(rules: readonly CustomRule[], negative: readonly MarkerRule[] = []) {
-  if (hasOverlappingRuleChoices(new Set(rules)))
+  const selected = new Set(rules)
+  if (hasOverlappingRuleChoices(selected))
     return 'This mode selects the same rule twice. Choose the family or its individual rules.'
   const markers = selectedMarkerRules(rules)
-  if (rules.includes('non-consecutive') && negative.includes('kropki-white') && markers.includes('kropki-white') && !markers.includes('kropki-black'))
+  const whiteDots = markers.includes('kropki-white')
+  if (selected.has('non-consecutive') && negative.includes('kropki-white') && whiteDots && !markers.includes('kropki-black'))
     return 'The negative white-dot rule already enforces Non-Consecutive on every unmarked edge. Choose one of these rules.'
+
+  if (!selected.has('jigsaw')) {
+    const active = (id: CustomRule) => {
+      if (id === 'non-consecutive' && whiteDots) return false
+      return selected.has(id) || (id === 'diagonal-main' || id === 'diagonal-anti') && selected.has('diagonal')
+    }
+    const conflict = standardBoxConflicts.find(set => set.every(active))
+    if (conflict) {
+      const names = andList.format(conflict.map(rule => customRules[rule].name))
+      return `${names} cannot share a completed grid with standard boxes.`
+    }
+  }
 }
 
 export const CUSTOM_MODES_KEY = 'sudoku-app:v1:custom-modes'

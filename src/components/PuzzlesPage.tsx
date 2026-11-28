@@ -206,15 +206,15 @@ function CoreSudokuChooser({ modes, difficulty }: { modes: readonly SudokuMode[]
   </section>
 }
 
-function useMiracleOption(rules: readonly CustomRule[], level: Difficulty, busy: boolean, clearError: () => void) {
+function useMiracleOption(rules: readonly CustomRule[], level: Difficulty, busy: boolean, clearError: () => void, blocked = false) {
   const [selected, setSelected] = useState(false)
   const description = useId()
   const visible = offersMiracle(level, rules)
-  const reason = visible ? miracleSymmetry(rules) : undefined
-  const miracle = selected && visible && !reason
+  const reason = visible && !blocked ? miracleSymmetry(rules) : undefined
+  const miracle = selected && visible && !blocked && !reason
   const control = visible && <div>
     <label className="difficulty-selector-auto">
-      <input type="checkbox" checked={miracle} disabled={busy || !!reason} aria-describedby={reason ? description : undefined}
+      <input type="checkbox" checked={miracle} disabled={busy || blocked || !!reason} aria-describedby={reason ? description : undefined}
         onChange={event => {
           setSelected(event.currentTarget.checked)
           clearError()
@@ -259,7 +259,7 @@ function CustomModeBuilder({ mode, modes, onSave }: { mode?: SudokuMode; modes: 
   const conflict = ruleSelectionConflict(rules, negativeMarkers)
   const levels = customModeDifficulties(rules)
   const difficulty = levels.includes(level) ? level : 'medium'
-  const { miracle, control } = useMiracleOption(rules, difficulty, busy, clearError)
+  const { miracle, control } = useMiracleOption(rules, difficulty, busy, clearError, !!conflict)
   const definition = { name: name.trim() || 'Custom Sudoku', rules, ...(negativeMarkers.length && { negativeMarkers }) }
 
   function changeRule(rule: CustomRule, enabled: boolean) {
@@ -341,8 +341,8 @@ function CustomModeDifficulty({ mode, difficulty = DEFAULT_DIFFICULTY }: { mode:
   const { recommended } = usePlayerRating()
   const level = currentDifficulty(difficulty === 'auto' ? recommended : difficulty)
   const { busy, error, clearError, generate, cancelGeneration } = usePuzzleGeneration()
-  const { miracle, control } = useMiracleOption(mode.rules, level, busy, clearError)
   const conflict = ruleSelectionConflict(mode.rules, mode.negativeMarkers)
+  const { miracle, control } = useMiracleOption(mode.rules, level, busy, clearError, !!conflict)
   return <PuzzleDifficultyStep name={mode.name} preview={<CustomModePreview mode={mode} />} busy={busy} disabled={!!conflict} error={conflict ?? error}
     startLabel={difficulty === 'auto' ? `Start Auto (${DIFFICULTY_LABELS[level]})` : `Start ${DIFFICULTY_LABELS[level].toLowerCase()} puzzle`}
     onStart={() => void generate(difficulty, undefined, 'classic', { miracle, customMode: { name: mode.name, rules: mode.rules, negativeMarkers: mode.negativeMarkers } })}

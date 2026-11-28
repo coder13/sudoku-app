@@ -2,6 +2,17 @@
 
 The repeat-generation audit produced **700 verified draws across 350 targets**. Each of the 35 individual rule choices produced two distinct puzzles at each of the ten grades. Three mixed modes also passed at every grade. Killer alone and X-Sums with either diagonal each produced two zero-given puzzles at every grade from Hard through Impossible.
 
+## Completion checklist
+
+* Keep all ten difficulty choices available for valid 9×9 modes in the standard New Puzzle flow. Verify mobile, Standard desktop and Advanced desktop against the same rule and Miracle controls.
+* Check ordinary generation twice for every individual rule and grade. Audit all distinct pair selections and repeat the grade checks for mixed modes that exercise overlapping houses, drawn clues and complete markings.
+* Reconstruct the solution from the logical trace. Independently verify that each alternative agrees with the givens, obeys every surviving rule and fails the omitted rule. Classic rules must fail to determine one solution.
+* Use the requested difficulty and check for cheaper solves. A found lower-grade trace is a counterexample. An exhausted search and a budget limit are separate outcomes.
+* For Miracle generation, verify zero givens, the requested grade and unique completion from the drawn clues and global rules. Check repeat draws for each individually feasible rule family and record the grades that still need a construction. Keep structural impossibility separate from an exhausted generation attempt.
+* Inspect the drawn clues on a phone-size board. For Arrows, check that circles and shafts occupy separate cells, diagonal shafts never cross, and the grid uses at most 12 arrows.
+* Reject played layouts under the engine's symmetry checks. Preserve explicit marker choices, cancellation, existing saved puzzle profiles and sharing.
+* Run the production build, Rust and WebAssembly suites, application tests and browser checks on the final worktree.
+
 ## What setters and solvers found
 
 * A setter trying to force an X-Wing described generating completed grids, removing givens and checking the solution path. A solver pointed out that another elimination can destroy the X-Wing before it becomes necessary. In a separate setting discussion, constructors described solving their own puzzles during construction and finding simpler paths around the intended logic. These are two separate checks for a generator. It needs a complete solve at the target grade and it must try to beat that grade. [X-Wing construction discussion](https://puzzling.stackexchange.com/questions/614/how-do-i-necessitate-the-use-of-the-x-wing-pattern-during-sudoku-creation) · [Discussion among setters](https://www.reddit.com/r/sudoku/comments/1fvatr7/dear_setters_how_do_you_do_it/)
@@ -18,6 +29,10 @@ HoDoKu's author separates targeting a technique for practice from assigning a co
 A worked Jigsaw example builds a loop through a row, column and irregular region. HoDoKu's grouped-chain examples show how two or more possible positions for the same digit can act as one link. In the app, a strong link must cover every place left for that digit in the named house. The Jigsaw test replays those links on the actual region map. [Jigsaw strategy examples](https://zitowolf.net/sudoku/strategy.html) · [HoDoKu on group nodes](https://hodoku.sourceforge.net/en/tech_chains.php)
 
 In a setting discussion, constructors describe testing and revising a cage layout as the intended solve emerges. Andrew Stuart's account of Killer generation grades the opportunities supplied by the cage sums alongside ordinary Sudoku deductions. Our zero-given constructor starts with connected cages of distinct digits and can join adjacent cages. It checks uniqueness after each proposed change and grades the resulting puzzle. [Killer setting discussion](https://www.reddit.com/r/sudoku/comments/1rca4vy/how_would_one_go_about_creating_a_sudoku_puzzle/) · [Sudoku Creation and Grading](https://www.sudokuwiki.org/Sudoku_Creation_and_Grading.pdf)
+
+Kuraban's one-rule series includes Region Sum Lines, Skyscrapers and Kropki. The published solves point to different openings depending on the geometry and which clues carry the information. SennyK's Little Killer discussion includes an opening based on pairs along diagonals. The generator explores several line lengths, informative edge runs, and short diagonal totals before removing surplus clues. [Region Sum Lines 2](https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000C3J) · [Skyscraper](https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000A1K) · [Kropki](https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=0009DF) · [(Not so) Little Killers](https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?id=000QKN)
+
+Grandmaster Puzzles asks setters to make every arrow easy to follow. Ademjaz's *Diamond Arrows* illustrates how a small number of well-placed arrows can give a full puzzle its structure. The generator reserves every cell on an arrow for that arrow and checks crossings between diagonal segments. Longer shafts can constrain enough digits to leave more space between arrows. [Grandmaster Puzzles' Arrow design guidelines](https://www.gmpuzzles.com/blog/sudoku-rules-and-info/arrow-sudoku-rules-and-info/) · [Diamond Arrows and solver discussion](https://logic-masters.de/Raetselportal/Raetsel/zeigen.php?chlang=en&id=000HX7)
 
 ## Acceptance checks
 
@@ -98,7 +113,23 @@ Three changes accounted for the missing grades.
 
 Killer illustrated a construction-specific symmetry. In the original horizontal partitions, every row's first cage contained columns 1 and 2. Swapping those two columns preserved every total and all the Sudoku houses. Vertical partitions had the corresponding row swap. Letting cages grow in both directions removed that restriction. The first verified zero-given Killer draws required a Naked Quadruple at Hard, 3D Medusa at Very Hard, an AIC at Expert, an ALS-XY-Wing at Master, an Advanced Forcing Net at Extreme, and Pattern Overlay at Impossible.
 
-For the other individual Miracle choices with no digit-symmetry obstruction, two Hard draws succeeded at seed 11 for X-Sums, Thermometers, Quadruples and Two-cell sums. The seed 7 Hard searches for Inequality, Region Sum Lines, Little Killer, Skyscrapers, Arrows and Kropki reached a search limit. Their status remains open in this audit. The single-rule matrix and the selected mixed examples do not establish coverage for every possible combination or every play history.
+The original Hard searches for Inequality, Region Sum Lines, Little Killer, Skyscrapers, Arrows and Kropki reached a search limit. The follow-up produced original Hard zero-given layouts for all six. For example, pruning a Region Sum layout from 47 clues to 15 preserved Hard and uniqueness. The audited constructions give a positive feasibility result for all 11 individual choices that passed the digit-symmetry test.
+
+The Arrow search also found unique layouts with ten to twelve separate arrows at all six Miracle grades. The checked Hard layouts have ten or eleven arrows. Many of these puzzles need a deduction that checks the arithmetic and the surrounding houses together. In **Arrow and house**, enumerate the digits that add to the circle and enforce distinct digits wherever the arrow shares houses. Then check whether the unused digits still fit the other cells of a shared house. This can eliminate a candidate that fits the arrow or the house on its own. The opening and the solution trace use the same proof as the in-game hint.
+
+The pair audit verified **588 of 589** selections at Medium across the seeds tested. Windoku with Non-Consecutive is the remaining pair and has a standard-box incompatibility proof. All 34 Arrow pairs also passed the separate-path check after the geometry change. Three more mixed modes produced two distinct ordinary puzzles at every grade. These were Jigsaw with Arrows, Anti-Knight with the main diagonal, and both diagonals with Non-Consecutive.
+
+The checked starting layouts cover 58 of 66 single-rule Miracle targets. The remaining search targets are Extreme Kropki, Very Hard and Impossible Region Sum Lines, Extreme and Impossible Skyscrapers, and Impossible Inequality, Little Killer and X-Sums. Revising a layout from a nearby grade found an Impossible Quadruple puzzle whose solve uses a Nested Forcing Net. Open search targets have no impossibility proof.
+
+## Incompatible fixed rules
+
+A separate Boolean model checks whether the rules can coexist before givens, arithmetic clues or lines are added. Each variable represents one cell and one digit. The formula requires exactly one digit in each cell and exactly one occurrence of each digit in each active house. Binary clauses exclude forbidden neighboring placements. Global Entropy requires a digit from each group in every 2×2 area.
+
+Windoku and Non-Consecutive have no joint completion with standard boxes. Anti-King and Anti-Knight are incompatible with either diagonal and with Windoku. The builder also checks other incompatible sets that combine a diagonal, a chess restriction, Global Entropy or Windoku. The proof applies to any additional rule that leaves those constraints intact. Jigsaw changes the boxes, and white Kropki dots change which edges are governed by Non-Consecutive. Those changes have their own eligibility.
+
+## Cheaper solution paths
+
+The usual generation check runs the lower techniques in three priority orders. The optional alternate-path audit settles ordinary singles, then branches over distinct supported moves below the requested grade. It returns a replay when it finds an easier solution. If it exhausts the reachable positions, that result applies to the implemented techniques with singles played first. A budget limit leaves the difficulty bound open. Across the initial 62 deeper probes, it found no cheaper solve, exhausted 14 searches and reached the budget on 48.
 
 ## Reproducing the checks
 
@@ -111,7 +142,7 @@ node --experimental-strip-types scripts/audit-variant-generation.mts \
   kropki,xv,arrow/hard/11/negative=kropki-white,xv-ten
 ```
 
-Each argument lists the selected rules, target grade and seed. The optional final fields enable zero givens or complete markings. The output identifies the strongest technique and the first action that excludes each alternative. Exact search limits and wall-clock limits yield a separate outcome.
+Each argument lists the selected rules, target grade and seed. The optional final fields enable zero givens or complete markings. The output identifies the strongest technique and the first action that excludes each alternative. Exact search limits and wall-clock limits yield a separate outcome. Use `--pairs medium 17` to run all pair selections that do not duplicate a family and one of its subtypes. Use `--lower-positions 64` to explore the easier solution paths after each draw.
 
 Run the repeat audit with the following commands. The trace check reconstructs the solution from the moves and checks every elimination against it. With `--strict` the command returns a failing exit status if a requested draw misses. Add `--include-puzzle` to retain the complete puzzle definitions alongside the results.
 
@@ -119,4 +150,11 @@ Run the repeat audit with the following commands. The trace check reconstructs t
 node --experimental-strip-types scripts/audit-variant-generation.mts --strict --repeat 2 --verify-trace --matrix 7
 node --experimental-strip-types scripts/audit-variant-generation.mts --strict --repeat 2 --verify-trace --matrix 11 thermometer,xv-five
 node --experimental-strip-types scripts/audit-variant-generation.mts --strict --repeat 2 --verify-trace --miracle --matrix 7 killer-cages
+```
+
+For the standard-box incompatibility checks, generate a DIMACS formula and pass it to a SAT solver. Either of the following commands reads the same rule semantics used above.
+
+```sh
+python3 scripts/variant-compatibility-cnf.py windoku non-consecutive | z3 -dimacs -in
+python3 scripts/variant-compatibility-cnf.py --use-symmetries anti-knight diagonal-main non-consecutive | z3 -dimacs -in
 ```

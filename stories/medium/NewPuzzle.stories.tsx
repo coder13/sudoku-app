@@ -49,6 +49,17 @@ export const CustomRuleChoices: Story = {
     await userEvent.click(canvas.getByRole('checkbox', { name: /No consecutive digits without a Kropki dot/ }))
     await expect(canvas.getByRole('button', { name: 'Generate puzzle' })).toBeDisabled()
     await expect(canvas.getByText(/already enforces Non-Consecutive/)).toBeVisible()
+    await userEvent.click(white)
+    await userEvent.click(canvas.getByRole('checkbox', { name: /^Windoku\b/ }))
+    await expect(canvas.getByText(/Windoku and Non-Consecutive cannot share/)).toBeVisible()
+    await expect(canvas.getByRole('button', { name: 'Generate puzzle' })).toBeDisabled()
+    await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Difficulty' }), 'hard')
+    await userEvent.click(canvas.getByRole('checkbox', { name: /^Arrows?\b/ }))
+    const miracle = canvas.getByRole('checkbox', { name: 'Miracle puzzle (no givens)' })
+    await expect(miracle).toBeDisabled()
+    await userEvent.click(canvas.getByRole('checkbox', { name: /^Jigsaw\b/ }))
+    await expect(canvas.getByRole('button', { name: 'Generate puzzle' })).toBeEnabled()
+    await expect(miracle).toBeEnabled()
   },
 }
 

@@ -47,14 +47,14 @@ pub use logical::{
     VariantGroupOrderProof, VariantGroupOrderRefutation, VariantGroupOrderScope,
     VariantGroupSumChainProof, VariantGroupSumLink, VariantGroupSumLinkSource,
     VariantKropkiHouseProof, VariantLineHouseProof, VariantLinkedClueProof, VariantLogicalError,
-    VariantMatchingDigitBlock, VariantMatchingDigitCheck, VariantMatchingDigitProof,
-    VariantMatchingLayoutCase, VariantMatchingLayoutProof, VariantRating, VariantRayHouseProof,
-    VariantRegionSumHouseLine, VariantRegionSumHouseProof, VariantRegionSumPart,
-    VariantRegionSumProof, VariantRenbanGroupConflict, VariantRenbanGroupPlacement,
-    VariantRenbanGroupProjection, VariantRenbanGroupProof, VariantRenbanHouseProof,
-    VariantRenbanSumHouseProof, VariantRenbanSumHouseWitness, VariantRenbanSumProof, VariantReplay,
-    VariantSumPairProof, VariantTechnique, VariantThermometerHouseProof, VariantTrace,
-    VariantTrialFailure,
+    VariantLowerPath, VariantMatchingDigitBlock, VariantMatchingDigitCheck,
+    VariantMatchingDigitProof, VariantMatchingLayoutCase, VariantMatchingLayoutProof,
+    VariantRating, VariantRayHouseProof, VariantRegionSumHouseLine, VariantRegionSumHouseProof,
+    VariantRegionSumPart, VariantRegionSumProof, VariantRenbanGroupConflict,
+    VariantRenbanGroupPlacement, VariantRenbanGroupProjection, VariantRenbanGroupProof,
+    VariantRenbanHouseProof, VariantRenbanSumHouseProof, VariantRenbanSumHouseWitness,
+    VariantRenbanSumProof, VariantReplay, VariantSumPairProof, VariantTechnique,
+    VariantThermometerHouseProof, VariantTrace, VariantTrialFailure,
 };
 use pairs::{DigitRestrictionClue, PairClue, ParityClue, PositiveSum};
 #[cfg(all(

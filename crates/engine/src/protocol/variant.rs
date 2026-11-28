@@ -75,6 +75,7 @@ pub(super) enum Operation {
     SolveUnique,
     Hints,
     Rate,
+    SearchLowerGrade,
     Trace,
     ReplayStep,
     #[cfg(feature = "teaching")]
@@ -97,6 +98,7 @@ pub(super) struct Options {
     #[serde(default)]
     prefer_progress: bool,
     difficulty: Option<Difficulty>,
+    max_positions: Option<u32>,
     step_index: Option<usize>,
     stop_after_placement_in: Option<Vec<usize>>,
     include_steps: Option<bool>,
@@ -283,6 +285,17 @@ pub(super) fn execute(operation: Operation, input: Value, options: Options) -> R
     }
     match operation {
         Operation::Rate => return Ok(json!(position.rate(&order()?).map_err(logical_error)?)),
+        Operation::SearchLowerGrade => {
+            let difficulty = options
+                .difficulty
+                .ok_or(("invalid-difficulty", "Choose a difficulty to check."))?;
+            let max = options.max_positions.unwrap_or(32).min(256);
+            return Ok(json!(
+                position
+                    .search_lower_grade(&order()?, difficulty, max)
+                    .map_err(logical_error)?
+            ));
+        }
         Operation::Trace => {
             let stop = crate::variant::cell_mask(
                 options

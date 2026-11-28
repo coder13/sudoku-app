@@ -9,6 +9,50 @@ fn whispers(cells: &[usize], min_difference: u8) -> PuzzleRule {
 }
 
 #[test]
+fn sum_clue_rearrangements_still_count_as_the_same_played_puzzle() {
+    let mut original = VariantPuzzle::classic([0; CELLS]);
+    original.rules = vec![
+        PuzzleRule::Arrow {
+            circle: 10,
+            cells: vec![11, 20, 19],
+        },
+        PuzzleRule::LittleKiller {
+            cells: vec![2, 12, 22, 32, 42, 52, 62],
+            direction: ClueDirection::SouthEast,
+            sum: 37,
+        },
+        PuzzleRule::RegionSum {
+            cells: vec![1, 2, 3],
+            group_by_region: false,
+            segments: None,
+        },
+    ];
+    for transform in SquareTransform::ALL {
+        let mut redrawn = original.clone();
+        if let PuzzleRule::Arrow { cells, .. } = &mut redrawn.rules[0] {
+            cells.reverse();
+        }
+        if let PuzzleRule::LittleKiller {
+            cells, direction, ..
+        } = &mut redrawn.rules[1]
+        {
+            cells.reverse();
+            *direction = ClueDirection::NorthWest;
+        }
+        if let PuzzleRule::RegionSum { cells, .. } = &mut redrawn.rules[2] {
+            cells.reverse();
+        }
+        transform.puzzle(&mut redrawn);
+        assert_eq!(generation_key(&redrawn), generation_key(&original));
+    }
+    let mut different = original.clone();
+    if let PuzzleRule::Arrow { circle, .. } = &mut different.rules[0] {
+        *circle = 12;
+    }
+    assert_ne!(generation_key(&different), generation_key(&original));
+}
+
+#[test]
 fn played_whispers_identity_uses_edges_under_every_grid_symmetry() {
     let original = VariantPuzzle {
         rules: vec![whispers(&[0, 10, 20, 10, 0], 5), whispers(&[10, 0], 4)],

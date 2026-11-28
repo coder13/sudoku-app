@@ -11,6 +11,8 @@ import { getVariantPlayOrder } from '../src/sudoku/variant-play.ts'
 import { variantHintChoice } from '../src/sudoku/variant-hints.ts'
 import { EMPTY, makeGame, peer } from '../src/sudoku/game.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
+import { assertVariantCompletion } from './helpers/variant-truth.ts'
+import { hasReadableArrowLayout } from '../src/sudoku/arrow-layout.ts'
 useWasmWorker()
 
 test('zero-given X-Sum and diagonal need both rules on the Hard solve path', async () => {
@@ -71,6 +73,34 @@ test('a played Miracle layout is excluded before searching for its successor', a
   assert.notDeepEqual(next.puzzle.rules, first.puzzle.rules)
   assert.deepEqual(next.rating.status, { solved: 'hard' })
   assert.equal(next.ruleDependencies?.length, rules.length)
+})
+
+test('the remaining drawn-clue families can each generate two Hard Miracle puzzles', async () => {
+  for (const id of ['arrow', 'inequality', 'kropki', 'little-killer', 'region-sum', 'skyscrapers'] as const) {
+    const first = await generateCustomSudoku([id], 'hard', 19, [], { miracle: true })
+    const played = { ...makeGame(id, id, EMPTY, 'generated'),
+      variant: { id, puzzle: first.puzzle, solution: first.solution } }
+    const second = await generateCustomSudoku([id], 'hard', 19, [played], { miracle: true })
+    assert.notDeepEqual(second.puzzle, first.puzzle, id)
+    if (id === 'arrow') {
+      const trace = await runEngine({ type: 'variant', operation: 'trace', position: { puzzle: first.puzzle },
+        techniqueOrder: first.rating.techniqueOrder })
+      const step = trace.steps.find(step => step.technique === 'arrow-house-support')
+      assert.ok(step && step.evidence.type === 'line-houses')
+      const hint = variantHintChoice(step, first.puzzle)
+      assert.ok('variant' in hint.evidence)
+      assert.match(hint.evidence.variant.description, /arrow.*circle/i)
+    }
+    for (const result of [first, second]) {
+      assert.equal(result.puzzle.givens, EMPTY, id)
+      assert.deepEqual(result.rating.status, { solved: 'hard' }, id)
+      assertVariantCompletion(result.puzzle, result.solution)
+      assert.ok(hasReadableArrowLayout(result.puzzle.rules), id)
+      const [dependency] = result.ruleDependencies!
+      assert.equal(dependency.rule, id)
+      assertVariantCompletion(result.puzzle, dependency.alternative, id)
+    }
+  }
 })
 
 test('Beginners can use the simple border clue in each outside-row variant', async () => {
@@ -251,4 +281,34 @@ test('checked mixed layouts retain the exact complete markings selected in the b
   assert.ok(dots?.consecutive?.negative && !dots.ratioTwo?.negative)
   assert.ok(marks?.ten?.negative && !marks.five?.negative)
   assert.deepEqual(new Set(result.ruleDependencies!.map(d => d.rule)), new Set(rules))
+})
+
+test('the cheaper-path audit distinguishes exhaustion from a budget limit and returns a replay', async () => {
+  const { puzzle, solution, rating } = await generateCustomSudoku(['global-entropy'], 'beginner', 7, [])
+  const request = { type: 'variant', operation: 'search-lower-grade', position: { puzzle }, techniqueOrder: rating.techniqueOrder } as const
+  assert.deepEqual(await runEngine({ ...request, difficulty: 'beginner', maxPositions: 0 }),
+    { status: 'inconclusive', positionsSearched: 0, steps: [] })
+  assert.deepEqual(await runEngine({ ...request, difficulty: 'beginner', maxPositions: 1 }),
+    { status: 'no-path', positionsSearched: 1, steps: [] })
+  const easier = await runEngine({ ...request, difficulty: 'easy', maxPositions: 1 })
+  assert.equal(easier.status, 'found')
+  for (const { actions } of easier.steps) {
+    for (const action of actions) {
+      const c = 'place' in action ? action.place : action.eliminate
+      assert.equal(solution[c.cell] === String(c.digit), 'place' in action)
+    }
+  }
+  assert.equal(stateBefore(puzzle, easier.steps).board.join(''), solution)
+})
+
+test('the cheaper-path search explores non-single deductions in a zero-given mixed puzzle', async () => {
+  const { puzzle, solution, rating } = await generateCustomSudoku(['x-sum', 'diagonal-main'], 'hard', 5, [], { miracle: true })
+  const request = { type: 'variant', operation: 'search-lower-grade', position: { puzzle },
+    difficulty: 'very-hard', techniqueOrder: rating.techniqueOrder } as const
+  assert.deepEqual(await runEngine({ ...request, maxPositions: 0 }), { status: 'inconclusive', positionsSearched: 0, steps: [] })
+  const found = await runEngine({ ...request, maxPositions: 256 })
+  assert.equal(found.status, 'found')
+  assert.ok(found.positionsSearched > 1)
+  assert.ok(found.steps.some(step => step.technique === 'x-sum'))
+  assert.equal(stateBefore(puzzle, found.steps).board.join(''), solution)
 })

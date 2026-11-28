@@ -7306,6 +7306,54 @@
           "difficulty": "easy"
         },
         {
+          "id": "arrow-house-support",
+          "title": "Arrow and house",
+          "summary": "When shaft cells share a row, column, or box, they must use different digits. Use their smallest possible sum to narrow the circle, then use the circle total to narrow the shaft.",
+          "blocks": [
+            {
+              "type": "heading",
+              "id": "where-to-start",
+              "title": "Find shaft cells in the same house"
+            },
+            {
+              "type": "text",
+              "paragraphs": [
+                "Start with two or more shaft cells in one row, column, or box. Add the smallest different digits that can go in those cells. If the shaft spans several houses, split it into groups of cells so each shaft cell contributes to the total once.",
+                "Keep the assignments whose digits add to a possible circle digit. If some arrow cells share a house, check where the remaining digits can go in that house. Remove a candidate when every assignment using it breaks the sum or leaves a digit without a place."
+              ]
+            },
+            {
+              "type": "diagram",
+              "example": "arrow-house-support",
+              "copy": {
+                "description": "The arrow from R9C9 has three shaft cells in row 9 and two in row 8. The three different digits in row 9 add to at least 6. The two different digits in row 8 add to at least 3.",
+                "reason": "The smallest total is 9, so the circle must be 9. R8C4 and R8C5 must use 1 and 2 to keep the sum at 9. Remove 3 from R8C4."
+              }
+            },
+            {
+              "type": "practice",
+              "drills": [
+                {
+                  "example": "arrow-house-support",
+                  "title": "Arrow and house"
+                }
+              ],
+              "guide": {
+                "start": "Follow the arrow from R9C9 and count the shaft cells in each row.",
+                "check": "Add the smallest different digits in row 9, then do the same for row 8.",
+                "reason": "The two shaft cells in row 8 must use 1 and 2 for the whole arrow to sum to 9. Remove 3 from R8C4."
+              }
+            }
+          ],
+          "references": [
+            {
+              "label": "Arrows",
+              "href": "/learn/arrow"
+            }
+          ],
+          "difficulty": "medium"
+        },
+        {
           "id": "pill-arrow",
           "title": "Pill arrows",
           "summary": "The arrow digits add to the two-digit number in its pill. A pill with 1 in the tens cell and 2 in the ones cell gives a total of 12.",

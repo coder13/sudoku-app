@@ -25,6 +25,7 @@ fn removable(rule: &PuzzleRule) -> bool {
 
 enum Change<'a> {
     Remove(&'a PuzzleRule),
+    RemoveKropkiDot { cells: [usize; 2], black: bool },
     JoinCages([usize; 2]),
 }
 
@@ -35,6 +36,21 @@ impl Change<'_> {
             Self::Remove(clue) => {
                 let i = next.rules.iter().position(|r| r == *clue)?;
                 next.rules.remove(i);
+            }
+            Self::RemoveKropkiDot { cells, black } => {
+                let pairs = next.rules.iter_mut().find_map(|rule| {
+                    let PuzzleRule::Kropki {
+                        consecutive,
+                        ratio_two,
+                    } = rule
+                    else {
+                        return None;
+                    };
+                    let layer = if *black { ratio_two } else { consecutive };
+                    (layer.pairs.len() > 1 && layer.pairs.contains(cells))
+                        .then_some(&mut layer.pairs)
+                })?;
+                pairs.retain(|pair| pair != cells);
             }
             Self::JoinCages([a, b]) => {
                 let cages = next.rules.iter_mut().find_map(|rule| match rule {
@@ -86,6 +102,33 @@ pub(super) fn thin(
         .filter(|rule| removable(rule))
         .map(Change::Remove)
         .collect();
+    // An unmarked edge can change the meaning of a negative rule. White dots
+    // can also define the exceptions to Non-Consecutive.
+    if !puzzle.rules.iter().any(|rule| match rule {
+        PuzzleRule::NonConsecutive { .. } => true,
+        PuzzleRule::Kropki {
+            consecutive,
+            ratio_two,
+        } => consecutive.negative || ratio_two.negative,
+        _ => false,
+    }) {
+        for rule in &puzzle.rules {
+            if let PuzzleRule::Kropki {
+                consecutive,
+                ratio_two,
+            } = rule
+            {
+                for (layer, black) in [(consecutive, false), (ratio_two, true)] {
+                    candidates.extend(
+                        layer
+                            .pairs
+                            .iter()
+                            .map(|&cells| Change::RemoveKropkiDot { cells, black }),
+                    );
+                }
+            }
+        }
+    }
     if puzzle.rules.iter().any(|r| {
         matches!(
             r,

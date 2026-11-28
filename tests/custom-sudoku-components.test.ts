@@ -16,6 +16,17 @@ test('families replace overlapping choices and legacy saved modes retain their f
     { name: 'Saved', rules: ['diagonal', 'xv'], negativeMarkers: ['xv-ten'] })
 })
 
+test('proved conflicts distinguish standard boxes and white-dot exceptions', () => {
+  assert.match(ruleSelectionConflict(['windoku', 'arrow', 'non-consecutive'])!, /cannot share a completed grid/)
+  assert.equal(ruleSelectionConflict(['windoku', 'non-consecutive', 'kropki-white']), undefined)
+  assert.equal(ruleSelectionConflict(['windoku', 'non-consecutive', 'jigsaw']), undefined)
+  for (const diagonal of ['diagonal', 'diagonal-main', 'diagonal-anti'] as const) {
+    const chess = ['anti-king', 'anti-knight', diagonal] as const
+    assert.match(ruleSelectionConflict(chess)!, /cannot share a completed grid/)
+    assert.equal(ruleSelectionConflict([...chess, 'jigsaw']), undefined)
+  }
+})
+
 let server: ViteDevServer
 let renderNewPuzzle: typeof import('./helpers/new-puzzle-render.tsx').renderNewPuzzle
 before(async () => {

@@ -52,7 +52,7 @@ export const ANALYSIS_GROUPS = [
   { title: 'Clue interactions', techniques: [
     'whispers-house-support', 'inside-grid', 'kropki-house-support', 'lettered-quadruples',
     'entropy-quadruple', 'renban-house-support', 'group-line-house-support',
-    'thermometer-house-support', 'little-killer-house-support', 'renban-sum',
+    'thermometer-house-support', 'arrow-house-support', 'little-killer-house-support', 'renban-sum',
     'region-sum-distinct', 'renban-sum-ray-houses', 'renban-sum-house',
     'renban-group-counts', 'region-sum-house',
   ] },
