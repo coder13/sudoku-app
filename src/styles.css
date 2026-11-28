@@ -2509,7 +2509,7 @@ svg { flex-shrink: 0; }
 .sudoku-mode-list li > a:first-child > span:not(.variant-preview) { flex: 1; overflow-wrap: anywhere; }
 .sudoku-mode-list li > a:first-child > svg:last-child { flex: none; }
 .sudoku-mode-list li > a:first-child:hover { background: var(--selected-bg); }
-.sudoku-mode-form, .sudoku-saved-modes { display: grid; gap: var(--space-12); }
+.sudoku-mode-form { display: grid; gap: var(--space-12); }
 .sudoku-selected-rules, .sudoku-mode-note { color: var(--muted); }
 .sudoku-custom-rule-list { display: grid; margin: 0; padding: 0; border: 0; }
 .sudoku-custom-rule-list legend { font-weight: 700; margin-bottom: var(--space-6); }

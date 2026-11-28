@@ -40,6 +40,7 @@ import { Route as PuzzlesHidatoPuzzleRouteImport } from './routes/puzzles.hidato
 import { Route as PuzzlesKakuroPuzzleRouteImport } from './routes/puzzles.kakuro_.$puzzle'
 import { Route as PuzzlesNewCustomRouteImport } from './routes/puzzles.new.custom'
 import { Route as PuzzlesNewDifficultyRouteImport } from './routes/puzzles.new.difficulty'
+import { Route as PuzzlesNewSaveRouteImport } from './routes/puzzles.new.save'
 import { Route as PuzzlesRulloPuzzleRouteImport } from './routes/puzzles.rullo_.$puzzle'
 import { Route as SettingsDeviceSyncStepRouteImport } from './routes/settings.device-sync.$step'
 
@@ -198,6 +199,11 @@ const PuzzlesNewDifficultyRoute = PuzzlesNewDifficultyRouteImport.update({
   path: '/difficulty',
   getParentRoute: () => PuzzlesNewRoute,
 } as any)
+const PuzzlesNewSaveRoute = PuzzlesNewSaveRouteImport.update({
+  id: '/save',
+  path: '/save',
+  getParentRoute: () => PuzzlesNewRoute,
+} as any)
 const PuzzlesRulloPuzzleRoute = PuzzlesRulloPuzzleRouteImport.update({
   id: '/rullo_/$puzzle',
   path: '/rullo/$puzzle',
@@ -241,6 +247,7 @@ export interface FileRoutesByFullPath {
   '/puzzles/kakuro/$puzzle': typeof PuzzlesKakuroPuzzleRoute
   '/puzzles/new/custom': typeof PuzzlesNewCustomRoute
   '/puzzles/new/difficulty': typeof PuzzlesNewDifficultyRoute
+  '/puzzles/new/save': typeof PuzzlesNewSaveRoute
   '/puzzles/rullo/$puzzle': typeof PuzzlesRulloPuzzleRoute
   '/settings/device-sync/$step': typeof SettingsDeviceSyncStepRoute
 }
@@ -275,6 +282,7 @@ export interface FileRoutesByTo {
   '/puzzles/kakuro/$puzzle': typeof PuzzlesKakuroPuzzleRoute
   '/puzzles/new/custom': typeof PuzzlesNewCustomRoute
   '/puzzles/new/difficulty': typeof PuzzlesNewDifficultyRoute
+  '/puzzles/new/save': typeof PuzzlesNewSaveRoute
   '/puzzles/rullo/$puzzle': typeof PuzzlesRulloPuzzleRoute
   '/settings/device-sync/$step': typeof SettingsDeviceSyncStepRoute
 }
@@ -311,6 +319,7 @@ export interface FileRoutesById {
   '/puzzles/kakuro_/$puzzle': typeof PuzzlesKakuroPuzzleRoute
   '/puzzles/new/custom': typeof PuzzlesNewCustomRoute
   '/puzzles/new/difficulty': typeof PuzzlesNewDifficultyRoute
+  '/puzzles/new/save': typeof PuzzlesNewSaveRoute
   '/puzzles/rullo_/$puzzle': typeof PuzzlesRulloPuzzleRoute
   '/settings/device-sync/$step': typeof SettingsDeviceSyncStepRoute
 }
@@ -348,6 +357,7 @@ export interface FileRouteTypes {
     | '/puzzles/kakuro/$puzzle'
     | '/puzzles/new/custom'
     | '/puzzles/new/difficulty'
+    | '/puzzles/new/save'
     | '/puzzles/rullo/$puzzle'
     | '/settings/device-sync/$step'
   fileRoutesByTo: FileRoutesByTo
@@ -382,6 +392,7 @@ export interface FileRouteTypes {
     | '/puzzles/kakuro/$puzzle'
     | '/puzzles/new/custom'
     | '/puzzles/new/difficulty'
+    | '/puzzles/new/save'
     | '/puzzles/rullo/$puzzle'
     | '/settings/device-sync/$step'
   id:
@@ -417,6 +428,7 @@ export interface FileRouteTypes {
     | '/puzzles/kakuro_/$puzzle'
     | '/puzzles/new/custom'
     | '/puzzles/new/difficulty'
+    | '/puzzles/new/save'
     | '/puzzles/rullo_/$puzzle'
     | '/settings/device-sync/$step'
   fileRoutesById: FileRoutesById
@@ -652,6 +664,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PuzzlesNewDifficultyRouteImport
       parentRoute: typeof PuzzlesNewRoute
     }
+    '/puzzles/new/save': {
+      id: '/puzzles/new/save'
+      path: '/save'
+      fullPath: '/puzzles/new/save'
+      preLoaderRoute: typeof PuzzlesNewSaveRouteImport
+      parentRoute: typeof PuzzlesNewRoute
+    }
     '/puzzles/rullo_/$puzzle': {
       id: '/puzzles/rullo_/$puzzle'
       path: '/rullo/$puzzle'
@@ -684,11 +703,13 @@ const LearnRouteWithChildren = LearnRoute._addFileChildren(LearnRouteChildren)
 interface PuzzlesNewRouteChildren {
   PuzzlesNewCustomRoute: typeof PuzzlesNewCustomRoute
   PuzzlesNewDifficultyRoute: typeof PuzzlesNewDifficultyRoute
+  PuzzlesNewSaveRoute: typeof PuzzlesNewSaveRoute
 }
 
 const PuzzlesNewRouteChildren: PuzzlesNewRouteChildren = {
   PuzzlesNewCustomRoute: PuzzlesNewCustomRoute,
   PuzzlesNewDifficultyRoute: PuzzlesNewDifficultyRoute,
+  PuzzlesNewSaveRoute: PuzzlesNewSaveRoute,
 }
 
 const PuzzlesNewRouteWithChildren = PuzzlesNewRoute._addFileChildren(

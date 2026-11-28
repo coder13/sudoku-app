@@ -41,7 +41,9 @@ const newPuzzleRoute = getRouteApi('/puzzles/new')
 const collectionRoute = getRouteApi('/puzzles/collections')
 const solvedRoute = getRouteApi('/puzzles/solved')
 
-type CustomModeDraft = CustomModeDefinition & { modeId?: string; filter: string }
+type CustomModeDraft = Pick<CustomModeDefinition, 'rules' | 'negativeMarkers'> & {
+  savedMode?: Pick<SudokuMode, 'id' | 'name'>
+}
 
 declare module '@tanstack/history' {
   interface HistoryState {
@@ -229,17 +231,11 @@ function useMiracleOption(rules: readonly CustomRule[], level: Difficulty, busy:
   return { miracle, control }
 }
 
-function CustomModeBuilder({ mode, modes, onSave }: { mode?: SudokuMode; modes: readonly SudokuMode[]; onSave: (mode: SudokuMode) => SudokuMode }) {
+function CustomModeBuilder({ mode }: { mode?: SudokuMode }) {
   const navigate = useNavigate()
   const draft = useLocation({ select: location => location.state.customModeDraft })
-  const [name, setName] = useState(draft?.name ?? mode?.name ?? '')
   const [rules, setRules] = useState<readonly CustomRule[]>(draft?.rules ?? mode?.rules ?? [])
   const [negativeMarkers, setNegativeMarkers] = useState<readonly MarkerRule[]>(draft?.negativeMarkers ?? mode?.negativeMarkers ?? [])
-  const [filter, setFilter] = useState(draft?.filter ?? '')
-  const modeId = useRef(draft?.modeId ?? mode?.id)
-  const [saveError, setSaveError] = useState('')
-  const query = filter.trim().toLowerCase()
-  const visible = customRuleIds.filter(rule => customRules[rule].name.toLowerCase().includes(query))
   const markerRules = selectedMarkerRules(rules)
   const conflict = ruleSelectionConflict(rules, negativeMarkers)
   const canContinue = rules.length > 0 && !conflict
@@ -251,52 +247,27 @@ function CustomModeBuilder({ mode, modes, onSave }: { mode?: SudokuMode; modes: 
     setNegativeMarkers(current => current.filter(marker => nextMarkers.includes(marker)))
   }
 
-  function save(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!name.trim() || !canContinue) return
-    try {
-      modeId.current ??= createGameId()
-      onSave({ id: modeId.current, name: name.trim(), rules, ...(negativeMarkers.length && { negativeMarkers }) })
-      setSaveError('')
-    } catch {
-      setSaveError('Could not save this mode on this device.')
-    }
-  }
-
-  async function continueToDifficulty() {
+  async function advance(to: '/puzzles/new/difficulty' | '/puzzles/new/save') {
     if (!canContinue) return
-    const customModeDraft = { name, rules, negativeMarkers, filter, modeId: modeId.current }
+    const savedMode = mode && { id: mode.id, name: mode.name }
+    const customModeDraft: CustomModeDraft = { rules, negativeMarkers, savedMode }
     // Keep the builder's draft in its own history entry so Back restores the form.
     await navigate({ to: '/puzzles/new/custom', search: true, replace: true, resetScroll: false, viewTransition: false,
       state: previous => ({ ...previous, customModeDraft }) })
-    void navigate({ to: '/puzzles/new/difficulty', search: { draft: true }, state: { fromPuzzleVariantPicker: true, customModeDraft } })
+    void navigate({ to, search: to === '/puzzles/new/difficulty' ? { draft: true } : {},
+      state: { fromPuzzleVariantPicker: true, customModeDraft } })
   }
 
-  return <section className="main-menu-section new-puzzle-step sudoku-mode-builder" aria-labelledby="puzzles-page-title">
-    {modes.length > 0 && <section className="sudoku-saved-modes">
-      <h2>Saved modes</h2>
-      <ul className="sudoku-mode-list">
-        {modes.map(saved => <li key={saved.id}>
-          <Link to="/puzzles/new/difficulty" search={{ mode: saved.id }} state={{ fromPuzzleVariantPicker: true }}><span>{saved.name}</span><ChevronRight size={18} aria-hidden="true" /></Link>
-          <Link to="/puzzles/new/custom" search={{ mode: saved.id }} state={{ fromPuzzleVariantPicker: true }} className={buttonClassName('quiet')} aria-label={`Edit ${saved.name}`}>Edit</Link>
-        </li>)}
-      </ul>
-    </section>}
-    <form className="sudoku-mode-form" onSubmit={save}>
-      <label className="dialog-form">Mode name
-        <input value={name} maxLength={48} onChange={event => setName(event.currentTarget.value)} />
-      </label>
+  return <section className="main-menu-section new-puzzle-step" aria-labelledby="puzzles-page-title">
+    <div className="sudoku-mode-form">
       <div className="sudoku-selected-rules" aria-live="polite">{rules.length
         ? rules.map(rule => customRules[rule].name).join(' · ') : 'Choose rules for a generated puzzle.'}</div>
-      <label className="dialog-form">Find a rule
-        <input type="search" value={filter} onChange={event => setFilter(event.currentTarget.value)} />
-      </label>
       <fieldset className="sudoku-custom-rule-list">
         <legend>Rules</legend>
-        {visible.length ? visible.map(rule => <label key={rule}>
+        {customRuleIds.map(rule => <label key={rule}>
           <input type="checkbox" checked={rules.includes(rule)} onChange={event => changeRule(rule, event.currentTarget.checked)} />
           <span><strong>{customRules[rule].name}</strong><small>{customRules[rule].rule}</small></span>
-        </label>) : <p>No rules match your search.</p>}
+        </label>)}
       </fieldset>
       {markerRules.length > 0 && <fieldset className="sudoku-custom-rule-list">
         <legend>Unmarked edges</legend>
@@ -309,12 +280,51 @@ function CustomModeBuilder({ mode, modes, onSave }: { mode?: SudokuMode; modes: 
           {markerOptions[marker].label}
         </label>)}
       </fieldset>}
-      {saveError && <p className="form-error" role="alert">{saveError}</p>}
       {conflict && <p className="form-error" role="status">{conflict}</p>}
-      <Button type="submit" disabled={!name.trim() || !canContinue}>Save mode</Button>
-      <Button variant="primary" disabled={!canContinue} onClick={() => void continueToDifficulty()}>
+      <Button disabled={!canContinue} onClick={() => void advance('/puzzles/new/save')}>Save mode</Button>
+      <Button variant="primary" disabled={!canContinue} onClick={() => void advance('/puzzles/new/difficulty')}>
         Continue <ArrowRight size={18} aria-hidden="true" />
       </Button>
+    </div>
+  </section>
+}
+
+function CustomModeRuleSummary({ rules, negativeMarkers }: Pick<CustomModeDefinition, 'rules' | 'negativeMarkers'>) {
+  return <>
+    <p>{rules.map(rule => customRules[rule].name).join(' · ')}</p>
+    {!!negativeMarkers?.length && <p>{negativeMarkers.map(marker => markerOptions[marker].label).join(' · ')}</p>}
+  </>
+}
+
+function CustomModeSave({ mode, savedId, onSave }: { mode: CustomModeDefinition; savedId?: string; onSave: (mode: SudokuMode) => void }) {
+  const navigate = useNavigate()
+  const [name, setName] = useState(savedId ? mode.name : '')
+  const [error, setError] = useState('')
+  const modeId = useRef(savedId)
+  const conflict = ruleSelectionConflict(mode.rules, mode.negativeMarkers)
+  const modeName = name.trim()
+
+  function save(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!modeName || conflict) return
+    try {
+      modeId.current ??= createGameId()
+      onSave({ ...mode, id: modeId.current, name: modeName })
+    } catch {
+      setError('Could not save this mode on this device.')
+      return
+    }
+    void navigate({ to: '/puzzles/new', search: { step: 'variant' }, replace: true })
+  }
+
+  return <section className="main-menu-section new-puzzle-step" aria-labelledby="puzzles-page-title">
+    <CustomModeRuleSummary rules={mode.rules} negativeMarkers={mode.negativeMarkers} />
+    <form className="sudoku-mode-form" onSubmit={save}>
+      <label className="dialog-form">Mode name
+        <input value={name} required maxLength={48} onChange={event => setName(event.currentTarget.value)} />
+      </label>
+      {(conflict || error) && <p className="form-error" role="alert">{conflict || error}</p>}
+      <Button type="submit" variant="primary" disabled={!modeName || !!conflict}>Save mode</Button>
     </form>
   </section>
 }
@@ -335,8 +345,7 @@ function CustomModeDifficulty({ mode, difficulty = DEFAULT_DIFFICULTY }: {
     actions={busy ? <Button type="button" onClick={cancelGeneration}>Cancel generation</Button>
       : mode.id && <Link to="/puzzles/new/custom" search={{ mode: mode.id }} state={{ fromPuzzleVariantPicker: true }}
         className={buttonClassName('quiet')}>Edit mode</Link>}>
-    <p>{mode.rules.map(rule => customRules[rule].name).join(' · ')}</p>
-    {!!mode.negativeMarkers?.length && <p>{mode.negativeMarkers.map(marker => markerOptions[marker].label).join(' · ')}</p>}
+    <CustomModeRuleSummary rules={mode.rules} negativeMarkers={mode.negativeMarkers} />
     <DifficultySelector value={difficulty} customMode={mode} recommended={recommended} disabled={busy} onChange={next => {
       clearError()
       void navigate({ to: '/puzzles/new/difficulty', search: previous => ({ ...previous, difficulty: next }),
@@ -346,13 +355,11 @@ function CustomModeDifficulty({ mode, difficulty = DEFAULT_DIFFICULTY }: {
   </PuzzleDifficultyStep>
 }
 
-function CustomPuzzleGeneration({ variant, boxRows, difficulty, mode, modes, onSave }: {
+function CustomPuzzleGeneration({ variant, boxRows, difficulty, mode }: {
   variant?: SizedPuzzleId
   boxRows?: RectangularBoxRows
   difficulty: DifficultyPreference
   mode?: SudokuMode
-  modes: readonly SudokuMode[]
-  onSave: (mode: SudokuMode) => SudokuMode
 }) {
   const navigate = useNavigate()
   const size = rectangularPuzzleSize(variant)
@@ -383,7 +390,7 @@ function CustomPuzzleGeneration({ variant, boxRows, difficulty, mode, modes, onS
       </label>}
       <Link to="/puzzles/new/difficulty" search={{ variant, boxRows, difficulty: newPuzzleDifficulty(variant, difficulty) }} state={{ fromPuzzleVariantPicker: true }}
         className={buttonClassName('primary')}>Continue <ArrowRight size={18} aria-hidden="true" /></Link>
-    </> : <CustomModeBuilder key={mode?.id ?? 'new'} mode={mode} modes={modes} onSave={onSave} />}
+    </> : <CustomModeBuilder key={mode?.id ?? 'new'} mode={mode} />}
   </div>
 }
 
@@ -545,10 +552,12 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
   const managing = games.find((game) => game.id === managingId)
   const routeId = useRouterState({ select: (state) => state.matches.at(-1)?.routeId })
   const difficultyScreen = routeId === '/puzzles/new/difficulty'
+  const saveScreen = routeId === '/puzzles/new/save'
   const newPuzzleSearch = newPuzzleRoute.useSearch({ shouldThrow: false })
   const customGrid = isSizedPuzzleId(newPuzzleSearch?.variant) ? newPuzzleSearch.variant : undefined
   const customScreen = routeId === '/puzzles/new/custom' || routeId === '/puzzles/new' && Boolean(customGrid)
-  const section = difficultyScreen || customScreen ? 'new'
+  const newPuzzleStep = difficultyScreen ? 'difficulty' : saveScreen ? 'save' : customScreen ? 'custom' : undefined
+  const section = newPuzzleStep ? 'new'
     : (Object.keys(puzzleSections) as PuzzleSection[]).find((id) => puzzleSections[id].to === routeId) ?? 'puzzles'
   const collectionSearch = collectionRoute.useSearch({ shouldThrow: false })
   const collection = getCollection(collectionSearch?.collection)
@@ -567,15 +576,14 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
   }, [])
   const modes = savedModes ?? []
   const mode = modes.find(item => item.id === newPuzzleSearch?.mode)
-  const openRemembered = section === 'new' && !difficultyScreen && !customScreen && !newPuzzleSearch?.mode
+  const openRemembered = section === 'new' && !newPuzzleStep && !newPuzzleSearch?.mode
     && !newPuzzleSearch?.variant && newPuzzleSearch?.step !== 'variant'
-  const screen = section === 'new' ? difficultyScreen || openRemembered ? 'difficulty' : customScreen ? 'custom' : 'variant' : undefined
+  const screen = section === 'new' ? newPuzzleStep ?? (openRemembered ? 'difficulty' : 'variant') : undefined
   function saveMode(saved: SudokuMode) {
     const current = readSudokuModes()
     const next = current.some(item => item.id === saved.id) ? current.map(item => item.id === saved.id ? saved : item) : [...current, saved]
     writeSudokuModes(next)
     setSavedModes(next)
-    return saved
   }
   const variant = newPuzzleSearch?.variant ?? newPuzzlePreference.variant
   const rememberedVariant = variant === newPuzzlePreference.variant ? newPuzzlePreference : undefined
@@ -583,13 +591,15 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
   const boxRows = rectangularBoxRows(variant, newPuzzleSearch?.boxRows ?? rememberedVariant?.boxRows)
     ?? (rectangularPuzzleSize(variant) ? 2 : undefined)
   const draftDifficulty = difficultyScreen && newPuzzleSearch?.draft === true
+  const draftScreen = saveScreen || draftDifficulty
   const sizedDifficulty = difficultyScreen && !draftDifficulty && isSizedPuzzleId(variant)
-  const customSetupBack = sizedDifficulty || draftDifficulty
+  const customSetupBack = sizedDifficulty || draftScreen
   const variantBack = difficultyScreen && !customSetupBack && !newPuzzleSearch?.mode
     && !coreSudokuModes.some(mode => mode === variant)
   const requestedDifficulty = newPuzzleSearch?.difficulty ?? newPuzzlePreference.difficulty
   const difficulty = newPuzzleDifficulty(variant, requestedDifficulty)
   const pageTitle = screen === 'difficulty' ? 'Choose difficulty'
+    : screen === 'save' ? 'Save mode'
     : screen === 'custom' ? 'Generate a custom puzzle'
       : screen === 'variant' ? newPuzzleSearch?.variant ? 'Choose a variant' : 'Choose a Sudoku mode'
       : section === 'puzzles' ? 'Puzzles'
@@ -617,9 +627,11 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
     if (current === 'collections') return <PuzzleCollections key={`${collectionSearch?.collection}:${collectionDifficulty}:${collectionSearch?.puzzle}`}
       games={games} />
     if (current === 'new') {
-      if (draftDifficulty) {
-        const draft = customModeDraft && readCustomModeDefinition({ ...customModeDraft, name: customModeDraft.name.trim() || 'Custom Sudoku' })
-        if (draft) return <CustomModeDifficulty mode={draft} difficulty={newPuzzleSearch?.difficulty} />
+      if (draftScreen) {
+        const savedMode = customModeDraft?.savedMode
+        const draft = customModeDraft && readCustomModeDefinition({ ...customModeDraft, name: savedMode?.name ?? 'Custom Sudoku' })
+        if (draft) return saveScreen ? <CustomModeSave mode={draft} savedId={savedMode?.id} onSave={saveMode} />
+          : <CustomModeDifficulty mode={draft} difficulty={newPuzzleSearch?.difficulty} />
         return <section className="main-menu-section new-puzzle-step" aria-labelledby="puzzles-page-title">
           <Link to="/puzzles/new/custom" className={buttonClassName('primary')}>Choose rules</Link>
         </section>
@@ -632,7 +644,7 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
         </section>
         if (difficultyScreen) return <CustomModeDifficulty key={mode.id} mode={mode} difficulty={newPuzzleSearch.difficulty} />
       }
-      if (customScreen) return <CustomPuzzleGeneration variant={customGrid} boxRows={boxRows} difficulty={requestedDifficulty} mode={mode} modes={modes} onSave={saveMode} />
+      if (customScreen) return <CustomPuzzleGeneration variant={customGrid} boxRows={boxRows} difficulty={requestedDifficulty} mode={mode} />
       if (!difficultyScreen && !newPuzzleSearch?.variant && !openRemembered) {
         return <CoreSudokuChooser modes={modes} difficulty={requestedDifficulty} />
       }
@@ -654,13 +666,13 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
             : collectionDifficulty ? { collection: collectionSearch.collection } : {}}
           className={iconButtonClassName('secondary', 'puzzles-back')} aria-label={collectionSearch.puzzle ? 'Back to collection puzzles'
             : collectionDifficulty ? 'Change collection difficulty' : 'Browse all collections'}><ChevronLeft size={21} /></Link>
-          : difficultyScreen || customScreen ? (fromPuzzleVariantPicker && canGoBack
+          : newPuzzleStep ? (fromPuzzleVariantPicker && canGoBack
             ? <IconButton className="puzzles-back" aria-label="Back" onClick={() => router.history.back()}><ChevronLeft size={21} /></IconButton>
             : <Link to={customSetupBack ? '/puzzles/new/custom' : '/puzzles/new'}
               search={sizedDifficulty ? { variant, boxRows, difficulty: requestedDifficulty }
-                : draftDifficulty ? {} : variantBack ? { variant, ruleset, difficulty: requestedDifficulty }
+                : draftScreen ? { mode: customModeDraft?.savedMode?.id } : variantBack ? { variant, ruleset, difficulty: requestedDifficulty }
                   : { step: 'variant', difficulty: requestedDifficulty }}
-              state={draftDifficulty ? { customModeDraft } : undefined} replace
+              state={draftScreen ? { customModeDraft } : undefined} replace
               className={iconButtonClassName('secondary', 'puzzles-back')}
               aria-label={customSetupBack ? 'Back to custom puzzle setup' : variantBack ? 'Back to variant' : 'Back to Sudoku modes'}><ChevronLeft size={21} /></Link>)
             : section !== 'puzzles' && <Link to="/puzzles/browse" className={iconButtonClassName('secondary', 'puzzles-back')} aria-label="Back to puzzles"><ChevronLeft size={21} /></Link>}

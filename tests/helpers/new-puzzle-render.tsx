@@ -13,7 +13,8 @@ export async function renderNewPuzzle(path: string, preference: NewPuzzlePrefere
   const choice = createRoute({ getParentRoute: () => puzzles, path: 'new', validateSearch: NewPuzzleRoute.options.validateSearch })
   const custom = createRoute({ getParentRoute: () => choice, path: 'custom' })
   const difficulty = createRoute({ getParentRoute: () => choice, path: 'difficulty' })
-  const router = createRouter({ routeTree: root.addChildren([puzzles.addChildren([choice.addChildren([custom, difficulty])])]),
+  const save = createRoute({ getParentRoute: () => choice, path: 'save' })
+  const router = createRouter({ routeTree: root.addChildren([puzzles.addChildren([choice.addChildren([custom, difficulty, save])])]),
     history: createMemoryHistory({ initialEntries: [path] }), defaultPreload: false })
   await router.load()
   return renderToStaticMarkup(createElement(RouterProvider, { router }))

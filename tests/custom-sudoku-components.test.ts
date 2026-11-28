@@ -55,7 +55,7 @@ test('the chooser offers five 9×9 modes, Import, and separate custom generation
   for (const grid of ['mini', 'jigsaw-five', 'six', 'jigsaw-seven', 'eight', 'algebraic-cages']) {
     assert.ok(builder.includes(`<option value="${grid}">`), grid)
   }
-  assert.doesNotMatch(builder, /Show in core modes/)
+  assert.doesNotMatch(builder, /Show in core modes|Saved modes|Find a rule|Mode name/)
   assert.match(builder, /Save mode/)
   assert.match(builder, /<button[^>]*disabled[^>]*>Continue/)
   assert.doesNotMatch(builder, /Generate puzzle|Miracle puzzle|<option value="hard">/)
@@ -67,11 +67,13 @@ test('the chooser offers five 9×9 modes, Import, and separate custom generation
   assert.deepEqual(customModeDifficulties(['jigsaw', 'x-sum']), DIFFICULTY_LEVELS)
 })
 
-test('a direct custom difficulty link without a draft returns to rule selection', async () => {
-  const difficulty = await renderNewPuzzle('/puzzles/new/difficulty?draft=true', { variant: 'six', difficulty: 'medium', boxRows: 3 })
-  assert.match(difficulty, /href="\/puzzles\/new\/custom"[^>]*>Choose rules<\/a>/)
-  assert.match(difficulty, /aria-label="Back to custom puzzle setup"/)
-  assert.doesNotMatch(difficulty, /Start medium puzzle|6 × 6 Sudoku/)
+test('direct custom next steps without a draft link back to rule selection', async () => {
+  for (const step of ['difficulty?draft=true', 'save']) {
+    const markup = await renderNewPuzzle(`/puzzles/new/${step}`, { variant: 'six', difficulty: 'medium', boxRows: 3 })
+    assert.match(markup, /href="\/puzzles\/new\/custom"[^>]*>Choose rules<\/a>/)
+    assert.match(markup, /aria-label="Back to custom puzzle setup"/)
+    assert.doesNotMatch(markup, /Start medium puzzle|6 × 6 Sudoku|Mode name/)
+  }
 })
 
 test('smaller grids are configured inside custom generation and retain their difficulty links', async () => {
