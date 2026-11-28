@@ -161,6 +161,41 @@ test('every published Coach combination has order-independent candidate propagat
   assert.equal(checked, 59)
 })
 
+test('published 9 × 9 Coach combinations compose with solution-valid Odd and Even rules', async () => {
+  const oddMask = 0b101010101
+  const evenMask = 0b010101010
+  let checked = 0
+
+  for (const source of sources.values()) {
+    if (source.solution.length !== 81) continue
+    const imported = await detectPuzzle(source.code)
+    if (!imported.variant) continue
+
+    const { puzzle } = imported.variant
+    const baseline = await runEngine({ type: 'variant', operation: 'candidates', position: { puzzle } })
+    const oddCells = [...source.solution].flatMap((digit, cell) => Number(digit) % 2 === 1 ? [cell] : [])
+    const evenCells = [...source.solution].flatMap((digit, cell) => Number(digit) % 2 === 0 ? [cell] : [])
+    const combined = {
+      ...puzzle,
+      rules: [...(puzzle.rules ?? []),
+        { type: 'parity' as const, cells: oddCells, parity: 'odd' as const },
+        { type: 'parity' as const, cells: evenCells, parity: 'even' as const }],
+    }
+    const candidates = await runEngine({ type: 'variant', operation: 'candidates', position: { puzzle: combined } })
+    for (let cell = 0; cell < 81; cell++) {
+      const parityMask = Number(source.solution[cell]) % 2 ? oddMask : evenMask
+      assert.ok((candidates[cell] & ~baseline[cell]) === 0,
+        `${source.references[0]} cell ${cell}: added parity rules do not restore an original candidate`)
+      assert.ok((candidates[cell] & ~parityMask) === 0,
+        `${source.references[0]} cell ${cell}: combined candidates satisfy the published solution's parity`)
+    }
+    assertSolutionCandidates(candidates, imported.givens, source.solution, `${source.references[0]} with parity companions`)
+    checked++
+  }
+
+  assert.equal(checked, 59)
+})
+
 test('the published Every Constraint combination compiles and propagates in the Rust engine', async () => {
   const fixture = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-every-constraint.json', import.meta.url), 'utf8'))
   const imported = await detectPuzzle(fixture.examples[0].code)
