@@ -14,7 +14,12 @@ const wasmBytes = await readFile(new URL('../src/sudoku/generated/engine.wasm', 
 const { instance } = await WebAssembly.instantiate(wasmBytes)
 const memory = instance.exports.memory
 assert.ok(memory instanceof WebAssembly.Memory, 'the app Wasm should expose its linear memory')
-const initialMemoryBytes = memory.buffer.byteLength
+const memoryMiB = bytes => (bytes / 1_048_576).toFixed(3)
+const memorySnapshot = () => {
+  const { rss, heapUsed } = process.memoryUsage()
+  return { rssMiB: memoryMiB(rss), heapMiB: memoryMiB(heapUsed), wasmMiB: memoryMiB(memory.buffer.byteLength) }
+}
+const afterWasmLoadMemory = memorySnapshot()
 const handle = createEngineHandler(async () => instance.exports)
 let requestId = 0
 
@@ -58,6 +63,7 @@ assert.equal(generatedTerrain.givens, 60)
 assert.equal(generatedTerrain.puzzle.rules.filter(rule => rule.type === 'terrain-sandwich').length, 15)
 assert.deepEqual(await request({ type: 'variant', operation: 'solve-unique', position: { puzzle: generatedTerrain.puzzle } }),
   { status: 'unique', solution: generatedTerrain.solution })
+const afterCoreWorkloadMemory = memorySnapshot()
 
 class ProfileWorker {
   onmessage
@@ -161,4 +167,6 @@ await measure('Fixed-layout Terrain generation', terrainGenerationRequest, 10)
 await measure('App-order rating', appRateRequest, 20)
 await measure('App-order top-ten hints', appHintsRequest, 20)
 await measure('App-order exhaustive first collection', exhaustiveRequest, 10)
-console.log(`Wasm linear-memory buffer capacity: ${(initialMemoryBytes / 1_048_576).toFixed(3)} MiB initial, ${(memory.buffer.byteLength / 1_048_576).toFixed(3)} MiB after measured calls (buffer capacity, not live allocation or process RSS).`)
+const afterMeasurementsMemory = memorySnapshot()
+const formatMemory = sample => `RSS ${sample.rssMiB}, V8 heap ${sample.heapMiB}, Wasm buffer ${sample.wasmMiB} MiB`
+console.log(`Memory snapshots (RSS / V8 heap / Wasm linear-buffer capacity): after Wasm load ${formatMemory(afterWasmLoadMemory)}; after core workload ${formatMemory(afterCoreWorkloadMemory)}; after timed suite ${formatMemory(afterMeasurementsMemory)}. Snapshots are not peak RSS or live-allocation measurements.`)
