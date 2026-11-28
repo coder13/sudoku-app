@@ -125,18 +125,35 @@ test('both Coach import paths open the verified Fog puzzle with all companion ru
   assert.equal(fogView(linked.game.variant)?.cells.size, 1)
 })
 
-test('a Coach Fog current-state import restores a correct entry and its reveal', async () => {
-  const alphabet = '0123456789abcdefghijklmnopqrstuv'
-  const bits = [...source.code.slice('SCv7_32_'.length)].map(char => alphabet.indexOf(char).toString(2).padStart(5, '0')).join('')
-  const json = inflateSync(Buffer.from(bits.match(/.{8}/g)!.map(byte => Number.parseInt(byte, 2)))).toString('utf8')
-  const fields = JSON.parse(json) as Record<string, unknown>
-  const userDigits = Array.from({ length: 81 }, () => '0')
-  userDigits[63] = source.solution[63]
-  const code = coachCode({ ...fields, userDigits: userDigits.join('') })
-  const { game } = await prepareImportedPuzzle(code)
+test('a Coach Fog current-state import preserves progress through reload and shares the puzzle definition', async ({ mock }) => {
+  const { sqlite, fetcher } = syncDatabase()
+  mock.method(globalThis, 'fetch', fetcher)
+  try {
+    const alphabet = '0123456789abcdefghijklmnopqrstuv'
+    const bits = [...source.code.slice('SCv7_32_'.length)].map(char => alphabet.indexOf(char).toString(2).padStart(5, '0')).join('')
+    const json = inflateSync(Buffer.from(bits.match(/.{8}/g)!.map(byte => Number.parseInt(byte, 2)))).toString('utf8')
+    const fields = JSON.parse(json) as Record<string, unknown>
+    const userDigits = Array.from({ length: 81 }, () => '0')
+    userDigits[63] = source.solution[63]
+    const code = coachCode({ ...fields, userDigits: userDigits.join('') })
+    const { game } = await prepareImportedPuzzle(code)
+    const expectedCells = [54, 55, 63, 64, 72, 73]
 
-  assert.equal(game.position.entries[63], source.solution[63])
-  assert.deepEqual([...fogView(game.variant, game.position.entries)!.cells].sort((a, b) => a - b), [54, 55, 63, 64, 72, 73])
+    assert.equal(game.position.entries[63], source.solution[63])
+    assert.deepEqual([...fogView(game.variant, game.position.entries)!.cells].sort((a, b) => a - b), expectedCells)
+    const reloaded = readGame(game.id, JSON.stringify(game))
+    assert.ok(reloaded)
+    assert.equal(reloaded.position.entries[63], source.solution[63])
+    assert.deepEqual([...fogView(reloaded.variant, reloaded.position.entries)!.cells].sort((a, b) => a - b), expectedCells)
+    const id = await publishSharedPuzzle(reloaded)
+    const shared = await prepareSharedPuzzle(id, [], new AbortController().signal)
+    assert.equal(shared.game.position.entries, '0'.repeat(81), 'sharing starts a fresh player position')
+    assert.deepEqual(shared.game.variant?.puzzle, game.variant?.puzzle)
+    assert.deepEqual(shared.game.variant?.fog, game.variant?.fog)
+    assert.deepEqual([...fogView(shared.game.variant)!.cells].sort((a, b) => a - b), [63])
+  } finally {
+    sqlite.close()
+  }
 })
 
 test('the authored reveal and current entries determine each projection, including after undo and redo', async () => {
