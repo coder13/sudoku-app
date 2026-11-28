@@ -7,7 +7,7 @@ import { prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { isSharedPuzzleId, publishSharedPuzzle } from '../src/sudoku/puzzle-sharing.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
 import { reflectVariant, variantGenerationRequest, variantSeeds } from '../src/sudoku/variant-generation.ts'
-import { generatePlayableVariant, getVariantPlayOrder, variantPosition } from '../src/sudoku/variant-play.ts'
+import { tryVariantRecipe, generatePlayableVariant, getVariantPlayOrder, variantPosition } from '../src/sudoku/variant-play.ts'
 import { variantHouseMasks } from '../src/sudoku/variants.ts'
 import { countLineSolutions } from './helpers/line-oracle.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
@@ -173,8 +173,7 @@ test('XV uses the checked fallback after a search limit or a single-symbol layou
     verify(result, 'medium')
     assert.deepEqual(result, await runEngine(variantGenerationRequest('xv', 'medium', recipe, order)))
   }
-  await assert.rejects(generatePlayableVariant('xv', 'hard', 1, []),
-    error => error instanceof EngineError && error.code === 'unsupported')
+  assert.equal(await tryVariantRecipe('xv', 'hard', 1, [], {}, runEngine), undefined)
 })
 
 test('generated XV markers, score, progress and the starting puzzle survive storage and sharing', async () => {

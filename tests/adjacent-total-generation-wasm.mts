@@ -7,7 +7,7 @@ import { prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { isSharedPuzzleId, publishSharedPuzzle } from '../src/sudoku/puzzle-sharing.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
 import { reflectVariant, variantGenerationRequest, variantSeeds } from '../src/sudoku/variant-generation.ts'
-import { generatePlayableVariant, getVariantPlayOrder, variantPosition } from '../src/sudoku/variant-play.ts'
+import { tryVariantRecipe, generatePlayableVariant, getVariantPlayOrder, variantPosition } from '../src/sudoku/variant-play.ts'
 import { variantHouseMasks, variantIdForPuzzle } from '../src/sudoku/variants.ts'
 import { countLineSolutions } from './helpers/line-oracle.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
@@ -178,8 +178,7 @@ test('Two-cell sums reaches verified fallback after a bounded fresh miss', async
   const result = await generatePlayableVariant(variant, 'medium', seed, [])
   verify(result, 'medium')
   assert.deepEqual(result, await runEngine(variantGenerationRequest(variant, 'medium', recipe, order)))
-  await assert.rejects(generatePlayableVariant(variant, 'hard', 1, []),
-    error => error instanceof EngineError && error.code === 'unsupported')
+  assert.equal(await tryVariantRecipe(variant, 'hard', 1, [], {}, runEngine), undefined)
 })
 
 test('generated sums, score, progress and the starting puzzle survive storage and sharing', async () => {

@@ -44,13 +44,12 @@ export function sharedPuzzleLink(id: string, origin: string) {
 export function puzzleDefinitionForSharing(game: Game): SharedPuzzlePayload {
   if (game.source === 'draft') throw new Error('Save this puzzle before creating a share link.')
   const variant = game.variant
-  const { rules, regions } = variant?.puzzle ?? {}
   const collection = game.collection && { collectionId: game.collection.collectionId, puzzleId: game.collection.puzzleId }
   const algebraic = game.algebraic?.source ? { sudokuPad: game.algebraic.source.code }
     : game.algebraic ? { rules: game.algebraic.rules } : undefined
   return {
     version: 1, title: game.title, givens: game.givens, grid: game.grid,
-    variant: variant && { id: variant.id, puzzle: { version: variant.puzzle.version, givens: game.givens, rules, regions }, ...(variant.fog && { fog: variant.fog }) },
+    variant: variant && { id: variant.id, puzzle: { ...variant.puzzle, givens: game.givens }, ...(variant.fog && { fog: variant.fog }) },
     collection,
     ...(game.whispersGuide && { whispersGuide: true }),
     ...(game.givenCellColors && { givenCellColors: game.givenCellColors }),

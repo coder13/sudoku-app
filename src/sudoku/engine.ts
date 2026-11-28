@@ -92,6 +92,7 @@ export type VariantRule =
 
 export type VariantPuzzle = {
   version: 1
+  extendedLogic?: boolean
   givens: string
   regions?: { type: 'boxes' } | { type: 'jigsaw'; regions: readonly (readonly number[])[] }
     | { type: 'partial'; regions: readonly (readonly number[])[] }
@@ -119,6 +120,9 @@ export type VariantGenerationRequest = {
   givens: number | readonly [number, number]
   variantClues?: number | readonly [number, number]
   requiredRule?: string
+  /** Each selected rule must independently disambiguate the final grid. */
+  requiredRules?: readonly string[]
+  thinClues?: boolean
   technique?: TechniqueTarget
   techniqueOrder?: readonly string[]
   exclude?: readonly VariantPuzzle[]
@@ -370,6 +374,7 @@ export type GeneratedVariant = {
   givens: number
   variantClues: number
   rating: VariantRating
+  ruleDependencies?: { rule: string; step: number; technique: string; action: DeductionAction; alternative: string }[]
 }
 type Generated = string | GeneratedPuzzle | GeneratedVariant
 type GenerationProgress<T> =
@@ -690,6 +695,7 @@ export type VariantDeduction = {
   actions: DeductionAction[]
   evidence:
     | { type: 'single'; candidate: Candidate; house: VariantHouse | null }
+    | { type: 'rule-single'; candidate: Candidate; house: VariantHouse; excluded: number; witness: number | null; rules: number[] }
     | { type: 'cage-sum'; house: VariantHouse | null; cages: [number, number][]; sum: number; cells: number[]; domains: number[] }
     | { type: 'sum-pair'; rules: [number, number]; cells: [number, number, number, number]; totals: [number, number]; domains: [number, number, number, number]; house: VariantHouse; houses: VariantHouse[] }
     | { type: 'group-line-phase-sum'; rules: [number, number]; cells: [number, number, number, number]; domains: [number, number, number, number]; total: number; house: VariantHouse }

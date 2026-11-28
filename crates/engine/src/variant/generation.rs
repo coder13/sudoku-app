@@ -10,7 +10,10 @@ use crate::{
     TechniqueTargetMode,
 };
 
+mod dependencies;
 mod layouts;
+mod miracle;
+use dependencies::{has_family, without_family};
 pub use layouts::{MarkerFamily, OutsideClueKind, VariantClueLayout};
 
 /// A bounded search for a unique puzzle with a selected rule set and optional logical targets.
@@ -38,6 +41,10 @@ pub struct VariantGenerationOptions {
     pub technique_order: Vec<VariantTechnique>,
     /// Rule ID whose removal must leave multiple solutions. Use `jigsaw` to remove region uniqueness.
     pub required_rule: Option<String>,
+    /// Independently remove each selected rule. Also check the givens under classic rules.
+    pub required_rules: Vec<String>,
+    /// Allow the zero-given constructor to remove drawn clues while keeping all required rules.
+    pub thin_clues: bool,
     /// Previously emitted puzzles to exclude, including equivalent rotations and reflections.
     /// Whispers path direction, segmentation and duplicate edges do not change identity.
     /// Palindrome and Clone matching-digit components are compared transitively;
@@ -71,6 +78,8 @@ impl VariantGenerationOptions {
             technique: None,
             technique_order: VariantTechnique::DEFAULT_ORDER.to_vec(),
             required_rule: None,
+            required_rules: Vec::new(),
+            thin_clues: false,
             exclude: Vec::new(),
         }
     }
@@ -97,6 +106,26 @@ pub struct GeneratedVariant {
     pub variant_clues: usize,
     /// Versioned rating under the requested profile. Can be partial without a rating target.
     pub rating: VariantRating,
+    /// First action in this solve that contradicts a completion allowed by omitting each required rule.
+    #[cfg_attr(feature = "wasm-api", serde(skip_serializing_if = "Vec::is_empty"))]
+    pub rule_dependencies: Vec<RuleDependency>,
+}
+
+/// A replayable counterexample for the use of one selected rule.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "wasm-api", derive(serde::Serialize))]
+pub struct RuleDependency {
+    /// Selected family, preset or marker layer that was omitted.
+    pub rule: String,
+    /// One-based step in the rated solution path.
+    pub step: usize,
+    /// Technique used at this point in the trace.
+    pub technique: VariantTechnique,
+    /// The move that first distinguishes the two completions.
+    pub action: crate::HintAction,
+    /// Completion obeying the givens and all remaining rules.
+    #[cfg_attr(feature = "wasm-api", serde(with = "super::wire::grid"))]
+    pub alternative: Board,
 }
 
 /// Invalid criteria or geometry in a variant generation request.
@@ -165,7 +194,10 @@ pub fn start_variant_generation(
     layouts::validate(&options.template, &options.derived_clues)?;
     base.prepare(&[0; CELLS], &[0; CELLS])
         .map_err(|_| ConflictingTemplate)?;
-    if options.givens.is_empty() || *options.givens.end() > CELLS {
+    if options.givens.is_empty()
+        || *options.givens.end() > CELLS
+        || options.thin_clues && *options.givens.end() != 0
+    {
         return Err(InvalidGivenCount);
     }
     if options
@@ -175,13 +207,18 @@ pub fn start_variant_generation(
     {
         return Err(InvalidClueCount);
     }
-    if options.required_rule.as_deref().is_some_and(|rule| {
-        !has_family(&options.template, rule)
-            && options
-                .derived_clues
-                .iter()
-                .all(|layout| layout.rule_id() != rule)
-    }) {
+    if options
+        .required_rule
+        .iter()
+        .chain(&options.required_rules)
+        .any(|rule| {
+            !has_family(&options.template, rule)
+                && options
+                    .derived_clues
+                    .iter()
+                    .all(|layout| !layout.can_supply(rule))
+        })
+    {
         return Err(MissingRequiredRule);
     }
     if matches!(&options.rating, Some(GenerationRating::Score(range)) if range.is_empty())
@@ -250,6 +287,9 @@ fn attempt(
         .rules
         .extend(layouts::build(layouts, &solution, random)?);
     puzzle.givens = solution;
+    if options.thin_clues {
+        return miracle::thin(puzzle, solution, excluded, options, random);
+    }
     let variant_clues = puzzle.variant_clue_count();
     if options
         .variant_clues
@@ -262,20 +302,44 @@ fn attempt(
     if compiled.analyze(&empty, &[0; CELLS], options.max_nodes) != Ok(Analysis::Unique) {
         return None;
     }
-    let without = match options.required_rule.as_deref() {
-        Some(rule) => Some(without_family(&puzzle, rule)?),
-        None => None,
-    };
-    let mut without = without;
+    let mut without = reduced_profiles(options, &puzzle)?;
     let mut order: [usize; CELLS] = std::array::from_fn(|index| index);
     random.shuffle(&mut order);
+    if options.givens.start() != options.givens.end() && without.len() > 1 {
+        // Preserve an opening for each rule. A given on a cell where a
+        // counterexample differs would settle that ambiguity before the
+        // player can use the clue. Try removing those cells early.
+        let mut preferred = [false; CELLS];
+        for (_, reduced) in &mut without {
+            let alternative = [32, 20, 8, 0].into_iter().find_map(|anchors| {
+                reduced.givens = empty;
+                for &cell in order.iter().rev().take(anchors) {
+                    reduced.givens[cell] = solution[cell];
+                }
+                reduced.alternative_to(&solution, options.max_nodes)
+            })?;
+            for cell in 0..CELLS {
+                preferred[cell] |= alternative[cell] != solution[cell];
+            }
+        }
+        order.sort_by_key(|&cell| !preferred[cell]);
+    }
     let mut remaining = CELLS;
+    if *options.givens.end() == 0 {
+        puzzle.givens = empty;
+        compiled.givens = empty;
+        if compiled.analyze(&empty, &[0; CELLS], options.max_nodes) != Ok(Analysis::Unique) {
+            return None;
+        }
+        remaining = 0;
+    }
     let mut last_checked = None;
     for next in order.into_iter().map(Some).chain(std::iter::once(None)) {
         if options.givens.contains(&remaining) && last_checked != Some(remaining) {
             last_checked = Some(remaining);
             if (excluded.is_empty() || !excluded.contains(&symmetry::generation_key(&puzzle)))
-                && let Some(rating) = accept(&compiled, &puzzle, without.as_mut(), options)
+                && let Some((rating, rule_dependencies)) =
+                    accept(&compiled, &puzzle, &solution, &mut without, options)
             {
                 return Some(GeneratedVariant {
                     seed: options.seed,
@@ -284,6 +348,7 @@ fn attempt(
                     givens: remaining,
                     variant_clues,
                     rating,
+                    rule_dependencies,
                 });
             }
         }
@@ -302,18 +367,45 @@ fn attempt(
     None
 }
 
+fn reduced_profiles<'a>(
+    options: &'a VariantGenerationOptions,
+    puzzle: &VariantPuzzle,
+) -> Option<Vec<(&'a str, CompiledVariant)>> {
+    options
+        .required_rule
+        .iter()
+        .chain(&options.required_rules)
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .map(|id| Some((id.as_str(), without_family(puzzle, id)?)))
+        .collect()
+}
+
 fn accept(
     compiled: &CompiledVariant,
     puzzle: &VariantPuzzle,
-    without: Option<&mut CompiledVariant>,
+    solution: &Board,
+    without: &mut [(&str, CompiledVariant)],
     options: &VariantGenerationOptions,
-) -> Option<VariantRating> {
+) -> Option<(VariantRating, Vec<RuleDependency>)> {
     use TechniqueTargetMode::*;
-    if let Some(without) = without {
-        without.givens = puzzle.givens;
-        if without.analyze(&[0; CELLS], &[0; CELLS], options.max_nodes) != Ok(Analysis::Multiple) {
-            return None;
+    let mut alternatives = Vec::new();
+    for (id, reduced) in without {
+        reduced.givens = puzzle.givens;
+        let alternative = reduced.alternative_to(solution, options.max_nodes)?;
+        if options.required_rules.iter().any(|rule| rule == id) {
+            alternatives.push((*id, alternative));
         }
+    }
+    // A standard-box completion can differ from a jigsaw completion. Test the
+    // actual classic grid independently. A budget limit supplies no evidence.
+    if !options.required_rules.is_empty()
+        && !matches!(
+            crate::analyze(&puzzle.givens),
+            Analysis::Multiple | Analysis::Unsolvable | Analysis::Conflict
+        )
+    {
+        return None;
     }
     if let Some((technique, ExclusiveOpening)) = options.technique
         && !compiled.has_exclusive_opening(technique)
@@ -322,11 +414,36 @@ fn accept(
     }
     let position = VariantPosition::new(puzzle.clone());
     let mut first = None;
+    let mut dependencies = Vec::new();
+    let mut step_number = 0;
     let (_, rating) = position
         .run_with_compiled(compiled, &options.technique_order, |step| {
             first.get_or_insert(step.technique);
+            step_number += 1;
+            alternatives.retain(|&(rule, alternative)| {
+                let differs = step.actions.iter().find(|action| {
+                    let candidate = action.candidate();
+                    let agrees = alternative[candidate.cell] == candidate.digit;
+                    matches!(action, crate::HintAction::Eliminate(_)) == agrees
+                });
+                if let Some(&action) = differs {
+                    dependencies.push(RuleDependency {
+                        rule: rule.to_owned(),
+                        step: step_number,
+                        technique: step.technique,
+                        action,
+                        alternative,
+                    });
+                }
+                differs.is_none()
+            });
         })
         .ok()?;
+    if !alternatives.is_empty()
+        || !options.required_rules.is_empty() && matches!(rating.status, SolveStatus::Stalled)
+    {
+        return None;
+    }
     if let Some((technique, First)) = options.technique
         && first != Some(technique)
     {
@@ -351,46 +468,45 @@ fn accept(
         if puzzle.givens.iter().filter(|&&d| d != 0).count() > 40 {
             return None;
         }
-        let lower: Vec<_> = VariantTechnique::all()
-            .filter(|t| !t.is_optional() && t.difficulty() < level)
+        let mut lower: Vec<_> = options
+            .technique_order
+            .iter()
+            .copied()
+            .filter(|t| t.difficulty() < level)
             .collect();
-        if !lower.is_empty() {
-            let (_, easier) = position.run_with_compiled(compiled, &lower, |_| {}).ok()?;
+        for technique in
+            VariantTechnique::all().filter(|t| !t.is_optional() && t.difficulty() < level)
+        {
+            if !lower.contains(&technique) {
+                lower.push(technique);
+            }
+        }
+        // A checked recipe may retain its established walkthrough. Reject it
+        // if the extended profile can finish in a cheaper tier.
+        let expanded;
+        let lower_solver = if !options.required_rules.is_empty() && !compiled.extended_logic {
+            expanded = {
+                let mut solver = compiled.clone();
+                solver.extended_logic = true;
+                solver
+            };
+            &expanded
+        } else {
+            compiled
+        };
+        for lower in crate::logical::tier_orders(lower, VariantTechnique::difficulty) {
+            if lower.is_empty() {
+                break;
+            }
+            let (_, easier) = position
+                .run_with_compiled(lower_solver, &lower, |_| {})
+                .ok()?;
             if matches!(easier.status, SolveStatus::Solved(_)) {
                 return None;
             }
         }
     }
-    Some(rating)
-}
-
-fn has_family(puzzle: &VariantPuzzle, id: &str) -> bool {
-    match id {
-        "jigsaw" => matches!(puzzle.regions, RegionLayout::Jigsaw { .. }),
-        _ => puzzle.rules.iter().any(|rule| rule.id() == id),
-    }
-}
-
-fn without_family(puzzle: &VariantPuzzle, id: &str) -> Option<CompiledVariant> {
-    if !has_family(puzzle, id) {
-        return None;
-    }
-    if id == "jigsaw" {
-        return puzzle.compile_with_regions(false).ok();
-    }
-    let mut reduced = puzzle.clone();
-    reduced.rules.retain(|rule| rule.id() != id);
-    let exemptions: Vec<_> = puzzle
-        .rules
-        .iter()
-        .filter_map(|rule| match rule {
-            PuzzleRule::AdjacentTotal { cells, sum: 5 | 10 } if id == "adjacent-total" => {
-                Some(*cells)
-            }
-            _ => None,
-        })
-        .collect();
-    reduced.compile_with_xv_exemptions(true, &exemptions).ok()
+    Some((rating, dependencies))
 }
 
 #[cfg(test)]

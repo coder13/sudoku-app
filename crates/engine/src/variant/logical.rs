@@ -26,14 +26,17 @@ pub const VARIANT_SCORING_VERSION: u32 = 24;
 const GROUP_ORDER_ELIMINATION_SCORING_VERSION: u32 = 25;
 const CONDITIONAL_NEIGHBOR_SCORING_VERSION: u32 = 26;
 const VARIANT_LINKS_SCORING_VERSION: u32 = 27;
+const CLUE_LINKS_SCORING_VERSION: u32 = 28;
 const UNIQUENESS_PROBE_NODES: u32 = 4096;
 const COMPLETION_PROBE_NODES: u32 = 512;
 const ALTERNATIVE_WITNESS_NODES: u32 = 4096;
 
 mod cages;
 mod chain_inference;
+mod clue_links;
 mod conditional_neighbors;
 mod quadruples;
+mod region_singles;
 mod rule_proofs;
 pub(super) use rule_proofs::RuleProofIndex;
 mod exclusions;
@@ -329,6 +332,20 @@ pub enum VariantEvidence {
         candidate: Candidate,
         /// House for a Full House or Hidden Single.
         house: Option<VariantHouseKind>,
+    },
+    /// Of two candidate sites in a region, a printed clue or a placed
+    /// neighbor rules out the other site in one check.
+    RuleSingle {
+        /// Candidate to place.
+        candidate: Candidate,
+        /// Region that requires the digit.
+        house: VariantHouseKind,
+        /// Cell rejected by the clue.
+        excluded: usize,
+        /// Placed digit used by a binary clue, if any.
+        witness: Option<usize>,
+        /// Source clue indices in the puzzle.
+        rules: Vec<usize>,
     },
     /// The digit assignments that fit a cage or a sum derived from its neighboring cages.
     CageSum {
@@ -1378,7 +1395,11 @@ impl VariantPosition {
             technique_order: order.to_vec(),
             regions: self.puzzle.regions.clone(),
             rules: self.puzzle.rules.clone(),
-            scoring_version: VARIANT_SCORING_VERSION,
+            scoring_version: if compiled.extended_logic {
+                CLUE_LINKS_SCORING_VERSION
+            } else {
+                VARIANT_SCORING_VERSION
+            },
             points: 0,
             counts: BTreeMap::new(),
             hardest: None,
@@ -1476,6 +1497,7 @@ impl VariantDeduction {
         };
         let cells = match &self.evidence {
             VariantEvidence::Single { .. } => 1,
+            VariantEvidence::RuleSingle { .. } => 2,
             VariantEvidence::CageSum { cells, .. }
             | VariantEvidence::Constraint { cells, .. }
             | VariantEvidence::Intersection { cells, .. } => cells.len(),
@@ -2143,6 +2165,7 @@ impl CompiledVariant {
     /// check the same cached uniqueness requirement before searching.
     pub fn supports_technique(&self, technique: VariantTechnique) -> bool {
         match technique {
+            VariantTechnique::Classic(Technique::HiddenSingleBox) if self.extended_logic => true,
             VariantTechnique::Classic(classic) if self.uses_variant_chains(classic) => true,
             VariantTechnique::Classic(classic) if classic.pattern_overlay_width().is_some() => true,
             VariantTechnique::Classic(
@@ -2160,6 +2183,10 @@ impl CompiledVariant {
         proofs: &mut Vec<VariantDeduction>,
     ) {
         let variant = VariantTechnique::Classic(technique);
+        if self.extended_logic && technique == Technique::HiddenSingleBox && !self.classic_boxes {
+            self.region_singles(position, proofs);
+            return;
+        }
         if !self.supports_technique(variant) {
             return;
         }
@@ -2266,6 +2293,9 @@ impl CompiledVariant {
                     swap_cells,
                 },
             });
+        }
+        if self.extended_logic && technique == Technique::HiddenSingleBox {
+            self.region_singles(position, proofs);
         }
     }
 

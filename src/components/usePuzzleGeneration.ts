@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { type DifficultyPreference } from '../sudoku/difficulty'
+import { currentDifficulty, type DifficultyPreference } from '../sudoku/difficulty'
 import { rateAlgebraicPuzzle, verifyAlgebraicPuzzle } from '../sudoku/algebraic-game'
 import { createEngineSession, EngineError, type EngineRunner, type EngineSession } from '../sudoku/engine'
 import { generateClassic } from '../sudoku/classic-generation'
-import { isCustomDifficulty, type CustomModeDefinition } from '../sudoku/custom-modes'
+import type { CustomModeDefinition } from '../sudoku/custom-modes'
 import { createGameId, makeGame, type Game } from '../sudoku/game'
 import { techniqueLabel } from '../sudoku/hints'
 import { generatePracticePuzzle, generateVariantPracticePuzzle, hasVariantPracticePuzzles } from '../sudoku/practice-play'
@@ -97,21 +97,22 @@ export function usePuzzleGeneration() {
     return withGeneration(async (seed, run, active) => {
       if (options?.customMode) {
         const mode = options.customMode
-        const difficulty = isCustomDifficulty(preference) ? preference : 'medium'
+        const auto = preference === 'auto'
+        const difficulty = currentDifficulty(auto ? roomStore.getSnapshot().playerRating.recommended : preference)
         const controller = new AbortController()
         customSearch.current = controller
         const { generateCustomSudoku } = await import('../sudoku/custom-generation')
         const result = await generateCustomSudoku(mode.rules, difficulty, seed, roomStore.getSnapshot().games, {
-          signal: controller.signal, negativeMarkers: mode.negativeMarkers,
+          signal: controller.signal, negativeMarkers: mode.negativeMarkers, miracle: options.miracle,
         })
         if (!active() || controller.signal.aborted) return
         const id = variantIdForPuzzle(result.puzzle)
         if (id === 'classic') throw new Error('The generated puzzle is missing its custom rules.')
         const game = makeGame(createGameId(), nextPuzzleTitle(`${mode.name} `), result.puzzle.givens, 'generated')
-        roomStore.add({ ...game, pendingSave: true, customMode: mode, difficulty, score: result.rating.points,
+        roomStore.add({ ...game, pendingSave: true, customMode: mode, difficulty, score: result.rating.points, ...(auto && { generatedWithAuto: true }),
           variant: { id, puzzle: result.puzzle, solution: result.solution },
           ratingAttempt: ratingAttemptFor({ difficulty, points: result.rating.points, scoringVersion: result.rating.scoringVersion,
-            techniqueOrder: result.rating.techniqueOrder }, 'fixed') })
+            techniqueOrder: result.rating.techniqueOrder }, auto ? undefined : 'fixed') })
         onGenerated?.()
         return
       }
@@ -157,7 +158,10 @@ export function usePuzzleGeneration() {
       const auto = preference === 'auto'
       const difficulty = variantDifficulty(variant, auto ? roomStore.getSnapshot().playerRating.recommended : preference)
       if (variant !== 'classic') {
-        const result = await generatePlayableVariant(variant, difficulty, seed, roomStore.getSnapshot().games, options, run)
+        const controller = new AbortController()
+        customSearch.current = controller
+        const result = await generatePlayableVariant(variant, difficulty, seed, roomStore.getSnapshot().games,
+          { ...options, signal: controller.signal })
         if (!active()) return
         const title = nextPuzzleTitle(`${generationRuleset(variant, options?.ruleset)?.name ?? VARIANTS[variant].name} `)
         const game = makeGame(createGameId(), title, result.puzzle.givens, 'generated')
@@ -190,7 +194,8 @@ export function usePuzzleGeneration() {
       }, auto ? undefined : 'fixed')
       roomStore.add({ ...game, pendingSave: true, difficulty: game.difficulty ?? difficulty })
       onGenerated?.()
-    }, options?.customMode ? 'No puzzle was found with these rules at this difficulty. Try again or change the rules or difficulty.'
+    }, options?.miracle ? 'No zero-given puzzle met these rules and difficulty in this search. Try again or change the selection.'
+      : options?.customMode ? 'No puzzle was found with these rules at this difficulty. Try again or change the rules or difficulty.'
       : 'The engine couldn’t find a puzzle at this difficulty. Try again or choose an easier difficulty.')
   }
 

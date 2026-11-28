@@ -106,7 +106,7 @@ test('the lesson, diagram and solution step explain the actual four-cell group p
 
 test('New Puzzle exposes both checked levels, a correct four-cell preview and complete navigation', async () => {
   assert.ok(isVariantId('global-entropy'))
-  assert.deepEqual(variantDifficulties('global-entropy'), ['easy', 'medium'])
+  assert.deepEqual(variantDifficulties('global-entropy'), variantDifficulties('classic'))
   const preview = renderToStaticMarkup(createElement(VariantPreview, { variant: 'global-entropy' }))
   assert.match(preview, /variant-entropy-preview/)
   const digits = [...preview.matchAll(/<text[^>]*>([1-9])<\/text>/g)].map(match => Number(match[1]))
@@ -117,7 +117,7 @@ test('New Puzzle exposes both checked levels, a correct four-cell preview and co
   assert.doesNotMatch(choice, /ruleset=dutch/)
   const difficulty = await renderNewPuzzle('/puzzles/new/difficulty?variant=global-entropy')
   assert.match(difficulty, /Choose difficulty/); assert.match(difficulty, /\/puzzles\/new\?variant=global-entropy/)
-  assert.match(difficulty, /value="easy"/); assert.match(difficulty, /value="medium"/); assert.doesNotMatch(difficulty, /value="hard"/)
+  assert.match(difficulty, /value="easy"/); assert.match(difficulty, /value="medium"/); assert.match(difficulty, /value="hard"/)
   assert.match(await renderNewPuzzle('/puzzles/new/difficulty', { variant: 'global-entropy', difficulty: 'easy' }), /Start easy puzzle/)
 })
 

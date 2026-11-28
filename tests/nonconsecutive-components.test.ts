@@ -31,7 +31,7 @@ after(async () => { await server?.close() })
 test('New Puzzle offers Non-Consecutive with its neighbor rule and verified Easy/Medium choices', () => {
   assert.ok(isVariantId('non-consecutive'))
   assert.match(VARIANTS['non-consecutive'].rule, /1 and 9 are not consecutive/)
-  assert.deepEqual(variantDifficulties('non-consecutive'), ['easy', 'medium'])
+  assert.deepEqual(variantDifficulties('non-consecutive'), variantDifficulties('classic'))
   const html = renderToStaticMarkup(createElement(VariantPreview, { variant: 'non-consecutive' }))
   assert.match(html, /data-variant="non-consecutive"/)
   assert.match(html, /No ±1 neighbors/)

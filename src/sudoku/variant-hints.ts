@@ -1,14 +1,41 @@
-import type { HintChoice, HintTrace, LogicalSolution, SolvePosition, VariantDeduction, VariantHouse, VariantPuzzle, VariantTrace } from './engine'
+import type { HintChoice, HintTrace, LogicalSolution, SolvePosition, VariantDeduction, VariantHouse, VariantPuzzle, VariantRule, VariantTrace } from './engine'
 import { candidateCount, DIGITS, onlyCandidate } from './game.ts'
 import { lineGroupMask, lineGroups } from './line-groups.ts'
 import { regionSumParts } from './region-sum.ts'
 import { cloneLayout } from './clone.ts'
 import { cellReference, type CellReferenceOptions } from './hints.ts'
-import { hasMarkedPair, variantHouseCells, variantHouseMasks, variantHouseName } from './variants.ts'
+import { hasMarkedPair, isVariantId, VARIANTS, variantHouseCells, variantHouseMasks, variantHouseName } from './variants.ts'
 
 type ConstraintEvidence = Extract<VariantDeduction['evidence'], { type: 'constraint' }>
 const alternatives = new Intl.ListFormat('en', { type: 'disjunction' })
 const conjunction = new Intl.ListFormat('en', { type: 'conjunction' })
+
+function simpleBorderReason(rule: VariantRule | undefined, cell: number, digit: number, at: (cell: number) => string) {
+  if (rule?.type === 'x-sum' && rule.cells[0] === cell) {
+    if (rule.sum === 3) return `An X-Sum of 3 puts 2 in ${at(cell)} and 1 in the next cell.`
+    const first = rule.sum === 1 ? 1 : rule.sum === 45 ? 9 : undefined
+    if (first) return `An X-Sum of ${rule.sum} puts ${first} in the first cell, ${at(cell)}.`
+    return `If ${at(cell)} is ${digit}, its X-Sum is ${digit === 9 ? 45 : 1}. The printed sum is ${rule.sum}.`
+  }
+  if (rule?.type === 'skyscrapers') {
+    if (rule.count === 9) return `Seeing all nine digits fixes their order from 1 to 9. ${at(cell)} must be ${rule.cells.indexOf(cell) + 1}.`
+    if (rule.count === 1) return `Seeing only one skyscraper puts 9 in the first cell, ${at(cell)}.`
+    return `With ${digit} in the first cell, at most ${10 - digit} skyscrapers would be visible. The clue needs ${rule.count}.`
+  }
+  if (rule?.type === 'sandwich') {
+    if (rule.sum === 35) return 'A sum of 35 uses all seven digits from 2 through 8 between 1 and 9, so 1 and 9 go at the ends.'
+    if (rule.sum >= 2 && rule.sum <= 4 && digit === rule.sum) return `Only ${digit} can make the sandwich total of ${digit}, so it goes between 1 and 9.`
+    return rule.sum === 0 ? 'A sandwich total of 0 puts 1 and 9 next to each other.'
+      : `The sandwich total is ${rule.sum}, so at least one cell separates 1 and 9.`
+  }
+}
+
+function clueNames(puzzle: VariantPuzzle, indices: readonly number[]) {
+  return conjunction.format(indices.map(index => {
+    const type = puzzle.rules?.[index]?.type
+    return isVariantId(type) ? VARIANTS[type].name : type?.replaceAll('-', ' ') ?? 'the clue'
+  }))
+}
 
 function constraintClue(evidence: ConstraintEvidence, puzzle: VariantPuzzle, at: (cell: number) => string, focus: readonly { cell: number; digit: number }[]) {
   const { cells, domains } = evidence
@@ -571,6 +598,17 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
       }
       break
     }
+    case 'rule-single': {
+      const { candidate, house, excluded, witness, rules } = evidence
+      cells = [candidate.cell, excluded, ...(witness === null ? [] : [witness])]
+      description = `In ${houseLabel(house)}, ${candidate.digit} can go only in ${alternatives.format([nameCell(candidate.cell), nameCell(excluded)])}.`
+      const clue = clueNames(puzzle, rules)
+      const source = witness === null ? clue : `${clue} and the digit in ${nameCell(witness)}`
+      const border = simpleBorderReason(puzzle.rules?.[rules[0]], excluded, candidate.digit, nameCell)
+      const exclusion = border ?? `${source} rule${witness === null && rules.length === 1 ? 's' : ''} out ${candidate.digit} in ${nameCell(excluded)}.`
+      reason = `${exclusion} Place ${candidate.digit} in ${nameCell(candidate.cell)}.`
+      break
+    }
     case 'intersection': {
       cells = evidence.cells
       description = `Every possible ${evidence.digit} in ${houseLabel(evidence.source)} lies in ${houseLabel(evidence.target)}.`
@@ -597,7 +635,8 @@ export function variantHintChoice(deduction: VariantDeduction, puzzle: VariantPu
         if (usesRule('anti-king')) {
           return `If ${site} is ${digit}, Anti-King rules out ${digit} in ${location} because the cells touch at a corner.`
         }
-        return `If ${site} is ${digit}, the rule connecting the two cells rules out ${digit} in ${location}.`
+        const clue = scope.type === 'pair' ? clueNames(puzzle, scope.rules) : 'the line'
+        return `If ${site} is ${digit}, ${digit} in ${location} would violate ${clue}.`
       })
       reasonSteps.push(`One of those cells must contain ${digit}, so remove ${digit} from ${location}.`)
       reason = reasonSteps.join(' ')

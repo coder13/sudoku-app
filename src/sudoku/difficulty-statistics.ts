@@ -1,3 +1,4 @@
+import type { CustomModeDefinition } from './custom-modes.ts'
 import type { Difficulty } from './engine.ts'
 import { isSolved, type Game } from './game.ts'
 import { gameVariantId, type GameVariantId } from './new-puzzle.ts'
@@ -24,11 +25,21 @@ export function summarizeDifficultySolves<Level>(totals: DifficultyTotals<Level>
   }]))
 }
 
-export function difficultyStatistics(games: readonly Game[], variant: GameVariantId = 'classic'): Map<Difficulty, DifficultyStatistics> {
+function matchesCustomMode(gameMode: CustomModeDefinition | undefined, mode: CustomModeDefinition) {
+  if (!gameMode) return false
+  const gameMarkers = gameMode.negativeMarkers ?? []
+  const modeMarkers = mode.negativeMarkers ?? []
+  return gameMode.rules.length === mode.rules.length && gameMode.rules.every(rule => mode.rules.includes(rule)) &&
+    gameMarkers.length === modeMarkers.length && gameMarkers.every(marker => modeMarkers.includes(marker))
+}
+
+export function difficultyStatistics(games: readonly Game[], variant: GameVariantId | CustomModeDefinition = 'classic'): Map<Difficulty, DifficultyStatistics> {
   const totals: DifficultyTotals<Difficulty> = new Map()
   for (const game of games) {
     // Keep historical grades separate, and do not count an already-filled import as a solve.
-    if (!game.difficulty || !game.started || gameVariantId(game) !== variant || !isSolved(game)) continue
+    if (!game.difficulty || !game.started) continue
+    const matches = typeof variant === 'string' ? gameVariantId(game) === variant : matchesCustomMode(game.customMode, variant)
+    if (!matches || !isSolved(game)) continue
     recordDifficultySolve(totals, game.difficulty, game.elapsed)
   }
   return summarizeDifficultySolves(totals)

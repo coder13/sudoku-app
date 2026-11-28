@@ -1,6 +1,6 @@
-use super::{CompiledVariant, ProofPosition, VariantHouseKind, digits};
+use super::{CompiledVariant, ProofPosition, VariantHouseKind};
 use crate::{
-    Candidate, House, LinkSource, Technique,
+    House, LinkSource, Technique,
     hints::{Deduction, InferenceGraph, visit_variant_inference},
 };
 use std::ops::ControlFlow;
@@ -14,7 +14,7 @@ impl CompiledVariant {
                 | Technique::Aic
                 | Technique::DiscontinuousNiceLoop
                 | Technique::ContinuousNiceLoop
-        ) && (!self.classic_boxes || self.houses.len() > 27 || !self.pair_clues.is_empty())
+        ) && (!self.classic_boxes || self.houses.len() > 27 || self.has_clue_links())
     }
 
     pub(super) fn visit_variant_chains(
@@ -36,28 +36,9 @@ impl CompiledVariant {
                 };
                 (self.house_masks[index], source)
             });
-            let conflicts = self.pair_clues.iter().flat_map(|clue| {
-                let source = LinkSource::VariantRule(clue.source.technique);
-                clue.links().iter().flat_map(move |link| {
-                    let [a, b] = link.cells;
-                    digits(position.masks[a]).flat_map(move |left| {
-                        digits(position.masks[b])
-                            .filter(move |&right| !link.permits(left, right))
-                            .map(move |right| {
-                                (
-                                    Candidate {
-                                        cell: a,
-                                        digit: left,
-                                    },
-                                    Candidate {
-                                        cell: b,
-                                        digit: right,
-                                    },
-                                    source,
-                                )
-                            })
-                    })
-                })
+            let mut conflicts = Vec::new();
+            self.visit_clue_links(position, false, |a, b, technique, _| {
+                conflicts.push((a, b, LinkSource::VariantRule(technique)));
             });
             Box::new(InferenceGraph::for_variant(
                 &position.masks,

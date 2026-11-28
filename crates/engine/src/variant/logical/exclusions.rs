@@ -12,24 +12,34 @@ enum Conflict<'a> {
     Rule(&'a [usize]),
 }
 
-fn is_chess_rule(technique: VariantTechnique) -> bool {
-    matches!(
-        technique,
-        VariantTechnique::AntiKing | VariantTechnique::AntiKnight
-    )
-}
-
 impl CompiledVariant {
     pub(super) fn peer_locks(
         &self,
         position: &ProofPosition<'_>,
         proofs: &mut Vec<VariantDeduction>,
     ) {
-        if !self
-            .pair_clues
-            .iter()
-            .any(|clue| is_chess_rule(clue.source.technique))
-        {
+        if !self.has_clue_links() {
+            return;
+        }
+        let mut house_peers = [0u128; CELLS];
+        for &house in &self.search_houses {
+            for &cell in &self.houses[house].cells {
+                house_peers[cell] |= self.house_masks[house];
+            }
+        }
+        let mut rule_peers = vec![[0u128; CELLS]; 9];
+        let mut witnesses = std::collections::HashMap::new();
+        self.visit_clue_links(position, true, |a, b, _, rules| {
+            if house_peers[a.cell] & (1 << b.cell) == 0 {
+                let i = usize::from(a.digit - 1);
+                rule_peers[i][a.cell] |= 1 << b.cell;
+                rule_peers[i][b.cell] |= 1 << a.cell;
+                witnesses
+                    .entry((a.cell.min(b.cell), a.cell.max(b.cell), a.digit))
+                    .or_insert_with(|| rules.to_vec());
+            }
+        });
+        if witnesses.is_empty() {
             return;
         }
         let mut candidates = [0u128; 9];
@@ -45,14 +55,23 @@ impl CompiledVariant {
                     continue;
                 }
                 let targets = cells_in(sites).fold(digit_cells & !house_cells, |targets, cell| {
-                    targets & self.peers[cell]
+                    targets & (house_peers[cell] | rule_peers[index][cell])
                 });
                 let digit = index as u8 + 1;
                 for cell in cells_in(targets) {
                     let conflicts: Option<Vec<_>> = cells_in(sites)
                         .map(|site| {
-                            self.peer_lock_conflict(site, cell)
-                                .map(|scope| (site, scope))
+                            let scope =
+                                if let Some(house) = self.shared_enforced_house(site, &[cell]) {
+                                    VariantConstraintScope::House { house }
+                                } else {
+                                    let rules =
+                                        witnesses.get(&(site.min(cell), site.max(cell), digit))?;
+                                    VariantConstraintScope::Pair {
+                                        rules: rules.clone(),
+                                    }
+                                };
+                            Some((site, scope))
                         })
                         .collect();
                     let Some(conflicts) = conflicts else { continue };
@@ -75,20 +94,6 @@ impl CompiledVariant {
                 }
             }
         }
-    }
-
-    fn peer_lock_conflict(&self, site: usize, target: usize) -> Option<VariantConstraintScope> {
-        if let Some(house) = self.shared_enforced_house(site, &[target]) {
-            return Some(VariantConstraintScope::House { house });
-        }
-        self.pair_clue_memberships[site].iter().find_map(|&index| {
-            let clue = &self.pair_clues[index];
-            (is_chess_rule(clue.source.technique) && clue.cells.contains(&target)).then(|| {
-                VariantConstraintScope::Pair {
-                    rules: clue.source.indices.clone(),
-                }
-            })
-        })
     }
 
     pub(super) fn nonconsecutive_exclusions(

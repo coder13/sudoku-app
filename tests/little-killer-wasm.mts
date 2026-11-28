@@ -214,7 +214,8 @@ test('actual Medium New Puzzle generation yields twenty distinct independently u
   const distinct = new Set<string>()
   for (let seed = 1; seed <= 20; seed++) {
     const result = await generatePlayableVariant('little-killer', 'medium', seed, [])
-    assert.equal(result.givens, 30)
+    assert.ok(result.givens > 0 && result.givens <= 30)
+    assert.equal(result.ruleDependencies?.[0].rule, 'little-killer')
     assert.deepEqual(result.rating.status, { solved: 'medium' })
     assert.ok(result.rating.counts['little-killer'])
     const order = await getVariantPlayOrder(result.puzzle)

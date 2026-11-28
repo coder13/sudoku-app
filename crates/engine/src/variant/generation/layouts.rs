@@ -122,6 +122,26 @@ pub enum VariantClueLayout {
 }
 
 impl VariantClueLayout {
+    pub(super) fn can_supply(&self, id: &str) -> bool {
+        self.rule_id() == id
+            || matches!(
+                (self, id),
+                (
+                    Self::Markers {
+                        family: MarkerFamily::Kropki,
+                        ..
+                    },
+                    "kropki-white" | "kropki-black"
+                ) | (
+                    Self::Markers {
+                        family: MarkerFamily::Xv,
+                        ..
+                    },
+                    "xv-five" | "xv-ten"
+                )
+            )
+    }
+
     pub(super) fn rule_id(&self) -> &'static str {
         match self {
             Self::KillerCages { .. } | Self::KillerCageSizes { .. } => "killer-cages",

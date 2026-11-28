@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { EngineError, runEngine, type GeneratedVariant, type VariantPuzzle } from '../src/sudoku/engine.ts'
 import { applyDeduction, enter, isSolved, makeGame, redo, undo, valuesOf, type Game } from '../src/sudoku/game.ts'
-import { generatePlayableVariant, getVariantPlayOrder } from '../src/sudoku/variant-play.ts'
+import { tryVariantRecipe, generatePlayableVariant, getVariantPlayOrder } from '../src/sudoku/variant-play.ts'
 import { reflectVariant, variantGenerationRequest, variantSeeds } from '../src/sudoku/variant-generation.ts'
 import { variantHouseMasks, variantIdForPuzzle } from '../src/sudoku/variants.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
@@ -157,7 +157,7 @@ test('bounded fresh misses reach checked Easy and Medium fallbacks and reject un
     assert.deepEqual(value, await runEngine(variantGenerationRequest('inequality', difficulty, recipe, order)))
     assert.deepEqual(value, await generatePlayableVariant('inequality', difficulty, seed, []))
   }
-  await assert.rejects(generatePlayableVariant('inequality', 'hard', 1, []), error => error instanceof EngineError && error.code === 'unsupported')
+  assert.equal(await tryVariantRecipe('inequality', 'hard', 1, [], {}, runEngine), undefined)
 })
 
 test('generated comparisons, scores, progress, exact solutions and UUID shares survive real storage', async () => {

@@ -166,7 +166,7 @@ test('sharing after progress retains every outside direction, total, region and 
 })
 
 test('New Puzzle offers the independently calibrated Medium level and a diagonal-arrow preview', () => {
-  assert.deepEqual(variantDifficulties('little-killer'), ['medium'])
+  assert.deepEqual(variantDifficulties('little-killer'), variantDifficulties('classic'))
   const html = renderToStaticMarkup(createElement(VariantPreview, { variant: 'little-killer' }))
   assert.ok(html.includes('variant-little-killer-preview') && html.includes('>12</text>'))
 })

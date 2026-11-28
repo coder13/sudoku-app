@@ -29,12 +29,12 @@ test('statistics show current levels and only include historical Unfair results 
   assert.deepEqual(statisticsDifficulties(['unfair', 'easy', 'unfair']), [...DIFFICULTY_LEVELS, 'unfair'])
 })
 
-test('variant choices only offer verified recipes and clamp saved choices', () => {
+test('every 9×9 variant offers the same ten target grades and preserves the selected grade', () => {
   for (const id of Object.keys(variantSeeds) as (keyof typeof variantSeeds)[]) {
     const levels = variantDifficulties(id)
-    assert.deepEqual(levels, DIFFICULTY_LEVELS.filter(level => Object.hasOwn(variantSeeds[id], level)))
+    assert.deepEqual(levels, DIFFICULTY_LEVELS)
     assert.ok(levels.length > 0, id)
-    for (const level of DIFFICULTY_LEVELS) assert.ok(levels.includes(variantDifficulty(id, level)), id)
+    for (const level of DIFFICULTY_LEVELS) assert.equal(variantDifficulty(id, level), level, id)
   }
 })
 

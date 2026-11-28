@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect } from 'storybook/test'
+import { CUSTOM_MODES_KEY } from '../../src/sudoku/custom-modes'
 import { NEW_PUZZLE_KEY } from '../../src/sudoku/preferences'
 import { PreviewRouter } from '../support/frames'
 import { solved } from '../support/fixtures'
@@ -24,6 +25,51 @@ export const ChooseDifficulty: Story = {
 export const DifficultyResults: Story = {
   render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=classic&difficulty=hard" />,
   beforeEach: () => { seedRoom([{ ...solved, difficulty: 'hard', elapsed: 249 }]) },
+}
+
+export const MiracleXSums: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new/difficulty?variant=x-sum&difficulty=hard" />,
+  play: async ({ canvas, userEvent }) => {
+    const checkbox = await canvas.findByRole('checkbox', { name: 'Miracle puzzle (no givens)' })
+    await expect(checkbox).toBeEnabled()
+    await userEvent.click(checkbox)
+    await expect(checkbox).toBeChecked()
+  },
+}
+
+export const CombinedModeDifficulty: Story = {
+  render: () => <PreviewRouter shell path="/puzzles/new?step=variant" />,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: () => {
+    const previous = localStorage.getItem(CUSTOM_MODES_KEY)
+    localStorage.setItem(CUSTOM_MODES_KEY, JSON.stringify([{
+      id: '00000000-0000-4000-8000-000000000000', name: 'Chess', rules: ['anti-king', 'anti-knight', 'non-consecutive'],
+    }]))
+    return () => {
+      if (previous === null) localStorage.removeItem(CUSTOM_MODES_KEY)
+      else localStorage.setItem(CUSTOM_MODES_KEY, previous)
+    }
+  },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('link', { name: 'Chess' }))
+    await expect(await canvas.findByRole('heading', { name: 'Choose difficulty' })).toHaveFocus()
+    await expect(canvas.getByText('Anti-King · Anti-Knight · Non-Consecutive')).toBeVisible()
+    const auto = canvas.getByRole('checkbox', { name: 'Adjust difficulty automatically' })
+    await userEvent.click(auto)
+    await expect(canvas.getByRole('button', { name: /Start Auto/ })).toBeEnabled()
+    await userEvent.click(auto)
+    const increase = canvas.queryByRole('button', { name: 'Increase difficulty' })
+    if (increase) {
+      await userEvent.click(increase)
+      await userEvent.click(increase)
+    } else await userEvent.click(canvas.getByRole('radio', { name: 'Hard' }))
+    await expect(await canvas.findByRole('button', { name: 'Start hard puzzle' })).toBeEnabled()
+    await expect(canvas.getByRole('checkbox', { name: 'Miracle puzzle (no givens)' })).toBeDisabled()
+    await userEvent.click(canvas.getByRole('link', { name: 'Edit mode' }))
+    await expect(await canvas.findByRole('textbox', { name: 'Mode name' })).toHaveValue('Chess')
+    await userEvent.click(canvas.getByRole('button', { name: /^Back$/ }))
+    await expect(await canvas.findByRole('button', { name: 'Start hard puzzle' })).toBeEnabled()
+  },
 }
 
 export const RememberedDifficulty: Story = {

@@ -4,9 +4,11 @@ import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } fro
 import { getRouteApi, Link, useCanGoBack, useLocation, useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
 import { ArrowRight, BarChart3, CalendarRange, Check, ChevronLeft, ChevronRight, Clock3, Dices, FileUp, Grid3X3, MoreHorizontal, SlidersHorizontal, Trophy } from 'lucide-react'
 import {
-  DIFFICULTY_LABELS, formatPuzzleRating, isDifficulty, statisticsDifficulties, type DifficultyPreference,
+  currentDifficulty, DEFAULT_DIFFICULTY, DIFFICULTY_LABELS, formatPuzzleRating, isDifficulty, statisticsDifficulties, type DifficultyPreference,
 } from '../sudoku/difficulty'
 import { pointsPerSecond } from '../sudoku/difficulty-statistics'
+import { miracleSymmetry, offersMiracle } from '../sudoku/miracle'
+import type { Difficulty } from '../sudoku/engine'
 import { createGameId, formatTime, isPuzzleSaved, isSolved, valuesOf, type Game } from '../sudoku/game'
 import { inProgress, matchesSolvedFilters, solvedHistory, type SolvedPuzzleFilters } from '../sudoku/puzzle-activity'
 import {
@@ -169,6 +171,17 @@ function PuzzleLibrary({ games, active, manage, loading }: {
   </div>
 }
 
+function CustomModePreview({ mode }: { mode: SudokuMode }) {
+  const [rule] = mode.rules
+  switch (rule) {
+    case 'diagonal-main': case 'diagonal-anti': return <VariantPreview variant="diagonal" />
+    case 'kropki-white': case 'kropki-black': return <VariantPreview variant="kropki" />
+    case 'xv-five': case 'xv-ten': return <VariantPreview variant="xv" />
+    case 'dutch-whispers': return <VariantPreview variant="whispers" ruleset="dutch" />
+    default: return <VariantPreview variant={rule ?? 'classic'} />
+  }
+}
+
 function CoreSudokuChooser({ modes, difficulty }: { modes: readonly SudokuMode[]; difficulty: DifficultyPreference }) {
   return <section className="main-menu-section new-puzzle-step sudoku-mode-chooser" aria-labelledby="puzzles-page-title">
     <ul className="sudoku-mode-list">
@@ -181,7 +194,7 @@ function CoreSudokuChooser({ modes, difficulty }: { modes: readonly SudokuMode[]
       </li>)}
       {modes.map(mode => <li key={mode.id}>
         <Link to="/puzzles/new/difficulty" search={{ mode: mode.id }} state={{ fromPuzzleVariantPicker: true }}>
-          <Grid3X3 size={20} aria-hidden="true" /><span>{mode.name}</span><ChevronRight size={18} aria-hidden="true" />
+          <CustomModePreview mode={mode} /><span>{mode.name}</span><ChevronRight size={18} aria-hidden="true" />
         </Link>
       </li>)}
     </ul>
@@ -193,20 +206,39 @@ function CoreSudokuChooser({ modes, difficulty }: { modes: readonly SudokuMode[]
   </section>
 }
 
+function useMiracleOption(rules: readonly CustomRule[], level: Difficulty, busy: boolean) {
+  const [selected, setSelected] = useState(false)
+  const description = useId()
+  const visible = offersMiracle(level, rules)
+  const reason = visible ? miracleSymmetry(rules) : undefined
+  const miracle = selected && visible && !reason
+  const control = visible && <div>
+    <label className="difficulty-selector-auto">
+      <input type="checkbox" checked={miracle} disabled={busy || !!reason} aria-describedby={reason ? description : undefined}
+        onChange={event => setSelected(event.currentTarget.checked)} />
+      Miracle puzzle (no givens)
+    </label>
+    {reason && <small id={description}>{reason}</small>}
+  </div>
+  return { miracle, control }
+}
+
 function CustomDifficultyField({ levels, value, disabled, onChange }: {
   levels: readonly CustomDifficulty[]
   value: CustomDifficulty
   disabled: boolean
   onChange: (value: CustomDifficulty) => void
 }) {
-  return <label className="dialog-form">Difficulty
-    <SelectControl value={value} disabled={disabled} onChange={event => {
+  const id = useId()
+  return <div className="dialog-form">
+    <label htmlFor={id}>Difficulty</label>
+    <SelectControl id={id} value={value} disabled={disabled} onChange={event => {
       const level = levels.find(item => item === event.currentTarget.value)
       if (level) onChange(level)
     }}>
       {levels.map(level => <option key={level} value={level}>{DIFFICULTY_LABELS[level]}</option>)}
     </SelectControl>
-  </label>
+  </div>
 }
 
 function CustomModeBuilder({ mode, modes, onSave }: { mode?: SudokuMode; modes: readonly SudokuMode[]; onSave: (mode: SudokuMode) => SudokuMode }) {
@@ -224,6 +256,7 @@ function CustomModeBuilder({ mode, modes, onSave }: { mode?: SudokuMode; modes: 
   const markerRules = selectedMarkerRules(rules)
   const levels = customModeDifficulties(rules)
   const difficulty = levels.includes(level) ? level : 'medium'
+  const { miracle, control } = useMiracleOption(rules, difficulty, busy)
   const definition = { name: name.trim() || 'Custom Sudoku', rules, ...(negativeMarkers.length && { negativeMarkers }) }
 
   function changeRule(rule: CustomRule, enabled: boolean) {
@@ -289,28 +322,35 @@ function CustomModeBuilder({ mode, modes, onSave }: { mode?: SudokuMode; modes: 
       {savedMessage && <p role="status">{savedMessage} It appears in the main mode list on this device and linked devices after sync.</p>}
       <Button type="submit" disabled={busy || !name.trim() || !rules.length}>Save mode</Button>
       <CustomDifficultyField levels={levels} value={difficulty} disabled={busy} onChange={setLevel} />
+      {control}
       {error && <p className="form-error" role="alert">{error}</p>}
       <Button type="button" variant="primary" disabled={busy || !rules.length} onClick={() => void generate(difficulty, undefined, 'classic', {
-        customMode: definition,
+        customMode: definition, miracle,
       })}><Dices size={18} aria-hidden="true" />{busy ? 'Generating…' : 'Generate puzzle'}</Button>
       {busy && <Button type="button" onClick={cancelGeneration}>Cancel generation</Button>}
     </form>
   </section>
 }
 
-function CustomModeDifficulty({ mode }: { mode: SudokuMode }) {
-  const levels = customModeDifficulties(mode.rules)
-  const [level, setLevel] = useState<CustomDifficulty>('medium')
+function CustomModeDifficulty({ mode, difficulty = DEFAULT_DIFFICULTY }: { mode: SudokuMode; difficulty?: DifficultyPreference }) {
+  const navigate = useNavigate()
+  const { recommended } = usePlayerRating()
+  const level = currentDifficulty(difficulty === 'auto' ? recommended : difficulty)
   const { busy, error, generate, cancelGeneration } = usePuzzleGeneration()
-  return <PuzzleDifficultyStep name={mode.name} preview={<Grid3X3 size={28} aria-hidden="true" />} busy={busy} error={error}
-    startLabel={`Start ${DIFFICULTY_LABELS[level].toLowerCase()} puzzle`}
-    onStart={() => void generate(level, undefined, 'classic', { customMode: { name: mode.name, rules: mode.rules, negativeMarkers: mode.negativeMarkers } })}
+  const { miracle, control } = useMiracleOption(mode.rules, level, busy)
+  return <PuzzleDifficultyStep name={mode.name} preview={<CustomModePreview mode={mode} />} busy={busy} error={error}
+    startLabel={difficulty === 'auto' ? `Start Auto (${DIFFICULTY_LABELS[level]})` : `Start ${DIFFICULTY_LABELS[level].toLowerCase()} puzzle`}
+    onStart={() => void generate(difficulty, undefined, 'classic', { miracle, customMode: { name: mode.name, rules: mode.rules, negativeMarkers: mode.negativeMarkers } })}
     actions={busy ? <Button type="button" onClick={cancelGeneration}>Cancel generation</Button>
       : <Link to="/puzzles/new/custom" search={{ mode: mode.id }} state={{ fromPuzzleVariantPicker: true }}
         className={buttonClassName('quiet')}>Edit mode</Link>}>
     <p>{mode.rules.map(rule => customRules[rule].name).join(' · ')}</p>
     {!!mode.negativeMarkers?.length && <p>{mode.negativeMarkers.map(marker => markerOptions[marker].label).join(' · ')}</p>}
-    <CustomDifficultyField levels={levels} value={level} disabled={busy} onChange={setLevel} />
+    <DifficultySelector value={difficulty} customMode={mode} recommended={recommended} disabled={busy} onChange={next => {
+      void navigate({ to: '/puzzles/new/difficulty', search: { mode: mode.id, difficulty: next },
+        replace: true, state: true, resetScroll: false, viewTransition: false })
+    }} />
+    {control}
   </PuzzleDifficultyStep>
 }
 
@@ -407,17 +447,19 @@ function NewPuzzleDifficulty({ variant, ruleset, boxRows, difficulty, save }: {
   boxRows?: RectangularBoxRows
   save: (preference: NewPuzzlePreference) => void
 }) {
-  const { busy, error, generate } = usePuzzleGeneration()
+  const { busy, error, generate, cancelGeneration } = usePuzzleGeneration()
   const navigate = useNavigate()
   const sized = isSizedPuzzleId(variant)
   const preset = sized ? undefined : generationRuleset(variant, ruleset)
   const { recommended } = usePlayerRating()
   const autoLabel = variantDifficultyLabel(sized ? undefined : variant, 'auto', recommended)
+  const rules: CustomRule[] = sized || variant === 'classic' ? [] : [preset?.id === 'dutch' ? 'dutch-whispers' : variant]
+  const { miracle, control } = useMiracleOption(rules, difficulty === 'auto' ? recommended : difficulty, busy)
   function start() {
     const onGenerated = () => {
       save({ variant, difficulty, boxRows, ...(preset ? { ruleset: preset.id } : {}) })
     }
-    void generate(difficulty, onGenerated, variant, { ruleset: preset?.id, boxRows })
+    void generate(difficulty, onGenerated, variant, { ruleset: preset?.id, boxRows, miracle })
   }
 
   const coreMode = coreSudokuModes.find(id => id === variant)
@@ -426,6 +468,7 @@ function NewPuzzleDifficulty({ variant, ruleset, boxRows, difficulty, save }: {
   const layout = rectangularSize ? rectangularGridForBoxRows(rectangularSize, boxRows) : undefined
   return <PuzzleDifficultyStep name={name} preview={<VariantPreview variant={variant} ruleset={ruleset} boxRows={boxRows} />}
     busy={busy} error={error} onStart={start}
+    actions={busy && rules.length > 0 && <Button type="button" onClick={cancelGeneration}>Cancel generation</Button>}
     startLabel={difficulty === 'auto' ? `Start ${autoLabel}` : `Start ${DIFFICULTY_LABELS[difficulty].toLowerCase()} puzzle`}>
     {coreMode && <p>{VARIANTS[coreMode].rule}</p>}
     {layout && <p>{layout.boxRows} × {layout.boxColumns} boxes</p>}
@@ -437,6 +480,7 @@ function NewPuzzleDifficulty({ variant, ruleset, boxRows, difficulty, save }: {
       void navigate({ to: '/puzzles/new/difficulty', search: { variant, ruleset, boxRows, difficulty: next },
         replace: true, state: true, resetScroll: false, viewTransition: false })
     }} />
+    {control}
   </PuzzleDifficultyStep>
 }
 
@@ -584,7 +628,7 @@ export function PuzzlesPage({ games, active, setDifficulty, newPuzzlePreference,
           <p>This mode is not available on this device yet. If it was saved on another linked device, wait for sync to finish.</p>
           <Link to="/puzzles/new/custom" className={buttonClassName('primary')}>Generate a custom puzzle</Link>
         </section>
-        if (difficultyScreen) return <CustomModeDifficulty key={mode.id} mode={mode} />
+        if (difficultyScreen) return <CustomModeDifficulty key={mode.id} mode={mode} difficulty={newPuzzleSearch.difficulty} />
       }
       if (customScreen) return <CustomPuzzleGeneration variant={customGrid} boxRows={boxRows} difficulty={requestedDifficulty} mode={mode} modes={modes} onSave={saveMode} />
       if (!difficultyScreen && !newPuzzleSearch?.variant && !openRemembered) {

@@ -35,7 +35,7 @@ after(async () => { await server?.close() })
 
 test('New Puzzle exposes both checked Palindrome levels and draws complete mirrored paths', async () => {
   assert.ok(isVariantId('palindrome'))
-  assert.deepEqual(variantDifficulties('palindrome'), ['easy', 'medium'])
+  assert.deepEqual(variantDifficulties('palindrome'), variantDifficulties('classic'))
   const preview = renderToStaticMarkup(createElement(VariantPreview, { variant: 'palindrome' }))
   assert.equal([...preview.matchAll(/class="variant-palindrome"/g)].length, 2)
   for (const points of ['0.5,0.5 1.5,1.5 2.5,2.5 3.5,3.5 4.5,3.5 5.5,3.5', '3.5,5.5 4.5,5.5 5.5,5.5 6.5,6.5 7.5,7.5 8.5,8.5'])
@@ -47,7 +47,7 @@ test('New Puzzle exposes both checked Palindrome levels and draws complete mirro
   const difficulty = await renderNewPuzzle('/puzzles/new/difficulty?variant=palindrome')
   assert.match(difficulty, /Choose difficulty/); assert.match(difficulty, /\/puzzles\/new\?variant=palindrome/)
   assert.match(difficulty, /value="easy"/); assert.match(difficulty, /value="medium"/)
-  assert.doesNotMatch(difficulty, /value="hard"/)
+  assert.match(difficulty, /value="hard"/)
   const saved = await renderNewPuzzle('/puzzles/new/difficulty', { variant: 'palindrome', difficulty: 'easy' })
   assert.match(saved, /Start easy puzzle/)
 })

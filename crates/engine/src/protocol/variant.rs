@@ -118,6 +118,10 @@ pub(super) struct GenerationRequest {
     givens: ClueCount,
     variant_clues: Option<ClueCount>,
     required_rule: Option<String>,
+    #[serde(default)]
+    required_rules: Vec<String>,
+    #[serde(default)]
+    thin_clues: bool,
     score: Option<[u32; 2]>,
     difficulty: Option<Difficulty>,
     technique: Option<TechniqueRequest>,
@@ -149,6 +153,8 @@ impl GenerationRequest {
             variant_clues: self.variant_clues.map(ClueCount::range),
             rating: rating_target(self.score, self.difficulty)?,
             required_rule: self.required_rule,
+            required_rules: self.required_rules,
+            thin_clues: self.thin_clues,
             technique,
             technique_order: order.clone(),
             exclude: self.exclude,

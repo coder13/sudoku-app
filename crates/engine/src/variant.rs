@@ -28,8 +28,8 @@ pub use aqre::{AqreCount, AqreGivenShade, AqreKind, AqrePositionError, AqreRegio
 use cages::{CageHouseSum, CompiledCage};
 #[cfg(any(feature = "generation", test))]
 pub use generation::{
-    GeneratedVariant, MarkerFamily, OutsideClueKind, VariantClueLayout, VariantGenerationError,
-    VariantGenerationOptions, start_variant_generation,
+    GeneratedVariant, MarkerFamily, OutsideClueKind, RuleDependency, VariantClueLayout,
+    VariantGenerationError, VariantGenerationOptions, start_variant_generation,
 };
 use lines::{
     DisjointGroupSum, GroupSumChain, GroupSumHouse, GroupSumPhase, LineConstraint, ModularSum,
@@ -702,6 +702,17 @@ pub struct KillerCage {
 pub struct VariantPuzzle {
     /// Structured format version.
     pub version: u32,
+    /// Replay the extended variant deductions used to construct this puzzle.
+    /// Older puzzles retain their established walkthrough and scoring profile.
+    #[cfg_attr(
+        feature = "wasm-api",
+        serde(
+            rename = "extendedLogic",
+            default,
+            skip_serializing_if = "std::ops::Not::not"
+        )
+    )]
+    pub extended_logic: bool,
     /// Fixed digits in row-major order.
     #[cfg_attr(feature = "wasm-api", serde(with = "wire::grid"))]
     pub givens: Board,
@@ -718,6 +729,7 @@ impl VariantPuzzle {
     pub fn classic(givens: Board) -> Self {
         Self {
             version: VARIANT_FORMAT_VERSION,
+            extended_logic: false,
             givens,
             regions: RegionLayout::Boxes,
             rules: Vec::new(),
@@ -898,6 +910,7 @@ pub enum VariantDefinitionError {
 /// Validated topology and rule data reusable across positions of one puzzle.
 #[derive(Clone, Debug)]
 pub struct CompiledVariant {
+    extended_logic: bool,
     givens: Board,
     classic_boxes: bool,
     houses: Vec<VariantHouse>,

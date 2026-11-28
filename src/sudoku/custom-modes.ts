@@ -3,18 +3,14 @@ import { DIFFICULTY_LEVELS, type CurrentDifficulty } from './difficulty.ts'
 import { notifySettingsEdit } from './settings-events.ts'
 
 export const coreSudokuModes = ['classic', 'diagonal', 'windoku', 'killer-cages', 'jigsaw'] as const
-const customDifficulties = ['easy', 'medium', 'hard'] as const
-const combinedDifficulties = ['beginner', ...customDifficulties] as const
-const jigsawDifficulties = ['easy', 'medium', 'tricky'] as const
 export type CustomDifficulty = CurrentDifficulty
 
 export function isCustomDifficulty(value: unknown): value is CustomDifficulty {
   return typeof value === 'string' && (DIFFICULTY_LEVELS as readonly string[]).includes(value)
 }
 
-export function customModeDifficulties(rules: readonly CustomRule[]): readonly CustomDifficulty[] {
-  if (rules.length > 1) return combinedDifficulties
-  return rules[0] === 'jigsaw' ? jigsawDifficulties : customDifficulties
+export function customModeDifficulties(_rules: readonly CustomRule[]): readonly CustomDifficulty[] {
+  return DIFFICULTY_LEVELS
 }
 
 const additionalRules = {
@@ -56,6 +52,11 @@ export const customRules: Record<CustomRule, { name: string; rule: string }> = {
   whispers: { name: 'German Whispers', rule: 'Neighboring digits along the line differ by at least 5.' },
 }
 export const customRuleIds = Object.keys(customRules) as CustomRule[]
+
+export function hasOverlappingRuleChoices(chosen: ReadonlySet<CustomRule>) {
+  return ([['diagonal', 'diagonal-main', 'diagonal-anti'], ['kropki', 'kropki-white', 'kropki-black'],
+    ['xv', 'xv-five', 'xv-ten']] as const).some(([family, ...parts]) => chosen.has(family) && parts.some(part => chosen.has(part)))
+}
 
 export const CUSTOM_MODES_KEY = 'sudoku-app:v1:custom-modes'
 // Keep reading existing local-only saves after moving modes into the settings namespace.

@@ -90,11 +90,11 @@ pub use technique::{ProfileError, SolverProfile, Technique};
 #[cfg(feature = "variants")]
 pub use variant::{
     AqreCount, AqreGivenShade, AqreKind, AqrePositionError, AqreRegion, AqreShade, ClueDirection,
-    CompiledVariant, DEFAULT_VARIANT_SEARCH_NODES, Diagonal, EntropyGroup, KillerCage,
-    ConditionalNeighborAlternative, LetteredQuadruple, MarkedPairs, NeighborMatchClue, Parity, PuzzleRule, RegionLayout,
-    VARIANT_FORMAT_VERSION, VARIANT_SCORING_VERSION, VariantClueScope, VariantConstraintCheck,
-    VariantConstraintScope, VariantDeduction, VariantDefinitionError, VariantEntropyAreaProof,
-    VariantEvidence, VariantExclusionPremise, VariantGroupLineHouseCase,
+    CompiledVariant, ConditionalNeighborAlternative, DEFAULT_VARIANT_SEARCH_NODES, Diagonal,
+    EntropyGroup, KillerCage, LetteredQuadruple, MarkedPairs, NeighborMatchClue, Parity,
+    PuzzleRule, RegionLayout, VARIANT_FORMAT_VERSION, VARIANT_SCORING_VERSION, VariantClueScope,
+    VariantConstraintCheck, VariantConstraintScope, VariantDeduction, VariantDefinitionError,
+    VariantEntropyAreaProof, VariantEvidence, VariantExclusionPremise, VariantGroupLineHouseCase,
     VariantGroupLineHouseConflict, VariantGroupLineHouseProof, VariantGroupOrderBranch,
     VariantGroupOrderCheck, VariantGroupOrderEliminationProof, VariantGroupOrderProof,
     VariantGroupOrderRefutation, VariantGroupOrderScope, VariantGroupSumChainProof,
@@ -112,8 +112,8 @@ pub use variant::{
 };
 #[cfg(all(feature = "variants", any(feature = "generation", test)))]
 pub use variant::{
-    GeneratedVariant, MarkerFamily, OutsideClueKind, VariantClueLayout, VariantGenerationError,
-    VariantGenerationOptions, start_variant_generation,
+    GeneratedVariant, MarkerFamily, OutsideClueKind, RuleDependency, VariantClueLayout,
+    VariantGenerationError, VariantGenerationOptions, start_variant_generation,
 };
 #[cfg(all(feature = "variants", any(feature = "teaching", test)))]
 pub use variant::{VariantPracticeError, VariantPracticeExercise, variant_practice_examples};

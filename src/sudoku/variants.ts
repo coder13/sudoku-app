@@ -2,7 +2,7 @@ import { validLetteredQuadruples } from './lettered-quadruples.ts'
 import { insideGridColumns, validInsideGridRows } from './inside-grid.ts'
 import { isHexColor } from './imported-colors.ts'
 import { isFogDefinition, FOG_RULE, type FogDefinition } from './fog.ts'
-import { DIFFICULTY_OPTIONS, currentDifficulty, difficultyIndex, difficultyOptionLabel, type DifficultyPreference } from './difficulty.ts'
+import { DIFFICULTY_OPTIONS, currentDifficulty, difficultyOptionLabel, type DifficultyPreference } from './difficulty.ts'
 import type { Difficulty, VariantClueLayout, VariantHouse, VariantPuzzle, VariantRule } from './engine.ts'
 import { lineGroupMask } from './line-groups.ts'
 import { lineSkipsCells } from './line-geometry.ts'
@@ -10,7 +10,6 @@ import { regionSumParts } from './region-sum.ts'
 import { validOutsideRay, outsideClueLabel } from './outside-clues.ts'
 import { cloneLayout } from './clone.ts'
 import { connectedGridCells, gridDiagonalCells, kropkiDigitExclusions } from './grid.ts'
-import seedBank from './variant-seeds.json' with { type: 'json' }
 
 export const VARIANTS = {
   classic: {
@@ -251,7 +250,6 @@ export function isVariantId(value: unknown): value is VariantId {
   return typeof value === 'string' && Object.hasOwn(VARIANTS, value)
 }
 
-// Offer only levels with recipes verified under the current technique rules.
 export function isPuzzleVariantId(value: unknown): value is PuzzleVariantId {
   return value === 'mixed' || typeof value === 'string' && Object.hasOwn(PUZZLE_VARIANTS, value)
 }
@@ -261,19 +259,14 @@ export function generationVariant(variant?: Pick<VariantGame, 'id'>): PlayableVa
   return variant && isVariantId(variant.id) ? variant.id : undefined
 }
 
-export function variantDifficulties(variant?: VariantId): readonly DifficultyPreference[] {
-  if (!variant || variant === 'classic') return DIFFICULTY_OPTIONS
-  return DIFFICULTY_OPTIONS.filter((level) => Object.hasOwn(seedBank[variant], level))
+export function variantDifficulties(_variant?: VariantId): readonly DifficultyPreference[] {
+  return DIFFICULTY_OPTIONS
 }
 
 export function variantDifficulty(variant: VariantId | undefined, preference: Difficulty): Difficulty
 export function variantDifficulty(variant: VariantId | undefined, preference: DifficultyPreference): DifficultyPreference
-export function variantDifficulty(variant: VariantId | undefined, preference: DifficultyPreference): DifficultyPreference {
-  if (preference === 'auto') return 'auto'
-  const current = currentDifficulty(preference)
-  const available = variantDifficulties(variant).filter((d): d is Difficulty => d !== 'auto')
-  return available.includes(current) ? current : available.reduce((best, level) =>
-    Math.abs(difficultyIndex(level) - difficultyIndex(current)) < Math.abs(difficultyIndex(best) - difficultyIndex(current)) ? level : best)
+export function variantDifficulty(_variant: VariantId | undefined, preference: DifficultyPreference): DifficultyPreference {
+  return preference === 'auto' ? 'auto' : currentDifficulty(preference)
 }
 
 export function variantDifficultyLabel(variant: VariantId | undefined, preference: DifficultyPreference, recommended: Difficulty) {
@@ -828,8 +821,9 @@ export function variantIdForPuzzle(puzzle: VariantPuzzle): PuzzleVariantId {
 export function isPlayablePuzzle(id: unknown, puzzle: unknown, fog?: unknown): puzzle is VariantPuzzle {
   if ((!isPuzzleVariantId(id) || id === 'classic') ||
     !puzzle || typeof puzzle !== 'object') return false
-  if (Object.keys(puzzle).some(key => !['version', 'givens', 'rules', 'regions'].includes(key))) return false
-  const { version, givens, rules, regions } = puzzle as VariantPuzzle
+  if (Object.keys(puzzle).some(key => !['version', 'givens', 'rules', 'regions', 'extendedLogic'].includes(key))) return false
+  const { version, givens, rules, regions, extendedLogic } = puzzle as VariantPuzzle
+  if (extendedLogic !== undefined && typeof extendedLogic !== 'boolean') return false
   if (version !== 1 || typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens)) return false
   if (regions !== undefined && (!regions || typeof regions !== 'object' || Array.isArray(regions) ||
     Object.keys(regions).some(key => key !== 'type' && !(regions.type !== 'boxes' && key === 'regions')))) return false

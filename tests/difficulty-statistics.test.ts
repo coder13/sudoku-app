@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import type { CustomModeDefinition } from '../src/sudoku/custom-modes.ts'
 import { difficultyStatistics, pointsPerSecond, pointsPerSecondForSolve } from '../src/sudoku/difficulty-statistics.ts'
 import { EMPTY, makeGame, type Game } from '../src/sudoku/game.ts'
 import { jigsawLayout, variantSeeds } from '../src/sudoku/variant-generation.ts'
@@ -42,6 +43,19 @@ test('unplayed imports, unfinished grids, and drafts do not inflate results; mis
     ['easy', { solved: 2, averageSeconds: 120 }], ['medium', { solved: 1, averageSeconds: null }],
   ])
   assert.equal(difficultyStatistics([]).size, 0)
+})
+
+test('custom difficulty results match the rule combination and negative markers', () => {
+  const mode = { name: 'Windoku Kropki', rules: ['windoku', 'kropki'], negativeMarkers: ['kropki-white'] } satisfies CustomModeDefinition
+  const solve = { ...completed('first', 'medium', 120), customMode: mode }
+  const renamed = { ...completed('second', 'medium', 240),
+    customMode: { ...mode, name: 'Kropki Windoku', rules: ['kropki', 'windoku'] } } satisfies Game
+  const differentMarkers = { ...completed('different-markers', 'medium', 300),
+    customMode: { ...mode, negativeMarkers: ['kropki-black'] } } satisfies Game
+  const differentRules = { ...completed('different-rules', 'medium', 300),
+    customMode: { ...mode, rules: ['diagonal', 'kropki'] } } satisfies Game
+  const results = difficultyStatistics([solve, renamed, differentMarkers, differentRules, completed('classic', 'medium', 400)], mode)
+  assert.deepEqual([...results], [['medium', { solved: 2, averageSeconds: 180 }]])
 })
 
 test('points per second divides the total puzzle points by the total seconds of rated, timed solves', () => {

@@ -16,7 +16,10 @@ type NewPuzzleSearch = {
 
 export const Route = createFileRoute('/puzzles/new')({
   validateSearch: (search): NewPuzzleSearch => {
-    if (isSudokuModeId(search.mode)) return { mode: search.mode }
+    if (isSudokuModeId(search.mode)) return {
+      mode: search.mode,
+      ...(isDifficultyPreference(search.difficulty) && { difficulty: search.difficulty }),
+    }
     const choice: NewPuzzleSearch = {}
     if (search.step === 'variant' || search.step === 'difficulty') choice.step = search.step
     if (isNewPuzzleId(search.variant)) {

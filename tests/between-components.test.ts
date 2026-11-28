@@ -99,7 +99,7 @@ test('native separated cells use explicit nodes and dashed connectors without co
 })
 
 test('the New Puzzle choice has a real clue preview and offers its checked Easy and Medium levels', () => {
-  assert.deepEqual(variantDifficulties('between'), ['easy', 'medium'])
+  assert.deepEqual(variantDifficulties('between'), variantDifficulties('classic'))
   const html = renderToStaticMarkup(createElement(VariantPreview, { variant: 'between' }))
   assert.match(html, /data-variant="between"/)
   assert.equal([...html.matchAll(/class="variant-between-endpoints"/g)].length, 2)

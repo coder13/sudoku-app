@@ -21,7 +21,7 @@ after(async () => { await server?.close() })
 
 test('New Puzzle offers calibrated Medium Renban with complete preview sets and actual navigation', async () => {
   assert.ok(isVariantId('renban'))
-  assert.deepEqual(variantDifficulties('renban'), ['medium'])
+  assert.deepEqual(variantDifficulties('renban'), variantDifficulties('classic'))
   const preview = renderToStaticMarkup(createElement(VariantPreview, { variant: 'renban' }))
   const paths = [...preview.matchAll(/class="variant-renban"[^>]*><polyline points="([^"]+)"/g)].map(match => match[1])
   const source = fixture.sources.find((item: { id: string }) => item.id === 'clover')
@@ -35,8 +35,8 @@ test('New Puzzle offers calibrated Medium Renban with complete preview sets and 
   assert.match(difficulty, /Choose difficulty/)
   assert.match(difficulty, /\/puzzles\/new\?variant=renban/)
   assert.match(difficulty, /value="medium"/)
-  assert.doesNotMatch(difficulty, /value="(?:easy|hard)"/)
-  assert.match(await renderNewPuzzle('/puzzles/new/difficulty', { variant: 'renban', difficulty: 'easy' }), /Start medium puzzle/)
+  assert.match(difficulty, /value="(?:easy|hard)"/)
+  assert.match(await renderNewPuzzle('/puzzles/new/difficulty', { variant: 'renban', difficulty: 'easy' }), /Start easy puzzle/)
 })
 
 test('completed pure Renban offers another puzzle while the complete Killer source retains all companions', () => {

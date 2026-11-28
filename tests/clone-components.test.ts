@@ -96,7 +96,7 @@ test('sharing after progress keeps the original Clone definition and every compa
 })
 
 test('New Puzzle exposes the checked Easy level and a preview with matching Clone letters', () => {
-  assert.deepEqual(variantDifficulties('clone'), ['easy'])
+  assert.deepEqual(variantDifficulties('clone'), variantDifficulties('classic'))
   const html = renderToStaticMarkup(createElement(VariantPreview, { variant: 'clone' }))
   assert.match(html, /class="variant-clone"/)
   assert.equal([...html.matchAll(/data-clone-label-cell/g)].length, 8)

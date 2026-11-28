@@ -127,7 +127,9 @@ export function variantGenerationRequest(
     type: 'generate-variant', seed, maxAttempts: recipe.maxAttempts ?? 1,
     template: { version: 1, givens: recipe.layout ?? '0'.repeat(81), rules,
       regions: id === 'jigsaw' ? jigsawLayout(recipe.regions!) : undefined },
-    derivedClues, givens: [recipe.minGivens ?? 0, recipe.maxGivens], requiredRule: id === 'windoku' ? 'extra-house' : id, difficulty, techniqueOrder,
+    derivedClues, givens: [recipe.minGivens ?? 0, recipe.maxGivens],
+    requiredRules: [id === 'windoku' ? 'extra-house' : id === 'whispers'
+      ? recipe.minDifference === 4 ? 'dutch-whispers' : 'german-whispers' : id], difficulty, techniqueOrder,
   }
 }
 

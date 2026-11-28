@@ -145,6 +145,6 @@ test('sharing after progress preserves all original Region Sum rules and compani
 })
 
 test('New Puzzle offers its checked Medium recipe and a visible Region Sum preview', () => {
-  assert.deepEqual(variantDifficulties('region-sum'), ['medium'])
+  assert.deepEqual(variantDifficulties('region-sum'), variantDifficulties('classic'))
   assert.match(renderToStaticMarkup(createElement(VariantPreview, { variant: 'region-sum' })), /class="variant-region-sum"/)
 })

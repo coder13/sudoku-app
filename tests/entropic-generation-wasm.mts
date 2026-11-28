@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { EngineError, runEngine, type GeneratedVariant, type VariantPuzzle, type VariantRule } from '../src/sudoku/engine.ts'
 import { applyDeduction, enter, isSolved, makeGame, redo, undo, valuesOf, type Game } from '../src/sudoku/game.ts'
-import { generatePlayableVariant, getVariantPlayOrder } from '../src/sudoku/variant-play.ts'
+import { tryVariantRecipe, generatePlayableVariant, getVariantPlayOrder } from '../src/sudoku/variant-play.ts'
 import { reflectVariant, variantGenerationRequest, variantSeeds } from '../src/sudoku/variant-generation.ts'
 import { variantHouseMasks, variantIdForPuzzle } from '../src/sudoku/variants.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
@@ -101,7 +101,7 @@ test('generation is deterministic, reaches a checked fallback after a fresh miss
   await assert.rejects(runEngine(fresh), error => error instanceof EngineError && error.code === 'search-limit')
   assert.deepEqual(await generatePlayableVariant('entropic', 'medium', 42, []), await runEngine(variantGenerationRequest('entropic', 'medium', recipe, order)))
   assert.deepEqual(await generatePlayableVariant('entropic', 'medium', 8, []), await generatePlayableVariant('entropic', 'medium', 8, []))
-  await assert.rejects(generatePlayableVariant('entropic', 'easy', 1, []), error => error instanceof EngineError && error.code === 'unsupported')
+  assert.equal(await tryVariantRecipe('entropic', 'easy', 1, [], {}, runEngine), undefined)
 })
 
 test('actual exclusions cover all source geometries, square transforms, valid group renamings and equivalent path descriptions', async () => {

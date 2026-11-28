@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { EngineError, runEngine, type GeneratedVariant, type VariantPuzzle, type VariantRule } from '../src/sudoku/engine.ts'
 import { applyDeduction, enter, isSolved, makeGame, redo, undo, valuesOf, type Game } from '../src/sudoku/game.ts'
-import { generatePlayableVariant, getVariantPlayOrder } from '../src/sudoku/variant-play.ts'
+import { tryVariantRecipe, generatePlayableVariant, getVariantPlayOrder } from '../src/sudoku/variant-play.ts'
 import { reflectVariant, variantGenerationRequest, variantSeeds } from '../src/sudoku/variant-generation.ts'
 import { variantHouseMasks, variantIdForPuzzle } from '../src/sudoku/variants.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
@@ -90,12 +90,13 @@ test('sixty successive actual Medium puzzles are distinct, rule-dependent and ha
 })
 
 test('generation is deterministic, reaches a checked fallback after a fresh miss and rejects unavailable levels', async () => {
-  const recipe = variantSeeds.modular.medium![12], order = await getVariantPlayOrder()
+  const recipe = variantSeeds.modular.medium![12]
+  const order = await getVariantPlayOrder(variantGenerationRequest('modular', 'medium', recipe, []).template)
   const fresh = variantGenerationRequest('modular', 'medium', recipe, order, 42); fresh.maxNodes = 20_000
   await assert.rejects(runEngine(fresh), error => error instanceof EngineError && error.code === 'search-limit')
   assert.deepEqual(await generatePlayableVariant('modular', 'medium', 42, []), await runEngine(variantGenerationRequest('modular', 'medium', recipe, order)))
   assert.deepEqual(await generatePlayableVariant('modular', 'medium', 8, []), await generatePlayableVariant('modular', 'medium', 8, []))
-  await assert.rejects(generatePlayableVariant('modular', 'easy', 1, []), error => error instanceof EngineError && error.code === 'unsupported')
+  assert.equal(await tryVariantRecipe('modular', 'easy', 1, [], {}, runEngine), undefined)
 })
 
 test('actual exclusions cover all source geometries, square transforms, valid group renamings and equivalent path descriptions', async () => {

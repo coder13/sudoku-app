@@ -11,11 +11,13 @@ const FOG_RATING_VERSION = 1
 const FOG_QUADRUPLE_RATING_VERSION = 2
 const VARIANT_RATING_VERSION = 22
 const CHESS_VARIANT_RATING_VERSION = 23
+const EXTENDED_VARIANT_RATING_VERSION = 24
 
 type GradedPuzzle = Pick<Game, 'grid' | 'difficulty' | 'score' | 'variant' | 'fogRatingVersion' | 'variantRatingVersion' | 'practiceTechnique'>
 
 function variantRatingVersion(variant: Game['variant']) {
   if (!variant) return
+  if (variant.puzzle.extendedLogic) return EXTENDED_VARIANT_RATING_VERSION
   return variant.puzzle.rules?.some(rule => rule.type === 'anti-knight' || rule.type === 'anti-king')
     ? CHESS_VARIANT_RATING_VERSION : VARIANT_RATING_VERSION
 }

@@ -21,7 +21,9 @@ fn estimate(deduction: &VariantDeduction, puzzle: &VariantPuzzle) -> u16 {
     use VariantTechnique::*;
     let (cells, domains, supporting_rules): (&[usize], &[u16], u16) = match &deduction.evidence {
         VariantEvidence::Classic { .. } => return deduction.cost(puzzle),
-        VariantEvidence::Single { .. } => return deduction.technique.cost(),
+        VariantEvidence::Single { .. } | VariantEvidence::RuleSingle { .. } => {
+            return deduction.technique.cost();
+        }
         VariantEvidence::PeerLock { conflicts, .. } => return 14 + 4 * conflicts.len() as u16,
         VariantEvidence::Exclusion { premise, .. } => {
             let (base, alternatives, mut cells) = match premise {

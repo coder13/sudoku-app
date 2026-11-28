@@ -164,7 +164,7 @@ test('New Puzzle shows the repeated circle and offers the calibrated Medium leve
   assert.match(choice, /A repeated printed digit needs that many separate cells/)
   const difficulty = await renderNewPuzzle('/puzzles/new/difficulty?variant=quadruple')
   assert.match(difficulty, /Start medium puzzle/)
-  assert.doesNotMatch(difficulty, />Easy<|>Hard</)
+  assert.match(difficulty, />Easy<|>Hard</)
 })
 
 test('a completed imported Quadruple offers another Medium puzzle', () => {
