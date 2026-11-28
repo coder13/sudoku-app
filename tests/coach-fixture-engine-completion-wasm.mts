@@ -181,6 +181,18 @@ test('HBR9 imports Jigsaw and Anti-Royal rules together without promoting colors
   assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: {
     puzzle: withoutNonconsecutive,
   } }), { status: 'multiple' }, 'the imported non-consecutive rule contributes to this source')
+
+  const parityCompanions = [
+    { type: 'parity' as const, cells: [...fixture.solution].flatMap((digit, cell) => Number(digit) % 2 ? [cell] : []), parity: 'odd' as const },
+    { type: 'parity' as const, cells: [...fixture.solution].flatMap((digit, cell) => Number(digit) % 2 ? [] : [cell]), parity: 'even' as const },
+  ]
+  const combined = {
+    ...imported.variant.puzzle,
+    rules: [...imported.variant.puzzle.rules, ...parityCompanions],
+  }
+  assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle: combined } }),
+    { status: 'unique', solution: fixture.solution },
+    'cosmetic cell colors stay outside the engine while the original rules compose with typed parity companions')
 })
 
 test('published Jigsaw Coach combination needs both Killer and Little Killer rules for uniqueness', async () => {
