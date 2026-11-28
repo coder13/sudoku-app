@@ -7,6 +7,7 @@ import { MINI_GRID, rectangularGridForBoxRows } from '../../src/sudoku/grid'
 import { detectPuzzle } from '../../src/sudoku/puzzle-import'
 import doubledCluesCode from '../../tests/fixtures/sudokupad-double-clues.ctc?raw'
 import productCageCode from '../../tests/fixtures/sudokupad-10k.scl?raw'
+import xSumTwinsWhiteDotsCode from '../../tests/fixtures/sized-sudokupad-xsums-white-dots.scl?raw'
 
 const xSum = { type: 'x-sum', direction: 'south', cells: [1, 5, 9, 13], sum: 6 } as const
 const draft = makeGame('sized-x-sum-editor', 'Sized X-Sum draft', '0'.repeat(16), 'draft', 0, MINI_GRID)
@@ -30,6 +31,41 @@ export const EditOutsideXSum: Story = {
     await expect(editor.getByRole('combobox', { name: 'Column' })).toHaveValue('1')
     await expect(editor.getByRole('spinbutton', { name: 'Outside total' })).toHaveValue(6)
     await expect(editor.getByRole('img', { name: /X-Sum/ }).querySelector('[data-outside-clue="x-sum"]')).toBeVisible()
+  },
+}
+
+function XSumDotRuleEditor() {
+  const [value, setValue] = useState<{ game: ReturnType<typeof makeGame>; layout: typeof MINI_GRID }>()
+  useEffect(() => {
+    void detectPuzzle(xSumTwinsWhiteDotsCode.trim()).then(imported => {
+      if (!imported.grid || !imported.sizedRules || imported.grid.size !== MINI_GRID.size) return
+      const draft = makeGame('sized-x-sum-dot-editor', 'X-Sum dot draft', imported.givens, 'draft', 0, MINI_GRID)
+      setValue({ game: { ...draft, position: { ...draft.position, draftSizedRules: imported.sizedRules } }, layout: MINI_GRID })
+    })
+  }, [])
+  return value ? <EditSizedRules game={value.game} layout={value.layout} close={() => {}} /> : null
+}
+
+export const EditXSumDotRelationships: Story = {
+  render: () => <XSumDotRuleEditor />,
+  play: async ({ canvas, userEvent }) => {
+    const dialog = await canvas.findByRole('dialog', { name: 'Edit 4 × 4 rules' })
+    const editor = within(dialog)
+    const clues = editor.getByRole('combobox', { name: 'Clue' })
+    const dot = editor.getAllByRole('option', { name: /X-Sum dot · consecutive/ })[0]
+    const index = await dot.getAttribute('value')
+    await userEvent.selectOptions(clues, index!)
+    await expect(editor.getByRole('combobox', { name: 'Rule' })).toHaveValue('x-sum-dot')
+    const pair = editor.getByRole('combobox', { name: 'Numbers separated by the dot' })
+    await expect(pair).toHaveValue('south:1|south:2')
+    await expect(pair).toHaveTextContent('X-Sum at the top of column 2 · X-Sum at the top of column 3')
+    await userEvent.selectOptions(pair, 'east:1|4')
+    await expect(editor.getByRole('img', { name: /X-Sum at the left of row 2 and R2C1 are consecutive/ })).toBeInTheDocument()
+    await userEvent.selectOptions(pair, 'south:1|south:2')
+    const relation = editor.getByRole('combobox', { name: 'Dot relation' })
+    await userEvent.selectOptions(relation, 'ratio')
+    await expect(relation).toHaveValue('ratio')
+    await expect(editor.getByRole('img', { name: /in a 1:2 ratio/ })).toBeInTheDocument()
   },
 }
 

@@ -77,6 +77,21 @@ test('mixed rules group repeated clues under one heading and preserve both diago
   assert.match(sections[2].descriptions[1], /top-right to bottom-left/)
 })
 
+test('the published Coach 3:1 Ratio source renders its dot value and accessible edge labels', async () => {
+  const sources: { url: string; coach: string }[] = JSON.parse(readFileSync(
+    new URL('./fixtures/quadruple-coach-mixed-rules.json', import.meta.url), 'utf8'))
+  const source = sources.find(({ url }) => url.endsWith('/FzrY'))
+  assert.ok(source)
+  const { variant, givens } = await detectPuzzle(source.coach)
+  assert.ok(variant)
+  const html = renderToStaticMarkup(createElement(Board, {
+    givens, values: givens, label: '光 (Light)', variantPuzzle: variant.puzzle,
+  }))
+  assert.match(html, /variant-labeled-dot ratio[^]*?<text[^>]*>3<\/text>/)
+  assert.match(html, /black dot, ratio 3 to 1 with row 9, column 7/)
+  assert.match(html, /black dot, ratio 3 to 1 with row 9, column 8/)
+})
+
 test('rendered hints and desktop/mobile solution lists share the selected cell naming style', () => {
   const corpus: Record<string, EngineLessonExample> = JSON.parse(readFileSync(
     new URL('../src/sudoku/generated/lesson-examples.json', import.meta.url), 'utf8'))

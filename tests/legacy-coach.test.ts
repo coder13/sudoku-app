@@ -42,6 +42,9 @@ test('legacy rule records produce the same typed puzzle as modern exports in the
   ] })
   const expected = await detectPuzzle(modern)
   assert.equal(expected.variant?.id, 'mixed')
+  const currentVersion = `SCv4_yy${raw}_`
+  const wrapped = currentVersion.match(/.{1,40}/g)!.join('\n  ')
+  assert.deepEqual(await detectPuzzle(wrapped), expected)
   for (const version of [4, 5, 6]) assert.deepEqual(await detectPuzzle(`SCv${version}_yy${raw}_`), expected)
   assert.deepEqual(await detectPuzzle(`SCv3_yyyyyyy0Ac80d0_0Ac80d0_0Ac80d0___y${raw}`), expected)
 })
@@ -53,14 +56,53 @@ test('default playing fields, short macros and both repeat syntaxes retain the p
   const expected = await detectPuzzle('SCv4_yyR30_')
   assert.deepEqual(await detectPuzzle('SCv4_0(81)_yR30_yyyyy0A[80]0_0A[80]0_0A[80]0___y'), expected)
   assert.deepEqual(await detectPuzzle('SCv4_yyR30_yyyyyxxx__y'), expected)
-  assert.deepEqual(await detectPuzzle('SCv4_yyR30_' + ['10a80b', zero, '90a80b', ...state.slice(3), ''].join('_')), expected)
+  const importedLegacyDigits = await detectPuzzle('SCv4_yyR30_' + ['10a80b', zero, '90a80b', ...state.slice(3), ''].join('_'))
+  const { progress: _, ...importedLegacyDefinition } = importedLegacyDigits
+  assert.deepEqual(importedLegacyDefinition, expected)
+  assert.equal(importedLegacyDigits.progress?.entries[0], '9', 'the serializer writes placed digits in this field')
   for (const [version, tail] of [
+    [3, []],
     [4, [...state, '']],
     [5, [...state, zero, '']],
     [6, [...state, zero, masks, '', '', '', '']],
   ] as const) {
-    assert.deepEqual(await detectPuzzle(`SCv${version}_yyR30_` + tail.join('_')), expected)
+    const code = version === 3 ? `SCv3_yy${[...state, 'R30'].join('_')}`
+      : `SCv${version}_yyR30_${tail.join('_')}`
+    assert.deepEqual(await detectPuzzle(code), expected)
   }
+})
+
+test('SCv3–SCv6 restore placed digits and both candidate styles from verified legacy slots', async () => {
+  const zero = '0a81b'
+  const zeroMasks = '0Ac80d0'
+  const userDigits = '1' + '0'.repeat(80)
+  const userCellCandidates = ['0', '2', ...Array(79).fill('0')].join('-')
+  const userBoxCandidates = ['0', '8', ...Array(79).fill('0')].join('-')
+  const state = [zero, zero, userDigits, zero, zero, userCellCandidates, zeroMasks, userBoxCandidates, '', '', zero]
+
+  for (const [version, tail] of [
+    [3, []],
+    [4, ['']],
+    [5, [zero, '']],
+    [6, [zero, zeroMasks, '', '', '', '']],
+  ] as const) {
+    const code = version === 3 ? `SCv3_yy${[...state, 'R30'].join('_')}`
+      : `SCv${version}_yyR30_${[...state, ...tail].join('_')}`
+    const imported = await detectPuzzle(code)
+    assert.equal(imported.progress?.entries[0], '1', `SCv${version} placed digit`)
+    assert.equal(imported.progress?.center[1], 1, `SCv${version} center candidate`)
+    assert.equal(imported.progress?.corner[1], 4, `SCv${version} corner candidate`)
+    assert.equal(imported.variant?.puzzle.rules?.[0]?.type, 'global-entropy')
+  }
+})
+
+test('legacy progress rejects placed digits that replace givens and malformed candidate masks', async () => {
+  const zero = '0a81b'
+  const zeroMasks = '0Ac80d0'
+  const userDigits = '2' + '0'.repeat(80)
+  const state = [zero, zero, userDigits, zero, zero, '1024-' + Array(80).fill('0').join('-'), zeroMasks, zeroMasks, '', '', zero, '']
+  await assert.rejects(detectPuzzle(`SCv4_10a80b_yR30_${state.join('_')}`), /placed digit that replaces a given/)
+  await assert.rejects(detectPuzzle(`SCv4_yyR30_${state.join('_')}`), /invalid candidate marks/)
 })
 
 test('legacy input rejects oversized or malformed expansions, unsupported rules and unhandled author data', async () => {

@@ -1,3 +1,4 @@
+import { realpathSync } from 'node:fs'
 import type { StorybookConfig } from '@storybook/react-vite'
 import { ocrAssetFileNames } from '../scripts/ocr-assets.ts'
 
@@ -11,7 +12,10 @@ const config: StorybookConfig = {
   core: { disableTelemetry: true },
   async viteFinal(config) {
     const { mergeConfig } = await import('vite')
-    return mergeConfig(config, { build: { rolldownOptions: { output: { assetFileNames: ocrAssetFileNames } } } })
+    return mergeConfig(config, {
+      server: { fs: { allow: [process.cwd(), realpathSync('node_modules')] } },
+      build: { rolldownOptions: { output: { assetFileNames: ocrAssetFileNames } } },
+    })
   },
 }
 

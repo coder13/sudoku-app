@@ -22,6 +22,8 @@ test('imports the current 9 × 9 Sudoku Coach snapshot from a whole-progress exp
   const code = wholeProgress({ i: 1, a: ['0'.repeat(140_000), snapshot] })
 
   const imported = await detectPuzzle(code)
+  const wrapped = code.match(/.{1,40}/g)!.join('\n  ')
+  assert.deepEqual(await detectPuzzle(wrapped), imported)
   assert.equal(imported.format, 'Sudoku Coach')
   assert.equal(imported.givens, givens)
   assert.equal(imported.progress?.entries, entries)

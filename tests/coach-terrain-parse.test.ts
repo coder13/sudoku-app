@@ -3,14 +3,20 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { readReviewedCoachTerrain } from '../src/sudoku/puzzle-import/coach-terrain.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
+import { parsePuzzleExport, puzzleExportText } from '../src/sudoku/puzzle-sharing.ts'
+import { coachCode } from './helpers/coach-code.ts'
+import { useWasmWorker } from './helpers/wasm-worker.ts'
 
-const source = JSON.parse(readFileSync(new URL('./fixtures/sandwich-terrain-unsupported.json', import.meta.url), 'utf8')) as {
+useWasmWorker()
+
+const source = JSON.parse(readFileSync(new URL('./fixtures/coach-terrain.json', import.meta.url), 'utf8')) as {
   source: { sudoku: string; solution: string }
-  payload: { gridSize: number; colours: string[]; givenColours: string; givenConstraints: unknown[] }
+  payload: Record<string, unknown> & { gridSize: number; colours: string[]; givenColours: string; givenConstraints: unknown[] }
 }
 
 test('reviewed Coach Terrain parser preserves its transforms and maximum Sandwich totals', async () => {
-  const terrain = await readReviewedCoachTerrain(source.source.sudoku, source.payload)
+  const terrain = await readReviewedCoachTerrain(source.payload)
   assert.ok(terrain)
   assert.deepEqual(terrain.valueChanges, [
     { color: 'yellow', operation: 'multiply', amount: 2 },
@@ -53,7 +59,112 @@ test('reviewed Coach Terrain parser preserves its transforms and maximum Sandwic
   assert.deepEqual(imported.givenCellColors, Object.fromEntries(terrain.cellColors.flatMap((color, cell) => color ? [[cell, [color]]] : [])))
 })
 
-test('Coach Terrain semantics are restricted to the exact reviewed export', async () => {
-  assert.equal(await readReviewedCoachTerrain(source.source.sudoku.replace(/0/, '1'), source.payload), undefined)
-  assert.equal(await readReviewedCoachTerrain(source.source.sudoku, { ...source.payload, colours: ['green', 'purple'] }), undefined)
+test('Coach Terrain semantics are pinned to its reviewed value map and clues, independent of givens', async () => {
+  assert.deepEqual(await readReviewedCoachTerrain({ ...source.payload, givenDigits: '1' + '0'.repeat(80) }),
+    await readReviewedCoachTerrain(source.payload))
+  assert.equal(await readReviewedCoachTerrain({ ...source.payload, colours: ['green', 'purple'] }), undefined)
+  assert.equal(await readReviewedCoachTerrain({ ...source.payload, customRules: 'different semantics' }), undefined)
+})
+
+test('Coach Terrain imports preserve authored rules when the puzzle givens are edited', async () => {
+  const givens = source.source.solution[0] + '0'.repeat(80)
+  const code = coachCode({ ...source.payload, givenDigits: givens })
+  const imported = await detectPuzzle(code)
+  assert.equal(imported.format, 'Sudoku Coach')
+  assert.equal(imported.givens, givens)
+  assert.equal(imported.variant?.puzzle.rules?.filter(rule => rule.type === 'terrain-sandwich').length, 15)
+  assert.deepEqual(imported.givenCellColors, await detectPuzzle(source.source.sudoku).then(result => result.givenCellColors))
+})
+
+test('Coach Terrain imports retain player progress added to the reviewed puzzle', async () => {
+  const userDigits = [...source.source.solution].map((digit, cell) => cell === 0 ? digit : '0').join('')
+  const code = coachCode({ ...source.payload, userDigits })
+  const imported = await detectPuzzle(code)
+  assert.equal(imported.format, 'Sudoku Coach')
+  assert.equal(imported.progress?.entries[0], source.source.solution[0])
+  assert.equal(imported.variant?.puzzle.rules?.filter(rule => rule.type === 'terrain-sandwich').length, 15)
+  const { game } = await prepareImportedPuzzle(code)
+  assert.equal(game.position.entries[0], source.source.solution[0])
+  assert.equal(game.variant?.puzzle.rules?.filter(rule => rule.type === 'terrain-sandwich').length, 15)
+})
+
+test('Coach Terrain keeps its reviewed rules when player Quick Draw annotations are present', async () => {
+  const code = coachCode({ ...source.payload,
+    quickDrawLineSegments: { '0/0=>1/1': { colour: 'blue' } },
+    quickDrawSymbols: { '1/0.5': { shape: 'cross', colour: 'red' } },
+    cells: { 0: { quickSymbol: { shape: 'circle', colour: 'green' } } },
+  })
+  const imported = await detectPuzzle(code)
+  assert.equal(imported.variant?.puzzle.rules?.filter(rule => rule.type === 'terrain-sandwich').length, 15)
+  assert.deepEqual(imported.progress?.importedDrawings, [
+    { shape: 'line', from: [0, 0], to: [1, 1], color: 'blue' },
+    { shape: 'cross', at: [1, .5], color: 'red' },
+    { shape: 'circle', at: [.5, .5], color: 'green' },
+  ])
+  const { game } = await prepareImportedPuzzle(code)
+  assert.equal(game.variant?.puzzle.rules?.filter(rule => rule.type === 'terrain-sandwich').length, 15)
+  assert.deepEqual(game.position.importedDrawings, imported.progress?.importedDrawings)
+})
+
+test('reviewed Coach Terrain composes with additional supported rules without dropping either family', async () => {
+  const ratio = { type: 'ratio', segments: [{ cells: [6, 15], parameters: {} }] }
+  const code = coachCode({ ...source.payload, givenConstraints: [...source.payload.givenConstraints, ratio] })
+  const imported = await detectPuzzle(code)
+  const rules = imported.variant?.puzzle.rules ?? []
+  assert.equal(rules.filter(rule => rule.type === 'terrain-sandwich').length, 15)
+  assert.ok(rules.some(rule => rule.type === 'kropki' && rule.ratioTwo?.pairs.some(([a, b]) => a === 6 && b === 15)))
+  const { game } = await prepareImportedPuzzle(code)
+  assert.equal(game.variant?.solution, source.source.solution)
+  assert.equal(game.variant?.puzzle.rules?.filter(rule => rule.type === 'terrain-sandwich').length, 15)
+  assert.ok(game.variant?.puzzle.rules?.some(rule => rule.type === 'kropki' && rule.ratioTwo?.pairs.some(([a, b]) => a === 6 && b === 15)))
+
+  const unsupported = coachCode({ ...source.payload, givenConstraints: [...source.payload.givenConstraints,
+    { type: 'futureRule', segments: [] }] })
+  await assert.rejects(detectPuzzle(unsupported), /unsupported rule type/)
+})
+
+test('#196 Terrain imports into Play with simultaneous Ratio, Difference, Odd and Even companions', async () => {
+  const digits = [...source.source.solution].map(Number)
+  const adjacentPairs = Array.from({ length: 81 }, (_, cell) => [
+    ...(cell % 9 < 8 ? [cell + 1] : []),
+    ...(cell < 72 ? [cell + 9] : []),
+  ].map(next => [cell, next] as const)).flat()
+  const findPair = (predicate: (left: number, right: number) => boolean) => {
+    const pair = adjacentPairs.find(([left, right]) => predicate(digits[left], digits[right]))
+    assert.ok(pair, 'the published completion contains a matching adjacent pair')
+    return pair
+  }
+  const ratioPair = findPair((left, right) => Math.max(left, right) === 2 * Math.min(left, right))
+  const differencePair = findPair((left, right) => Math.abs(left - right) === 1)
+  const oddCells = digits.flatMap((digit, cell) => digit % 2 ? [cell] : [])
+  const evenCells = digits.flatMap((digit, cell) => digit % 2 ? [] : [cell])
+  const layer = (type: string, pairs: readonly (readonly [number, number])[]) => ({ type, settings: {},
+    segments: pairs.map(cells => ({ cells, parameters: {} })) })
+  const parityLayer = (type: 'odd' | 'even', cells: readonly number[]) => ({ type, settings: {},
+    segments: cells.map(cell => ({ cells: [cell], parameters: {} })) })
+  const code = coachCode({ ...source.payload, givenConstraints: [...source.payload.givenConstraints,
+    layer('ratio', [ratioPair]), layer('difference', [differencePair]),
+    parityLayer('odd', oddCells), parityLayer('even', evenCells),
+  ] })
+
+  const imported = await detectPuzzle(code)
+  const rules = imported.variant?.puzzle.rules ?? []
+  assert.equal(rules.filter(rule => rule.type === 'terrain-sandwich').length, 15)
+  assert.equal(rules.filter(rule => rule.type === 'parity').length, 2)
+  const samePair = (actual: readonly [number, number], expected: readonly [number, number]) =>
+    actual[0] === expected[0] && actual[1] === expected[1] || actual[0] === expected[1] && actual[1] === expected[0]
+  assert.ok(rules.some(rule => rule.type === 'kropki' && rule.ratioTwo?.pairs.some(pair => samePair(pair, ratioPair))))
+  assert.ok(rules.some(rule => rule.type === 'kropki' && rule.consecutive?.pairs.some(pair => samePair(pair, differencePair))))
+
+  const { game } = await prepareImportedPuzzle(code)
+  assert.equal(game.variant?.solution, source.source.solution)
+  assert.deepEqual(game.variant?.puzzle.rules, rules)
+
+  const exportedText = puzzleExportText(game)
+  const exported = parsePuzzleExport(exportedText)
+  assert.deepEqual(exported.variant?.puzzle, game.variant?.puzzle)
+  assert.deepEqual(exported.givenCellColors, game.givenCellColors)
+  const reimported = await detectPuzzle(exportedText)
+  assert.deepEqual(reimported.variant?.puzzle, game.variant?.puzzle)
+  assert.deepEqual(reimported.givenCellColors, game.givenCellColors)
 })

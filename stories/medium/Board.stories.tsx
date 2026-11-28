@@ -17,18 +17,20 @@ import authoredLayers from '../../tests/fixtures/sudoku-coach-authored-layers.js
 import coachNonogram from '../../tests/fixtures/sized-coach-nonogram.json'
 import coachSkyscrapers from '../../tests/fixtures/skyscrapers-coach-9W3o.json'
 import coachCrust from '../../tests/fixtures/sudoku-coach-crust.json'
-import coachTerrain from '../../tests/fixtures/sandwich-terrain-unsupported.json'
+import coachTerrain from '../../tests/fixtures/coach-terrain.json'
 import coachRowEquations from '../../tests/fixtures/coach-row-equations.json'
 import coachFractionalRegions from '../../tests/fixtures/coach-fractional-regions.json'
 import coachUnknownCageSums from '../../tests/fixtures/sudoku-coach-unknown-cage-totals.json'
 import irregularFortress from '../../tests/fixtures/aspartagcus-irregular-fortress.json'
 import coachDistantNeighbors from '../../tests/fixtures/sudoku-coach-distant-neighbors.json'
-import coachInsideDigitGroups from '../../tests/fixtures/little-killer-unsupported-DLeM.json'
+import coachInsideDigitGroups from '../../tests/fixtures/little-killer-symmetrical-inside.json'
 import coachWrappedJigsaw from '../../tests/fixtures/coach-mini-wrapped-jigsaw.json'
 import coachEntropy from '../../tests/fixtures/entropic-coach.json'
 import coachLittleKillerBetween from '../../tests/fixtures/little-killer-between-GJBz.json'
 import zipperRegionSum from '../../tests/fixtures/zipper-region-sum.json'
 import doubledCluesCode from '../../tests/fixtures/sudokupad-double-clues.ctc?raw'
+import xSumTwinsWhiteDotsCode from '../../tests/fixtures/sized-sudokupad-xsums-white-dots.scl?raw'
+import xSumTwinsBlackDotsCode from '../../tests/fixtures/sized-sudokupad-xsums-black.scl?raw'
 import { lessonDiagram, lessonValues } from '../../src/sudoku/lesson-diagram'
 import { inProgress, lessonExamples, starter } from '../support/fixtures'
 import { LessonFrame, Width } from '../support/frames'
@@ -75,6 +77,22 @@ function BoardExample({
 }
 
 export const ReadOnly: Story = {}
+
+export const CoachCosmeticLineArtwork: Story = {
+  args: {
+    content: {
+      givens: '0'.repeat(81),
+      values: '0'.repeat(81),
+    },
+    appearance: {
+      authoredArtwork: [
+        { type: 'divider', points: [[0, 3], [1, 3], [2, 3], [3, 3], [4, 3], [5, 3], [6, 3], [7, 3], [8, 3], [9, 3]], thickness: .07 },
+        { type: 'divider', points: [[6, 9], [6, 8], [6, 7], [6, 6], [6, 5], [6, 4], [6, 3], [6, 2], [6, 1], [6, 0]], thickness: .07 },
+        { type: 'divider', points: [[6, 6], [7, 6], [8, 6], [9, 6]], thickness: .07 },
+      ],
+    },
+  },
+}
 
 function DoubledCluesBoard({ finished = false }: { finished?: boolean }) {
   const [puzzle, setPuzzle] = useState<{ givens: string; solution: string; grid: SizedGrid; rules: readonly SizedConstraintRule[] }>()
@@ -742,6 +760,30 @@ export const LinkedDoubleArrowXSum: Story = {
     ),
   ],
 }
+
+function XSumTwinsBoard({ blackDots = false, finished = false }: { blackDots?: boolean; finished?: boolean }) {
+  const code = blackDots ? xSumTwinsBlackDotsCode : xSumTwinsWhiteDotsCode
+  const [puzzle, setPuzzle] = useState<{ grid: SizedGrid; givens: string; solution: string; rules: readonly SizedConstraintRule[] }>()
+  useEffect(() => {
+    void detectPuzzle(code.trim()).then(imported => {
+      if (imported.grid && imported.sizedRules && imported.authoredSolution) {
+        setPuzzle({ grid: imported.grid, givens: imported.givens, solution: imported.authoredSolution, rules: imported.sizedRules })
+      }
+    })
+  }, [code])
+  if (!puzzle) return <p>Loading the published X-Sum Twins puzzle…</p>
+  return <div>
+    <p>{sizedRuleDescriptions(puzzle.grid, puzzle.rules).join(' ')}</p>
+    <BoardExample grid={puzzle.grid} givens={puzzle.givens} values={finished ? puzzle.solution : puzzle.givens}
+      sizedRules={puzzle.rules} showGuides selected={finished ? [] : [0]} />
+  </div>
+}
+
+export const XSumTwinsWhiteDotsUnfinished: Story = { render: () => <XSumTwinsBoard /> }
+export const XSumTwinsWhiteDotsFinished: Story = { render: () => <XSumTwinsBoard finished /> }
+export const XSumTwinsBlackDotsUnfinished: Story = { render: () => <XSumTwinsBoard blackDots /> }
+export const XSumTwinsBlackDotsFinished: Story = { render: () => <XSumTwinsBoard blackDots finished /> }
+
 export const SevenBoxlessKiller: Story = {
   args: {
     content: {

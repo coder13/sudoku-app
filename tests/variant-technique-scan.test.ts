@@ -16,6 +16,10 @@ test('variant scans count distinct targets, retain rules, and leave foreground a
       const { id } = this.requests.shift()!
       this.onmessage?.({ data: { id, value } as EngineResponse })
     }
+    fail(error: string) {
+      const { id } = this.requests.shift()!
+      this.onmessage?.({ data: { id, error } as EngineResponse })
+    }
   }
   const original = Object.getOwnPropertyDescriptor(globalThis, 'Worker')
   Object.defineProperty(globalThis, 'Worker', { value: TestWorker, configurable: true })
@@ -59,6 +63,38 @@ test('variant scans count distinct targets, retain rules, and leave foreground a
   workers[0].reply([])
   assert.equal(await fresh, 0)
   freshView.close()
+  const order = ['locked-candidates', 'xy-wing', 'aic']
+  const batchPosition = { puzzle, entries }
+  const batchScan = watchTechniqueScan(entries, undefined, batchPosition, undefined, order)
+  const counts = order.map(technique => batchScan.count(technique))
+  assert.equal(workers[0].requests.length, 1)
+  assert.deepEqual(workers[0].requests[0].request, {
+    type: 'variant', operation: 'hints', position: { ...batchPosition, eliminations: undefined },
+    techniqueOrder: order, limit: 0xffff_ffff,
+  })
+  workers[0].reply([
+    { technique: 'locked-candidates', actions: [{ eliminate: { cell: 3, digit: 2 } }] },
+    { technique: 'xy-wing', actions: [
+      { eliminate: { cell: 3, digit: 2 } }, { eliminate: { cell: 4, digit: 2 } },
+    ] },
+    { technique: 'aic', actions: [
+      { eliminate: { cell: 4, digit: 2 } }, { place: { cell: 5, digit: 6 } },
+    ] },
+  ])
+  assert.deepEqual(await Promise.all(counts), [1, 1, 1])
+  assert.equal(workers[0].requests.length, 0)
+  batchScan.close()
+  const retryPosition = { puzzle: { ...puzzle, rules: [{ type: 'anti-king' as const }] }, entries }
+  const retryScan = watchTechniqueScan(entries, undefined, retryPosition, undefined, ['locked-candidates', 'xy-wing'])
+  const failedBatch = retryScan.count('locked-candidates')
+  assert.equal(workers[0].requests.length, 1)
+  workers[0].fail('Batch scan failed')
+  await assert.rejects(failedBatch, /Batch scan failed/)
+  const retriedBatch = retryScan.count('locked-candidates')
+  assert.equal(workers[0].requests.length, 1, 'A rejected batch can be retried on the same worker')
+  workers[0].reply([])
+  assert.equal(await retriedBatch, 0)
+  retryScan.close()
   assert.deepEqual(cachedTechniqueCounts(techniqueScanKey(entries, removals, puzzle))['locked-candidates'], { count: 3 })
   assert.deepEqual(cachedTechniqueCounts(techniqueScanKey(entries, removals, other.puzzle))['locked-candidates'], { count: 0 })
   const cancelledPuzzle: VariantPuzzle = { ...puzzle, rules: [{ type: 'anti-knight' }] }
@@ -107,5 +143,16 @@ test('variant technique counts subtract candidate targets found by earlier techn
     ] },
   ])
   assert.equal(await count, 1)
+  const extra = scan.count('aic')
+  assert.deepEqual(workers[0].requests[0].request, {
+    type: 'variant', operation: 'hints', position: { puzzle, entries, eliminations: undefined },
+    techniqueOrder: [...order, 'aic'], limit: 0xffff_ffff,
+  })
+  workers[0].reply([
+    { technique: 'locked-candidates', actions: [{ eliminate: { cell: 3, digit: 2 } }] },
+    { technique: 'xy-wing', actions: [{ eliminate: { cell: 3, digit: 2 } }] },
+    { technique: 'aic', actions: [{ place: { cell: 5, digit: 6 } }] },
+  ])
+  assert.equal(await extra, 1)
   scan.close()
 })

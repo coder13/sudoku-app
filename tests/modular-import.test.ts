@@ -189,6 +189,27 @@ test('Cmki imports as a complete six-by-six mixed-rule Coach puzzle', async () =
   ])
 })
 
+test('Cmki keeps its authored instructions and imports a companion rule from the published link', async ({ mock }) => {
+  const source = load('coach').examples.find((example: { url: string }) => example.url.endsWith('/Cmki'))
+  assert.ok(source)
+  const data = await decodeSudokuCoachPayload(source.code)
+  const code = coachCode({ ...data, givenConstraints: [
+    ...(data.givenConstraints as unknown[]),
+    { type: 'ratio', segments: [{ cells: [0, 1], parameters: {} }], settings: {} },
+  ] })
+  mock.method(globalThis, 'fetch', async (url: string) => {
+    assert.equal(url, '/api/v1/import/sudoku-coach/Cmki')
+    return Response.json({ code, coach: {
+      title: source.title, hasAuthorInstructions: true, authoredRule: 'sized-entropic-runaround',
+    } })
+  })
+
+  const imported = await detectPuzzle(source.url)
+  assert.ok(imported.sizedRules?.some(rule => rule.type === 'whispers'))
+  assert.ok(imported.sizedRules?.some(rule => rule.type === 'modular'))
+  assert.ok(imported.sizedRules?.some(rule => rule.type === 'kropki'))
+})
+
 test('the original 5 × 5 Modular/Entropic Coach export retains every line and its unique Anti-King completion', async ({ mock }) => {
   const source = load('coach').examples.find((example: { url: string }) => example.url.endsWith('/7hzU'))
   assert.ok(source)
@@ -242,6 +263,27 @@ test('the reviewed 220V raw Coach code applies its published color legend withou
   assert.ok(source)
   const imported = await detectPuzzle(source.code)
   assert.deepEqual(imported.variant?.puzzle, source.publishedPuzzle)
+  assertVariantCompletion(imported.variant!.puzzle, source.solution)
+})
+
+test('220V keeps its authored colored lines with an appended Ratio rule', async () => {
+  const source = load('coach').examples.find((example: { url: string }) => example.url.endsWith('/7rs9'))
+  assert.ok(source)
+  const data = await decodeSudokuCoachPayload(source.code)
+  const pair = Array.from({ length: 81 }, (_, cell) => cell).flatMap(cell => {
+    const row = Math.floor(cell / 9), column = cell % 9
+    return [row < 8 ? cell + 9 : -1, column < 8 ? cell + 1 : -1]
+      .filter(other => other >= 0 && (Number(source.solution[cell]) === 2 * Number(source.solution[other]) ||
+        Number(source.solution[other]) === 2 * Number(source.solution[cell])))
+      .map(other => [cell, other] as [number, number])
+  })[0]
+  assert.ok(pair)
+  const ratio = { type: 'ratio', segments: [{ cells: pair, parameters: {} }] }
+  const imported = await detectPuzzle(coachCode({ ...data, givenConstraints: [...data.givenConstraints, ratio] }))
+  const rules = imported.variant?.puzzle.rules ?? []
+  assert.ok(rules.some(rule => rule.type === 'region-sum'))
+  assert.ok(rules.some(rule => rule.type === 'modular'))
+  assert.ok(rules.some(rule => rule.type === 'kropki' && rule.ratioTwo?.pairs.some(([a, b]) => a === pair[0] && b === pair[1])))
   assertVariantCompletion(imported.variant!.puzzle, source.solution)
 })
 

@@ -8,6 +8,7 @@ export function NumberPuzzlePreview({ board, game, label, position }: {
 }) {
   return <div className="number-puzzle-import-preview">
     <NumberPuzzleGrid content={{ board, game, name: label }} ariaLabel={label}
-      appearance={{ values: position?.values ?? board.cells.map(() => 0), notes: position?.notes }} />
+      appearance={{ values: position?.values ?? board.cells.map(() => 0), notes: position?.notes,
+        importedCellColors: position?.importedCellColors, importedCandidateColors: position?.importedCandidateColors }} />
   </div>
 }

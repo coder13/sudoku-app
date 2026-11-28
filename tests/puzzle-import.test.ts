@@ -10,6 +10,7 @@ import { coachCode as coach } from './helpers/coach-code.ts'
 import { jigsawMembership, MINI_GRID } from '../src/sudoku/grid.ts'
 import { conflictsOf, EMPTY, enter, makeGame } from '../src/sudoku/game.ts'
 import { detectPuzzle, MAX_IMPORT_LENGTH } from '../src/sudoku/puzzle-import.ts'
+import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
 import { MAX_DECODED_LENGTH } from '../src/sudoku/puzzle-import/shared.ts'
 import { jigsawLayout, variantSeeds } from '../src/sudoku/variant-generation.ts'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
@@ -232,6 +233,17 @@ test('the published Mini Jigsaw 3 short link retains its wrapped regions and com
   assert.ok(linked.grid && 'regions' in linked.grid)
 })
 
+test('the reviewed wrapped Mini Jigsaw keeps its topology when a supported rule is appended', async () => {
+  const data = await decodeSudokuCoachPayload(wrappedJigsawSource.code)
+  const combined = await detectPuzzle(coach({ ...data, givenConstraints: [
+    ...(data.givenConstraints as unknown[]), { type: 'antiKnight', segments: [], settings: {} },
+  ] }))
+
+  assert.equal(combined.grid?.size, 4)
+  assert.ok(combined.grid && 'wrapAround' in combined.grid && combined.grid.wrapAround)
+  assert.deepEqual(combined.sizedRules?.map(rule => rule.type), ['whispers', 'region-sum', 'anti-knight'])
+})
+
 test('an unrelated 4 × 4 Jigsaw with regions crossing the flat edges does not gain wraparound rules', async () => {
   const regions = [0, 1, 1, 0, 0, 1, 1, 0, 2, 3, 3, 2, 2, 3, 3, 2]
   const imported = await detectPuzzle(coach({ gridSize: 4, givenDigits: '0'.repeat(16), regions }))
@@ -239,6 +251,14 @@ test('an unrelated 4 × 4 Jigsaw with regions crossing the flat edges does not g
     [[0, 3, 4, 7], [1, 2, 5, 6], [8, 11, 12, 15], [9, 10, 13, 14]])
   assert.ok(imported.grid && 'regions' in imported.grid)
   assert.equal(imported.grid.wrapAround, undefined)
+})
+
+test('imports line-wrapped Sudoku Coach codes without changing their decoded puzzle', async () => {
+  const expected = await detectPuzzle(killerCode)
+  const wrapped = killerCode.match(/.{1,40}/g)!.join('\n  ')
+  assert.deepEqual(await detectPuzzle(wrapped), expected)
+  assert.deepEqual(await detectPuzzle(`\n${wrapped}\n`), expected)
+  assert.deepEqual(await decodeSudokuCoachPayload(wrapped), await decodeSudokuCoachPayload(killerCode))
 })
 
 test('imports the supplied Killer grid from a Sudoku Coach code or link', async () => {
@@ -490,12 +510,12 @@ test('reports unsupported or damaged codes without treating them as Classic', as
   })
   await assert.rejects(detectPuzzle('https://sudoku.coach/en/s/DMnw'), /published puzzle could not be found/)
   await assert.rejects(detectPuzzle('https://sudokupad.app/example-share-id'), /published puzzle could not be found/)
-  await assert.rejects(detectPuzzle(coach({ givenConstraints: [{ type: 'globalModularity', segments: [] }] })), /not supported yet.*globalModularity/)
+  await assert.rejects(detectPuzzle(coach({ givenConstraints: [{ type: 'globalModularity', segments: [] }] })), /unsupported rule type \(globalModularity\)/)
   await assert.rejects(detectPuzzle(coach({ givenConstraints: [{ type: 'cage', segments: [] }] })), /no Killer cages/)
   await assert.rejects(detectPuzzle(coach({ givenConstraints: [
     { type: 'antiKnight', segments: [] },
     { type: 'globalModularity', segments: [] },
-  ] })), /not supported yet.*globalModularity/)
+  ] })), /unsupported rule type \(globalModularity\)/)
   await assert.rejects(detectPuzzle('x'.repeat(MAX_IMPORT_LENGTH + 1)), /one puzzle at a time/)
   const oversizedExport = JSON.stringify({ format: 'sudoku-app-puzzle', version: 1, title: 'Large export',
     givens: STARTER, padding: 'x'.repeat(MAX_DECODED_LENGTH) })
@@ -740,7 +760,7 @@ test('compressed puzzles enforce the decoded-size limit without committing a par
   const fpCode = lzString.compressToBase64(JSON.stringify({ size: 9, grid, title: 'x'.repeat(128_001) }))
   assert.ok(coachCode.length < MAX_IMPORT_LENGTH)
   assert.ok(fpCode.length < MAX_IMPORT_LENGTH)
-  await assert.rejects(detectPuzzle(coachCode), /could not be opened/)
+  await assert.rejects(detectPuzzle(coachCode), /Sudoku Coach puzzle is too large/)
   await assert.rejects(detectPuzzle(fpCode), /unreadable/)
 })
 

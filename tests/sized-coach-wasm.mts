@@ -21,7 +21,7 @@ const easyThermoSolution = '1234341223414123'
 const coachBetween = JSON.parse(readFileSync(new URL('./fixtures/little-killer-between-GJBz.json', import.meta.url), 'utf8')) as {
   metadata: { sudoku: string; solution: string }
 }
-const coachInsideDigitGroups = JSON.parse(readFileSync(new URL('./fixtures/little-killer-unsupported-DLeM.json', import.meta.url), 'utf8')) as {
+const coachInsideDigitGroups = JSON.parse(readFileSync(new URL('./fixtures/little-killer-symmetrical-inside.json', import.meta.url), 'utf8')) as {
   metadata: { sudoku: string; solution: string }
 }
 

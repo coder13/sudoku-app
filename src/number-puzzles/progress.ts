@@ -1,10 +1,25 @@
 import { numberPuzzleDifficulties, type NumberPuzzleDifficulty } from './catalog.ts'
+import type { CandidateColors, ImportedCellColors } from '../sudoku/imported-colors.ts'
+import { validNumberImportedCandidateColors, validNumberImportedCellColors } from './imported-codec.ts'
 
-export type NumberPosition = { values: number[]; notes: number[] }
+export type NumberPosition = {
+  values: number[]
+  notes: number[]
+  importedCellColors?: ImportedCellColors
+  importedCandidateColors?: CandidateColors<string>
+}
 export type NumberMove = readonly [cell: number, value: number, notes: number]
 export type NumberClock = { elapsed: number; finished?: true } | 'untimed'
 export type NumberProgress = { position: NumberPosition; past: NumberMove[]; future: NumberMove[]; clock?: NumberClock }
-export type SavedNumberProgress = { values: unknown[]; notes: unknown[]; past?: unknown; future?: unknown; clock?: unknown }
+export type SavedNumberProgress = {
+  values: unknown[]
+  notes: unknown[]
+  importedCellColors?: unknown
+  importedCandidateColors?: unknown
+  past?: unknown
+  future?: unknown
+  clock?: unknown
+}
 export const NUMBER_HISTORY_SIZE = 64
 
 export function readNumberClock(value: unknown): NumberClock | undefined {
@@ -70,11 +85,18 @@ export function parseNumberProgress(saved: SavedNumberProgress, editable: readon
   }
 
   const clock = readNumberClock(saved.clock)
+  const position: NumberPosition = {
+    values: editable.map((write, index) => write && valid(values[index], maxValue) ? values[index] : 0),
+    notes: editable.map((write, index) => write && valid(notes[index], maxNotes) ? notes[index] : 0),
+  }
+  if (saved.importedCellColors !== undefined && validNumberImportedCellColors(saved.importedCellColors, maxValue)) {
+    position.importedCellColors = saved.importedCellColors as ImportedCellColors
+  }
+  if (saved.importedCandidateColors !== undefined && validNumberImportedCandidateColors(saved.importedCandidateColors, maxValue)) {
+    position.importedCandidateColors = saved.importedCandidateColors as CandidateColors<string>
+  }
   return {
-    position: {
-      values: editable.map((write, index) => write && valid(values[index], maxValue) ? values[index] : 0),
-      notes: editable.map((write, index) => write && valid(notes[index], maxNotes) ? notes[index] : 0),
-    },
+    position,
     past: readHistory(past),
     future: readHistory(future),
     ...(clock === undefined ? {} : { clock }),

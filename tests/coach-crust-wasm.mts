@@ -5,6 +5,8 @@ import { hasUniquenessProof } from '../src/sudoku/game.ts'
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { runEngine } from '../src/sudoku/engine.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
+import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
+import { coachCode } from './helpers/coach-code.ts'
 
 useWasmWorker()
 
@@ -44,6 +46,22 @@ test('Crust of Void imports its published completion without claiming a uniquene
   assert.ok(preview.game.grid && preview.game.sized)
   assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
     version: 2, grid: preview.game.grid, digits: [...source.solution!].map(Number), rules: preview.game.sized.rules,
+  } }), 'unique')
+})
+
+test('a reviewed Crust puzzle keeps a supported companion rule through engine validation', async () => {
+  const source = sources.find(item => item.id === 'BKR7')!
+  const data = await decodeSudokuCoachPayload(source.code)
+  const ratio = { type: 'ratio', segments: [{ cells: [6, 7], parameters: {} }] }
+  const { game } = await prepareImportedPuzzle(coachCode({ ...data, givenConstraints: [...data.givenConstraints, ratio] }))
+  assert.ok(game.grid && game.sized?.rules.some(rule => rule.type === 'crust'))
+  assert.ok(game.sized.rules.some(rule => rule.type === 'kropki' && rule.ratioTwo?.pairs.some(([a, b]) => a === 6 && b === 7)))
+  assert.equal(game.sized.solution, source.solution)
+  assert.equal(await runEngine({ type: 'sized-variant', operation: 'analyze', position: {
+    version: 2,
+    grid: game.grid,
+    rules: game.sized.rules,
+    digits: [...source.solution!].map(Number),
   } }), 'unique')
 })
 

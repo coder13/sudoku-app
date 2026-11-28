@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { enter, redo, undo } from '../src/sudoku/game.ts'
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
@@ -7,11 +8,20 @@ import { playCandidates, variantPosition } from '../src/sudoku/variant-play.ts'
 import { runEngine } from '../src/sudoku/engine.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { parsePuzzleExport, puzzleExportText } from '../src/sudoku/puzzle-sharing.ts'
+import { variantRuleDescriptions } from '../src/sudoku/variants.ts'
 import { coachCode } from './helpers/coach-code.ts'
 import { publishFixture } from './helpers/shared-puzzle.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 
 useWasmWorker()
+
+const mixedCoachSources = JSON.parse(readFileSync(new URL('./fixtures/quadruple-coach-mixed-rules.json', import.meta.url), 'utf8')) as {
+  url: string
+  title: string
+  author: string
+  coach: string
+  solution: string
+}[]
 
 test('negative Coach Ratio layers with custom values only negate the default 2:1 ratio', async () => {
   const imported = await detectPuzzle(coachCode({ givenConstraints: [
@@ -276,6 +286,59 @@ test('synthetic Coach Ratio labels from 2:1 through 9:1 match exact candidate su
       assert.deepEqual(actual, expected, `ratio ${ratio}:1 with ${fixedDigit} fixed at R1C1`)
     }
   }
+})
+
+test('#86 imports the published Light puzzle with its 3:1 Ratio mark and companion rules', async () => {
+  const source = mixedCoachSources.find(({ url }) => url.endsWith('/FzrY'))
+  assert.ok(source)
+  assert.equal(source.title, '光 (Light)')
+  assert.equal(source.author, 'hoi')
+
+  const imported = await detectPuzzle(source.coach)
+  assert.ok(imported.variant)
+  const ratioRule = imported.variant.puzzle.rules?.find(rule => rule.type === 'labeled-dots' && rule.relation === 'ratio')
+  assert.ok(ratioRule)
+  assert.deepEqual(ratioRule, {
+    type: 'labeled-dots',
+    relation: 'ratio',
+    marks: [{ cells: [79, 78], value: 3 }],
+  })
+  assert.ok(imported.variant.puzzle.rules?.some(rule => rule.type === 'palindrome'))
+  assert.ok(imported.variant.puzzle.rules?.some(rule => rule.type === 'entropic'))
+  assert.ok(imported.variant.puzzle.rules?.some(rule => rule.type === 'quadruple'))
+  assert.ok(variantRuleDescriptions(imported.variant.puzzle).some(description =>
+    description.includes('Across a numbered black dot, multiply the smaller digit by the number on the dot')))
+
+  const solution = source.solution
+  assert.equal(Math.max(Number(solution[79]), Number(solution[78])),
+    3 * Math.min(Number(solution[79]), Number(solution[78])))
+  assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: {
+    puzzle: imported.variant.puzzle,
+    entries: imported.givens,
+  } }), 'unique', 'the complete published puzzle must solve uniquely with all imported companion rules')
+  const withoutRatio = {
+    ...imported.variant.puzzle,
+    rules: imported.variant.puzzle.rules?.filter(rule => rule.type !== 'labeled-dots' || rule.relation !== 'ratio'),
+  }
+  assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: {
+    puzzle: withoutRatio,
+    entries: imported.givens,
+  } }), 'multiple', 'the published 3:1 Ratio rule is needed for uniqueness alongside the companion rules')
+  assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: {
+    puzzle: imported.variant.puzzle,
+    entries: solution,
+  } }), 'unique', 'the published completion must satisfy the Ratio and every companion rule together')
+
+  const ratioOnlyPuzzle = { ...imported.variant.puzzle, rules: [ratioRule] }
+  const entries = Array(81).fill('0')
+  entries[79] = solution[79]
+  const candidates = await runEngine({ type: 'variant', operation: 'candidates', position: {
+    puzzle: ratioOnlyPuzzle,
+    entries: entries.join(''),
+  } })
+  assert.ok(candidates)
+  assert.deepEqual(Array.from({ length: 9 }, (_, index) => index + 1)
+    .filter(digit => candidates[78] & (1 << (digit - 1))), [Number(solution[78])])
 })
 
 test('synthetic sized Coach Ratio 3 composes with a diagonal and constrains imported Play candidates', async () => {

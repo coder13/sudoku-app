@@ -50,6 +50,16 @@ test('malformed cells, unknown semantics and invalid marker saves cannot silentl
   for (const settings of [{ negativeConstraint: true }, { unknownRule: 1 }]) {
     await assert.rejects(detectPuzzle(coachCode({ givenConstraints: [{ type: 'even', segments: [{ cells: [0] }], settings }] })), /unsupported/)
   }
+  for (const constraint of [
+    { type: 'futureRule', segments: [], settings: {} },
+    { type: 'futureRule', segments: [{ cells: [0, 1], parameters: {} }], settings: {} },
+  ]) {
+    await assert.rejects(detectPuzzle(coachCode({ givenConstraints: [constraint] })), /unsupported rule type/)
+    const sixBySixRegions = Array.from({ length: 36 }, (_, cell) =>
+      Math.floor(Math.floor(cell / 6) / 2) * 2 + Math.floor((cell % 6) / 3))
+    await assert.rejects(detectPuzzle(coachCode({ gridSize: 6, regions: sixBySixRegions, givenConstraints: [constraint] })),
+      /unsupported active rule/)
+  }
   for (const rule of [{ type: 'parity', cells: [0], parity: 'any' }, { type: 'parity', cells: [0, 0], parity: 'odd' }]) {
     assert.equal(isPlayablePuzzle('parity', { ...fixture.puzzle, rules: [rule] }), false)
   }

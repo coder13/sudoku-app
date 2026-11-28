@@ -1,4 +1,4 @@
-import { readReviewedCoachArtwork, reviewedCoachFillTitle } from '../authored-artwork.ts'
+import { readCoachCosmeticLineArtwork, readReviewedCoachArtwork, reviewedCoachFillTitle } from '../authored-artwork.ts'
 import { readReviewedCoachCrust } from './coach-crust.ts'
 import { readReviewedCoachRowEquations } from './coach-row-equation.ts'
 import { readCoachFractionalRegions } from '../coach-fractional-regions.ts'
@@ -28,6 +28,7 @@ import { readCoachStandaloneExclusions } from '../coach-standalone-exclusions.ts
 import { readCoachStandaloneExtrema } from '../coach-standalone-extrema.ts'
 import type { CageOperator } from '../../calcudoku/engine.ts'
 import type { LatinParity } from '../../latin/parity.ts'
+import type { LatinKropki, LatinKropkiLayer } from '../../latin/kropki.ts'
 import type { LatinDiagonal } from '../../latin/diagonals.ts'
 import { emptyNumberPosition, type NumberPosition } from '../../number-puzzles/progress.ts'
 import { insideGridColumns, validInsideGridRows } from '../inside-grid.ts'
@@ -47,22 +48,23 @@ const COACH_CODE = /^SCv([0-9]+)_([0-9]+)_/i
 const COACH_WHOLE_PROGRESS = /^32_/
 const LEGACY_COACH_CODE = /^SCv([3-6])_/i
 const MAX_COACH_PROGRESS_LENGTH = 1_048_576
+const COACH_PUZZLE_TOO_LARGE = 'This Sudoku Coach puzzle is too large.'
 const COACH_COLLECTION_LINK = /^\/(?:[a-z]{2}\/)?collections\/((?:[a-z0-9-]{1,64}\/){0,3}[a-z0-9-]{1,64})\/s\/([A-Za-z0-9]{1,16})\/?$/
 // Retain the 5NW source's visible fills only for the exact reviewed export.
-const coachRomeoAndJulietExport = 'a00378f1b8e4943815a5987cacaeeec0669db58163a9cdca19675d3f36a678e3'
+const coachRomeoAndJulietExport = '3582ebf36e054ed53bce1b471d1498a1da51c2af52102146782478564ab4c2d9'
 // The reviewed Mini Jigsaw source describes regions that wrap over both board axes.
 // Region geometry alone cannot distinguish this topology from ordinary authored regions.
-const coachWrappedJigsawExport = '501832fec680e8fa268be297919615522b2a9150da212cde066797ec6e6828dc'
+const coachWrappedJigsawExport = '0b2943873942f7ae5b388d0acb2534a5d241a64fb039619115364e6d461ebed3'
 // The original 7×7 Skyscrapers puzzle stores its outside clues as cosmetic text.
 // Its exact export is enough to establish the meaning when users paste the code
 // directly, without the author description supplied by the short-link resolver.
-const coachSkyscrapersExport = 'd9726081ddf9b97737fdb72ffd1391fab8fc204edd73f7e99613f57e06f03121'
+const coachSkyscrapersExport = '77df0b423fed7df15eebccd55543055af4d3b648d5cfaad950098cdaa16879d2'
 // The original 6×6 Nonogram also states the rule in its published description.
 // Recognize only that exact export when users paste its puzzle code directly.
-const coachNonogramExport = 'f9f86aa7cfcc1e3fab882cb9c5a033128e28e6a172a1828163c1be028176b932'
+const coachNonogramExport = 'a93ddbfd210363b5c78ca7ed2fec53a12eaa5d79a99c17a49ce2c534bb3ffb3c'
 // DLeM's author description defines its outside digits as first-three-cell
 // membership clues. Its zero-valued Little Killer layers only draw arrows.
-const coachInsideDigitGroupsExport = '4df8f288447a88911a27cf695858ece85958b940e94afc536271946594ca3a8e'
+const coachInsideDigitGroupsExport = '3b05826519fdda35c4c377ed03d4b3ed946cd7c3a63ef64ec46c31caf04d5675'
 const coachInsideDigitGroupsSolution = '678243195953718624142965738487531962365492871291876453826157349534689217719324586'
 const COACH_FIELDS = new Set([
   'gridSize', 'givenDigits', 'regions', 'givenConstraints', 'meta', 'metaSolver', 'colours',
@@ -73,6 +75,13 @@ const COACH_DRAWINGS = ['quickDrawLineSegments', 'quickDrawSymbols', 'cells']
 
 const CLUE_STYLING = new Set(['opacity', 'colour', 'shapeSize', 'borderColour', 'borderThickness'])
 const LINE_STYLING = new Set(['colour', 'colourSync', 'lineThickness', 'lineEndOffset', 'borderColour', 'borderThickness', 'opacity'])
+const COACH_CONSTRAINT_TYPES = new Set([
+  'diagonalNegative', 'diagonalPositive', 'antiKnight', 'antiKing', 'nonconsecutive', 'twoCellSum',
+  'thermometer', 'arrow', 'pillArrow', 'whisper', 'betweenLine', 'lockoutLine', 'renban', 'entropicLine',
+  'modularLine', 'consecutiveLine', 'palindromeLine', 'regionSumLine', 'oddEven', 'odd', 'even', 'minimum',
+  'maximum', 'difference', 'ratio', 'greaterLess', 'cage', 'cosmeticCage', 'quadruple', 'sandwich',
+  'littleKiller', 'fog', 'cosmeticLine', 'cosmeticShape', 'cosmeticText', 'globalEntropy', 'region',
+])
 const BULB_STYLING = new Set(['bulbSize', 'bulbBorderThickness', 'bulbBorderColour', 'bulbFillColour'])
 function unsupportedClueStyling(settings: unknown) {
   return hasData(settings) && (!record(settings) || Object.keys(settings).some(key => !CLUE_STYLING.has(key)))
@@ -133,7 +142,7 @@ async function inflate(bytes: Uint8Array<ArrayBuffer>, limit = MAX_DECODED_LENGT
       const { done, value } = await reader.read()
       if (done) break
       length += value.byteLength
-      if (length > limit) throw new Error('This Sudoku Coach puzzle is too large.')
+      if (length > limit) throw new Error(COACH_PUZZLE_TOO_LARGE)
       chunks.push(decoder.decode(value, { stream: true }))
     }
     return chunks.join('') + decoder.decode()
@@ -144,6 +153,8 @@ async function inflate(bytes: Uint8Array<ArrayBuffer>, limit = MAX_DECODED_LENGT
 
 export async function decodeSudokuCoachPayload(code: string): Promise<Record<string, unknown>> {
   if (code.length > MAX_IMPORT_LENGTH) throw new Error('Paste one puzzle at a time.')
+  const compact = code.replace(/\s+/g, '')
+  if (COACH_CODE.test(compact) || LEGACY_COACH_CODE.test(compact) || COACH_WHOLE_PROGRESS.test(compact)) code = compact
   const legacy = LEGACY_COACH_CODE.exec(code)
   if (legacy) return decodeLegacyCoach(code.slice(legacy[0].length), legacy[1] as LegacyCoachVersion, MAX_DECODED_LENGTH)
   const wholeProgress = COACH_WHOLE_PROGRESS.exec(code)
@@ -156,7 +167,8 @@ export async function decodeSudokuCoachPayload(code: string): Promise<Record<str
   let text: string
   try {
     text = await inflate(bytes, limit)
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === COACH_PUZZLE_TOO_LARGE) throw error
     throw new Error('This Sudoku Coach code could not be opened. Copy the full puzzle code and try again.')
   }
   let data = parseJSON(text, 'Sudoku Coach', limit)
@@ -222,21 +234,27 @@ function isCoachTypedDeclaration(value: unknown): value is CoachTypedDeclaration
     value.adjacentTotals[0] === 7 && value.adjacentTotals[1] === 13
 }
 
-const magicSquareCoachExport = '8c4aceec22d1628faeb544944dfa6664913a08e1aaf468b4bcd5514fb7b844b1'
-const unknownCageSumsCoachExport = 'a96fdbd3eb78af79cf63b1ce787f1d3a3e4a1d70b249f23a7dedb11e2667a88f'
+const magicSquareCoachExport = '4de7af4ee0071d371302535620f15328e3ca59ca121e142e71e53bf025951f07'
+const unknownCageSumsCoachExport = 'c9b4e2692c037851140027b3f59b7c5ed6706dadfbcf049d01a9973bf74dcb8b'
 const unknownCageSumsPublishedSolution = '513879462296154378748623591635291784127348659489567123851936247972415836364782915'
-const distantNeighborsCoachExport = 'd8fb932a0c4941b1f7732f0ea32a6d50fc4adf72c5b6c0f28621e30405be9b0f'
+const distantNeighborsCoachExport = '218c74ffea2442270e3873b0e44919ba2be1da43eed50bb104095491508349c1'
 // The published AsnF instructions name these authored cosmetic labels as X-Sums.
 // Restrict that interpretation to the exact reviewed export, since raw text is otherwise ambiguous.
-const authoredAsnFXSumsCoachExport = '3392bb1a0488e8778d630b4b058e1a55ee04baefa0f199b5a29ba8382c499e53'
+const authoredAsnFXSumsCoachExport = '40049b467057c5860aea9fd909abd6eba8f1ea3694287117fec71a35041fe259'
 // K95q's description supplies the complete-black-dot rule, which is absent
-// from the copied SCv7 payload. Recognize only this reviewed source on raw-code imports.
-const allBlackDotsCoachExport = 'e03c0d40bdb9a3ab13512250b4920bd6d6f554da83d136d3e8105f29e713aa6e'
+// from the copied SCv7 payload. Recognize only this reviewed source fingerprint.
+const allBlackDotsCoachExport = 'd23c1148acfca2fe7c543a29fc3c4b52bd1aa70d9287fab8088333239d54d4e0'
+
+async function coachConstraintPrefixHash(code: string, data: Record<string, unknown>, count: number) {
+  if (!Array.isArray(data.givenConstraints) || data.givenConstraints.length < count) return
+  return sourceHash(code, { ...data, givenConstraints: data.givenConstraints.slice(0, count) })
+}
 
 async function readCoachInsideDigitGroups(code: string, data: Record<string, unknown>) {
-  if (await sourceHash(code, data) !== coachInsideDigitGroupsExport) return
+  if (!Array.isArray(data.givenConstraints) || data.givenConstraints.length < 3 ||
+    await sourceHash(code, { ...data, givenConstraints: data.givenConstraints.slice(0, 3) }) !== coachInsideDigitGroupsExport) return
   const invalid = () => new Error('The Symmetrical Inside export does not match its reviewed outside-digit clues.')
-  if (data.gridSize !== 9 || !Array.isArray(data.givenConstraints) || data.givenConstraints.length !== 3) throw invalid()
+  if (data.gridSize !== 9) throw invalid()
   const [arrows, labels, renbans] = data.givenConstraints
   if (!record(arrows) || arrows.type !== 'littleKiller' || Object.keys(arrows).sort().join(',') !== 'id,segments,settings,type' ||
     !record(arrows.settings) || Object.keys(arrows.settings).length !== 0 || !Array.isArray(arrows.segments) ||
@@ -303,7 +321,7 @@ async function readCoachInsideDigitGroups(code: string, data: Record<string, unk
   if ([...arrowAt.keys()].length !== 0) throw invalid()
   const renbanRules = readCoachRules([renbans], { grid: CLASSIC_GRID })
   if (renbanRules.length !== 7 || renbanRules.some(rule => rule.type !== 'renban')) throw invalid()
-  const rules = [...renbanRules, ...outsideRules]
+  const rules = [...renbanRules, ...outsideRules, ...readCoachRules(data.givenConstraints.slice(3), { grid: CLASSIC_GRID })]
   if (!isSizedRuleList(rules, CLASSIC_GRID)) throw invalid()
   const givens = data.givenDigits === undefined ? '0'.repeat(81) : data.givenDigits
   if (typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens)) throw invalid()
@@ -311,8 +329,8 @@ async function readCoachInsideDigitGroups(code: string, data: Record<string, unk
 }
 
 async function readCoachMagicSquare(code: string, data: Record<string, unknown>) {
-  if (await sourceHash(code, data) !== magicSquareCoachExport || data.gridSize !== 9 ||
-    !Array.isArray(data.givenConstraints) || data.givenConstraints.length !== 1) return
+  if (!Array.isArray(data.givenConstraints) || data.givenConstraints.length < 1 ||
+    await sourceHash(code, { ...data, givenConstraints: data.givenConstraints.slice(0, 1) }) !== magicSquareCoachExport || data.gridSize !== 9) return
   const [layer] = data.givenConstraints
   if (!record(layer) || layer.type !== 'cage' || !Array.isArray(layer.segments) || layer.segments.length !== 13) return
   const unnumbered = layer.segments.filter(segment => record(segment) && record(segment.parameters) &&
@@ -322,10 +340,10 @@ async function readCoachMagicSquare(code: string, data: Record<string, unknown>)
 }
 
 async function readCoachUnknownCageSums(code: string, data: Record<string, unknown>) {
-  if (await sourceHash(code, data) !== unknownCageSumsCoachExport || data.gridSize !== 9 ||
-    !Array.isArray(data.givenConstraints)) return
+  if (!Array.isArray(data.givenConstraints) || data.givenConstraints.length < 4 ||
+    await sourceHash(code, { ...data, givenConstraints: data.givenConstraints.slice(0, 4) }) !== unknownCageSumsCoachExport || data.gridSize !== 9) return
   const layers = data.givenConstraints.filter(record)
-  if (layers.length !== data.givenConstraints.length || layers.length !== 4) return
+  if (layers.length !== data.givenConstraints.length || layers.length < 4) return
   const cageLayers = layers.filter(layer => layer.type === 'cage')
   const textLayers = layers.filter(layer => layer.type === 'cosmeticText')
   if (cageLayers.length !== 1 || textLayers.length !== 1) return
@@ -391,8 +409,8 @@ async function readCoachUnknownCageSums(code: string, data: Record<string, unkno
 }
 
 async function readCoachDistantNeighbors(code: string, data: Record<string, unknown>) {
-  if (await sourceHash(code, data) !== distantNeighborsCoachExport || data.gridSize !== 9 ||
-    !Array.isArray(data.givenConstraints) || data.givenConstraints.length !== 2) return
+  if (!Array.isArray(data.givenConstraints) || data.givenConstraints.length < 2 ||
+    await sourceHash(code, { ...data, givenConstraints: data.givenConstraints.slice(0, 2) }) !== distantNeighborsCoachExport || data.gridSize !== 9) return
   const layers = data.givenConstraints.filter(record)
   if (layers.length !== data.givenConstraints.length) return
   const [region] = layers.filter(layer => layer.type === 'region')
@@ -482,7 +500,8 @@ function readCoachProgress(data: Record<string, unknown>, givens: string, size =
 }
 
 function readCoachNumberPosition(data: Record<string, unknown>, givens: string, size: number): NumberPosition | undefined {
-  if (![data.userDigits, data.userCellCandidates, data.userBoxCandidates].some(hasData)) return
+  if (![data.userDigits, data.userCellCandidates, data.userBoxCandidates, data.userColours,
+    data.userCellCandidatesColours].some(hasData)) return
   const digits = data.userDigits === undefined || data.userDigits === '' ? '0'.repeat(givens.length) : data.userDigits
   if (typeof digits !== 'string' || digits.length !== givens.length || !/^\d+$/.test(digits) ||
     [...digits].some(digit => Number(digit) > size)) {
@@ -496,7 +515,12 @@ function readCoachNumberPosition(data: Record<string, unknown>, givens: string, 
   const center = readCoachCandidateMasks(data.userCellCandidates, size)
   const corner = readCoachCandidateMasks(data.userBoxCandidates, size)
   position.notes = center.map((mask, cell) => givens[cell] === '0' ? mask | corner[cell] : 0)
-  return position.values.some(Boolean) || position.notes.some(Boolean) ? position : undefined
+  const importedCellColors = readCoachPlayerColors(data, size)
+  const importedCandidateColors = readCoachCandidateColors(data.colours, data.userCellCandidatesColours, size)
+  if (importedCellColors) position.importedCellColors = importedCellColors
+  if (importedCandidateColors) position.importedCandidateColors = importedCandidateColors
+  return position.values.some(Boolean) || position.notes.some(Boolean) || importedCellColors || importedCandidateColors
+    ? position : undefined
 }
 
 function readCoachParity(layers: readonly unknown[], size: number): LatinParity[] {
@@ -549,8 +573,9 @@ function readCoachStandaloneRules(layers: readonly unknown[], size: number) {
   let exclusions: import('../../latin/exclusions.ts').LatinExclusion[] = readCoachStandaloneExclusions(layers.filter(layer => record(layer) &&
     ['antiKnight', 'antiKing', 'nonconsecutive'].includes(String(layer.type))), size)
   if (exclusions.includes('nonconsecutive')) {
-    const dotRules = readCoachRules(layers.filter(layer => record(layer) && layer.type === 'difference'), {})
-    const except = [...new Map(dotRules.flatMap(rule => rule.type === 'kropki' ? rule.consecutive?.pairs ?? [] : [])
+    const except = [...new Map(layers.flatMap(layer => !record(layer) || layer.type !== 'difference' ? [] :
+      readCoachPairMarkers(layer, 'difference').markers
+        .filter(marker => marker.amount === 1).map(({ cells: [a, b] }) => [a, b] as const))
       .filter(([a, b]) => Math.abs(Math.floor(a / size) - Math.floor(b / size)) + Math.abs(a % size - b % size) === 1).map(([a, b]) => {
         const pair = [Math.min(a, b), Math.max(a, b)] as const
         return [pair.join(','), pair] as const
@@ -560,7 +585,59 @@ function readCoachStandaloneRules(layers: readonly unknown[], size: number) {
   }
   const extrema = readCoachStandaloneExtrema(layers.filter(layer => record(layer) &&
     (layer.type === 'minimum' || layer.type === 'maximum')), size)
-  return { lines, exclusions, extrema }
+  const dotLayers = layers.filter(layer => record(layer) && (layer.type === 'difference' || layer.type === 'ratio'))
+  const parsedDots = readCoachRules(dotLayers, {})
+  const kropkiRules = parsedDots.filter((rule): rule is Extract<VariantRule, { type: 'kropki' }> => rule.type === 'kropki')
+  const numberedDotRules = parsedDots.filter((rule): rule is Extract<VariantRule, { type: 'labeled-dots' }> => rule.type === 'labeled-dots')
+  const kropkiLayers: LatinKropkiLayer[] = [
+    ...kropkiRules.flatMap(rule => [
+      ...(rule.consecutive ? [{ relation: 'consecutive' as const, ...rule.consecutive }] : []),
+      ...(rule.ratioTwo ? [{ relation: 'ratioTwo' as const, ...rule.ratioTwo }] : []),
+    ]),
+    ...numberedDotRules.map(rule => ({ relation: rule.relation, pairs: rule.marks, negative: rule.negative === true })),
+  ]
+  const repeatedNegativeRelations = new Set((['consecutive', 'ratioTwo', 'difference', 'ratio'] as const).filter(relation => {
+    const family = kropkiLayers.filter(layer => layer.relation === relation)
+    return family.length > 1 && family.some(layer => layer.negative === true)
+  }))
+  const mergeMarks = (family: 'consecutive' | 'ratioTwo') => {
+    if (repeatedNegativeRelations.has(family)) return
+    const declarations = kropkiRules.flatMap(rule => rule[family] ? [rule[family]!] : [])
+    if (!declarations.length) return
+    const pairs = new Map<string, [number, number]>()
+    for (const [a, b] of declarations.flatMap(mark => mark.pairs ?? [])) {
+      const pair: [number, number] = [Math.min(a, b), Math.max(a, b)]
+      pairs.set(`${pair[0]}:${pair[1]}`, pair)
+    }
+    return { pairs: [...pairs.values()], negative: declarations.some(mark => mark.negative === true) }
+  }
+  const mergeNumberedMarks = (relation: 'difference' | 'ratio') => {
+    if (repeatedNegativeRelations.has(relation)) return
+    const declarations = numberedDotRules.filter(rule => rule.relation === relation)
+    if (!declarations.length) return
+    const pairs = new Map<string, { cells: [number, number]; value: number }>()
+    for (const { cells: [a, b], value } of declarations.flatMap(rule => rule.marks)) {
+      const cells: [number, number] = [Math.min(a, b), Math.max(a, b)]
+      const key = `${cells[0]}:${cells[1]}`
+      const existing = pairs.get(key)
+      if (existing && existing.value !== value) {
+        throw new Error(`This boxless Sudoku Coach puzzle assigns conflicting numbered ${relation === 'difference' ? 'Difference' : 'Ratio'} values to one edge.`)
+      }
+      pairs.set(key, { cells, value })
+    }
+    return { pairs: [...pairs.values()], negative: declarations.some(rule => rule.negative === true) }
+  }
+  const consecutive = mergeMarks('consecutive')
+  const ratioTwo = mergeMarks('ratioTwo')
+  const difference = mergeNumberedMarks('difference')
+  const ratio = mergeNumberedMarks('ratio')
+  const layersToPreserve = kropkiLayers.filter(layer => repeatedNegativeRelations.has(layer.relation))
+  const kropki: LatinKropki | undefined = consecutive || ratioTwo || difference || ratio || layersToPreserve.length ? {
+    ...(consecutive && { consecutive }), ...(ratioTwo && { ratioTwo }),
+    ...(difference && { difference }), ...(ratio && { ratio }),
+    ...(layersToPreserve.length && { layers: layersToPreserve }),
+  } : undefined
+  return { lines, exclusions, extrema, ...(kropki && { kropki }) }
 }
 
 const calcudokuSigns = new Map<string, CageOperator>([
@@ -616,8 +693,8 @@ function readCoachStandalone(data: Record<string, unknown>): ImportResult | unde
   const isFutoshiki = hasInequalities || !hasCages
   const isCalcudoku = hasCages
   const supported = isFutoshiki
-    ? new Set(['greaterLess', 'odd', 'even', 'diagonalNegative', 'diagonalPositive', 'antiKnight', 'antiKing', 'nonconsecutive', 'difference', 'minimum', 'maximum', 'thermometer', 'renban', 'entropicLine', 'modularLine', 'betweenLine', 'lockoutLine', 'arrow'])
-    : new Set(['cage', 'cosmeticCage', 'odd', 'even', 'diagonalNegative', 'diagonalPositive', 'antiKnight', 'antiKing', 'nonconsecutive', 'difference', 'minimum', 'maximum', 'thermometer', 'renban', 'entropicLine', 'modularLine', 'betweenLine', 'lockoutLine', 'arrow'])
+    ? new Set(['greaterLess', 'odd', 'even', 'diagonalNegative', 'diagonalPositive', 'antiKnight', 'antiKing', 'nonconsecutive', 'difference', 'ratio', 'minimum', 'maximum', 'thermometer', 'renban', 'entropicLine', 'modularLine', 'betweenLine', 'lockoutLine', 'arrow'])
+    : new Set(['cage', 'cosmeticCage', 'odd', 'even', 'diagonalNegative', 'diagonalPositive', 'antiKnight', 'antiKing', 'nonconsecutive', 'difference', 'ratio', 'minimum', 'maximum', 'thermometer', 'renban', 'entropicLine', 'modularLine', 'betweenLine', 'lockoutLine', 'arrow'])
   if (types.some(type => !supported.has(type))) {
     // Let the regular importer handle boxless Sudoku variants that combine
     // Futoshiki or Calcudoku with other supported rule families.
@@ -754,20 +831,38 @@ function readCoachFogCellColors(fog: FogDefinition, cellColours: readonly string
   return validImportedCellColors(colors) ? colors : undefined
 }
 
+function readCoachCageCaptionOffsets(constraints: readonly unknown[]) {
+  return constraints.flatMap(layer => {
+    if (!record(layer) || layer.type !== 'cage' || !record(layer.settings) || !Array.isArray(layer.segments)) return []
+    const offset = layer.settings.horizontalOffset
+    if (typeof offset !== 'number' || !Number.isFinite(offset) || offset < 0 || offset > 100) return []
+    return layer.segments.flatMap(segment => {
+      if (!record(segment) || !Array.isArray(segment.cells) || !segment.cells.length ||
+        !segment.cells.every(cell => Number.isInteger(cell) && Number(cell) >= 0 && Number(cell) < 81)) return []
+      return [{ type: 'cage-caption-offset' as const, cell: Math.min(...segment.cells as number[]),
+        offset: offset / 100 }]
+    })
+  })
+}
+
 // Coach leaves this rule out of a pasted Quad-Arrows export.
-const quadArrowsExport = '081de6e0d36d53b949aa2fcb8c18ab5cc7a89acab4729d3ba41baddefdd2dd43'
-const codeCrackerExport = 'a297ab70f94568f356c282821f9566ad8ac1e2ba287781737615518c306bab3c'
-const sandwichRollExport = 'a5222a3faefbf42cdaab3c8b81958d14e5a709e89d28e45d8611fbf64a325653'
-const sunnyEntropyExport = '1c8d349fc96821784cbda4323a1bc9f85d6245d7610cb2a04317c3b4815c32c6'
+const quadArrowsExport = '79e91e3f2437d79f1f711dfdef45d0c0d1b4c9218b84a2d539cbb7797d145764'
+const codeCrackerExport = 'f3e4547984dce224f6194295e4bf116d924557ba6e80e914aff73e91b443a7ff'
+const sandwichRollExport = '11c07dda397cac7f667a2a6b2a721eab3513d8598df0926b80acf6329280c80b'
+const sunnyEntropyExport = 'babed6a85770d81c9be91fd70f6fa688eba31fc5361639579e82d8030f01cd44'
 // The published 220V legend assigns its cosmetic orange and blue paths to
 // Entropic and Region Sum rules. The raw SCv7 payload does not carry that text.
-const coach220VLineColoursExport = 'a454bc2435d4d69950db865205e3cd117bd3ab325bd6c528a8d6944007f357d4'
+const coach220VLineColoursExport = '7cf6d6e8cb55e93db7199f2d9c6c90e64f60dde46df8c1faeca2663316e8f4c5'
 
 // The Rainbow colors repeat the region map. Revival's yellow pattern adds no
 // rule. Match the reviewed exports in full because other colors can encode clues.
-const reviewedCoachColorExports = new Map([
-  ['1be837174e67a43133a677d6f504da74724c35ece725b203f822d299954a91c1', 'Entro Quad Rainbow Jigsaw'],
-  ['2ec5b5abab8e4c9e045a35d0d3a4244213e47e37462c9b598798ee53ba07f28d', 'Revival'],
+const reviewedCoachColorExports = new Map<string, { title?: string; constraintCount?: number }>([
+  ['3c5e14b3fada38879b5f42667ad02820548f06ea6282db2b98d07edc8cfe3d17', { title: 'Entro Quad Rainbow Jigsaw', constraintCount: 2 }],
+  ['b255fa64004bfdd04e71a07ac68863131e8906d992bf77af35af53296d812228', { title: 'Revival', constraintCount: 2 }],
+  // This puzzle's description uses green cells to illustrate a property of
+  // Anti-Knight + Anti-King + Non-Consecutive Sudoku. Keep its fills as visual
+  // annotations; the encoded rule layers remain the complete engine rules.
+  ['5a9256e784a20ddc80881f0bc008c943aa936c15756490ae877bd367e370327c', { constraintCount: 3 }],
 ])
 
 function readCoachInsideGrid(constraints: readonly unknown[]): VariantRule[] {
@@ -847,8 +942,11 @@ function readCoachLetteredQuadruples(constraints: readonly unknown[]): VariantRu
 async function fromCoach(code: string, publication?: CoachPublication | null, fromCollection = false): Promise<ImportResult> {
   const data: Record<string, unknown> = /^[0-9]{81}$/.test(code) ? { gridSize: 9, givenDigits: code } : await decodeCoach(code)
   const insideDigitGroups = await readCoachInsideDigitGroups(code, data)
-  if (insideDigitGroups) return { ...insideDigitGroups, title: publication?.title ?? 'Symmetrical Inside' }
-  const terrain = await readReviewedCoachTerrain(code, data)
+  if (insideDigitGroups) {
+    const progress = readCoachProgress(data, insideDigitGroups.givens)
+    return { ...insideDigitGroups, ...(progress && { progress }), title: publication?.title ?? 'Symmetrical Inside' }
+  }
+  const terrain = await readReviewedCoachTerrain(data)
   if (terrain) {
     const givens = data.givenDigits === undefined ? EMPTY : data.givenDigits
     if (typeof givens !== 'string' || !/^[0-9]{81}$/.test(givens)) throw new Error('This Sudoku Coach puzzle has invalid givens.')
@@ -861,9 +959,11 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
       const cells = Array.from({ length: 9 }, (_, offset) => direction === 'south' ? offset * 9 + index : index * 9 + offset)
       return { type: 'terrain-sandwich', direction, cells, maximum, transforms: cells.map(cell => transforms[cell]) }
     })
+    rules.push(...readCoachRules(terrain.additionalConstraints, { grid: CLASSIC_GRID }))
     const imported = makeImportedPuzzle(givens, rules, undefined)
     const givenCellColors = Object.fromEntries(terrain.cellColors.flatMap((color, cell) => color ? [[cell, [color]]] : []))
-    return { ...imported, givenCellColors, title: publication?.title ?? 'Terrain Variants I: Diamond Sandwich' }
+    const progress = readCoachProgress(data, givens)
+    return { ...imported, givenCellColors, title: publication?.title ?? 'Terrain Variants I: Diamond Sandwich', ...(progress && { progress }) }
   }
   const crust = await readReviewedCoachCrust(code, data)
   if (crust) {
@@ -880,21 +980,26 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     const title = crust.source === 'BKR7' ? 'Crust of Void'
       : crust.source === 'ABjn' ? 'Crust of Edge-Count [7x7]'
         : crust.source === '9Z8C' ? 'Crust of Edge-Count [9x9]' : 'Mini Random Crust #1'
-    return { givens: '0'.repeat(crust.size ** 2), grid, sizedRules: [{
+    const givens = '0'.repeat(crust.size ** 2)
+    const progress = readCoachProgress(data, givens, crust.size)
+    const rules = [{
       type: 'crust', clues,
       ...(crust.sharedRegion && { sharedRegion: crust.sharedRegion }),
       ...(crust.fixedEdges && { fixedEdges: crust.fixedEdges }),
-    }], title, ...(crust.authoredSolution && { authoredSolution: crust.authoredSolution, authoredSolutionOnly: true as const }) }
+    }, ...readCoachRules(crust.additionalConstraints, { grid })]
+    if (!isSizedRuleList(rules, grid)) throw new Error('This Sudoku Coach Crust export contains invalid rules.')
+    return { givens, grid, ...(progress && { progress }), sizedRules: rules, title,
+      ...(crust.authoredSolution && { authoredSolution: crust.authoredSolution, authoredSolutionOnly: true as const }) }
   }
   const standalone = publication !== null && !publication?.hasAuthorInstructions ? readCoachStandalone(data) : undefined
   if (standalone) return { ...standalone, ...(publication?.title && { title: publication.title }) }
   if (data.gridSize === 4 || isRectangularSize(data.gridSize) || isJigsawSize(data.gridSize)) {
     const reviewedEntropicRunaround = publication?.authoredRule === 'sized-entropic-runaround' && data.gridSize === 6 &&
-      await sourceHash(code, data) === 'eaa3711145076e992c920d15677b5f02651e829cbec2b1ba95a0d37c7f93162f'
+      await coachConstraintPrefixHash(code, data, 3) === '80e6ee3c1b96047b9e28201a75d19e68c6886f4bf61e3a01932b9bf4ec274cca'
     const reviewedSkyscrapers = publication?.authoredRule === 'sized-skyscrapers' ||
-      await sourceHash(code, data) === coachSkyscrapersExport
+      await coachConstraintPrefixHash(code, data, 1) === coachSkyscrapersExport
     const reviewedNonogram = publication?.authoredRule === 'sized-nonogram' ||
-      await sourceHash(code, data) === coachNonogramExport
+      await coachConstraintPrefixHash(code, data, 4) === coachNonogramExport
     if (fromCollection && (!publication || publication.hasAuthorInstructions) ||
       publication?.hasAuthorInstructions && publication.authoredRule !== 'wrapped-regions' && publication.authoredRule !== 'sized-nonogram' &&
       publication.authoredRule !== 'sized-skyscrapers' && publication.authoredRule !== 'x-sum' && !reviewedEntropicRunaround) {
@@ -940,7 +1045,8 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     })
     const rules = readCoachRules(ruleLayers, { regions })
     const imported = makeImportedPuzzle('0'.repeat(81), rules, regions)
-    return { ...imported, authoredArtwork: boxlessNine.artwork }
+    const progress = readCoachProgress(data, '0'.repeat(81))
+    return { ...imported, ...(progress && { progress }), authoredArtwork: boxlessNine.artwork }
   }
   const aqre = await readReviewedCoachAqre(code, data)
   const expectedAqreKind = publication?.authoredRule === 'aqre-snake' ? 'aqre-snake'
@@ -949,7 +1055,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     throw new Error('The Aqre export does not match its published shading rules.')
   }
   if (publication?.authoredRule === 'xv-empty-cosmetic-cage' &&
-    await sourceHash(code, data) !== 'c7c2be5873de87e5168278e3f135cb5e5c1d5c470f87757076d54b64693c9806') {
+    await coachConstraintPrefixHash(code, data, 4) !== '8518f3fb3c90f87ce51db6de41e48f5b84310d2a1277d33dce5d76dab836691c') {
     throw new Error('The XV Entropy export does not match its reviewed empty cage layer.')
   }
   if (aqre) {
@@ -972,12 +1078,13 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
       })),
     })
     const imported = makeImportedPuzzle(givens, rules, regions)
-    return { ...imported, ...(publication?.title && { title: publication.title }) }
+    const progress = readCoachProgress(data, source.givens)
+    return { ...imported, ...(progress && { progress }), ...(publication?.title && { title: publication.title }) }
   }
   const entropyGroupOrder = await readReviewedCoachEntropyGroupOrder(code, data)
   const entropyBreaks = await readReviewedCoachEntropyBreaks(code, data)
-  if (publication?.authoredRule === 'entropy-window-groups' &&
-    await sourceHash(code, data) !== sunnyEntropyExport) {
+  const sunnyEntropyMatch = await coachConstraintPrefixHash(code, data, 6) === sunnyEntropyExport
+  if (publication?.authoredRule === 'entropy-window-groups' && !sunnyEntropyMatch) {
     throw new Error('The Global Entropy export does not match its reviewed shape clues.')
   }
   if (publication?.authoredRule === 'entropic-breaks' && !entropyBreaks) {
@@ -991,18 +1098,23 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   const unknownCageSums = await readCoachUnknownCageSums(code, data)
   const distantNeighbors = await readCoachDistantNeighbors(code, data)
   const authoredAsnFXSums = !publication && constraints.some(layer => record(layer) && layer.type === 'cosmeticText') &&
-    await sourceHash(code, data) === authoredAsnFXSumsCoachExport
+    await coachConstraintPrefixHash(code, data, 1) === authoredAsnFXSumsCoachExport
   const authoredAllBlackDots = !publication && constraints.some(layer => record(layer) && layer.type === 'ratio') &&
-    await sourceHash(code, data) === allBlackDotsCoachExport
+    await coachConstraintPrefixHash(code, data, 6) === allBlackDotsCoachExport
   const reviewed220VLineLegend = !publication && constraints.some(layer => record(layer) && layer.type === 'cosmeticLine') &&
-    await sourceHash(code, data) === coach220VLineColoursExport
+    await coachConstraintPrefixHash(code, data, 6) === coach220VLineColoursExport
   if (publication?.authoredRule === 'unknown-cage-sums' && !unknownCageSums) {
     throw new Error('The Sudoku Coach export does not match its published unknown cage totals.')
   }
   if (publication?.authoredRule === 'distant-neighbors' && !distantNeighbors) {
     throw new Error('The Sudoku Coach export does not match its published box identity clues.')
   }
-  const artwork = await readReviewedCoachArtwork(code, constraints)
+  const artworkData = sunnyEntropyMatch
+    ? { ...data, givenConstraints: (data.givenConstraints as unknown[]).slice(0, 6) } : data
+  const reviewedArtwork = await readReviewedCoachArtwork(code, constraints, artworkData)
+  const cosmeticLineArtwork = !reviewedArtwork && !reviewed220VLineLegend
+    ? readCoachCosmeticLineArtwork(constraints) : undefined
+  const artwork = reviewedArtwork ?? cosmeticLineArtwork
   if (publication?.authoredRule === 'reviewed-artwork' && !artwork?.layers) {
     throw new Error('The CS1G export does not match its reviewed authored artwork.')
   }
@@ -1011,22 +1123,22 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
   if (publication?.authoredRule === 'partial-regions' && !artwork?.partialRegions) {
     throw new Error('The export does not match its published region outlines.')
   }
-  const guideLayers = constraints.every(layer => record(layer) &&
-    ['whisper', 'cosmeticShape', 'cosmeticText'].includes(String(layer.type))) &&
-    constraints.some(layer => layer.type === 'whisper') && constraints.some(layer => layer.type === 'cosmeticShape')
-    ? constraints.filter(layer => layer.type !== 'whisper') : []
-  const artworkLayers = artwork && 'layers' in artwork ? artwork.layers ?? [] : artwork ? [artwork.layer] : []
-  const cellColours = readCoachColourCells(data.colours, data.givenColours)
   const hasQuadruples = constraints.some(layer => record(layer) && layer.type === 'quadruple')
+  const declaredLettered = publication?.authoredRule === 'lettered-quadruples'
+  const lettered = await coachConstraintPrefixHash(code, data, 12) === sandwichRollExport && (!publication || declaredLettered)
+  const guideLayers = !lettered && constraints.some(layer => record(layer) && layer.type === 'whisper') &&
+    constraints.some(layer => record(layer) && layer.type === 'cosmeticShape')
+    ? constraints.filter(layer => record(layer) && (layer.type === 'cosmeticShape' || layer.type === 'cosmeticText')) : []
+  const artworkLayers = artwork && Array.isArray(artwork.layers) ? artwork.layers : artwork ? [artwork.layer] : []
+  const cellColours = readCoachColourCells(data.colours, data.givenColours)
   const hasShapeLayer = constraints.some(layer => record(layer) && layer.type === 'cosmeticShape')
   const declaredInsideGrid = publication?.authoredRule === 'inside-grid'
-  const declaredLettered = publication?.authoredRule === 'lettered-quadruples'
   const exportHash = (!publication && hasQuadruples || declaredInsideGrid || declaredLettered || hasShapeLayer || !fog && cellColours?.some(Boolean))
     ? await sourceHash(code, data) : undefined
-  const entropyLayers = exportHash === sunnyEntropyExport
-    ? constraints.filter(layer => record(layer) && layer.type === 'cosmeticShape') : []
+  const entropyLayers = sunnyEntropyMatch
+    ? constraints.slice(0, 6).filter(layer => record(layer) && layer.type === 'cosmeticShape') : []
   const entropyGroups = entropyLayers.length ? parseCoachEntropyWindowGroups(entropyLayers) : undefined
-  if (exportHash === sunnyEntropyExport && (!entropyGroups || entropyGroups.length !== 14)) {
+  if (sunnyEntropyMatch && (!entropyGroups || entropyGroups.length !== 14)) {
     throw new Error('The Sudoku Coach export does not match its published Global Entropy shape windows.')
   }
   const textClueLayers = textClues || entropyGroupOrder
@@ -1035,20 +1147,40 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     ...(unknownCageSums ? constraints.filter(layer => record(layer) && layer.type === 'cosmeticText') : [])]
   const encodedRules = entropyGroupOrder ? entropyGroupOrder.source.otherRules
     : unknownCageSums ? constraints.filter(layer => record(layer) && layer.type !== 'cage' && layer.type !== 'cosmeticText')
-    : guideLayers.length ? constraints.filter(layer => layer.type === 'whisper')
+    : guideLayers.length ? constraints.filter(layer => !guideLayers.includes(layer))
     : reviewedLayers.length ? constraints.filter(layer => !reviewedLayers.includes(layer)) : constraints
-  const insideGrid = exportHash === codeCrackerExport && (!publication || declaredInsideGrid)
-  const lettered = exportHash === sandwichRollExport && (!publication || declaredLettered)
+  const insideGrid = await coachConstraintPrefixHash(code, data, 14) === codeCrackerExport && (!publication || declaredInsideGrid)
   if (declaredLettered && !lettered) throw new Error('The export does not match its published lettered Quadruples.')
   if (declaredInsideGrid && !insideGrid) throw new Error('The export does not match its published Inside Grid.')
-  const rawQuadArrows = !publication && exportHash === quadArrowsExport
-  const reviewedColorTitle = !fog && !publication?.hasAuthorInstructions && exportHash
+  const rawQuadArrows = !publication && await coachConstraintPrefixHash(code, data, 1) === quadArrowsExport
+  let reviewedColorReview = !fog && !publication?.hasAuthorInstructions && exportHash
     ? reviewedCoachColorExports.get(exportHash) : undefined
+  let reviewedColorTitle = reviewedColorReview?.title
+  if (!reviewedColorTitle && !fog && !publication?.hasAuthorInstructions && Array.isArray(data.givenConstraints)) {
+    for (const [reviewedHash, review] of reviewedCoachColorExports) {
+      if (review.constraintCount === undefined || data.givenConstraints.length <= review.constraintCount) continue
+      if (await coachConstraintPrefixHash(code, data, review.constraintCount) === reviewedHash) {
+        reviewedColorReview = review
+        reviewedColorTitle = review.title
+        break
+      }
+    }
+  }
   const authoredRule = rawQuadArrows ? 'quad-arrows' : magicSquare ? 'magic-square' : unknownCageSums ? 'unknown-cage-sums' :
     distantNeighbors ? 'distant-neighbors' : authoredAsnFXSums ? 'x-sum' :
       reviewed220VLineLegend ? 'line-colours' : authoredAllBlackDots ? 'all-black-dots' : publication?.authoredRule
   const sourceRules = distantNeighbors ? encodedRules.filter(layer => !record(layer) || layer.type !== 'cosmeticLine') : encodedRules
-  let rules = lettered ? readCoachLetteredQuadruples(encodedRules)
+  // Lettered Quadruples use decorative text and shapes alongside unrelated
+  // guide artwork. Keep their captions and circles while filtering guide art.
+  const letteredLayers = constraints.filter(layer => {
+    if (!record(layer)) return true
+    if (layer.type === 'cosmeticText' && record(layer.settings)) {
+      return layer.settings.gridSnapToCentres === false && layer.settings.gridSnapToEdges === false
+    }
+    if (layer.type === 'cosmeticShape' && record(layer.settings)) return layer.settings.gridSnapToCorners === true
+    return !guideLayers.includes(layer)
+  })
+  let rules = lettered ? readCoachLetteredQuadruples(letteredLayers)
     : insideGrid ? readCoachInsideGrid(encodedRules) : readCoachRules(sourceRules, { regions, authoredRule })
   if (textClues) rules.push(textClues.rule)
   if (entropyGroupOrder) rules.push(...entropyGroupOrder.source.orders.map(({ cells, digits }) => ({
@@ -1070,9 +1202,11 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     throw new Error('This Sudoku Coach Quad-Arrows export is missing its circles.')
   }
   const palette = Array.isArray(data.colours) ? data.colours : []
+  const cageCaptionOffsets = readCoachCageCaptionOffsets(constraints)
+  const guidePuzzle = { version: 1 as const, givens, regions, rules: rules.filter(rule => rule.type === 'whispers') }
   const whispersGuide = guideLayers.length > 0 && cellColours !== undefined && isCoachWhispersGuide(
     cellColours.map(shade => shade === '' ? '' : shade.length === 1 ? palette[COACH_BASE62.indexOf(shade)] : undefined),
-    guideLayers, { version: 1, givens, regions, rules },
+    guideLayers, guidePuzzle,
   )
   if (guideLayers.length > 0 && !whispersGuide || publication?.whispersGuide && !whispersGuide) {
     throw new Error('This Sudoku Coach puzzle has an unsupported Whispers guide.')
@@ -1101,7 +1235,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
           (fromCollection || LEGACY_COACH_CODE.test(code))
         const fills = readCoachColorNames(remaining, palette)
         if (fills && !plainCollectionArtwork) fillTitle = reviewedColorTitle ?? await reviewedCoachFillTitle(data, fills)
-        if (plainCollectionArtwork || fillTitle) givenCellColors = fills
+        if (plainCollectionArtwork || fillTitle || reviewedColorReview) givenCellColors = fills
       }
       if (!givenCellColors) {
         const cellColors = fog && regions?.type === 'jigsaw' && !publication?.hasAuthorInstructions
@@ -1112,8 +1246,9 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     }
   }
   if (authoredRule === 'all-black-dots') {
-    const black = rules.find(rule => rule.type === 'kropki' && rule.ratioTwo !== undefined)
-    if (black?.type !== 'kropki' || !black.ratioTwo) {
+    const blackLayers = rules.filter((rule): rule is Extract<VariantRule, { type: 'kropki' }> =>
+      rule.type === 'kropki' && rule.ratioTwo !== undefined)
+    if (!blackLayers.length) {
       throw new Error('The Sudoku Coach export is missing the black Kropki dot layer from the published rules.')
     }
     // Native negative Kropki exempts edges with either color of dot. The
@@ -1121,7 +1256,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     if (rules.some(rule => rule.type === 'kropki' && rule.consecutive?.pairs?.length)) {
       throw new Error('This Sudoku Coach puzzle uses white dots with an authored complete black-dot rule.')
     }
-    black.ratioTwo = { ...black.ratioTwo, negative: true }
+    for (const black of blackLayers) black.ratioTwo = { ...black.ratioTwo!, negative: true }
   }
   const declaration = publication?.declaredRules
   if (declaration && 'cageTotals' in declaration) {
@@ -1140,7 +1275,7 @@ async function fromCoach(code: string, publication?: CoachPublication | null, fr
     (authoredAsnFXSums ? 'X sums #3' : rawQuadArrows ? 'Quad-Arrows' : insideGrid ? 'Code Cracker' : lettered ? 'Sandwich Roll ;)' : undefined)
   return { ...imported, ...(title && { title }), ...(progress && { progress }),
     ...(unknownCageSums && { authoredSolution: unknownCageSums.authoredSolution, authoredSolutionOnly: true as const }),
-    ...((artwork || textClues) && { authoredArtwork: [...(artwork?.artwork ?? []), ...(textClues?.artwork ?? [])] }),
+    ...((artwork || textClues || cageCaptionOffsets.length) && { authoredArtwork: [...(artwork?.artwork ?? []), ...(textClues?.artwork ?? []), ...cageCaptionOffsets] }),
     ...(whispersGuide && { whispersGuide: true }), ...(givenCellColors && { givenCellColors }) }
 }
 
@@ -1233,6 +1368,15 @@ function readCoachRules(constraints: unknown, { regions, grid, authoredRule }: {
   for (const constraint of constraints) {
     if (!record(constraint) || !Array.isArray(constraint.segments) || typeof constraint.type !== 'string') {
       throw new Error('This Sudoku Coach puzzle has invalid rules.')
+    }
+    if (!COACH_CONSTRAINT_TYPES.has(constraint.type)) {
+      throw new Error(`This Sudoku Coach puzzle uses an unsupported rule type (${constraint.type}).`)
+    }
+    // Sudoku Coach's `oddEven` layer is a legacy cell-mark format. Its
+    // segments are not the alternating-line representation used by the app.
+    // Reject it until the original encoded cell parities can be preserved.
+    if (constraint.type === 'oddEven') {
+      throw new Error('This Sudoku Coach Odd/Even layer uses an unsupported legacy format.')
     }
     if (constraint.type !== 'consecutiveLine' &&
       Object.keys(constraint).some(key => !['id', 'type', 'segments', 'settings'].includes(key))) {
@@ -1604,7 +1748,7 @@ async function readCoachSized(data: Record<string, unknown>, code?: string, publ
     ? coachSkyscrapersRules(Array.isArray(data.givenConstraints) ? data.givenConstraints : [], 7,
       'Skyscrapers: Digits displayed on the grid also represent heights of "skyscrapers". Larger values being taller skyscrapers than smaller ones. Clues outside the grid indicate the number of "skyscrapers" visible from that direction.')
     : []
-  const fractionalRegions = code ? await readCoachFractionalRegions(code, data.givenConstraints, Number(size)) : undefined
+  const fractionalRegions = code ? await readCoachFractionalRegions(code, data, Number(size)) : undefined
   const rowEquations = code && size === 5
     ? await readReviewedCoachRowEquations(data.givenConstraints, 5) : undefined
   if (regions !== undefined && (!Array.isArray(regions) || !regions.every(label => Number.isInteger(label) && label >= 0))) {
@@ -1614,13 +1758,14 @@ async function readCoachSized(data: Record<string, unknown>, code?: string, publ
   const distinct = isJigsawSize(size) && labels ? [...new Set<number>(labels)] : []
   const explicit = isJigsawSize(size) && labels?.length === size ** 2 && distinct.length === size
     ? { size, regions: regionsFromMembership(labels.map(label => distinct.indexOf(label)), size) } : undefined
-  const wrappedExplicit = code && await sourceHash(code, data) === coachWrappedJigsawExport && explicit &&
+  const wrappedExplicit = code && await coachConstraintPrefixHash(code, data, 2) === coachWrappedJigsawExport && explicit &&
     explicit.regions.some(region => !connectedGridCells(region, Number(size))) &&
     explicit.regions.every(region => connectedGridCells(region, Number(size), true))
     ? { ...explicit, wrapAround: true as const } satisfies JigsawGrid
     : explicit
   const rectangular = isRectangularSize(size) && labels ? rectangularGridFromRegions(size, labels) : undefined
   const grid = size === 4 ? labels === undefined || hasMiniBoxes(labels) ? MINI_GRID : isJigsawGrid(wrappedExplicit, true) ? wrappedExplicit : undefined
+    : size === 9 && labels === undefined ? CLASSIC_GRID
     : size === 5 && labels?.length === 0 && (fractionalRegions || rowEquations) ? FIVE_BOXLESS_GRID
     : publishedNonogram ? SIX_BOXLESS_GRID
     : size === 7 && labels?.length === 0 ? SEVEN_BOXLESS_GRID

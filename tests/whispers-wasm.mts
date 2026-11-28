@@ -11,6 +11,7 @@ import { variantHouseMasks } from '../src/sudoku/variants.ts'
 import { watchTechniqueScan } from '../src/sudoku/technique-scan.ts'
 import { lessonExample } from '../src/sudoku/lesson-examples.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
 import { countWhispersSolutions } from './helpers/whispers-oracle.ts'
 import { assertLineHouseProof } from './helpers/line-house-truth.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
@@ -124,6 +125,34 @@ test('real Coach exports retain Whispers settings, the teaching guide, and XV ma
   assert.deepEqual(imported.rules!.filter(rule => rule.type === 'whispers').map(rule => rule.minDifference), [4, 4, 4, 4, 4, 4, 5, 5, 5])
   const sums = imported.rules!.find(rule => rule.type === 'xv')!
   assert.equal(sums.type, 'xv'); assert.equal(sums.ten?.pairs?.length, 7)
+})
+
+test('B5mt keeps its Whispers guide when a supported Ratio companion is appended', async () => {
+  const examples = JSON.parse(readFileSync(new URL('./fixtures/whispers-coach.json', import.meta.url), 'utf8')).examples as {
+    code: string; url: string; solution: string
+  }[]
+  const lesson = examples.find(source => source.url.endsWith('/B5mt'))!
+  const payload = await decodeSudokuCoachPayload(lesson.code)
+  let pair: [number, number] | undefined
+  for (let cell = 0; cell < 81 && !pair; cell++) {
+    for (const next of [cell % 9 < 8 ? cell + 1 : -1, cell < 72 ? cell + 9 : -1]) {
+      if (next >= 0 && Math.max(Number(lesson.solution[cell]), Number(lesson.solution[next])) ===
+        2 * Math.min(Number(lesson.solution[cell]), Number(lesson.solution[next]))) {
+        pair = [cell, next]
+        break
+      }
+    }
+  }
+  assert.ok(pair, 'the published completion has an adjacent 2:1 Ratio pair')
+  const code = coachCode({ ...payload, givenConstraints: [...payload.givenConstraints as unknown[], {
+    type: 'ratio', settings: { negativeConstraint: false }, segments: [{ cells: pair, parameters: { ratio: 2 } }],
+  }] })
+  const imported = await prepareImportedPuzzle(code)
+  assert.equal(imported.game.whispersGuide, true)
+  assert.equal(imported.game.variant?.puzzle.rules?.filter(rule => rule.type === 'whispers').length, 15)
+  assert.ok(imported.game.variant?.puzzle.rules?.some(rule => rule.type === 'kropki' &&
+    rule.ratioTwo?.pairs.some(([left, right]) => left === pair[0] && right === pair[1])))
+  assertVariantCompletion(imported.game.variant!.puzzle, lesson.solution)
 })
 
 test('seeded Whispers exercises remain distinct, unique and checkable', async () => {

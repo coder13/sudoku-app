@@ -1,12 +1,24 @@
 import assert from 'node:assert/strict'
 import { readFile, writeFile } from 'node:fs/promises'
 import { createEngineHandler } from '../src/sudoku/engine-protocol.ts'
+import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { variantTechniqueOrder } from '../src/sudoku/variant-generation.ts'
 
-const [fixturePath, recordPath, wasmPath] = process.argv.slice(2)
-assert.ok(fixturePath, 'Usage: node --experimental-strip-types scripts/profile-variant-hints.mjs fixture.json [results.json] [engine.wasm]')
-const source = JSON.parse(await readFile(fixturePath, 'utf8'))
-const position = source.position ?? { puzzle: source.puzzle ?? source }
+const [fixturePath, ...args] = process.argv.slice(2)
+assert.ok(fixturePath, 'Usage: node --experimental-strip-types scripts/profile-variant-hints.mjs fixture.json [results.json] [engine.wasm] [--source-id=ID]')
+const option = name => args.find(value => value.startsWith(`--${name}=`))?.slice(name.length + 3)
+const [recordPath, wasmPath] = args.filter(value => !value.startsWith('--'))
+const fixture = JSON.parse(await readFile(fixturePath, 'utf8'))
+const sourceId = option('source-id')
+const examples = Array.isArray(fixture) ? fixture : Array.isArray(fixture.examples) ? fixture.examples : undefined
+const source = examples
+  ? examples.find(value => (value.url?.match(/\/s\/([^/]+)/)?.[1] ?? value.id ?? value.sourceId) === sourceId)
+  : fixture
+assert.ok(source, `No source ${sourceId ?? ''} in ${fixturePath}.`)
+const coachCode = source.coach ?? source.code
+const imported = typeof coachCode === 'string' ? await detectPuzzle(coachCode) : undefined
+const position = source.position ?? (imported?.variant ? { puzzle: imported.variant.puzzle } : { puzzle: source.puzzle ?? source })
+assert.ok(position.puzzle?.givens && position.puzzle?.rules, 'Fixture must contain an imported variant puzzle.')
 const { instance } = await WebAssembly.instantiate(await readFile(wasmPath ?? new URL('../src/sudoku/generated/engine.wasm', import.meta.url)))
 const handle = createEngineHandler(async () => instance.exports)
 let id = 0
@@ -34,4 +46,4 @@ for (const technique of order) {
   findings.push({ technique, medianMs: Number(times[2].toFixed(3)), choices: proofs[technique].length })
 }
 console.table(findings.toSorted((a, b) => b.medianMs - a.medianMs).slice(0, 12))
-if (recordPath) await writeFile(recordPath, JSON.stringify({ position, order, findings, proofs }) + '\n')
+if (recordPath) await writeFile(recordPath, JSON.stringify({ sourceId, position, order, findings, proofs }) + '\n')

@@ -182,7 +182,7 @@ export const BoardArtwork = memo(function BoardArtwork({ artwork, region }: {
 }) {
   const bounds = region ? `${region.column} ${region.row} ${region.columns} ${region.rows}` : '0 0 9 9'
   return <svg className="board-authored-artwork" viewBox={bounds} aria-hidden="true">
-    {artwork.map((mark, index) => mark.type === 'outline' || mark.type === 'divider'
+    {artwork.map((mark, index) => mark.type === 'cage-caption-offset' ? null : mark.type === 'outline' || mark.type === 'divider'
       ? <polyline key={index} data-authored-divider={mark.type === 'divider' || undefined} points={mark.points.map(([x, y]) => `${x},${y}`).join(' ')}
         fill="none" stroke="var(--board-ink)" strokeWidth={mark.thickness} strokeLinejoin="round" />
       : mark.type === 'disc'
@@ -190,11 +190,11 @@ export const BoardArtwork = memo(function BoardArtwork({ artwork, region }: {
           fill={`color-mix(in srgb, ${mark.color} 50%, var(--board-ink))`} fillOpacity=".4" />
         : mark.type === 'tile'
           ? <rect key={index} x={mark.center[0] - mark.size / 2} y={mark.center[1] - mark.size / 2}
-            width={mark.size} height={mark.size} fill={mark.color} fillOpacity={mark.opacity / 255}
+            width={mark.size} height={mark.size} fill={mark.color === 'board-ink' ? 'var(--board-ink)' : mark.color} fillOpacity={mark.opacity / 255}
             transform={`rotate(${mark.rotation} ${mark.center[0]} ${mark.center[1]})`} />
           : <text key={index} x={mark.center[0]} y={mark.center[1] + mark.offsetY} textAnchor="middle"
-            dominantBaseline="central" fontSize={mark.size} fontWeight="700" fill={mark.color}
-            fillOpacity={mark.opacity / 255} stroke={mark.outlineColor} strokeWidth={mark.outlineThickness}
+            dominantBaseline="central" fontSize={mark.size} fontWeight="700" fill={mark.color === 'board-ink' ? 'var(--board-ink)' : mark.color}
+            fillOpacity={mark.opacity / 255} stroke={mark.outlineColor === 'board-ink' ? 'var(--board-ink)' : mark.outlineColor} strokeWidth={mark.outlineThickness}
             paintOrder="stroke" strokeLinejoin="round">{mark.text}</text>)}
   </svg>
 })

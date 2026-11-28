@@ -705,28 +705,34 @@ const closedArtworkOutline = points => list(artworkCorner, 4, 128)(points) &&
   points[0].every((coordinate, axis) => coordinate === points.at(-1)[axis])
 const artworkDivider = points => list(artworkCorner, 2, 128)(points) &&
   points.slice(1).every(([x, y], i) => (x === points[i][0]) !== (y === points[i][1]))
-const artworkPoint = list(value => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 9, 2, 2)
+const artworkPoint = list(value => typeof value === 'number' && Number.isFinite(value) && value >= -1 && value <= 10, 2, 2)
+const artworkColor = value => value === 'board-ink' || typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)
 const artworkTile = mark => fields(mark, {
   type: oneOf('tile'), center: artworkPoint,
   size: value => typeof value === 'number' && Number.isFinite(value) && value > 0 && value <= 1,
   rotation: value => typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= 360,
-  color: value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value),
+  color: artworkColor,
   opacity: value => Number.isInteger(value) && value >= 0 && value <= 255,
 })
 const artworkText = mark => fields(mark, {
   type: oneOf('text'), center: artworkPoint,
   text: value => typeof value === 'string' && value.length > 0 && value.length <= 100,
   size: value => typeof value === 'number' && Number.isFinite(value) && value > 0 && value <= 2,
-  color: value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value),
+  color: artworkColor,
   opacity: value => Number.isInteger(value) && value >= 0 && value <= 255,
-  outlineColor: value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value),
+  outlineColor: artworkColor,
   outlineThickness: value => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= .1,
   offsetY: value => typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= 1,
+})
+const artworkCageCaptionOffset = mark => fields(mark, {
+  type: oneOf('cage-caption-offset'), cell,
+  offset: value => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1,
 })
 const authoredArtwork = list(mark => fields(mark, { type: oneOf('outline'), points: closedArtworkOutline, thickness: artworkSize }) ||
   fields(mark, { type: oneOf('divider'), points: artworkDivider, thickness: artworkSize }) ||
   fields(mark, { type: oneOf('disc'), center: artworkCenter, radius: artworkSize,
-    color: value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) }) || artworkTile(mark) || artworkText(mark), 1, 512)
+    color: value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) }) ||
+  artworkTile(mark) || artworkText(mark) || artworkCageCaptionOffset(mark), 1, 512)
 const pairs = list(list(cell, 2, 2), 0)
 const house = list(cell, 9, 9)
 const direction = oneOf('north', 'east', 'south', 'west')

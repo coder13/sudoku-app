@@ -1,7 +1,7 @@
 import type { AuthoredMark } from '../authored-artwork.ts'
 import { record, sourceHash } from './shared.ts'
 
-const reviewedExport = '421cc5cddbddfac039e2c1761f09a71af89f5837c8512653091639712a579070'
+const reviewedExport = 'aca968ce1ec9789e736c9a944b02bb5ed2743354399f78039a01a44d896eb2d0'
 
 export type ReviewedCoachBoxlessNine = {
   unnumberedCages: readonly (readonly number[])[]
@@ -13,12 +13,14 @@ export async function readReviewedCoachBoxlessNine(
   code: string,
   data: Record<string, unknown>,
 ): Promise<ReviewedCoachBoxlessNine | undefined> {
-  if (await sourceHash(code, data) !== reviewedExport || data.gridSize !== 9 || !Array.isArray(data.regions) || data.regions.length !== 0 ||
-    data.givenDigits !== undefined && data.givenDigits !== '0'.repeat(81) || !Array.isArray(data.givenConstraints)) return
+  if (!Array.isArray(data.givenConstraints) || data.givenConstraints.length < 8 ||
+    await sourceHash(code, { ...data, givenConstraints: data.givenConstraints.slice(0, 8) }) !== reviewedExport ||
+    data.gridSize !== 9 || !Array.isArray(data.regions) || data.regions.length !== 0 ||
+    data.givenDigits !== undefined && data.givenDigits !== '0'.repeat(81)) return
 
   const layers = data.givenConstraints
   const expectedTypes = ['cosmeticLine', 'antiKnight', 'cage', 'ratio', 'entropicLine', 'cage', 'whisper', 'quadruple']
-  if (layers.length !== expectedTypes.length || layers.some((layer, index) => !record(layer) || layer.type !== expectedTypes[index])) return
+  if (layers.slice(0, expectedTypes.length).some((layer, index) => !record(layer) || layer.type !== expectedTypes[index])) return
   const [line, antiKnight, firstCages, ratio, entropic, numberedCages, whisper, quadruple] = layers
   if (!record(line) || !record(line.settings) || line.type !== 'cosmeticLine' ||
     JSON.stringify(line.settings) !== JSON.stringify({

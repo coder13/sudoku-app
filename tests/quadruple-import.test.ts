@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
 import { generationVariant, isPlayablePuzzle, variantName, variantRuleDescriptions } from '../src/sudoku/variants.ts'
 import { coachCode } from './helpers/coach-code.ts'
 import { countQuadrupleSolutions } from './helpers/quadruple-oracle.ts'
@@ -53,4 +54,21 @@ test('invalid or unsupported Quadruple metadata rejects the entire Coach import'
     { type: 'diagonalNegative', segments: [], settings: {} }, { type: 'quadruple', segments: [segment], settings: {} },
   ] })), /invalid|unsupported/)
   assert.equal(isPlayablePuzzle('quadruple', { ...fixture.puzzle, rules: [{ type: 'quadruple', topLeft: 1.5, digits: [2] }] }), false)
+})
+
+test('reviewed Quad-Arrows, Code Cracker, and Sandwich Roll keep their authored rules with a companion rule', async () => {
+  for (const [filename, requiredType] of [
+    ['quadruple-coach-sum.json', 'quadruple-sum'],
+    ['quadruple-coach-inside-grid.json', 'inside-grid'],
+    ['quadruple-coach-lettered.json', 'lettered-quadruples'],
+  ] as const) {
+    const source = JSON.parse(readFileSync(new URL(`./fixtures/${filename}`, import.meta.url), 'utf8')) as { coach: string }
+    const data = await decodeSudokuCoachPayload(source.coach)
+    const companion = { type: 'antiKnight', segments: [], settings: {} }
+    const imported = await detectPuzzle(coachCode({ ...data, givenConstraints: [
+      ...(data.givenConstraints as unknown[]), companion,
+    ] }))
+    assert.ok(imported.variant?.puzzle.rules?.some(rule => rule.type === requiredType), `${filename} keeps ${requiredType}`)
+    assert.ok(imported.variant?.puzzle.rules?.some(rule => rule.type === 'anti-knight'), `${filename} imports the companion`)
+  }
 })

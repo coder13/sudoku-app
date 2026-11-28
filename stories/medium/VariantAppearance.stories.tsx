@@ -179,30 +179,68 @@ export const RegionSumContactsCompact: Story = {
   parameters: { gridWidth: 290 },
 }
 
-export const WhispersWithThermometers: Story = {
+const cmdtLoader = async () => {
+  const source = whispersCoach.examples.find((example) => example.url.endsWith('/Cmdt'))!
+  const imported = await detectPuzzle(source.code)
+  return { puzzle: imported.variant!.puzzle, authoredArtwork: imported.authoredArtwork, solution: source.solution! }
+}
+
+const b5mtLoader = async () => {
+  const source = whispersCoach.examples.find((example) => example.url.endsWith('/B5mt'))!
+  const imported = await detectPuzzle(source.code)
+  return { puzzle: imported.variant!.puzzle, authoredArtwork: imported.authoredArtwork, whispersGuide: imported.whispersGuide, solution: source.solution! }
+}
+
+const b5mtStory = (finished: boolean): Story => ({
   args: {
     content: { givens: '0'.repeat(81), values: '0'.repeat(81) },
-    appearance: { label: 'Cmdt Sudoku grid' },
+    appearance: { label: finished ? 'Finished Whispers Line Basics grid' : 'Whispers Line Basics grid' },
   },
-  loaders: [
-    async () => {
-      const source = whispersCoach.examples.find((example) => example.url.endsWith('/Cmdt'))!
-      const imported = await detectPuzzle(source.code)
-      return { puzzle: imported.variant!.puzzle }
-    },
-  ],
-  render: (args, { loaded }) => (
-    <Board
+  loaders: [b5mtLoader],
+  render: (args, { loaded }) => {
+    const { puzzle, authoredArtwork, whispersGuide, solution } = loaded as Awaited<ReturnType<typeof b5mtLoader>>
+    return <Board
       {...args}
+      appearance={{ ...args.appearance, authoredArtwork }}
       content={{
         ...args.content,
-        variantPuzzle: loaded.puzzle,
-        givens: loaded.puzzle.givens,
-        values: loaded.puzzle.givens,
+        variantPuzzle: puzzle,
+        givens: puzzle.givens,
+        values: finished ? solution : puzzle.givens,
+        whispersGuide,
       }}
     />
-  ),
-}
+  },
+})
+
+export const WhispersLineBasics: Story = { ...b5mtStory(false), parameters: { gridWidth: 360 } }
+
+export const WhispersLineBasicsFinished: Story = { ...b5mtStory(true), parameters: { gridWidth: 360 } }
+
+const cmdtStory = (finished: boolean): Story => ({
+  args: {
+    content: { givens: '0'.repeat(81), values: '0'.repeat(81) },
+    appearance: { label: finished ? 'Finished Cmdt Sudoku grid' : 'Cmdt Sudoku grid' },
+  },
+  loaders: [cmdtLoader],
+  render: (args, { loaded }) => {
+    const { puzzle, authoredArtwork, solution } = loaded as Awaited<ReturnType<typeof cmdtLoader>>
+    return <Board
+      {...args}
+      appearance={{ ...args.appearance, authoredArtwork }}
+      content={{
+        ...args.content,
+        variantPuzzle: puzzle,
+        givens: puzzle.givens,
+        values: finished ? solution : puzzle.givens,
+      }}
+    />
+  },
+})
+
+export const WhispersWithThermometers: Story = cmdtStory(false)
+
+export const WhispersWithThermometersFinished: Story = cmdtStory(true)
 
 export const WhispersWithThermometersCompact: Story = {
   ...WhispersWithThermometers,

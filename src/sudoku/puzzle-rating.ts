@@ -44,11 +44,11 @@ export async function ratePuzzle(
   allowStalled = false,
   verifiedUniqueVariant = false,
 ): Promise<PuzzleGrade | null> {
+  // A unique completion can finish a Fog puzzle without proving that the
+  // visible rules let a player reach it.
   const rating = variant?.fog ? (await solveFogPath(variant, run, false)).rating
     : variant ? await run({ type: 'variant', operation: 'rate', position: variantPosition(variant), techniqueOrder: await getVariantPlayOrder(variant.puzzle) })
       : await run({ type: 'rate', values: givens, techniqueOrder: (await run({ type: 'techniques' })).difficultyOrder })
-  // A unique completion can finish a Fog puzzle without proving that the
-  // visible rules let a player reach it.
   const canGradeStall = verifiedUniqueVariant && !variant?.fog
   if (rating.status === 'stalled' && !allowStalled && !canGradeStall) return null
   const points = 'score' in rating ? rating.score.points : rating.points

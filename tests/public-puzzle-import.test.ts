@@ -156,9 +156,11 @@ test('#381 imports the published 6×6 Coach Nonogram from code and short link', 
   const altered = structuredClone(await decodeSudokuCoachPayload(source.sudoku)) as {
     givenConstraints: { type: string; segments: { parameters: Record<string, unknown> }[] }[]
   }
-  altered.givenConstraints.find(layer => layer.type === 'cosmeticText')!.segments[0]!.parameters.text = '1'
+  altered.givenConstraints.find(layer => layer.type === 'cosmeticText')!.segments[0]!.parameters.text = '9'
   await assert.rejects(detectPuzzle(coachCode({ gridSize: 6, ...altered })))
   description += '\nThe rows also obey another rule.'
+  const alteredMetadata = await (await request('sudoku-coach/8kgS')).json()
+  assert.deepEqual(alteredMetadata.coach, { hasAuthorInstructions: true, title: source.name })
   await assert.rejects(detectPuzzle(url), /author instructions/)
 })
 

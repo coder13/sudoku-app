@@ -17,6 +17,12 @@ const antiKing = JSON.parse(await readFile(new URL('../tests/fixtures/anti-king-
 const nonConsecutive = JSON.parse(await readFile(new URL('../tests/fixtures/nonconsecutive-newman.json', import.meta.url), 'utf8'))
 const nonConsecutiveExport = JSON.parse(await readFile(new URL('../tests/fixtures/nonconsecutive-coach.json', import.meta.url), 'utf8')).examples[0]
 const nonConsecutiveDots = { puzzle: (await detectPuzzle(nonConsecutiveExport.code)).variant.puzzle }
+const mixedCoachRatio = JSON.parse(await readFile(new URL('../tests/fixtures/quadruple-coach-mixed-rules.json', import.meta.url), 'utf8'))
+  .find(({ url }) => url.endsWith('/FzrY'))
+assert.ok(mixedCoachRatio)
+const importedCoachRatio = await detectPuzzle(mixedCoachRatio.coach)
+assert.ok(importedCoachRatio.variant?.puzzle.rules?.some(rule =>
+  rule.type === 'labeled-dots' && rule.relation === 'ratio' && rule.marks.some(mark => mark.value === 3)))
 fixtures.push({
   name: 'x-killer', position: mixed['x-killer'].puzzle,
   template: { version: 1, givens: '0'.repeat(81), rules: [
@@ -43,6 +49,8 @@ fixtures.push({
   givens: 30,
 }, {
   name: 'nc-white-dots', position: nonConsecutiveDots.puzzle,
+}, {
+  name: 'coach-ratio-3', position: importedCoachRatio.variant.puzzle,
 })
 const bytes = await readFile(new URL('../src/sudoku/generated/engine.wasm', import.meta.url))
 const { instance } = await WebAssembly.instantiate(bytes)
@@ -124,7 +132,8 @@ const variantCatalog = await request({ type: 'techniques', variant: true })
 const appOrder = variantTechniqueOrder(variantCatalog.defaultOrder, classicCatalog.difficultyOrder,
   Object.fromEntries([...classicCatalog.techniques, ...variantCatalog.techniques].map(technique => [technique.id, technique.difficulty])))
 for (const [name, fixture] of [['quadruple', quadruple], ['parity', parity], ['anti-king', antiKing],
-  ['non-consecutive', nonConsecutive], ['nc-white-dots', nonConsecutiveDots]]) {
+  ['non-consecutive', nonConsecutive], ['nc-white-dots', nonConsecutiveDots],
+  ['coach-ratio-3', { puzzle: importedCoachRatio.variant.puzzle }]]) {
   if (!include(name)) continue
   const appHints = { type: 'variant', operation: 'hints', position: { puzzle: fixture.puzzle },
     techniqueOrder: appOrder, preferProgress: true, difficulty: 'medium' }

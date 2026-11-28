@@ -1441,6 +1441,18 @@ svg { flex-shrink: 0; }
   transition: grid-template-columns var(--board-shape-motion), grid-template-rows var(--board-shape-motion);
 }
 .board-frame.guides-hidden { --board-guide-size: 0px; --board-guide-gap: 0px; }
+.board-frame.has-outside-artwork {
+  --board-guide-width: 0px;
+  --board-guide-height: 0px;
+  --board-guide-size: 0px;
+  --board-guide-gap: 0px;
+  --outside-artwork-gutter: calc(var(--board-frame-width) / 12);
+  grid-template-columns: 0 minmax(0, 1fr);
+  grid-template-rows: var(--outside-artwork-gutter) auto var(--outside-artwork-gutter);
+  grid-template-areas: ". ." "rows board" ". .";
+}
+.board-frame.has-outside-artwork > :is(.col-labels, .row-labels) { opacity: 0; }
+.board-frame.has-outside-artwork > .whispers-guide { grid-row: 4; }
 .col-labels, .row-labels {
   display: grid;
   overflow: clip;
@@ -2010,7 +2022,7 @@ svg { flex-shrink: 0; }
   pointer-events: none;
 }
 .board-links { z-index: 2; }
-.board-authored-artwork { z-index: 1; overflow: hidden; }
+.board-authored-artwork { z-index: 1; overflow: visible; }
 .board-quick-draw { z-index: 2; clip-path: inset(-100%); }
 .board-quick-draw[data-cropped] { overflow: hidden; clip-path: none; }
 .board-link-target { pointer-events: stroke; cursor: pointer; }

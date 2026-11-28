@@ -7,23 +7,70 @@ import type { ImportResult } from './types.ts'
 export const MAX_IMPORT_LENGTH = 20_000
 export const MAX_DECODED_LENGTH = 128_000
 
-const sourceHashes = new WeakMap<object, { code: string; hash: Promise<string> }>()
+const sourceHashes = new WeakMap<object, { fingerprint: string; hash: Promise<string> }>()
+const coachProgressFields = new Set([
+  'userDigits', 'userCellCandidates', 'userBoxCandidates', 'userColours', 'userCellCandidatesColours',
+  'quickDrawLineSegments', 'quickDrawSymbols',
+])
 
-/** Hash a decoded source once across the reviewed-import checks for that payload. */
+/** Remove only player-entered state before reviewing source-specific puzzle semantics. */
+export function withoutCoachProgress(value: unknown, topLevel = true): unknown {
+  if (Array.isArray(value)) return value.map(item => withoutCoachProgress(item, false))
+  if (!record(value)) return value
+  const result: Record<string, unknown> = {}
+  for (const [key, item] of Object.entries(value)) {
+    if (topLevel && coachProgressFields.has(key)) continue
+    if (topLevel && key === 'cells' && record(item)) {
+      const cells: Record<string, unknown> = {}
+      for (const [cell, details] of Object.entries(item)) {
+        if (cell === 'NaN,NaN' && record(details) && Object.keys(details).length === 1 &&
+          typeof details.cellCandidates === 'number' && Number.isInteger(details.cellCandidates) &&
+          details.cellCandidates >= 0 && details.cellCandidates <= 511) continue
+        if (!record(details) || !Object.hasOwn(details, 'quickSymbol')) {
+          cells[cell] = withoutCoachProgress(details, false)
+          continue
+        }
+        const { quickSymbol: _quickSymbol, ...sourceDetails } = details
+        if (Object.keys(sourceDetails).length) cells[cell] = withoutCoachProgress(sourceDetails, false)
+      }
+      if (Object.keys(cells).length) result[key] = cells
+      continue
+    }
+    result[key] = withoutCoachProgress(item, false)
+  }
+  return result
+}
+
+function stableCoachSource(value: unknown, topLevel = false): string {
+  const source = topLevel ? withoutCoachProgress(value, true) : value
+  if (Array.isArray(source)) return `[${source.map(item => stableCoachSource(item)).join(',')}]`
+  if (record(source)) {
+    const keys = Object.keys(source).sort()
+    return `{${keys.map(key => `${JSON.stringify(key)}:${stableCoachSource(source[key])}`).join(',')}}`
+  }
+  return JSON.stringify(source) ?? 'null'
+}
+
+/** Hash puzzle semantics once across reviewed-import checks, ignoring supported player progress. */
 export function sourceHash(code: string, payload: object): Promise<string | undefined> {
   if (!globalThis.crypto?.subtle) return Promise.resolve(undefined)
-  // Base32hex payloads are case-insensitive, while the SCv/version header is
-  // canonical in reviewed digests. Preserve that header when normalizing.
-  const canonicalCode = canonicalCoachCode(code)
+  // Keep the Coach format version in the digest, but hash decoded puzzle data
+  // so adding player progress does not disable source-specific import rules.
+  const header = /^SCv([0-9]+)_([0-9]+)_/i.exec(code)
+  const legacyHeader = /^SCv([3-6])_/i.exec(code)
+  const fingerprint = header
+    ? `SCv${header[1]}_${header[2]}_${stableCoachSource(payload, true)}`
+    : legacyHeader ? `SCv${legacyHeader[1]}_${stableCoachSource(payload, true)}`
+    : canonicalCoachCode(code)
   const cached = sourceHashes.get(payload)
-  if (cached?.code === canonicalCode) return cached.hash
-  const digest = crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonicalCode)).then(bytes =>
+  if (cached?.fingerprint === fingerprint) return cached.hash
+  const digest = crypto.subtle.digest('SHA-256', new TextEncoder().encode(fingerprint)).then(bytes =>
     Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, '0')).join(''))
   const hash = digest.catch(error => {
     if (sourceHashes.get(payload)?.hash === hash) sourceHashes.delete(payload)
     throw error
   })
-  sourceHashes.set(payload, { code: canonicalCode, hash })
+  sourceHashes.set(payload, { fingerprint, hash })
   return hash
 }
 

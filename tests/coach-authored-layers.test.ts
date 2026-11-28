@@ -2,9 +2,11 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
 import { parseCoachEntropyWindowGroups } from '../src/sudoku/entropy-window-groups.ts'
 import { validAuthoredArtwork } from '../src/sudoku/authored-artwork.ts'
+import { readCoachCosmeticLineArtwork } from '../src/sudoku/authored-artwork.ts'
 import { readReviewedCoachAqre } from '../src/sudoku/puzzle-import/coach-aqre.ts'
 import { readReviewedCoachTextClues } from '../src/sudoku/puzzle-import/coach-text-clues.ts'
 import { isSolved, makeGame, setAqreShade } from '../src/sudoku/game.ts'
@@ -14,6 +16,62 @@ import { readGame } from '../src/sudoku/storage.ts'
 import { syncRequest } from '../src/sudoku/sync-engine.ts'
 import { syncDatabase } from './helpers/sync-database.ts'
 import { isPlayablePuzzle } from '../src/sudoku/variants.ts'
+import { coachCode } from './helpers/coach-code.ts'
+import { useWasmWorker } from './helpers/wasm-worker.ts'
+
+useWasmWorker()
+
+test('Coach cosmetic grid lines import as artwork without changing the rule set', async () => {
+  const line = {
+    type: 'cosmeticLine',
+    settings: { lineThickness: 7, gridSnapToCentres: false, gridSnapToCorners: true },
+    segments: [
+      { cells: [[0, 3], [1, 3], [2, 3]], parameters: {} },
+      { cells: [[6, 9], [6, 8], [6, 7]], parameters: {} },
+    ],
+  }
+  const secondLayer = {
+    type: 'cosmeticLine',
+    settings: { lineThickness: 4, gridSnapToCentres: false, gridSnapToCorners: true },
+    segments: [{ cells: [[3, 2], [3, 3]], parameters: {} }],
+  }
+  const imported = await detectPuzzle(coachCode({ givenConstraints: [
+    { type: 'antiKnight', segments: [], settings: {} }, line, secondLayer,
+  ] }))
+  assert.deepEqual(imported.authoredArtwork, [
+    { type: 'divider', points: [[0, 3], [1, 3], [2, 3]], thickness: .07 },
+    { type: 'divider', points: [[6, 9], [6, 8], [6, 7]], thickness: .07 },
+    { type: 'divider', points: [[3, 2], [3, 3]], thickness: .04 },
+  ])
+  assert.deepEqual(imported.variant?.puzzle.rules?.map(rule => rule.type), ['anti-knight'])
+
+  assert.ok(imported.variant && imported.authoredArtwork)
+  const game = {
+    ...makeGame('coach-multi-line-artwork', 'Coach line artwork', imported.givens, 'imported', 1),
+    variant: { ...imported.variant, solution: '123456789'.repeat(9) }, authoredArtwork: imported.authoredArtwork,
+  }
+  assert.deepEqual(readGame(game.id, JSON.stringify(game))?.authoredArtwork, imported.authoredArtwork)
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    const api = syncRequest(undefined, fetcher)
+    const { id } = await api<{ id: string }>('shares', 'POST', puzzleDefinitionForSharing(game))
+    const shared = await api<{ authoredArtwork: typeof game.authoredArtwork; variant: typeof game.variant }>(`shares/${id}`)
+    assert.deepEqual(shared.authoredArtwork, imported.authoredArtwork)
+    assert.deepEqual(shared.variant.puzzle.rules, imported.variant.puzzle.rules)
+  } finally { sqlite.close() }
+})
+
+test('Coach cosmetic grid line artwork rejects unreviewed settings and geometry', () => {
+  const valid = {
+    type: 'cosmeticLine', settings: { lineThickness: 7, gridSnapToCentres: false, gridSnapToCorners: true },
+    segments: [{ cells: [[0, 3], [1, 3]], parameters: {} }],
+  }
+  assert.equal(readCoachCosmeticLineArtwork([valid])?.artwork.length, 1)
+  assert.equal(readCoachCosmeticLineArtwork([{ ...valid, settings: { ...valid.settings, colour: '#000000' } }]), undefined)
+  assert.equal(readCoachCosmeticLineArtwork([{ ...valid, segments: [{ cells: [[0, 3], [1.5, 3]], parameters: {} }] }]), undefined)
+  assert.equal(readCoachCosmeticLineArtwork([{ ...valid, segments: [{ cells: [[0, 3], [1, 4]], parameters: {} }] }]), undefined)
+  assert.equal(readCoachCosmeticLineArtwork([valid, { ...valid, settings: { ...valid.settings, lineThickness: 0 } }]), undefined)
+})
 
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-authored-layers.json', import.meta.url), 'utf8')) as {
   examples: { issue: number; id: string; code: string; sourceDescription?: string }[]
@@ -52,6 +110,25 @@ test('#423 imports the authored Magic Square and unnumbered nine-cell cages', as
   assert.equal(magicSquareFixture.solution.length, 81)
 })
 
+test('#423 keeps its Magic Square semantics when a supported rule is appended', async () => {
+  const data = await decodeSudokuCoachPayload(magicSquareFixture.code)
+  const pair = Array.from({ length: 81 }, (_, cell) => cell).flatMap(cell => {
+    const row = Math.floor(cell / 9), column = cell % 9
+    return [[row < 8 ? cell + 9 : -1], [column < 8 ? cell + 1 : -1]]
+      .filter(([other]) => other >= 0 && Number(magicSquareFixture.solution[cell]) === 2 * Number(magicSquareFixture.solution[other]) ||
+        other >= 0 && Number(magicSquareFixture.solution[other]) === 2 * Number(magicSquareFixture.solution[cell]))
+      .map(([other]) => [cell, other] as [number, number])
+  })[0]
+  assert.ok(pair)
+  const ratio = { type: 'ratio', segments: [{ cells: pair, parameters: {} }] }
+  const imported = await detectPuzzle(coachCode({
+    ...data, givenConstraints: [...data.givenConstraints, ratio],
+  }))
+  const rules = imported.variant?.puzzle.rules ?? []
+  assert.ok(rules.some(rule => rule.type === 'magic-square'))
+  assert.ok(rules.some(rule => rule.type === 'kropki' && rule.ratioTwo?.pairs.some(([a, b]) => a === pair[0] && b === pair[1])))
+})
+
 test('#544 imports XV Entropy when the authored cosmetic cage is empty', async () => {
   const source = fixture.examples.find(example => example.issue === 544)
   assert.ok(source)
@@ -69,6 +146,28 @@ test('#544 imports XV Entropy when the authored cosmetic cage is empty', async (
     },
     { type: 'kropki', consecutive: { pairs: [[37, 38]], negative: false } },
   ])
+})
+
+test('#544 keeps its authored empty cage and imports a companion rule from the published link', async t => {
+  const source = fixture.examples.find(example => example.issue === 544)
+  assert.ok(source)
+  const data = await decodeSudokuCoachPayload(source.code)
+  const code = coachCode({ ...data, givenConstraints: [
+    ...(data.givenConstraints as unknown[]), { type: 'antiKnight', segments: [], settings: {} },
+  ] })
+  const fetch = t.mock.method(globalThis, 'fetch', async (path: string) => {
+    assert.equal(path, `/api/v1/import/sudoku-coach/${source.id}`)
+    return Response.json({ code, coach: {
+      hasAuthorInstructions: true, authoredRule: 'xv-empty-cosmetic-cage', title: source.title,
+    } })
+  })
+
+  const imported = await detectPuzzle(`https://sudoku.coach/en/s/${source.id}`)
+  assert.equal(fetch.mock.callCount(), 1)
+  assert.ok(imported.variant?.puzzle.rules?.some(rule => rule.type === 'global-entropy'))
+  assert.ok(imported.variant?.puzzle.rules?.some(rule => rule.type === 'xv'))
+  assert.ok(imported.variant?.puzzle.rules?.some(rule => rule.type === 'kropki'))
+  assert.ok(imported.variant?.puzzle.rules?.some(rule => rule.type === 'anti-knight'))
 })
 
 test('#542 imports the shape groups, active rules, and authored RP label', async () => {
@@ -107,6 +206,21 @@ test('#542 imports the shape groups, active rules, and authored RP label', async
   assert.deepEqual(imported.authoredArtwork, [{ type: 'text', text: 'RP', center: [4.5, 4.5], size: .455,
     color: '#ffa852', opacity: 188, outlineColor: '#f77c00', outlineThickness: .01, offsetY: .07 }])
 
+  const ratioPair = [0, 1]
+  const withRatio = await detectPuzzle(coachCode({ ...(await decodeSudokuCoachPayload(source.code)), givenConstraints: [
+    ...data.givenConstraints,
+    { type: 'ratio', segments: [{ cells: ratioPair, parameters: {} }] },
+  ] }))
+  assert.ok(withRatio.variant?.puzzle.rules?.some(rule => rule.type === 'entropy-window-group'))
+  assert.ok(withRatio.variant?.puzzle.rules?.some(rule => rule.type === 'kropki' &&
+    rule.ratioTwo?.pairs.some(([a, b]) => a === ratioPair[0] && b === ratioPair[1])))
+
+  const emptyCell = imported.givens.indexOf('0')
+  const userDigits = Array.from({ length: 81 }, (_, cell) => cell === emptyCell ? '1' : '0').join('')
+  const withProgress = await detectPuzzle(coachCode({ ...(await decodeSudokuCoachPayload(source.code)), userDigits }))
+  assert.equal(withProgress.progress?.entries[emptyCell], '1')
+  assert.equal(withProgress.title, imported.title)
+  assert.deepEqual(withProgress.authoredArtwork, imported.authoredArtwork)
 })
 
 test('#547 preserves CS1G authored shape artwork without dropping its active rules', async () => {
@@ -146,6 +260,38 @@ test('#547 preserves CS1G authored shape artwork without dropping its active rul
     const { id } = await api<{ id: string }>('shares', 'POST', definition)
     assert.deepEqual((await api<{ authoredArtwork: typeof artwork }>(`shares/${id}`)).authoredArtwork, artwork)
   } finally { sqlite.close() }
+})
+
+test('#547 keeps reviewed artwork when the player adds Quick Draw annotations', async () => {
+  const source = fixture.examples.find(example => example.issue === 547)
+  assert.ok(source)
+  const data = await decodeSudokuCoachPayload(source.code)
+  const code = coachCode({ ...data,
+    quickDrawLineSegments: { '0/0=>1/1': { colour: 'blue' } },
+    quickDrawSymbols: { '1/0.5': { shape: 'cross', colour: 'red' } },
+    cells: { 0: { quickSymbol: { shape: 'circle', colour: 'green' } } },
+  })
+  const imported = await detectPuzzle(code)
+  assert.equal(imported.title, 'Thank RP you')
+  assert.equal(imported.authoredArtwork?.length, 405)
+  assert.deepEqual(imported.progress?.importedDrawings, [
+    { shape: 'line', from: [0, 0], to: [1, 1], color: 'blue' },
+    { shape: 'cross', at: [1, .5], color: 'red' },
+    { shape: 'circle', at: [.5, .5], color: 'green' },
+  ])
+})
+
+test('#547 keeps its reviewed artwork when a supported rule is appended', async () => {
+  const source = fixture.examples.find(example => example.issue === 547)
+  assert.ok(source)
+  const data = await decodeSudokuCoachPayload(source.code)
+  const combined = await detectPuzzle(coachCode({ ...data, givenConstraints: [
+    ...(data.givenConstraints as unknown[]), { type: 'antiKnight', segments: [], settings: {} },
+  ] }))
+
+  assert.equal(combined.authoredArtwork?.length, 405)
+  assert.ok(combined.variant?.puzzle.rules?.some(rule => rule.type === 'palindrome'))
+  assert.ok(combined.variant?.puzzle.rules?.some(rule => rule.type === 'anti-knight'))
 })
 
 test('#543 and #546 import their Aqre shading, regions, and companion clues', async () => {
@@ -228,6 +374,27 @@ test('#543 and #546 import their Aqre shading, regions, and companion clues', as
   assert.equal(importedPlusRules.filter(rule => rule.type === 'renban').length, 6)
   const importedSnakeAqre = importedSnakeRules.find(rule => rule.type === 'aqre')
   assert.equal(importedSnakeAqre?.type === 'aqre' ? importedSnakeAqre.givenShades.length : -1, 16)
+
+  const progressCell = importedSnake.givens.indexOf('0')
+  const userDigits = Array.from({ length: 81 }, (_, cell) => cell === progressCell ? '1' : '0').join('')
+  const progressedCode = coachCode({ ...snakeData, userDigits })
+  const progressedImport = await detectPuzzle(progressedCode)
+  assert.equal(progressedImport.progress?.entries[progressCell], '1')
+  assert.equal(progressedImport.variant?.puzzle.rules?.some(rule => rule.type === 'aqre'), true)
+  const { game } = await prepareImportedPuzzle(progressedCode)
+  assert.equal(game.position.entries[progressCell], '1')
+  assert.equal(game.variant?.puzzle.rules?.some(rule => rule.type === 'aqre'), true)
+})
+
+test('#543 retains supported companion rules appended after its reviewed Aqre layers', async () => {
+  const source = fixture.examples.find(example => example.issue === 543)
+  assert.ok(source)
+  const data = await decodeSudokuCoachPayload(source.code)
+  const ratio = { type: 'ratio', segments: [{ cells: [0, 1], parameters: {} }] }
+  const imported = await detectPuzzle(coachCode({ ...data, givenConstraints: [...data.givenConstraints, ratio] }))
+  const rules = imported.variant?.puzzle.rules
+  assert.ok(rules?.some(rule => rule.type === 'aqre'))
+  assert.ok(rules?.some(rule => rule.type === 'kropki' && rule.ratioTwo?.pairs.some(([a, b]) => a === 0 && b === 1)))
 })
 
 test('Aqre import rejects off-grid artwork coordinates instead of changing its regions', async () => {
@@ -301,6 +468,19 @@ test('#545 imports authored neighbor-match clues with calibrated text positions'
   assert.equal(imported.givens, parsed.source.givens)
   assert.equal(imported.authoredArtwork?.length, 17)
   assert.deepEqual(imported.variant?.puzzle.rules.filter(rule => rule.type === 'neighbor-match'), [parsed.rule])
+})
+
+test('#545 retains supported companion rules beside its authored clues and Entropic Line', async () => {
+  const source = fixture.examples.find(example => example.issue === 545)
+  assert.ok(source)
+  const data = await decodeSudokuCoachPayload(source.code)
+  const ratio = { type: 'ratio', segments: [{ cells: [0, 1], parameters: {} }] }
+  const code = coachCode({ ...data, givenConstraints: [...data.givenConstraints, ratio] })
+  const imported = await detectPuzzle(code)
+  const rules = imported.variant?.puzzle.rules
+  assert.ok(rules?.some(rule => rule.type === 'neighbor-match'))
+  assert.ok(rules?.some(rule => rule.type === 'entropic'))
+  assert.ok(rules?.some(rule => rule.type === 'kropki' && rule.ratioTwo?.pairs.some(([a, b]) => a === 0 && b === 1)))
 })
 
 test('#542 recognizes case-insensitive Base32hex and rejects changed puzzle data', async () => {

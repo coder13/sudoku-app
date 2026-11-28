@@ -2,6 +2,7 @@ import { compileLatinLines, type LatinLine } from '../latin/lines.ts'
 import { compileLatinDiagonals, type LatinDiagonal } from '../latin/diagonals.ts'
 import { compileLatinExclusions, type LatinExclusion } from '../latin/exclusions.ts'
 import { compileLatinExtrema, type LatinExtremum } from '../latin/extrema.ts'
+import { compileLatinKropki, type LatinKropki } from '../latin/kropki.ts'
 import { bit, cellLabel, createLatinPuzzle, type LatinPuzzle } from '../latin/engine.ts'
 import { latinParityRules, type LatinParity } from '../latin/parity.ts'
 
@@ -10,7 +11,7 @@ export type CageOperator = keyof typeof operatorSymbol
 type KnownOperator = Exclude<CageOperator, 'hidden'>
 export type Cage = { target: number; operator: CageOperator; cells: readonly number[]; distinct?: true }
 
-export type CalcudokuPuzzle = LatinPuzzle & { cages: readonly Cage[]; parity: readonly LatinParity[]; lines?: readonly LatinLine[]; diagonals?: readonly LatinDiagonal[]; exclusions?: readonly LatinExclusion[]; extrema?: readonly LatinExtremum[] }
+export type CalcudokuPuzzle = LatinPuzzle & { cages: readonly Cage[]; parity: readonly LatinParity[]; lines?: readonly LatinLine[]; diagonals?: readonly LatinDiagonal[]; exclusions?: readonly LatinExclusion[]; extrema?: readonly LatinExtremum[]; kropki?: LatinKropki }
 
 const tupleTables = new Map<string, Uint16Array>()
 
@@ -113,7 +114,7 @@ function checkCages(size: number, cages: readonly Cage[], givens: readonly numbe
   }
 }
 
-export function createCalcudoku(size: number, cages: readonly Cage[], options: { givens?: readonly number[]; parity?: readonly LatinParity[]; lines?: readonly LatinLine[]; diagonals?: readonly LatinDiagonal[]; exclusions?: readonly LatinExclusion[]; extrema?: readonly LatinExtremum[] } = {}): CalcudokuPuzzle {
+export function createCalcudoku(size: number, cages: readonly Cage[], options: { givens?: readonly number[]; parity?: readonly LatinParity[]; lines?: readonly LatinLine[]; diagonals?: readonly LatinDiagonal[]; exclusions?: readonly LatinExclusion[]; extrema?: readonly LatinExtremum[]; kropki?: LatinKropki } = {}): CalcudokuPuzzle {
   if (!Number.isInteger(size) || size < 3 || size > 9) throw new Error('Invalid Calcudoku size.')
   const parity = options.parity ?? []
   const givens = options.givens ? [...options.givens] : Array<number>(size * size).fill(0)
@@ -160,5 +161,7 @@ export function createCalcudoku(size: number, cages: readonly Cage[], options: {
   const diagonals = options.diagonals ?? []
   const exclusions = options.exclusions ?? []
   const extrema = options.extrema ?? []
-  return { ...createLatinPuzzle(size, givens, [...rules, ...latinParityRules(size, parity), ...compileLatinLines(lines, size), ...compileLatinDiagonals(diagonals, size), ...compileLatinExclusions(exclusions, size), ...compileLatinExtrema(extrema, size)]), cages, parity, ...(lines.length && { lines }), ...(diagonals.length && { diagonals }), ...(exclusions.length && { exclusions }), ...(extrema.length && { extrema }) }
+  const kropki = options.kropki
+  const kropkiRules = kropki ? compileLatinKropki(kropki, size) : []
+  return { ...createLatinPuzzle(size, givens, [...rules, ...latinParityRules(size, parity), ...compileLatinLines(lines, size), ...compileLatinDiagonals(diagonals, size), ...compileLatinExclusions(exclusions, size), ...compileLatinExtrema(extrema, size), ...kropkiRules]), cages, parity, ...(lines.length && { lines }), ...(diagonals.length && { diagonals }), ...(exclusions.length && { exclusions }), ...(extrema.length && { extrema }), ...(kropki && { kropki }) }
 }

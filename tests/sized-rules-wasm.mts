@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { sizedRuleHintChoices } from '../src/sudoku/sized-rule-play.ts'
@@ -15,7 +16,7 @@ import { coachCode } from './helpers/coach-code.ts'
 
 useWasmWorker(process.env.SIZED_RULES_WASM)
 
-const coachInsideDigitGroups = JSON.parse(readFileSync(new URL('./fixtures/little-killer-unsupported-DLeM.json', import.meta.url), 'utf8')) as {
+const coachInsideDigitGroups = JSON.parse(readFileSync(new URL('./fixtures/little-killer-symmetrical-inside.json', import.meta.url), 'utf8')) as {
   metadata: { sudoku: string; solution: string }
 }
 
@@ -34,6 +35,29 @@ test('DLeM uses its outside labels as first-three-cell digit rules, not Little K
     position: sizedRulePosition(imported.grid!, { rules: imported.sizedRules! }, partial.join('')) })
   assert.deepEqual([...Array(9).keys()].filter(digit => candidates[24] & (1 << digit)), [6],
     'after 5 and 2 are placed, the first outside clue forces 7 into its third cell')
+})
+
+test('Symmetrical Inside keeps its companion Thermometer through the sized Rust engine', async () => {
+  const solution = coachInsideDigitGroups.metadata.solution
+  const cells = Array.from({ length: 81 }, (_, cell) => cell).flatMap(cell => {
+    const row = Math.floor(cell / 9), column = cell % 9
+    return [column < 7 ? [cell, cell + 1, cell + 2] : undefined,
+      row < 7 ? [cell, cell + 9, cell + 18] : undefined]
+      .filter((path): path is number[] => Boolean(path &&
+        Number(solution[path[0]]) < Number(solution[path[1]]) && Number(solution[path[1]]) < Number(solution[path[2]])))
+  })[0]
+  assert.ok(cells)
+  const data = await decodeSudokuCoachPayload(coachInsideDigitGroups.metadata.sudoku)
+  const thermometer = { type: 'thermometer', segments: [{ cells, parameters: {} }] }
+  const imported = await detectPuzzle(coachCode({ ...data, givenConstraints: [...data.givenConstraints, thermometer] }))
+  assert.ok(imported.grid && imported.sizedRules)
+  assert.ok(imported.sizedRules.some(rule => rule.type === 'outside-text'))
+  assert.ok(imported.sizedRules.some(rule => rule.type === 'thermometer' && rule.cells.join(',') === cells.join(',')))
+  const candidates = await runEngine({ type: 'sized-variant', operation: 'candidates', position: {
+    ...sizedRulePosition(imported.grid, { rules: imported.sizedRules }, solution),
+  } })
+  assert.equal(candidates.length, 81)
+  assert.deepEqual(candidates, Array(81).fill(0))
 })
 
 test('sized Anti-Knight and Anti-King rules report equal-digit Play conflicts', () => {

@@ -9,6 +9,7 @@ import { readImportedFutoshiki } from '../src/futoshiki/imported.ts'
 import { readImportedCalcudoku } from '../src/calcudoku/imported.ts'
 import { publishFixture } from './helpers/shared-puzzle.ts'
 import { decodeCoachSix, detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
 import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { tournamentQuadrupleCode, tournamentQuadrupleRules, tournamentQuadrupleSolution } from './fixtures/tournament-quadruple.ts'
 import { coachCode } from './helpers/coach-code.ts'
@@ -19,7 +20,7 @@ const jankoChaos = JSON.parse(readFileSync(new URL('./fixtures/janko-chaos-sudok
 const coachBoxlessCalcudoku = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-boxless-calcudoku.json', import.meta.url), 'utf8')) as {
   code: string
 }
-const coachInsideDigitGroups = JSON.parse(readFileSync(new URL('./fixtures/little-killer-unsupported-DLeM.json', import.meta.url), 'utf8')) as {
+const coachInsideDigitGroups = JSON.parse(readFileSync(new URL('./fixtures/little-killer-symmetrical-inside.json', import.meta.url), 'utf8')) as {
   metadata: { sudoku: string; solution: string }
   decoded: Record<string, unknown>
 }
@@ -57,6 +58,29 @@ test('published Symmetrical Inside imports outside-digit rules with its Renban p
     assert.ok(rules.some(rule => rule.type === 'digit-count' && rule.digit === digit &&
       rule.minimum === 1 && JSON.stringify(rule.cells) === JSON.stringify(firstClue.cells.slice(0, 3))))
   }
+})
+
+test('Symmetrical Inside retains a supported companion rule added after its reviewed layers', async () => {
+  const data = coachInsideDigitGroups.decoded as { givenConstraints: unknown[] }
+  const thermometer = { type: 'thermometer', segments: [{ cells: [0, 1, 2], parameters: {} }] }
+  const imported = await detectPuzzle(coachCode({
+    ...data, givenConstraints: [...data.givenConstraints, thermometer],
+  }))
+  assert.ok(imported.sizedRules?.some(rule => rule.type === 'outside-text'))
+  assert.ok(imported.sizedRules?.some(rule => rule.type === 'thermometer' &&
+    rule.cells.length === 3 && rule.cells[0] === 0 && rule.cells[1] === 1 && rule.cells[2] === 2))
+  assert.equal(imported.authoredSolution, coachInsideDigitGroups.metadata.solution)
+})
+
+test('Symmetrical Inside retains player progress without losing its authored outside clues', async () => {
+  const data = coachInsideDigitGroups.decoded
+  const emptyCell = String(data.givenDigits).indexOf('0')
+  const userDigits = Array.from({ length: 81 }, (_, cell) => cell === emptyCell
+    ? coachInsideDigitGroups.metadata.solution[cell] : '0').join('')
+  const imported = await detectPuzzle(coachCode({ ...data, userDigits }))
+  assert.equal(imported.progress?.entries[emptyCell], coachInsideDigitGroups.metadata.solution[emptyCell])
+  assert.equal(imported.sizedRules?.filter(rule => rule.type === 'outside-text').length, 10)
+  assert.equal(imported.sizedRules?.filter(rule => rule.type === 'renban').length, 7)
 })
 
 test('Symmetrical Inside raw-code and short-link imports keep the same authored rules', async ({ mock }) => {
@@ -358,6 +382,25 @@ test('Coach 5 × 5 fractional regions keep their authored shading and Little Kil
     assert.deepEqual(shading.pieces.map(piece => piece.color), ['#b4b4b4', '#bebebe', '#c8c8c8', '#aaaaaa'])
     assert.equal(shading.pieces.flatMap(piece => piece.quarters).length, 100)
   }
+  const data = await decodeSudokuCoachPayload(source.code)
+  const givens = typeof data.givenDigits === 'string' ? data.givenDigits : '0'.repeat(25)
+  const emptyCell = givens.indexOf('0')
+  const userDigits = Array.from({ length: 25 }, (_, cell) => cell === emptyCell ? '1' : '0').join('')
+  const withProgress = await detectPuzzle(coachCode({ ...data, userDigits }))
+  assert.equal(withProgress.progress?.entries[emptyCell], '1')
+  assert.equal(withProgress.sizedRules?.filter(rule => rule.type === 'fractional-regions').length, 1)
+})
+
+test('#453 fractional regions retain their authored drawing with an appended companion rule', async () => {
+  const source = JSON.parse(readFileSync(new URL('./fixtures/coach-fractional-regions.json', import.meta.url), 'utf8'))
+  const data = await decodeSudokuCoachPayload(source.code)
+  const combined = await detectPuzzle(coachCode({ ...data, givenConstraints: [
+    ...(data.givenConstraints as unknown[]), { type: 'antiKnight', segments: [], settings: {} },
+  ] }))
+
+  assert.deepEqual(combined.grid, { size: 5, noRegions: true })
+  assert.ok(combined.sizedRules?.some(rule => rule.type === 'fractional-regions'))
+  assert.ok(combined.sizedRules?.some(rule => rule.type === 'anti-knight'))
 })
 
 test('sized Coach Little Killer import validates ray geometry and rejects unknown segment data', async () => {

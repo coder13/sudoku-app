@@ -90,6 +90,10 @@ The long baseline run and candidate run both returned 179 choices, with identica
 
 The controlled serial run pinned both builds to logical CPU 6 and alternated order. Its 30-second limit applied after the request process was ready. The baseline reached that limit in all four rounds. The candidate took 631.0 ms cold. After three ordinary ten-hint requests, its median was 593.2 ms and its p95 was 598.7 ms across three samples. Every finished response matched the complete baseline. The observed 887.852-second sample above gives a separate complete baseline measurement.
 
+### Current full-scan verification
+
+On 2026-11-27, the permanent import worktree reran the same full 127-technique app-order request on Darwin arm64 with Node 26.13.0 and Wasm SHA-256 `900036b79f8cbf43cb90ba9043445ecc30d1170f7ae8fc9b2661288369700a53`. The reproducible command is `node --experimental-strip-types scripts/profile-x-sum-murphy-exhaustive.mjs`. After two warmups, five measured requests had 261.521 ms median and 270.833 ms p95. All five returned the same 179 choices, including the five complete Quintuple Pattern Overlay proofs. This is a current single-host observation, not a new before/after claim; Wasm instantiation and worker startup/transfer are excluded.
+
 The retained controls used two warmups and ten samples. The empty HCHW step-22 median/p95 changed from 49.793/54.019 to 51.157/55.244 ms. Positive Classic Quadruple Pattern Overlay changed from 37.911/42.469 to 40.440/49.195 ms. The 19 paired cases preserve their complete results, including empty replies. The 30-second-capped comparison records the slow-case lower bound separately from the retained timing regressions.
 
 The baseline was built from `f1b25e63c7c6b5977278a94e2e83c0fb55fee5c1` and the candidate from `1fc28653c4b650042014257d91e769171d444abf`. Both were stripped release app builds with Rust/Cargo 1.92.0 on Linux x64, Ryzen 7 7840U, kernel 7.1.8-arch1-3 and Node 22.23.1. App Wasm changed from 3,718,817 to 3,689,139 raw bytes and from 985,075 to 980,803 gzip bytes. See [measurement checksums](docs/measurements/murphy-overlay.json).

@@ -2,13 +2,14 @@ import { compileLatinLines, type LatinLine } from '../latin/lines.ts'
 import { compileLatinDiagonals, type LatinDiagonal } from '../latin/diagonals.ts'
 import { compileLatinExclusions, type LatinExclusion } from '../latin/exclusions.ts'
 import { compileLatinExtrema, type LatinExtremum } from '../latin/extrema.ts'
+import { compileLatinKropki, type LatinKropki } from '../latin/kropki.ts'
 import { cellLabel, createLatinPuzzle, type LatinPuzzle } from '../latin/engine.ts'
 import { latinParityRules, type LatinParity } from '../latin/parity.ts'
 
 export type Inequality = { less: number; greater: number }
-export type FutoshikiPuzzle = LatinPuzzle & { inequalities: readonly Inequality[]; parity: readonly LatinParity[]; lines?: readonly LatinLine[]; diagonals?: readonly LatinDiagonal[]; exclusions?: readonly LatinExclusion[]; extrema?: readonly LatinExtremum[] }
+export type FutoshikiPuzzle = LatinPuzzle & { inequalities: readonly Inequality[]; parity: readonly LatinParity[]; lines?: readonly LatinLine[]; diagonals?: readonly LatinDiagonal[]; exclusions?: readonly LatinExclusion[]; extrema?: readonly LatinExtremum[]; kropki?: LatinKropki }
 
-export function createFutoshiki(size: number, givens: readonly number[], inequalities: readonly Inequality[], parity: readonly LatinParity[] = [], lines: readonly LatinLine[] = [], diagonals: readonly LatinDiagonal[] = [], exclusions: readonly LatinExclusion[] = [], extrema: readonly LatinExtremum[] = []): FutoshikiPuzzle {
+export function createFutoshiki(size: number, givens: readonly number[], inequalities: readonly Inequality[], parity: readonly LatinParity[] = [], lines: readonly LatinLine[] = [], diagonals: readonly LatinDiagonal[] = [], exclusions: readonly LatinExclusion[] = [], extrema: readonly LatinExtremum[] = [], kropki?: LatinKropki): FutoshikiPuzzle {
   const edges = new Set<string>()
   const extra = inequalities.map(({ less, greater }) => {
     const valid = (cell: number) => Number.isInteger(cell) && cell >= 0 && cell < size * size
@@ -34,5 +35,6 @@ export function createFutoshiki(size: number, givens: readonly number[], inequal
       },
     }
   })
-  return { ...createLatinPuzzle(size, givens, [...extra, ...latinParityRules(size, parity), ...compileLatinLines(lines, size), ...compileLatinDiagonals(diagonals, size), ...compileLatinExclusions(exclusions, size), ...compileLatinExtrema(extrema, size)]), inequalities, parity, ...(lines.length && { lines }), ...(diagonals.length && { diagonals }), ...(exclusions.length && { exclusions }), ...(extrema.length && { extrema }) }
+  const kropkiRules = kropki ? compileLatinKropki(kropki, size) : []
+  return { ...createLatinPuzzle(size, givens, [...extra, ...latinParityRules(size, parity), ...compileLatinLines(lines, size), ...compileLatinDiagonals(diagonals, size), ...compileLatinExclusions(exclusions, size), ...compileLatinExtrema(extrema, size), ...kropkiRules]), inequalities, parity, ...(lines.length && { lines }), ...(diagonals.length && { diagonals }), ...(exclusions.length && { exclusions }), ...(extrema.length && { extrema }), ...(kropki && { kropki }) }
 }

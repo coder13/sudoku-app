@@ -11,7 +11,7 @@
     "dev:lessons": "node tools/lesson-editor/server.mjs",
     "build:wasm": "node scripts/build-wasm.mjs",
     "test:engine-features": "node scripts/check-engine-features.mjs",
-    "test:wasm-profiles": "node scripts/check-wasm-profiles.mjs",
+    "test:wasm-profiles": "node --experimental-strip-types scripts/check-wasm-profiles.mjs",
     "build:collections": "node --experimental-strip-types scripts/build-collections.mjs",
     "build": "npm run build:collections && npm run build:wasm && npm run check && vite build && node scripts/build-offline.mjs",
     "build:cloudflare": "npm run build && cp cloudflare/pages/_worker.js cloudflare/pages/_routes.json cloudflare/pages/_headers dist/client/",

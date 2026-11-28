@@ -3,11 +3,11 @@
 use std::sync::OnceLock;
 
 use super::{
-    AqreConstraint, CompiledConditionalNeighbor, CompiledMagicSquare, CompiledNeighborMatch, CompiledUnknownCageSums,
-    CompiledVariant, LetteredQuadruples, LineConstraint, PuzzleRule, Quadruple, RegionLayout,
-    VARIANT_FORMAT_VERSION, VariantDefinitionError, VariantHouse, VariantHouseKind, VariantPuzzle,
-    cell_mask, cells_in,
-    lines::compile_line_sums,
+    AqreConstraint, CompiledConditionalNeighbor, CompiledMagicSquare, CompiledNeighborMatch,
+    CompiledUnknownCageSums, CompiledVariant, LetteredQuadruples, LineConstraint, PuzzleRule,
+    Quadruple, RegionLayout, VARIANT_FORMAT_VERSION, VariantDefinitionError, VariantHouse,
+    VariantHouseKind, VariantPuzzle, cell_mask, cells_in,
+    lines::{TerrainSandwichCache, compile_line_sums},
     pairs::{PairCompiler, positive_sums},
 };
 use crate::{CELLS, DIGITS};
@@ -104,6 +104,7 @@ impl VariantPuzzle {
         }
         let mut occupied_cages = 0;
         let mut pairs = PairCompiler::default();
+        let mut terrain_sandwich_cache = TerrainSandwichCache::new();
         pairs.exempt_xv_edges(exemptions);
         for (index, rule) in self.rules.iter().enumerate() {
             match rule {
@@ -181,8 +182,13 @@ impl VariantPuzzle {
                     compiled.entropy_window_groups.push((index, *cells, *group));
                 }
                 PuzzleRule::DigitOrder { .. } | PuzzleRule::ForbiddenEntropicConnection { .. } => {
-                    let line =
-                        LineConstraint::compile(&mut compiled, index, rule, enforce_regions)?;
+                    let line = LineConstraint::compile(
+                        &mut compiled,
+                        index,
+                        rule,
+                        enforce_regions,
+                        &mut terrain_sandwich_cache,
+                    )?;
                     compiled.lines.push(line);
                 }
                 PuzzleRule::Aqre {
@@ -226,10 +232,17 @@ impl VariantPuzzle {
                         .neighbor_matches
                         .extend(CompiledNeighborMatch::compile(index, clues)?);
                 }
-                PuzzleRule::ConditionalNeighbor { trigger_digit, alternatives } => {
-                    compiled.conditional_neighbors.extend(CompiledConditionalNeighbor::compile(
-                        index, *trigger_digit, alternatives,
-                    )?);
+                PuzzleRule::ConditionalNeighbor {
+                    trigger_digit,
+                    alternatives,
+                } => {
+                    compiled
+                        .conditional_neighbors
+                        .extend(CompiledConditionalNeighbor::compile(
+                            index,
+                            *trigger_digit,
+                            alternatives,
+                        )?);
                 }
                 PuzzleRule::MagicSquare { cells } => {
                     compiled
@@ -265,8 +278,13 @@ impl VariantPuzzle {
                 | PuzzleRule::LittleKiller { .. }
                 | PuzzleRule::XSum { .. }
                 | PuzzleRule::Skyscrapers { .. } => {
-                    let line =
-                        LineConstraint::compile(&mut compiled, index, rule, enforce_regions)?;
+                    let line = LineConstraint::compile(
+                        &mut compiled,
+                        index,
+                        rule,
+                        enforce_regions,
+                        &mut terrain_sandwich_cache,
+                    )?;
                     compiled.lines.push(line);
                 }
                 PuzzleRule::Parity { .. }

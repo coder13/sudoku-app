@@ -5,10 +5,12 @@ import { candidateId, makeChainGraph } from '../src/sudoku/chains.ts'
 import type { VariantPuzzle } from '../src/sudoku/engine.ts'
 import { conflictsOf, createGameId, makeGame, peer } from '../src/sudoku/game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
 import { puzzleDefinitionForSharing } from '../src/sudoku/puzzle-sharing.ts'
 import { syncRequest } from '../src/sudoku/sync-engine.ts'
 import { variantRuleDescriptions } from '../src/sudoku/variants.ts'
 import { syncDatabase } from './helpers/sync-database.ts'
+import { coachCode } from './helpers/coach-code.ts'
 
 const sources = JSON.parse(readFileSync(new URL('./fixtures/quadruple-coach-bento.json', import.meta.url), 'utf8'))
 const empty = '0'.repeat(81)
@@ -57,4 +59,21 @@ test('Bento shared links retain the authored dividers and partial regions', asyn
       for (const value of invalid) await assert.rejects(api('shares', 'POST', value), { status: 400 })
     }
   } finally { sqlite.close() }
+})
+
+test('AJT’s Bento keeps its authored dividers and partial regions with an appended rule', async () => {
+  for (const source of sources) {
+    const data = await decodeSudokuCoachPayload(source.coach)
+    const original = await detectPuzzle(source.coach)
+    const combined = await detectPuzzle(coachCode({ ...data, givenConstraints: [
+      ...(data.givenConstraints as unknown[]), { type: 'antiKnight', segments: [], settings: {} },
+    ] }))
+
+    assert.equal(combined.title, source.title)
+    assert.equal(combined.variant?.puzzle.regions?.type, 'partial')
+    assert.equal(combined.variant?.puzzle.regions?.regions.length, source.regionCount)
+    assert.ok(combined.authoredArtwork)
+    assert.deepEqual(combined.variant?.puzzle.rules?.slice(0, -1), original.variant?.puzzle.rules)
+    assert.equal(combined.variant?.puzzle.rules?.at(-1)?.type, 'anti-knight')
+  }
 })

@@ -1,6 +1,6 @@
 {
   "retrieved": "2026-11-17",
-  "provenance": "Unmodified SCv7 codes and static JSON payloads from the public Coach pages; decoded independently with Base32hex and zlib. The 6x6 source remains a rejection fixture.",
+  "provenance": "Unmodified SCv7 codes and static JSON payloads from the public Coach pages; decoded independently with Base32hex and zlib. Both the 9×9 and 6×6 sources are supported import controls.",
   "examples": [
     {
       "url": "https://sudoku.coach/en/s/7RCb",

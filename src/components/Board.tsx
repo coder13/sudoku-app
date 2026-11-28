@@ -29,7 +29,7 @@ import { cellSelectionEdges } from '../sudoku/selection'
 import { WHISPERS_GUIDE_COUNTS, whispersGuideDigits, whispersLinkCounts } from '../sudoku/whispers-guide'
 import { OutsideClues } from './OutsideClues'
 import { cloneLayout } from '../sudoku/clone'
-import { AlgebraicCages, LinkedDoubleArrowClues, SizedRuleClues, VariantClues, cageLabelInset } from './VariantClues'
+import { AlgebraicCages, LinkedDoubleArrowClues, SizedRuleClues, VariantClues, XSumDotClues, cageLabelInset } from './VariantClues'
 import { sizedRuleClueLabels, variantCellLabels } from './VariantClueLabels'
 import { boardGroupDescription, boardGroups, BoardArtwork, BoardLinks, BoardQuickDraw, mergeBoardAnnotations, type BoardAnnotations, type BoardRegion } from './BoardAnnotations'
 import type { AuthoredMark } from '../sudoku/authored-artwork'
@@ -147,6 +147,7 @@ const MemoSizedRuleClues = memo(SizedRuleClues)
 const MemoAlgebraicCages = memo(AlgebraicCages)
 const MemoOutsideClues = memo(OutsideClues)
 const MemoLinkedDoubleArrowClues = memo(LinkedDoubleArrowClues)
+const MemoXSumDotClues = memo(XSumDotClues)
 type BoardEvents = Pick<
   BoardInteraction,
   'onCell' | 'onGiven' | 'onCellDoubleClick' | 'onCellPointerDown' | 'onCandidate' | 'onPaintCandidate' | 'onCandidateHover' | 'onLinkSelect'
@@ -300,6 +301,8 @@ export function Board(props: BoardProps) {
     const visibleClones = variantRules?.filter((rule) => rule.type === 'clone') ?? []
     return [...fullPuzzle.rules.filter((rule) => rule.type !== 'clone'), ...visibleClones]
   }, [clipCells, fullPuzzle?.rules, variantRules])
+  const cageCaptionOffsets = useMemo(() => new Map((authoredArtwork ?? []).flatMap(mark =>
+    mark.type === 'cage-caption-offset' ? [[mark.cell, mark.offset] as const] : [])), [authoredArtwork])
   const linkCounts = useMemo(() => (whispersGuide && variantPuzzle ? whispersLinkCounts(variantPuzzle) : undefined), [whispersGuide, variantPuzzle])
   const houseFills = useMemo(() => new Set(variantRules?.flatMap(variantHouseFillCells)), [variantRules])
   const highlightedDiagonals = useMemo(
@@ -309,6 +312,7 @@ export function Board(props: BoardProps) {
   const linkedDoubleArrows = useMemo(() => sizedRules?.filter((rule) => rule.type === 'linked-double-arrow') ?? [], [sizedRules])
   const sizedClueRules = useMemo(() => sizedRules?.flatMap(rule =>
     rule.type === 'constraint-alternatives' ? rule.displayRules ?? [] : [rule]) ?? [], [sizedRules])
+  const xSumDots = useMemo(() => sizedClueRules.filter((rule) => rule.type === 'x-sum-dot'), [sizedClueRules])
   const outsideRules = useMemo<readonly OutsideRuleSource[]>(() => [
     ...(variantRules ?? []),
     ...sizedClueRules.filter((rule): rule is Extract<SizedConstraintRule, { type: 'little-killer' | 'x-sum' | 'outside-text' }> =>
@@ -335,9 +339,17 @@ export function Board(props: BoardProps) {
           const side = sizedXSumSide(end.direction)
           layout.depths[side] = Math.max(layout.depths[side], 1)
         }
+    for (const rule of xSumDots)
+      for (const end of rule.ends)
+        if (typeof end !== 'number') {
+          const side = sizedXSumSide(end.direction)
+          layout.depths[side] = Math.max(layout.depths[side], 1)
+        }
     return layout
-  }, [outsideRules, linkedDoubleArrows, gridSize])
+  }, [outsideRules, linkedDoubleArrows, xSumDots, gridSize])
   const hasOutside = Object.values(outside.depths).some(Boolean)
+  const hasOutsideArtwork = authoredArtwork?.some(mark => (mark.type === 'tile' || mark.type === 'text') &&
+    (mark.center[1] < 0 || mark.center[1] > 9)) ?? false
   const badgeOnFrame = hasOutside && Boolean(modeBadge)
   const rootFrameRef = useMemo(() => mergeRefs(frameRef, badgeOnFrame ? modeBoundaryRef : undefined), [badgeOnFrame, frameRef, modeBoundaryRef])
   const boardBodyRef = useMemo(() => mergeRefs(layoutBoundaryRef, badgeOnFrame ? undefined : modeBoundaryRef), [layoutBoundaryRef, badgeOnFrame, modeBoundaryRef])
@@ -409,11 +421,11 @@ export function Board(props: BoardProps) {
       clueDrawing
         ? [
             <div className="board-variant-clues" key={clueDrawing.key}>
-              <VariantClues rules={clueDrawing.rules} visibleCells={clipCells} />
+              <VariantClues rules={clueDrawing.rules} visibleCells={clipCells} cageCaptionOffsets={cageCaptionOffsets} />
             </div>,
           ]
         : NO_MARKS,
-    [clueDrawing, clipCells]
+    [clueDrawing, clipCells, cageCaptionOffsets]
   )
   const [candidateFocus, setCandidateFocus] = useState<CandidateSlot>()
   const highlightedDigits = useMemo(() => marksOf(highlightedDigitMask), [highlightedDigitMask])
@@ -508,7 +520,8 @@ export function Board(props: BoardProps) {
         const regionAtCell = regionsAt?.[index]
         const cageTotal = cageTotals.get(index) ?? algebraicLabels.captions.get(index)
         const cageRules = drawingRules ?? sizedClueRules
-        const cageInset = cageTotal !== undefined && cageRules ? cageLabelInset(index, cageRules, gridSize) : undefined
+        const cageInset = cageTotal !== undefined && cageRules
+          ? cageCaptionOffsets.get(index) ?? cageLabelInset(index, cageRules, gridSize) : undefined
         return {
           index,
           row,
@@ -545,6 +558,7 @@ export function Board(props: BoardProps) {
       linkCounts,
       rectangularBoxes,
       cageTotals,
+      cageCaptionOffsets,
       algebraicLabels,
       clones,
       drawingRules,
@@ -750,7 +764,7 @@ export function Board(props: BoardProps) {
 
   return (
     <div
-      className={`board-frame ${showGuides ? '' : 'guides-hidden'}${hasOutside ? ' has-outside-clues' : ''}`}
+      className={`board-frame ${showGuides ? '' : 'guides-hidden'}${hasOutside ? ' has-outside-clues' : ''}${hasOutsideArtwork ? ' has-outside-artwork' : ''}`}
       data-overlay={overlay?.visible}
       data-input-mode={badgeOnFrame ? modeBorder : undefined}
       ref={rootFrameRef}
@@ -836,6 +850,7 @@ export function Board(props: BoardProps) {
         )}
         {hasOutside && <MemoOutsideClues layout={outside} hidden={overlay?.visible} size={gridSize} />}
         {linkedDoubleArrows.length > 0 && <MemoLinkedDoubleArrowClues rules={linkedDoubleArrows} size={gridSize} hidden={overlay?.visible} />}
+        {xSumDots.length > 0 && <MemoXSumDotClues rules={xSumDots} size={gridSize} hidden={overlay?.visible} />}
         {showImportedAnnotations && position?.importedDrawings && <BoardQuickDraw drawings={position.importedDrawings} region={visibleRegion} hidden={overlay?.visible} />}
         <BoardLinks
           links={annotations?.links}

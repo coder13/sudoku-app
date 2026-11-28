@@ -104,18 +104,20 @@ export function decodeLegacyCoach(body: string, version: LegacyCoachVersion, max
   const clues = fields[v3 ? 11 : 0] ?? ''
   const state = v3 ? fields : fields.slice(1)
   const mask = (field: string) => field === allZeroMasks || field === emptyMasks
-  const [previewDigits, constructionParameters, solutionDigits, userColors, userShades,
-    center, corner, marked, candidateColors, drawing, highlights, extra, masks, ...annotations] = state
+  // The published Coach serializer maps state slots 2, 5 and 7 to
+  // userDigits, userCellCandidates and userBoxCandidates for SCv3–SCv6.
+  const [previewDigits, constructionParameters, userDigits, userColors, userShades,
+    userCellCandidates, candidateSelection, userBoxCandidates, candidateColors, drawing, highlights, extra, masks, ...annotations] = state
   if (state.length !== 1 || state[0] !== '') {
     const early = v3 || version === '4'
     const fullLength = early ? 12 : version === '5' ? 13 : 16
     if (state.length < fullLength || state.slice(fullLength).some(Boolean)) throw invalidLegacy()
     const inactiveTail = early ? v3 || extra === '' : extra === zeroDigits &&
       (version === '5' ? masks === '' : mask(masks) && !annotations.some(Boolean))
-    if (![previewDigits, solutionDigits].every(field => /^[0-9]{81}$/.test(field)) ||
+    if (![previewDigits, userDigits].every(field => /^[0-9]{81}$/.test(field)) ||
         [constructionParameters, userColors, userShades, highlights].some(field => field !== zeroDigits) ||
-        ![center, corner, marked].every(mask) || candidateColors || drawing || !inactiveTail) {
-      throw new Error('This Sudoku Coach legacy code includes playing state or annotations. Copy the puzzle definition to import it.')
+        !mask(candidateSelection) || candidateColors || drawing || !inactiveTail) {
+      throw new Error('This Sudoku Coach legacy code includes unsupported playing state or annotations. Copy the puzzle definition to import it.')
     }
   }
   if (clues && !clues.startsWith('R')) throw invalidLegacy()
@@ -124,5 +126,10 @@ export function decodeLegacyCoach(body: string, version: LegacyCoachVersion, max
     colours: legacyPalette.slice(1),
     givenColours: [...colors].map(shade => shade === '0' ? '' : String(Number(shade) - 1)).join(','),
   }
-  return { gridSize: 9, givenDigits: givens, givenConstraints, ...artwork }
+  const emptyCandidateMasks = (field: string) => mask(field) ? allZeroMasks : field
+  return { gridSize: 9, givenDigits: givens, givenConstraints,
+    ...(userDigits !== undefined && userDigits !== zeroDigits && { userDigits }),
+    ...(userCellCandidates !== undefined && !mask(userCellCandidates) && { userCellCandidates: emptyCandidateMasks(userCellCandidates) }),
+    ...(userBoxCandidates !== undefined && !mask(userBoxCandidates) && { userBoxCandidates: emptyCandidateMasks(userBoxCandidates) }),
+    ...artwork }
 }

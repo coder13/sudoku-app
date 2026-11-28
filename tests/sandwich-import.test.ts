@@ -59,7 +59,7 @@ test('Coach Sandwich decoding preserves all four sides, zero and companion therm
     { settings: { outsideLevel: 2 } }, { settings: { bread: '28' } }]) {
     await assert.rejects(detectPuzzle(coachCode({ ...decoded, givenConstraints: [{ ...constraint, ...change }] })), /Sandwich/)
   }
-  const terrain = JSON.parse(readFileSync(new URL('./fixtures/sandwich-terrain-unsupported.json', import.meta.url), 'utf8'))
+  const terrain = JSON.parse(readFileSync(new URL('./fixtures/coach-terrain.json', import.meta.url), 'utf8'))
   const code = terrain.metadata?.sudoku ?? terrain.source?.sudoku ?? terrain.sudoku
   assert.equal(typeof code, 'string')
   const terrainImport = await detectPuzzle(code)

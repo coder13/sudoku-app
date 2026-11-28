@@ -1,13 +1,15 @@
 import type { ImportedCellColors } from './imported-colors.ts'
-import { canonicalCoachCode } from './puzzle-import/coach-code.ts'
+import { sourceHash, withoutCoachProgress } from './puzzle-import/shared.ts'
 
 type Point = readonly [x: number, y: number]
+type ArtworkColor = string | 'board-ink'
 
 export type AuthoredMark = { type: 'outline'; points: readonly Point[]; thickness: number }
   | { type: 'divider'; points: readonly Point[]; thickness: number }
+  | { type: 'cage-caption-offset'; cell: number; offset: number }
   | { type: 'disc'; center: Point; radius: number; color: string }
-  | { type: 'tile'; center: Point; size: number; rotation: number; color: string; opacity: number }
-  | { type: 'text'; center: Point; text: string; size: number; color: string; opacity: number;
+  | { type: 'tile'; center: Point; size: number; rotation: number; color: ArtworkColor; opacity: number }
+  | { type: 'text'; center: Point; text: string; size: number; color: ArtworkColor; opacity: number;
       outlineColor: string; outlineThickness: number; offsetY: number }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -25,7 +27,11 @@ function size(value: unknown): value is number {
 
 function artworkPoint(value: unknown): value is Point {
   return Array.isArray(value) && value.length === 2 && value.every(coordinate =>
-    typeof coordinate === 'number' && Number.isFinite(coordinate) && coordinate >= 0 && coordinate <= 9)
+    typeof coordinate === 'number' && Number.isFinite(coordinate) && coordinate >= -1 && coordinate <= 10)
+}
+
+function artworkColor(value: unknown): value is ArtworkColor {
+  return value === 'board-ink' || typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)
 }
 
 export function validAuthoredArtwork(value: unknown): value is readonly AuthoredMark[] {
@@ -40,19 +46,22 @@ export function validAuthoredArtwork(value: unknown): value is readonly Authored
           ? points[0].every((coordinate, axis) => coordinate === points.at(-1)![axis])
           : points.slice(1).every(([x, y], i) => (x === points[i][0]) !== (y === points[i][1])))
     }
+    if (mark.type === 'cage-caption-offset') return Object.keys(mark).length === 3 &&
+      typeof mark.cell === 'number' && Number.isInteger(mark.cell) && mark.cell >= 0 && mark.cell < 81 &&
+      typeof mark.offset === 'number' && Number.isFinite(mark.offset) && mark.offset >= 0 && mark.offset <= 1
     if (mark.type === 'disc') return Object.keys(mark).length === 4 && size(mark.radius) &&
       point(mark.center, false) && typeof mark.color === 'string' && /^#[0-9a-f]{6}$/i.test(mark.color)
     if (mark.type === 'tile') return Object.keys(mark).length === 6 && artworkPoint(mark.center) &&
       typeof mark.size === 'number' && Number.isFinite(mark.size) && mark.size > 0 && mark.size <= 1 &&
       typeof mark.rotation === 'number' && Number.isFinite(mark.rotation) && Math.abs(mark.rotation) <= 360 &&
       typeof mark.opacity === 'number' && Number.isInteger(mark.opacity) && mark.opacity >= 0 && mark.opacity <= 255 &&
-      typeof mark.color === 'string' && /^#[0-9a-f]{6}$/i.test(mark.color)
+      artworkColor(mark.color)
     return mark.type === 'text' && Object.keys(mark).length === 9 && artworkPoint(mark.center) &&
       typeof mark.text === 'string' && mark.text.length > 0 && mark.text.length <= 100 &&
       typeof mark.size === 'number' && Number.isFinite(mark.size) && mark.size > 0 && mark.size <= 2 &&
       typeof mark.opacity === 'number' && Number.isInteger(mark.opacity) && mark.opacity >= 0 && mark.opacity <= 255 &&
-      typeof mark.color === 'string' && /^#[0-9a-f]{6}$/i.test(mark.color) &&
-      typeof mark.outlineColor === 'string' && /^#[0-9a-f]{6}$/i.test(mark.outlineColor) &&
+      artworkColor(mark.color) &&
+      artworkColor(mark.outlineColor) &&
       typeof mark.outlineThickness === 'number' && Number.isFinite(mark.outlineThickness) && mark.outlineThickness >= 0 && mark.outlineThickness <= .1 &&
       typeof mark.offsetY === 'number' && Number.isFinite(mark.offsetY) && Math.abs(mark.offsetY) <= 1
   })
@@ -66,6 +75,8 @@ export function sameAuthoredArtwork(a?: readonly AuthoredMark[], b?: readonly Au
     if (mark.type !== other.type) return false
     if (mark.type === 'outline' || mark.type === 'divider') return other.type === mark.type &&
       mark.thickness === other.thickness && JSON.stringify(mark.points) === JSON.stringify(other.points)
+    if (mark.type === 'cage-caption-offset') return other.type === mark.type &&
+      mark.cell === other.cell && mark.offset === other.offset
     if (mark.type === 'disc') return other.type === 'disc' && mark.radius === other.radius &&
         mark.color === other.color && mark.center[0] === other.center[0] && mark.center[1] === other.center[1]
     if (mark.type === 'text') return other.type === 'text' && mark.text === other.text && mark.size === other.size &&
@@ -79,36 +90,45 @@ export function sameAuthoredArtwork(a?: readonly AuthoredMark[], b?: readonly Au
   })
 }
 
-// A drawing or fill may carry a rule. Bind each review to the whole original export.
+// A drawing may carry a rule. Bind each review to its exact source layers,
+// independent of player progress. Bento exports also accept appended rules.
 // Windoku I outlines four of its typed regions, and Khachkar's discs are artwork.
-const reviewedDrawings = new Map<string, { layer: string; title: string; partialRegions?: true }>([
-  ['6d6a3b498a48ea8bd5cd78a41495fca7c9fb0bbd8f5573a25e07b0115504d0c2', { layer: 'cosmeticLine', title: 'AJT’s Bento 🍱 flavoured with Entropy', partialRegions: true }],
-  ['644e296695e5e5993472985da14111a57d7f8760bcc579ea1743103d8d6cf35a', { layer: 'cosmeticLine', title: 'Non-con 🍱', partialRegions: true }],
-  ['349d55e182fa4f177aff2a5653d875fea8fe775f51f0dabe06a0f9c5c308fa7a', { layer: 'cosmeticLine', title: 'FUN-ky Bento II 🍱', partialRegions: true }],
-  ['12f8cfe5848c2ae3d1ebb478a484d05ff6311c689d10c3d6a585bcde0e828f7f', { layer: 'cosmeticLine', title: 'Windoku I' }],
-  ['df51c464f943b9c2436f9897ce4d5cbaaaaf3309da5c2eef68bc93ed1e8ab095', { layer: 'cosmeticShape', title: 'Khachkar' }],
+const reviewedDrawings = new Map<string, { layer: string; title: string; partialRegions?: true; constraintCount?: number }>([
+  ['92fb9f50af4684ebef1af0c900d104784c2b9265e9fb48b960f2511cce963804', { layer: 'cosmeticLine', title: 'AJT’s Bento 🍱 flavoured with Entropy', partialRegions: true, constraintCount: 12 }],
+  ['925fb0996956769908a041dd7cf20450b1f4d5bbbd873a9dfce8010b256561a1', { layer: 'cosmeticLine', title: 'Non-con 🍱', partialRegions: true, constraintCount: 16 }],
+  ['88426e68300e971314123430cdee9a623df296fed7c39fce9635571994d40c96', { layer: 'cosmeticLine', title: 'FUN-ky Bento II 🍱', partialRegions: true, constraintCount: 17 }],
+  ['fb7f80c65aca408b1967c405a14b046925ceb62519f474e222d2091d69b495ba', { layer: 'cosmeticLine', title: 'Windoku I', constraintCount: 10 }],
+  ['683b64457ad9033e09bc3165664a7fa94564086649a3165fa3ee7a2e1cbd79ce', { layer: 'cosmeticShape', title: 'Khachkar', constraintCount: 3 }],
 ])
 
 // CS1G uses dense, rotated rectangle layers to spell the author's thank-you.
 // Its visible rule list contains the puzzle's active rules; these shapes are art.
 const reviewedShapeArtwork = new Map([
-  ['512f5f0ace1feb1cae309b457724cfe8a9e36a91207358d9f9bdf4d0067a1e16', 'Thank RP you'],
+  ['b4d73c8354f88c8ea4e1ddf090847808510c1ed3e616bbf89bb115f2009e7abf', 'Thank RP you'],
 ])
+const reviewedShapeArtworkConstraintCount = 7
 
 const reviewedTextArtwork = new Map([
-  ['1c8d349fc96821784cbda4323a1bc9f85d6245d7610cb2a04317c3b4815c32c6', 'Sunny with a chance of Entropy'],
+  ['babed6a85770d81c9be91fd70f6fa688eba31fc5361639579e82d8030f01cd44',
+    { title: 'Sunny with a chance of Entropy', constraintCount: 6 }],
+])
+
+// B5mt uses four outside color keys and labels to explain its Whispers guide.
+// They are tutorial artwork; the fifteen Whispers paths remain the full rule set.
+const reviewedWhispersGuideArtwork = new Map([
+  ['b1590101e64077764af0102fbe3039b11ec18e18b6adaee04688b8f332df5758', 7],
 ])
 
 // These reviews cover the complete authoring data and ordered cell shades.
-const reviewedFills = new Map([
-  ['fc0d8c24d3f5897483883cbb961b9e2738352ab5689f6b58a7a1ded8629aba8c', 'Hallowteeth'],
-  ['5a500262913542452647e2a3623d6caeff79a00e949ad5c4f83acea306c1f980', 'Sudoku Spider'],
-  ['5b9cb5df490c8ac7e2b55566ef5a0e37c6161f260887484c457baf7e76ad6fc8', 'Pumpkin 2024'],
-  ['3f9c2090ae6dab63a274a4c8dc16711e406bad21e077df0103671470d8e42aa0', 'Halloween Candy 1'],
-  ['6c228123fac384a93b7354da2036675e86a8d16fd5018e023f9e154caef6a5b1', 'Halloween Candy 2'],
-  ['7a700d2049444a0d0dda80de06bebc2d07e13ab5e71064b296b25e8c5cb7b38b', 'Halloween Candy 3'],
-  ['353a05eade0f1a0fb8ffc7a52f7f07f64d82f228831bb3e95b4d70a81d820ba3', 'Halloween Candy 4'],
-  ['8fe3e67f25f6dab7ad9d38f7b5ccab025ed0bbb426fcf7f08d69068f893f4138', 'Halloween Candy 5'],
+const reviewedFills = new Map<string, { title: string; constraintCount?: number }>([
+  ['fc0d8c24d3f5897483883cbb961b9e2738352ab5689f6b58a7a1ded8629aba8c', { title: 'Hallowteeth', constraintCount: 2 }],
+  ['5a500262913542452647e2a3623d6caeff79a00e949ad5c4f83acea306c1f980', { title: 'Sudoku Spider', constraintCount: 1 }],
+  ['5b9cb5df490c8ac7e2b55566ef5a0e37c6161f260887484c457baf7e76ad6fc8', { title: 'Pumpkin 2024', constraintCount: 0 }],
+  ['3f9c2090ae6dab63a274a4c8dc16711e406bad21e077df0103671470d8e42aa0', { title: 'Halloween Candy 1', constraintCount: 0 }],
+  ['6c228123fac384a93b7354da2036675e86a8d16fd5018e023f9e154caef6a5b1', { title: 'Halloween Candy 2', constraintCount: 0 }],
+  ['7a700d2049444a0d0dda80de06bebc2d07e13ab5e71064b296b25e8c5cb7b38b', { title: 'Halloween Candy 3', constraintCount: 0 }],
+  ['353a05eade0f1a0fb8ffc7a52f7f07f64d82f228831bb3e95b4d70a81d820ba3', { title: 'Halloween Candy 4', constraintCount: 0 }],
+  ['8fe3e67f25f6dab7ad9d38f7b5ccab025ed0bbb426fcf7f08d69068f893f4138', { title: 'Halloween Candy 5', constraintCount: 0 }],
 ])
 
 const fieldsOutsideFillReview = new Set([
@@ -125,17 +145,122 @@ async function reviewKey(text: string) {
 export async function reviewedCoachFillTitle(data: Record<string, unknown>, fills: ImportedCellColors) {
   // The palette also holds player shades. The normalized fills retain the
   // author's shades while entries and candidate notes may change separately.
-  const definition = Object.fromEntries(Object.entries(data).filter(([key]) => !fieldsOutsideFillReview.has(key)))
-  const material = JSON.stringify([definition, fills], (_key, value) => record(value)
-    ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) : value)
-  const key = await reviewKey(material)
-  return key ? reviewedFills.get(key) : undefined
+  const progressFree = withoutCoachProgress(data) as Record<string, unknown>
+  const definition = Object.fromEntries(Object.entries(progressFree).filter(([key]) => !fieldsOutsideFillReview.has(key)))
+  const keyFor = async (source: Record<string, unknown>) => {
+    const material = JSON.stringify([source, fills], (_key, value) => record(value)
+      ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) : value)
+    return reviewKey(material)
+  }
+  const key = await keyFor(definition)
+  const exact = key ? reviewedFills.get(key) : undefined
+  if (exact) return exact.title
+  const constraints = definition.givenConstraints
+  if (!Array.isArray(constraints)) return
+  for (const [reviewedKey, review] of reviewedFills) {
+    const count = review.constraintCount
+    if (count === undefined || constraints.length <= count) continue
+    const prefixDefinition = { ...definition }
+    if (count === 0) delete prefixDefinition.givenConstraints
+    else prefixDefinition.givenConstraints = constraints.slice(0, count)
+    const prefix = await keyFor(prefixDefinition)
+    if (prefix === reviewedKey) return review.title
+  }
 }
 
-export async function readReviewedCoachArtwork(code: string, constraints: readonly unknown[]) {
-  const hash = await reviewKey(canonicalCoachCode(code))
-  const textTitle = hash && reviewedTextArtwork.get(hash)
-  if (textTitle) {
+export async function readReviewedCoachArtwork(code: string, constraints: readonly unknown[], payload: Record<string, unknown>) {
+  let hash = await sourceHash(code, payload)
+  // CS1G's three reviewed shape layers are followed by active rules. A new
+  // supported companion appended after those rules must not make the known
+  // drawing parse as an unsupported constraint.
+  if (!hash || !reviewedShapeArtwork.has(hash)) {
+    const layers = payload.givenConstraints
+    if (Array.isArray(layers) && layers.length > reviewedShapeArtworkConstraintCount) {
+      const prefixHash = await sourceHash(code, {
+        ...payload, givenConstraints: layers.slice(0, reviewedShapeArtworkConstraintCount),
+      })
+      if (prefixHash && reviewedShapeArtwork.has(prefixHash)) hash = prefixHash
+    }
+  }
+  if (!hash || !reviewedTextArtwork.has(hash)) {
+    const layers = payload.givenConstraints
+    if (Array.isArray(layers)) for (const [reviewedHash, review] of reviewedTextArtwork) {
+      if (layers.length <= review.constraintCount) continue
+      const prefixHash = await sourceHash(code, { ...payload, givenConstraints: layers.slice(0, review.constraintCount) })
+      if (prefixHash === reviewedHash) { hash = reviewedHash; break }
+    }
+  }
+  if (!hash || !reviewedDrawings.has(hash)) {
+    const layers = payload.givenConstraints
+    if (Array.isArray(layers)) for (const [reviewedHash, review] of reviewedDrawings) {
+      const count = review.constraintCount
+      if (!count || layers.length <= count) continue
+      const prefixHash = await sourceHash(code, { ...payload, givenConstraints: layers.slice(0, count) })
+      if (prefixHash === reviewedHash) { hash = reviewedHash; break }
+    }
+  }
+  if (!hash || ![...reviewedWhispersGuideArtwork.keys()].includes(hash)) {
+    const layers = payload.givenConstraints
+    if (Array.isArray(layers)) for (const [reviewedHash, count] of reviewedWhispersGuideArtwork) {
+      if (layers.length <= count) continue
+      const prefixHash = await sourceHash(code, { ...payload, givenConstraints: layers.slice(0, count) })
+      if (prefixHash === reviewedHash) { hash = reviewedHash; break }
+    }
+  }
+  const whispersGuideArtworkCount = hash ? reviewedWhispersGuideArtwork.get(hash) : undefined
+  if (whispersGuideArtworkCount !== undefined) {
+    const textLayers = constraints.filter(layer => record(layer) && layer.type === 'cosmeticText')
+    const shapeLayers = constraints.filter(layer => record(layer) && layer.type === 'cosmeticShape')
+    if (textLayers.length !== 2 || shapeLayers.length !== 4 || constraints.length < whispersGuideArtworkCount) return
+    const artwork: AuthoredMark[] = []
+    const textSpecs = [
+      { settings: { gridZoomOut: 1, gridSnapToCorners: false, textSize: 50 }, labels: [
+        { point: [7.5, 9.5], text: '= 4 unique links' }, { point: [7.5, -.5], text: '= 2 unique links' },
+        { point: [2.5, -.5], text: '= 1 unique link' }, { point: [2.5, 9.5], text: '= 3 unique links' },
+      ] },
+      { settings: { gridResolution: 5, gridSnapToCorners: false, textSize: 20, outlineThickness: 1 }, labels: [
+        { point: [.5, -.6], text: '1234' }, { point: [.5, -.4], text: '6789' },
+        { point: [5.5, -.6], text: '123' }, { point: [5.5, -.4], text: '789' },
+        { point: [.5, 9.4], text: '12' }, { point: [.5, 9.6], text: '89' },
+        { point: [5.5, 9.4], text: '1' }, { point: [5.5, 9.6], text: '9' },
+      ] },
+    ] as const
+    for (const [index, spec] of textSpecs.entries()) {
+      const layer = textLayers[index]
+      if (!record(layer) || !record(layer.settings) || !Array.isArray(layer.segments) ||
+        JSON.stringify(layer.settings) !== JSON.stringify(spec.settings) || layer.segments.length !== spec.labels.length ||
+        Object.keys(layer).some(key => !['id', 'type', 'segments', 'settings'].includes(key))) return
+      for (const [labelIndex, label] of spec.labels.entries()) {
+        const segment = layer.segments[labelIndex]
+        if (!record(segment) || !Array.isArray(segment.cells) || segment.cells.length !== 1 ||
+          !Array.isArray(segment.cells[0]) || segment.cells[0].length !== 2 ||
+          segment.cells[0][0] !== label.point[0] || segment.cells[0][1] !== label.point[1] ||
+          !record(segment.parameters) || Object.keys(segment.parameters).length !== 1 || segment.parameters.text !== label.text) return
+        artwork.push({ type: 'text', center: label.point, text: label.text, size: spec.settings.textSize / 200,
+          color: 'board-ink', opacity: 255, outlineColor: 'board-ink', outlineThickness: 0, offsetY: 0 })
+      }
+    }
+    const swatches = [
+      { color: '#f7e4c5', point: [.5, -.5] }, { color: '#f7f7c5', point: [5.5, -.5] },
+      { color: '#def7c5', point: [.5, 9.5] }, { color: '#f7c5f5', point: [5.5, 9.5] },
+    ] as const
+    for (const [index, swatch] of swatches.entries()) {
+      const layer = shapeLayers[index]
+      const segment = record(layer) && Array.isArray(layer.segments) ? layer.segments[0] : undefined
+      if (!record(layer) || !record(layer.settings) || layer.settings.colour !== swatch.color ||
+        Object.keys(layer.settings).length !== 1 || !record(segment) || !Array.isArray(segment.cells) ||
+        segment.cells.length !== 1 || !Array.isArray(segment.cells[0]) ||
+        segment.cells[0][0] !== swatch.point[0] || segment.cells[0][1] !== swatch.point[1] ||
+        !record(segment.parameters) || segment.parameters.shape !== 'rect' || Object.keys(segment.parameters).length !== 1) return
+      artwork.push({ type: 'tile', center: swatch.point, size: .45, rotation: 0, color: swatch.color, opacity: 255 })
+    }
+    const orderedArtwork = [...artwork.filter(mark => mark.type === 'tile'), ...artwork.filter(mark => mark.type === 'text')]
+    return validAuthoredArtwork(orderedArtwork) ? {
+      layers: [...textLayers, ...shapeLayers], artwork: orderedArtwork, title: 'Whispers Line Basics',
+    } : undefined
+  }
+  const textReview = hash && reviewedTextArtwork.get(hash)
+  if (textReview) {
     const layers = constraints.filter(layer => record(layer) && layer.type === 'cosmeticText')
     if (layers.length !== 1 || !record(layers[0])) return
     const layer = layers[0]
@@ -157,7 +282,7 @@ export async function readReviewedCoachArtwork(code: string, constraints: readon
       color: settings.colour as string, opacity: settings.opacity as number,
       outlineColor: settings.outlineColour as string, outlineThickness: (settings.outlineThickness as number) / 100,
       offsetY: (settings.positionVerticalOffset as number) / 100 }]
-    return validAuthoredArtwork(artwork) ? { layers, artwork, title: textTitle } : undefined
+    return validAuthoredArtwork(artwork) ? { layers, artwork, title: textReview.title } : undefined
   }
   const reviewedTitle = hash && reviewedShapeArtwork.get(hash)
   if (reviewedTitle) {
@@ -208,4 +333,33 @@ export async function readReviewedCoachArtwork(code: string, constraints: readon
     }
   })
   return validAuthoredArtwork(artwork) ? { layer, artwork, title: review.title, partialRegions: review.partialRegions } : undefined
+}
+
+/** Import a strictly cosmetic, grid-corner-snapped Coach line as board artwork. */
+export function readCoachCosmeticLineArtwork(constraints: readonly unknown[]) {
+  const layers = constraints.filter(layer => record(layer) && layer.type === 'cosmeticLine')
+  if (!layers.length) return
+  const artwork: AuthoredMark[] = []
+  for (const layer of layers) {
+    if (!record(layer)) return
+    const { settings, segments } = layer
+    if (Object.keys(layer).some(key => !['id', 'type', 'segments', 'settings'].includes(key)) ||
+      !record(settings) || Object.keys(settings).some(key =>
+        !['lineThickness', 'gridSnapToCentres', 'gridSnapToCorners'].includes(key)) ||
+      settings.gridSnapToCentres !== false || settings.gridSnapToCorners !== true ||
+      typeof settings.lineThickness !== 'number' || !Number.isFinite(settings.lineThickness) ||
+      settings.lineThickness <= 0 || settings.lineThickness > 50 || !Array.isArray(segments) || !segments.length) return
+    const thickness = settings.lineThickness / 100
+    for (const segment of segments) {
+      if (!record(segment) || Object.keys(segment).some(key => key !== 'cells' && key !== 'parameters') ||
+        !Array.isArray(segment.cells) || segment.cells.length < 2 ||
+        segment.cells.some(vertex => !point(vertex, true)) ||
+        segment.parameters !== undefined && (!record(segment.parameters) || Object.keys(segment.parameters).length > 0)) return
+      artwork.push({ type: 'divider', points: segment.cells as Point[], thickness })
+    }
+  }
+  if (!validAuthoredArtwork(artwork)) return
+  return layers.length === 1
+    ? { layer: layers[0], layers: undefined, artwork, title: undefined, partialRegions: undefined }
+    : { layers, artwork, title: undefined, partialRegions: undefined }
 }

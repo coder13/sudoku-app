@@ -5,6 +5,7 @@ import { runEngine } from '../src/sudoku/engine.ts'
 import { enter, restartGame, setAqreShade, valuesOf } from '../src/sudoku/game.ts'
 import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
 import { findImportAttempt, prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { publishSharedPuzzle, puzzleDefinitionForSharing } from '../src/sudoku/puzzle-sharing.ts'
 import { syncRequest } from '../src/sudoku/sync-engine.ts'
@@ -56,6 +57,32 @@ test('#542 imports and solves the exact Global Entropy shape export with its aut
     assert.deepEqual(shared.variant.puzzle, game.variant.puzzle)
     assert.deepEqual(shared.authoredArtwork, game.authoredArtwork)
   } finally { sqlite.close() }
+
+  const data = await decodeSudokuCoachPayload(source.code)
+  const { game: sourceGame } = await prepareImportedPuzzle(source.code)
+  assert.ok(direct.variant && sourceGame.variant)
+  const digits = [...sourceGame.variant.solution].map(Number)
+  const pair = Array.from({ length: 81 }, (_, cell) => {
+    const right = cell % 9 < 8 ? cell + 1 : -1
+    const down = cell < 72 ? cell + 9 : -1
+    return [right, down].filter(next => next >= 0 && Math.max(digits[cell], digits[next]) === 2 * Math.min(digits[cell], digits[next]))
+      .map(next => [cell, next] as [number, number])
+  }).flat()[0]
+  assert.ok(pair)
+  const combinedCode = coachCode({ ...data, givenConstraints: [
+    ...(data.givenConstraints as unknown[]),
+    { type: 'ratio', segments: [{ cells: pair, parameters: {} }], settings: {} },
+  ] })
+  const combined = await detectPuzzle(combinedCode)
+  assert.equal(combined.title, direct.title)
+  assert.deepEqual(combined.authoredArtwork, direct.authoredArtwork)
+  assert.deepEqual(combined.variant?.puzzle.rules?.filter(({ type }) => type !== 'kropki'), direct.variant.puzzle.rules)
+  assert.ok(combined.variant?.puzzle.rules?.some(({ type }) => type === 'kropki'))
+  const { game: combinedGame } = await prepareImportedPuzzle(combinedCode)
+  assert.ok(combinedGame.variant)
+  const complete = await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle: combinedGame.variant.puzzle } })
+  assert.equal(complete.status, 'unique')
+  assert.equal(complete.solution, sourceGame.variant.solution)
 })
 
 test('#547 imports the complete CS1G rule set without treating shape artwork as digit restrictions', async () => {
@@ -270,6 +297,44 @@ test('both reviewed originals preserve all rules and artwork through import, pla
   } finally {
     sqlite.close()
   }
+})
+
+test('Windoku I and Khachkar retain reviewed artwork with an appended companion rule', async () => {
+  for (const source of [windoku, khachkar]) {
+    const data = await decodeSudokuCoachPayload(source.sudoku)
+    const original = await detectPuzzle(source.sudoku)
+    const combined = await detectPuzzle(coachCode({ ...data, givenConstraints: [
+      ...(data.givenConstraints as unknown[]), { type: 'antiKnight', segments: [], settings: {} },
+    ] }))
+
+    assert.equal(combined.title, source.name)
+    assert.ok(combined.authoredArtwork)
+    assert.deepEqual(combined.variant?.puzzle.rules?.slice(0, -1), original.variant?.puzzle.rules)
+    assert.equal(combined.variant?.puzzle.rules?.at(-1)?.type, 'anti-knight')
+  }
+})
+
+test('Sudoku Spider keeps its reviewed color fills beside a Ratio companion', async () => {
+  const data = await decodeSudokuCoachPayload(spider.sudoku)
+  const original = await detectPuzzle(spider.sudoku)
+  const digits = [...spider.solution].map(Number)
+  const pair = Array.from({ length: 81 }, (_, cell) => {
+    const right = cell % 9 < 8 ? cell + 1 : -1
+    const down = cell < 72 ? cell + 9 : -1
+    return [right, down].filter(next => next >= 0 && Math.max(digits[cell], digits[next]) === 2 * Math.min(digits[cell], digits[next]))
+      .map(next => [cell, next] as [number, number])
+  }).flat()[0]
+  assert.ok(pair)
+  const code = coachCode({ ...data, givenConstraints: [
+    ...(data.givenConstraints as unknown[]), { type: 'ratio', segments: [{ cells: pair, parameters: {} }], settings: {} },
+  ] })
+  const combined = await detectPuzzle(code)
+
+  assert.equal(combined.title, spider.name)
+  assert.deepEqual(combined.givenCellColors, original.givenCellColors)
+  assert.deepEqual(combined.variant?.puzzle.rules?.slice(0, -1), original.variant?.puzzle.rules)
+  assert.equal(combined.variant?.puzzle.rules?.at(-1)?.type, 'kropki')
+  assert.equal((await puzzleSolution((await prepareImportedPuzzle(code)).game)).board, spider.solution)
 })
 
 test('the complete published Traffic export verifies within the import budget', async ({ mock }) => {

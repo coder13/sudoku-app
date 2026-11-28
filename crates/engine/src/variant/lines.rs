@@ -9,7 +9,7 @@ pub(super) use group_sums::{
     DisjointGroupSum, GroupSumChain, GroupSumHouse, GroupSumPhase, ModularSum, compile_line_sums,
 };
 
-use std::{collections::HashMap, ops::Range};
+use std::{collections::HashMap, ops::Range, sync::Arc};
 
 use super::{
     ClueDirection, CompiledVariant, PuzzleRule, TerrainValueTransform, VariantDefinitionError,
@@ -54,19 +54,22 @@ enum LineKind {
     Lockout,
     Outside(OutsideClue),
     TerrainSandwich {
-        satisfying_rows: TerrainSandwichRows,
+        satisfying_rows: Arc<TerrainSandwichRows>,
     },
 }
 
 /// Bit-sliced set of satisfying digit permutations for one transformed clue.
-#[derive(Clone, Debug, Default)]
-struct TerrainSandwichRows {
+#[derive(Debug, Default)]
+pub(super) struct TerrainSandwichRows {
     row_count: usize,
     words_per_set: usize,
     /// One bit set for each cell and each of the nine underlying digits.
     by_cell_digit: Vec<u64>,
     full_support: [u16; 9],
 }
+
+pub(super) type TerrainSandwichCache =
+    HashMap<(i16, [TerrainValueTransform; 9]), Arc<TerrainSandwichRows>>;
 
 impl TerrainSandwichRows {
     fn digit_set(&self, cell: usize, digit: u8) -> &[u64] {
@@ -111,6 +114,7 @@ impl LineConstraint {
         index: usize,
         rule: &PuzzleRule,
         enforce_regions: bool,
+        terrain_sandwich_cache: &mut TerrainSandwichCache,
     ) -> Result<Self, VariantDefinitionError> {
         let invalid = VariantDefinitionError::InvalidRule(index);
         let (cells, kind, technique) = match rule {
@@ -345,7 +349,10 @@ impl LineConstraint {
                 {
                     return Err(invalid);
                 }
-                let satisfying_rows = terrain_sandwich_rows(*maximum, &transforms);
+                let satisfying_rows = terrain_sandwich_cache
+                    .entry((*maximum, transforms))
+                    .or_insert_with(|| Arc::new(terrain_sandwich_rows(*maximum, &transforms)))
+                    .clone();
                 (
                     cells.clone(),
                     LineKind::TerrainSandwich { satisfying_rows },
@@ -807,8 +814,13 @@ fn forbidden_entropic_connection_support(domains: &[u16], support: &mut [u16]) {
 
 /// Keep only assignments where every selected digit occurs once in ascending path order.
 fn digit_order_support(digits: &[u8], domains: &[u16], support: &mut [u16]) {
+    // Compiled Digit Order rules have nine cells and three ordered digits.
+    const MAX_CELLS: usize = 9;
+    const MAX_STATES: usize = 4;
+    debug_assert!(domains.len() <= MAX_CELLS);
+    debug_assert!(digits.len() < MAX_STATES);
     let states = digits.len() + 1;
-    let mut forward = vec![vec![false; states]; domains.len() + 1];
+    let mut forward = [[false; MAX_STATES]; MAX_CELLS + 1];
     forward[0][0] = true;
     for (index, &domain) in domains.iter().enumerate() {
         for state in 0..states {
@@ -826,7 +838,7 @@ fn digit_order_support(digits: &[u8], domains: &[u16], support: &mut [u16]) {
         }
     }
 
-    let mut backward = vec![vec![false; states]; domains.len() + 1];
+    let mut backward = [[false; MAX_STATES]; MAX_CELLS + 1];
     backward[domains.len()][digits.len()] = true;
     for index in (0..domains.len()).rev() {
         for state in 0..states {
@@ -1560,6 +1572,48 @@ mod fixed_outside_tests {
 mod terrain_sandwich_tests {
     use super::*;
 
+    #[test]
+    fn terrain_sandwich_compilation_reuses_exact_matching_tables() {
+        let identity = TerrainValueTransform {
+            multiplier: 1,
+            offset: 0,
+        };
+        let rule =
+            |column, maximum, transforms: [TerrainValueTransform; 9]| PuzzleRule::TerrainSandwich {
+                cells: (0..9usize).map(|row| row * 9 + column).collect(),
+                direction: ClueDirection::South,
+                maximum,
+                transforms: transforms.to_vec(),
+            };
+        let mut changed_transforms = [identity; 9];
+        changed_transforms[0].offset = 3;
+        let compiled = crate::variant::VariantPuzzle {
+            version: crate::variant::VARIANT_FORMAT_VERSION,
+            givens: [0; CELLS],
+            regions: crate::variant::RegionLayout::Boxes,
+            rules: vec![
+                rule(0, 35, [identity; 9]),
+                rule(1, 35, [identity; 9]),
+                rule(2, 34, [identity; 9]),
+                rule(3, 35, changed_transforms),
+            ],
+        }
+        .compile()
+        .unwrap();
+        let rows = compiled
+            .lines
+            .iter()
+            .map(|line| match &line.kind {
+                LineKind::TerrainSandwich { satisfying_rows } => satisfying_rows,
+                _ => unreachable!(),
+            })
+            .collect::<Vec<_>>();
+
+        assert!(Arc::ptr_eq(rows[0], rows[1]));
+        assert!(!Arc::ptr_eq(rows[0], rows[2]));
+        assert!(!Arc::ptr_eq(rows[0], rows[3]));
+    }
+
     fn transformed_sandwich_maximum(
         digits: &[u8; 9],
         transforms: &[TerrainValueTransform; 9],
@@ -1842,7 +1896,7 @@ mod terrain_sandwich_tests {
     #[test]
     fn terrain_sandwich_accepts_the_published_d8hp_solution_and_rejects_a_changed_clue() {
         let source: serde_json::Value = serde_json::from_str(include_str!(
-            "../../../../tests/fixtures/sandwich-terrain-unsupported.json"
+            "../../../../tests/fixtures/coach-terrain.json"
         ))
         .unwrap();
         let solution: [u8; 81] = source["source"]["solution"]

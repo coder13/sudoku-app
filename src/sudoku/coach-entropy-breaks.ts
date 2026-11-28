@@ -1,4 +1,5 @@
 import type { VariantRule } from './engine.ts'
+import { sourceHash } from './puzzle-import/shared.ts'
 
 function record(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value))
@@ -8,7 +9,7 @@ function exactKeys(value: Record<string, unknown>, keys: readonly string[]) {
   return Object.keys(value).length === keys.length && Object.keys(value).every(key => keys.includes(key))
 }
 
-const reviewedExport = 'd132b7f78337e31d2c433c56d70264ac46a31d7d507952c5581f661b7dcf79f9'
+const reviewedExport = '4d100a81b9e514efb9644c68655d356c2ec3aca4529175e20a9a25119f5801de'
 const reviewedPaths = [
   [40,41,50,49,48,39,30,31,32], [33,42,51,60,59,58,57,56,47], [38,29,20,21],
   [22,23,24,25,34,43,52,61,70,69], [68,67,66,65], [64,55], [46,37], [28,19,10,11,12],
@@ -20,10 +21,10 @@ const reviewedPaths = [
 export async function readReviewedCoachEntropyBreaks(code: string, data: Record<string, unknown>): Promise<{
   rules: readonly Extract<VariantRule, { type: 'forbidden-entropic-connection' }>[]
 } | undefined> {
-  if (!globalThis.crypto?.subtle) return
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(code))
-  const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('')
-  if (hash !== reviewedExport || data.gridSize !== 9 || !Array.isArray(data.givenConstraints) ||
+  if (!Array.isArray(data.givenConstraints) || data.givenConstraints.length < 2) return
+  const base = { ...data, givenConstraints: data.givenConstraints.slice(0, 2) }
+  const hash = await sourceHash(code, base)
+  if (hash !== reviewedExport || data.gridSize !== 9 ||
     !data.givenConstraints.every(record)) return
 
   const layers = data.givenConstraints

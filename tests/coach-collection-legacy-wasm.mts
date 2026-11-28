@@ -4,8 +4,9 @@ import { test } from 'node:test'
 import { runEngine } from '../src/sudoku/engine.ts'
 import { restartGame, valuesOf } from '../src/sudoku/game.ts'
 import type { ImportedCellColors } from '../src/sudoku/imported-colors.ts'
-import { puzzleHints } from '../src/sudoku/puzzle-help.ts'
+import { puzzleHints, puzzleSolution } from '../src/sudoku/puzzle-help.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { decodeSudokuCoachPayload } from '../src/sudoku/puzzle-import/sudoku-coach.ts'
 import { findImportAttempt, prepareImportedPuzzle, prepareSharedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { publishSharedPuzzle } from '../src/sudoku/puzzle-sharing.ts'
 import { readGame } from '../src/sudoku/storage.ts'
@@ -115,6 +116,28 @@ test('reviewed Candy fills match by their cell colors and kept givens in a Curre
   await assert.rejects(detectPuzzle(coachCode({
     givenDigits: source.givens, colours: palette, givenColours: cells.join(','),
   })), /unsupported authored markings/)
+})
+
+test('reviewed Halloween fills survive an appended Ratio companion in legacy Coach codes', async () => {
+  for (const source of classic.filter(({ id }) => ['675G', '6767', '678g', '679X', '67C6', '67Cw'].includes(id))) {
+    const data = await decodeSudokuCoachPayload(source.code)
+    const digits = [...source.solution].map(Number)
+    const pair = Array.from({ length: 81 }, (_, cell) => {
+      const right = cell % 9 < 8 ? cell + 1 : -1
+      const down = cell < 72 ? cell + 9 : -1
+      return [right, down].filter(next => next >= 0 && Math.max(digits[cell], digits[next]) === 2 * Math.min(digits[cell], digits[next]))
+        .map(next => [cell, next] as [number, number])
+    }).flat()[0]
+    assert.ok(pair, source.title)
+    const code = coachCode({ ...data, givenConstraints: [
+      ...(Array.isArray(data.givenConstraints) ? data.givenConstraints : []),
+      { type: 'ratio', segments: [{ cells: pair, parameters: {} }], settings: {} },
+    ] })
+    const imported = await detectPuzzle(code)
+    assert.equal(imported.title, source.title)
+    assert.deepEqual(imported.givenCellColors, await detectPuzzle(source.code).then(({ givenCellColors }) => givenCellColors))
+    assert.equal((await puzzleSolution((await prepareImportedPuzzle(code)).game)).board, source.solution, source.title)
+  }
 })
 
 test('a plain published Classic grid opens with its original title, hints and solution', async ({ mock }) => {

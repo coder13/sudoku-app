@@ -895,6 +895,18 @@ type EngineConnection = {
   closed?: Error
   prepared?: boolean
 }
+
+function isEngineResponse(value: unknown): value is EngineResponse {
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+    !Number.isSafeInteger((value as { id?: unknown }).id)) return false
+  const response = value as Record<string, unknown>
+  if (Object.hasOwn(response, 'error')) {
+    return typeof response.error === 'string' &&
+      (response.code === undefined || typeof response.code === 'string') && !Object.hasOwn(response, 'value')
+  }
+  return Object.hasOwn(response, 'value')
+}
+
 const candidateEngine: EngineConnection = { pending: new Map() }
 const metadataEngine: EngineConnection = { pending: new Map() }
 const playEngine: EngineConnection = { pending: new Map() }
@@ -909,7 +921,12 @@ function connect(connection: EngineConnection) {
   const { pending } = connection
   const instance = new Worker(new URL('./engine.worker.ts', import.meta.url), { type: 'module' })
   instance.onmessage = ({ data }: MessageEvent<EngineResponse>) => {
-    if (connection.worker !== instance || connection.active !== data.id) return
+    if (connection.worker !== instance) return
+    if (!isEngineResponse(data)) {
+      closeConnection(connection, new Error('The Sudoku engine returned an invalid response. Try again.'))
+      return
+    }
+    if (connection.active !== data.id) return
     const request = pending.get(data.id)
     connection.active = undefined
     pending.delete(data.id)
@@ -922,6 +939,9 @@ function connect(connection: EngineConnection) {
   }
   instance.onerror = () => {
     if (connection.worker === instance) closeConnection(connection, new Error('The Sudoku engine could not start. Try again.'))
+  }
+  instance.onmessageerror = () => {
+    if (connection.worker === instance) closeConnection(connection, new Error('The Sudoku engine response could not be read. Try again.'))
   }
   return instance
 }
@@ -1033,6 +1053,7 @@ export function createCountWorker(values: string, eliminations: readonly number[
   position?: VariantPosition, visibility?: VariantVisibility, techniqueOrder?: readonly string[],
 ) {
   let connection: EngineConnection | undefined
+  let variantCounts: Promise<Map<string, number>> | undefined
   return {
     count(technique: string) {
       if (!connection) {
@@ -1045,6 +1066,33 @@ export function createCountWorker(values: string, eliminations: readonly number[
       })
       const order = [...(techniqueOrder ?? [])]
       if (!order.includes(technique)) order.push(technique)
+      if (techniqueOrder?.length && techniqueOrder.includes(technique)) {
+        if (!variantCounts) variantCounts = sendRequest(connection, { type: 'variant', operation: 'hints',
+          position: { ...position, eliminations }, ...(visibility && { visibility }),
+          techniqueOrder: order, limit: 0xffff_ffff,
+        }).then((hints) => {
+          const counts = new Map<string, number>()
+          const covered = new Set<string>()
+          for (const id of order) {
+            const targets = new Set<string>()
+            for (const hint of hints) {
+              if (hint.technique !== id) continue
+              for (const action of hint.actions) {
+                const { cell, digit } = 'place' in action ? action.place : action.eliminate
+                const target = `${cell}:${digit}`
+                if (!covered.has(target)) targets.add(target)
+                covered.add(target)
+              }
+            }
+            counts.set(id, targets.size)
+          }
+          return counts
+        }).catch((reason: unknown) => {
+          variantCounts = undefined
+          throw reason
+        })
+        return variantCounts.then(counts => counts.get(technique) ?? 0)
+      }
       const end = order.indexOf(technique)
       const prefix = order.slice(0, end + 1)
       return sendRequest(connection, { type: 'variant', operation: 'hints',

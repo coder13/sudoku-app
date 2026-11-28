@@ -10,6 +10,7 @@ import { enter, makeGame } from '../src/sudoku/game.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { variantDifficulties, variantIdForPuzzle } from '../src/sudoku/variants.ts'
 import { outsideClueLayout } from '../src/sudoku/outside-clues.ts'
+import { MINI_GRID } from '../src/sudoku/grid.ts'
 import { lessonExample } from '../src/sudoku/lesson-examples.ts'
 import { lessonDiagram, lessonValues } from '../src/sudoku/lesson-diagram.ts'
 
@@ -117,6 +118,25 @@ test('all four gutters retain extremal and repeated labels and every candidate a
     html.match(/<polyline points="([^"]+)"[^>]*stroke="#f00"/)![1],
     classic.match(/<polyline points="([^"]+)"[^>]*stroke="#f00"/)![1],
   )
+})
+
+test('sized X-Sum dots render at clue-to-cell and neighboring-clue midpoints', () => {
+  const html = renderToStaticMarkup(createElement(Board, {
+    content: {
+      grid: MINI_GRID,
+      givens: '0'.repeat(16),
+      values: '0'.repeat(16),
+      sizedRules: [
+        { type: 'x-sum-dot', ends: [{ direction: 'east', index: 1 }, 4], relation: 'consecutive' },
+        { type: 'x-sum-dot', ends: [{ direction: 'east', index: 1 }, { direction: 'east', index: 2 }], relation: 'ratio' },
+      ],
+    },
+  }))
+  assert.equal([...html.matchAll(/data-x-sum-dot="consecutive"/g)].length, 1)
+  assert.equal([...html.matchAll(/data-x-sum-dot="ratio"/g)].length, 1)
+  assert.match(html, /class="variant-dot variant-dot-white" cx="0" cy="1\.5"/)
+  assert.match(html, /class="variant-dot variant-dot-black" cx="-0\.5" cy="2"/)
+  assert.match(html, /aria-label="X-Sum at the left of row 2 and R2C1 are consecutive\. X-Sum at the left of row 2 and X-Sum at the left of row 3 are in a 1:2 ratio\."/)
 })
 
 test('every grid transform retains outside labels and the complete published clue count', () => {

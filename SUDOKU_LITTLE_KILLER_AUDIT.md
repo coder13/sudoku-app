@@ -26,10 +26,10 @@ The inspected official Coach compiler, `https://sudoku.coach/js/jCfXtZs-17763675
 
 Typed Coach test exports are constructed from the checked PDF/native definitions using that official schema. They are converted controls, not original publisher Coach exports. They cover every diagonal direction and corner, the complete Renban combination, and preservation of all companions. Coach short-link resolution and further authored/export formats remain in issue 7.
 
-Preserved negative Coach controls:
+Original Coach import controls:
 
-- [DLeM, Symmetrical Inside](https://sudoku.coach/en/s/DLeM) explicitly says its Little Killer arrows are cosmetic. Its real rule puts printed digit lists among the first three indicated cells. The full code, cosmetic text and metadata remain intact and rejected; zero arrows do not become ordinary sum constraints.
-- [GJBz, Little killer and between lines part 3](https://sudoku.coach/en/s/GJBz) is a 6×6 puzzle with a 36-digit solution. It is not a 9×9 positive control and remains explicitly unsupported by the present engine/app grid size.
+- [DLeM, Symmetrical Inside](https://sudoku.coach/en/s/DLeM) explicitly says its Little Killer arrows are cosmetic. The importer preserves all ten first-three-cell digit groups, seven Renban paths, givens, and authored completion without converting the arrows into sums. Raw-code and short-link import, player progress, companion-rule preservation, candidate restrictions, and sharing/reopen are covered by `tests/sized-coach-import.test.ts` and `tests/sized-rules-wasm.mts`.
+- [GJBz, Little killer and between lines part 3](https://sudoku.coach/en/s/GJBz) is a 6×6 puzzle with a 36-digit solution. The sized importer preserves all three Little Killer rays and both Between paths. `tests/little-killer-import.test.ts` verifies the decoded clues; `tests/sized-coach-wasm.mts` checks the blank puzzle's unique solution and Import Preview's published completion with every rule intact.
 
 ## App behavior and independent contracts
 

@@ -1,4 +1,4 @@
-const COACH_TERRAIN_D8HP_HASH = '3703ff495ec8e279f091b9f36fab3b7ca462f1cea9505a02247718c682c7ac77'
+const COACH_TERRAIN_D8HP_RULES_HASH = 'e72d37032f8a4451e7359be76017642111b148165914c328a431d0f8544474aa'
 const COACH_BASE62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 
 export type CoachTerrainValueChange =
@@ -16,14 +16,16 @@ export type CoachTerrainDefinition = {
   valueChanges: readonly CoachTerrainValueChange[]
   cellColors: readonly (CoachTerrainValueChange['color'] | null)[]
   clues: readonly CoachTerrainSandwichClue[]
+  additionalConstraints: readonly unknown[]
 }
 
-type CoachTerrainPayload = {
-  gridSize?: unknown
-  colours?: unknown
-  givenColours?: unknown
-  givenConstraints?: unknown
-}
+type CoachTerrainPayload = Record<string, unknown>
+
+const allowedFields = new Set([
+  'gridSize', 'givenDigits', 'colours', 'givenColours', 'givenConstraints',
+  'userDigits', 'userCellCandidates', 'userBoxCandidates', 'userColours', 'userCellCandidatesColours',
+  'quickDrawLineSegments', 'quickDrawSymbols', 'cells',
+])
 
 const changes: readonly CoachTerrainValueChange[] = [
   { color: 'yellow', operation: 'multiply', amount: 2 },
@@ -41,14 +43,21 @@ async function sha256(value: string) {
   return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('')
 }
 
-/** Read only the reviewed Terrain export whose authored prose supplies its rule semantics. */
-export async function readReviewedCoachTerrain(code: string, payload: CoachTerrainPayload): Promise<CoachTerrainDefinition | undefined> {
+/** Read the reviewed Terrain value map and authored clues, independent of puzzle givens. */
+export async function readReviewedCoachTerrain(payload: CoachTerrainPayload): Promise<CoachTerrainDefinition | undefined> {
+  if (Object.keys(payload).some(key => !allowedFields.has(key))) return
   if (payload.gridSize !== 9 || !Array.isArray(payload.colours) ||
     payload.colours.length !== 3 || payload.colours.some((color, index) => color !== ['green', 'purple', 'yellow'][index]) ||
-    typeof payload.givenColours !== 'string' || !Array.isArray(payload.givenConstraints) || payload.givenConstraints.length !== 2) {
+    typeof payload.givenColours !== 'string' || !Array.isArray(payload.givenConstraints) || payload.givenConstraints.length < 2) {
     return
   }
-  if (await sha256(code) !== COACH_TERRAIN_D8HP_HASH) return
+  const rulesHash = await sha256(JSON.stringify({
+    gridSize: payload.gridSize,
+    colours: payload.colours,
+    givenColours: payload.givenColours,
+    givenConstraints: payload.givenConstraints.slice(0, 2),
+  }))
+  if (rulesHash !== COACH_TERRAIN_D8HP_RULES_HASH) return
 
   const rawColors = payload.givenColours.split(',')
   if (rawColors.length !== 81 || rawColors.some(color => color.length > 1 || color !== '' && !COACH_BASE62.slice(0, 3).includes(color))) {
@@ -91,5 +100,5 @@ export async function readReviewedCoachTerrain(code: string, payload: CoachTerra
   const keys = clues.map(({ direction, index }) => `${direction}:${index}`)
   if (new Set(keys).size !== clues.length) throw new Error('The published Terrain export repeats an authored Sandwich clue.')
 
-  return { valueChanges: changes, cellColors, clues }
+  return { valueChanges: changes, cellColors, clues, additionalConstraints: payload.givenConstraints.slice(2) }
 }

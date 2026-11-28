@@ -202,10 +202,8 @@ fn exact_search_benchmark() {
 }
 
 fn terrain_sandwich_benchmark() {
-    let source: serde_json::Value = serde_json::from_str(include_str!(
-        "../../../tests/fixtures/sandwich-terrain-unsupported.json"
-    ))
-    .unwrap();
+    let source: serde_json::Value =
+        serde_json::from_str(include_str!("../../../tests/fixtures/coach-terrain.json")).unwrap();
     let payload = &source["payload"];
     assert_eq!(
         payload["colours"],
@@ -275,6 +273,16 @@ fn terrain_sandwich_benchmark() {
     let empty_entries = [0_u8; 81];
     let empty_eliminations = [0_u16; 81];
     assert!(compiled.candidates(&solution, &empty_eliminations).is_ok());
+    assert_eq!(
+        compiled.analyze(&empty_entries, &empty_eliminations, 1_000_000),
+        Ok(Analysis::Unique)
+    );
+    assert_eq!(
+        compiled.solve(&empty_entries, &empty_eliminations, 1_000_000),
+        Ok(solution)
+    );
+    let position = VariantPosition::new(puzzle.clone());
+    let technique_order = VariantTechnique::DEFAULT_ORDER;
     println!(
         "D8HP Terrain Sandwich, {} {}, 5 warmups / {SAMPLES} samples; median/p95 ms.",
         std::env::consts::OS,
@@ -291,5 +299,56 @@ fn terrain_sandwich_benchmark() {
                 .candidates(&empty_entries, &empty_eliminations)
                 .unwrap()
         })
+    );
+    println!(
+        "exact analysis {}",
+        sample(|| compiled.analyze(&empty_entries, &empty_eliminations, 1_000_000))
+    );
+    println!(
+        "exact solve {}",
+        sample(|| compiled.solve(&empty_entries, &empty_eliminations, 1_000_000))
+    );
+    println!(
+        "default logical rating {}",
+        sample(|| position.rate(technique_order).unwrap())
+    );
+    println!(
+        "top 10 ranked hints {}",
+        sample(|| {
+            compiled
+                .ranked_hints(&empty_entries, &empty_eliminations, technique_order, 10)
+                .unwrap()
+        })
+    );
+
+    let mut generation = VariantGenerationOptions::new(8_675_309, puzzle, 60..=60);
+    generation.max_attempts = 3;
+    generation.max_nodes = MAX_NODES;
+    let generate = || {
+        let mut search = start_variant_generation(generation.clone()).unwrap();
+        loop {
+            match search.advance().expect("generation emits a terminal event") {
+                GenerationStep::Pending { .. } => {}
+                GenerationStep::Matched { puzzle, .. } => break Some(puzzle),
+                GenerationStep::Exhausted { .. } => break None,
+                GenerationStep::Cancelled { .. } => unreachable!("benchmark never cancels"),
+            }
+        }
+    };
+    let generated = generate().expect("fixed seed should generate a unique Terrain puzzle");
+    assert_eq!(generated.givens, 60);
+    assert_eq!(
+        generated
+            .puzzle
+            .givens
+            .iter()
+            .filter(|&&digit| digit != 0)
+            .count(),
+        60
+    );
+    assert_eq!(generated.puzzle.rules, position.puzzle.rules);
+    println!(
+        "generate unique 60-given puzzle {}",
+        sample(|| generate().expect("fixed seed should generate a unique Terrain puzzle"))
     );
 }

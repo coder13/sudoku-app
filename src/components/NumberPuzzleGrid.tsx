@@ -1,11 +1,13 @@
 import type { CSSProperties, KeyboardEventHandler } from 'react'
 import type { NumberBoard, NumberGame } from './NumberPuzzleTypes'
 import { cellColorGradient } from './cell-color-gradient'
-import { importedColorFill, importedColorLabel } from '../sudoku/imported-colors'
+import { importedColorFill, importedColorLabel, type CandidateColors, type ImportedCellColors } from '../sudoku/imported-colors'
 
 export type NumberPuzzleGridAppearance = {
   values: readonly number[]
   notes?: readonly number[]
+  importedCellColors?: ImportedCellColors
+  importedCandidateColors?: CandidateColors<string>
   conflicts?: ReadonlySet<number>
   highlightedCell?: number | null
   contextCells?: ReadonlySet<number>
@@ -33,7 +35,8 @@ export function NumberPuzzleGrid({ content, appearance, interaction, ariaLabel, 
   const { board, game, name } = content
   const { width, height, maxValue, cells, cellChoices, mirrorEdgeClues } = board
   const digits = Array.from({ length: maxValue }, (_, index) => index + 1)
-  const { values, notes = [], conflicts = noCells, highlightedCell, contextCells = noCells } = appearance
+  const { values, notes = [], importedCellColors, importedCandidateColors, conflicts = noCells, highlightedCell,
+    contextCells = noCells } = appearance
   const label = ariaLabel ?? `${name} board`
   const cellName = (index: number) => `R${Math.floor(index / width) + 1}C${index % width + 1}`
 
@@ -48,15 +51,20 @@ export function NumberPuzzleGrid({ content, appearance, interaction, ariaLabel, 
     </div>
   }
 
-  function renderCell({ label: clue, authoredColors = [], block, decoration, edges, given, endpoint, printed }: NumberBoard['cells'][number], index: number) {
+  function renderCell({ label: clue, authoredColors = [], block, decoration, edges, given, endpoint, printed, kropki }: NumberBoard['cells'][number], index: number) {
     if (block) return renderBlock(index)
     const value = given || values[index]
     const marks = digits.filter(digit => (notes[index] ?? 0) & (1 << (digit - 1)))
+    const cellColors = [...new Set([...authoredColors, ...(importedCellColors?.[index] ?? [])])]
     const description = printed !== undefined ? String(printed)
       : given ? `given ${given}` : value ? String(value) : marks.length ? `notes ${marks.join(', ')}` : 'empty'
-    const colorLabels = authoredColors.map(importedColorLabel)
-    const label = `${cellName(index)}, ${description}${clue ? ', ' + clue : ''}${colorLabels.length ? `, colored ${colorLabels.join(' and ')}` : ''}`
-    const colorFills = authoredColors.map(importedColorFill)
+    const colorLabels = cellColors.map(importedColorLabel)
+    const candidateColorLabels = marks.flatMap(digit => {
+      const color = importedCandidateColors?.[index]?.[digit]
+      return color ? [`candidate ${digit} marked ${importedColorLabel(color)}`] : []
+    })
+    const label = `${cellName(index)}, ${description}${clue ? ', ' + clue : ''}${colorLabels.length ? `, colored ${colorLabels.join(' and ')}` : ''}${candidateColorLabels.length ? `, ${candidateColorLabels.join(', ')}` : ''}`
+    const colorFills = cellColors.map(importedColorFill)
     const authoredColorStyle = colorFills.length ? {
       '--number-puzzle-authored-fill': `color-mix(in srgb, ${colorFills[0]} 34%, var(--board-selected-bg))`,
       '--number-puzzle-authored-image': cellColorGradient(colorFills.map(fill =>
@@ -66,8 +74,13 @@ export function NumberPuzzleGrid({ content, appearance, interaction, ariaLabel, 
       {decoration}
       {printed !== undefined ? <span>{printed}</span> : value ? endpoint ? <span className="number-puzzle-endpoint">{value}</span> : value
         : maxValue > 9 ? <span className="number-puzzle-multi-notes" aria-hidden="true">{marks.join(' ')}</span>
-          : marks.length ? <span className="number-puzzle-notes" aria-hidden="true">{Array.from({ length: 9 }, (_, slot) => slot + 1).map(digit =>
-            <span key={digit}>{marks.includes(digit) ? digit : ''}</span>)}</span> : null}
+          : marks.length ? <span className="number-puzzle-notes" aria-hidden="true">{Array.from({ length: 9 }, (_, slot) => slot + 1).map(digit => {
+            const color = marks.includes(digit) ? importedCandidateColors?.[index]?.[digit] : undefined
+            return <span key={digit} data-candidate-color={Boolean(color) || undefined}
+              style={color ? { backgroundColor: importedColorFill(color), borderRadius: '2px' } : undefined}>
+              {marks.includes(digit) ? digit : ''}
+            </span>
+          })}</span> : null}
     </>
     const visualProps = {
       className: 'number-puzzle-cell',
@@ -79,6 +92,7 @@ export function NumberPuzzleGrid({ content, appearance, interaction, ariaLabel, 
       'data-edges': edges,
       'data-given': Boolean(given),
       'data-endpoint': endpoint,
+      'data-kropki': kropki,
       'data-decorated': Boolean(decoration),
       'data-authored-color': Boolean(colorFills.length),
       'aria-label': label,

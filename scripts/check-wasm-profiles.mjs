@@ -5,8 +5,13 @@ import { join } from 'node:path'
 import { gzipSync } from 'node:zlib'
 import { buildBrowserEngine } from './build-wasm.mjs'
 import { engineBuildProfiles } from './engine-build-profiles.mjs'
+import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 
 const root = mkdtempSync(join(tmpdir(), 'sudoku-wasm-profiles-'))
+const terrainFixture = JSON.parse(readFileSync(new URL('../tests/fixtures/coach-terrain.json', import.meta.url), 'utf8'))
+const importedTerrain = await detectPuzzle(terrainFixture.source.sudoku)
+assert.ok(importedTerrain.variant, 'the published Terrain Coach source should import for profile checks')
+const terrainPuzzle = importedTerrain.variant.puzzle
 const givens = '530070000600195000098000060800060003400803001700020006060000280000419005000080079'
 const solved = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
 const results = []
@@ -57,6 +62,13 @@ try {
       if (enabled) assert.ok('value' in reply, JSON.stringify(reply))
       else assert.equal(reply.code, 'unsupported-capability', JSON.stringify(reply))
       assert.equal(request({ type: 'rate', values: solved }).value?.status.solved, 'beginner')
+    }
+    const terrain = request({ type: 'variant', operation: 'solve-unique', position: { puzzle: terrainPuzzle } })
+    if (expected.variants) {
+      assert.deepEqual(terrain.value, { status: 'unique', solution: terrainFixture.source.solution },
+        `${profile} must solve the complete imported Terrain combination`)
+    } else {
+      assert.equal(terrain.code, 'unsupported-capability', `${profile} must reject variant solving`)
     }
     results.push({ profile, bytes: bytes.length, gzip: gzipSync(bytes).length })
   }

@@ -41,6 +41,334 @@ test('#480/#481 import the original boxless 5×5 puzzle and preserve its exact a
   assert.equal(checkLatin(imported.futoshiki.puzzle, [...modular.solution].map(Number)).complete, true)
 })
 
+test('boxless Futoshiki imports a Ratio clue into the Latin engine and portable definition', async () => {
+  const dots = [
+    { type: 'difference', settings: {}, segments: [{ cells: [0, 1], parameters: {} }] },
+    { type: 'ratio', settings: {}, segments: [{ cells: [1, 2], parameters: {} }] },
+  ]
+  const imported = await detectPuzzle(coachCode({ gridSize: 4, regions: [], givenDigits: '0'.repeat(16), givenConstraints: dots }))
+  assert.ok(imported.futoshiki)
+  assert.deepEqual(imported.futoshiki.puzzle.kropki?.consecutive?.pairs, [[0, 1]])
+  assert.deepEqual(imported.futoshiki.puzzle.kropki?.ratioTwo?.pairs, [[1, 2]])
+  const solved = solveLatin(imported.futoshiki.puzzle)
+  assert.equal(solved.status, 'multiple')
+  assert.ok(solved.solution)
+  assert.equal(Math.max(solved.solution[1], solved.solution[2]), 2 * Math.min(solved.solution[1], solved.solution[2]))
+  assert.deepEqual(readImportedFutoshiki(imported.futoshiki.id)?.puzzle.kropki, imported.futoshiki.puzzle.kropki)
+  assert.equal(checkLatin(imported.futoshiki.puzzle, [...'1234341221434321'].map(Number)).complete, false)
+})
+
+test('boxless Coach combines Futoshiki inequalities with both Kropki relations', async () => {
+  const solution = [...'1234341221434321'].map(Number)
+  const code = coachCode({ gridSize: 4, regions: [], givenDigits: solution.join(''), givenConstraints: [
+    { type: 'greaterLess', settings: {}, segments: [{ cells: [0, 1], parameters: {} }] },
+    { type: 'difference', settings: {}, segments: [{ cells: [0, 1], parameters: {} }] },
+    { type: 'ratio', settings: {}, segments: [{ cells: [1, 5], parameters: {} }] },
+  ] })
+  const imported = await detectPuzzle(code)
+  assert.ok(imported.futoshiki)
+  assert.deepEqual(imported.futoshiki.puzzle.inequalities, [{ less: 0, greater: 1 }])
+  assert.deepEqual(imported.futoshiki.puzzle.kropki, {
+    consecutive: { pairs: [[0, 1]], negative: false }, ratioTwo: { pairs: [[1, 5]], negative: false },
+  })
+  assert.equal(solveLatin(imported.futoshiki.puzzle).status, 'unique')
+  assert.equal(checkLatin(imported.futoshiki.puzzle, solution).complete, true)
+  assert.deepEqual(readImportedFutoshiki(imported.futoshiki.id)?.puzzle.kropki, imported.futoshiki.puzzle.kropki)
+  const preview = await prepareImportedPuzzle(code)
+  assert.deepEqual(preview.futoshiki?.puzzle.kropki, imported.futoshiki.puzzle.kropki)
+})
+
+test('boxless Coach keeps coincident white and black dots as independent rules', async () => {
+  const code = coachCode({ gridSize: 4, regions: [], givenDigits: '1234341221434321', givenConstraints: [
+    { type: 'difference', settings: {}, segments: [{ cells: [0, 1], parameters: {} }] },
+    { type: 'ratio', settings: {}, segments: [{ cells: [1, 0], parameters: {} }] },
+  ] })
+  const imported = await detectPuzzle(code)
+  assert.ok(imported.futoshiki)
+  assert.deepEqual(imported.futoshiki.puzzle.kropki, {
+    consecutive: { pairs: [[0, 1]], negative: false },
+    ratioTwo: { pairs: [[0, 1]], negative: false },
+  })
+  assert.equal(checkLatin(imported.futoshiki.puzzle, [...'1234341221434321'].map(Number)).complete, true)
+
+  const incompatible = Array<number>(16).fill(0)
+  incompatible[0] = 2
+  incompatible[1] = 3
+  const conflicts = checkLatin(imported.futoshiki.puzzle, incompatible).conflicts
+  assert.equal(conflicts.filter(rule => rule.kind === 'kropki').length, 2)
+  assert.ok(conflicts.filter(rule => rule.kind === 'kropki').every(rule => rule.cells.join(',') === '0,1'))
+})
+
+test('boxless Calcudoku composes a Ratio clue with arithmetic cages in the Latin engine', async () => {
+  const dots = [
+    { type: 'difference', settings: {}, segments: [{ cells: [0, 1], parameters: {} }] },
+    { type: 'ratio', settings: {}, segments: [{ cells: [1, 2], parameters: {} }] },
+  ]
+  const cages = Array.from({ length: 4 }, (_, row) => ({ cells: Array.from({ length: 4 }, (_, column) => row * 4 + column),
+    parameters: { sum: 10 } }))
+  const imported = await detectPuzzle(coachCode({ gridSize: 4, regions: [], givenDigits: '0'.repeat(16),
+    givenConstraints: [...dots, { type: 'cage', settings: {}, segments: cages }] }))
+  assert.ok(imported.calcudoku)
+  assert.deepEqual(imported.calcudoku.puzzle.kropki?.consecutive?.pairs, [[0, 1]])
+  assert.deepEqual(imported.calcudoku.puzzle.kropki?.ratioTwo?.pairs, [[1, 2]])
+  const solved = solveLatin(imported.calcudoku.puzzle)
+  assert.equal(solved.status, 'multiple')
+  assert.ok(solved.solution)
+  assert.equal(Math.max(solved.solution[1], solved.solution[2]), 2 * Math.min(solved.solution[1], solved.solution[2]))
+  assert.deepEqual(readImportedCalcudoku(imported.calcudoku.id)?.puzzle.kropki, imported.calcudoku.puzzle.kropki)
+  assert.equal(checkLatin(imported.calcudoku.puzzle, [...'1234341221434321'].map(Number)).complete, false)
+  const preview = await prepareImportedPuzzle(coachCode({ gridSize: 4, regions: [], givenDigits: '1243341243212134',
+    givenConstraints: [...dots, { type: 'cage', settings: {}, segments: cages }] }))
+  assert.deepEqual(preview.calcudoku?.puzzle.kropki, imported.calcudoku.puzzle.kropki)
+})
+
+test('boxless Coach negative Ratio excludes matching unmarked orthogonal edges', async () => {
+  const ratio = { type: 'ratio', settings: { negativeConstraint: true },
+    segments: [{ cells: [0, 1], parameters: {} }] }
+  const solution = [...'1234341221434321'].map(Number)
+  const imported = await detectPuzzle(coachCode({ gridSize: 4, regions: [], givenDigits: '0'.repeat(16), givenConstraints: [ratio] }))
+  assert.ok(imported.futoshiki)
+  assert.equal(imported.futoshiki.puzzle.kropki?.ratioTwo?.negative, true)
+  assert.equal(checkLatin(imported.futoshiki.puzzle, solution).complete, false)
+  assert.ok(checkLatin(imported.futoshiki.puzzle, solution).conflicts.some(rule => rule.kind === 'kropki'))
+})
+
+test('boxless Coach preserves independent exclusions from split negative Kropki layers', async () => {
+  const difference = (cells: number[]) => ({ type: 'difference', settings: { negativeConstraint: true },
+    segments: [{ cells, parameters: {} }] })
+  const imported = await detectPuzzle(coachCode({ gridSize: 4, regions: [], givenDigits: '0'.repeat(16),
+    givenConstraints: [difference([0, 1]), difference([1, 2]), difference([2, 1])] }))
+  assert.ok(imported.futoshiki)
+  assert.deepEqual(imported.futoshiki.puzzle.kropki?.layers, [
+    { relation: 'consecutive', pairs: [[0, 1]], negative: true },
+    { relation: 'consecutive', pairs: [[1, 2]], negative: true },
+    { relation: 'consecutive', pairs: [[2, 1]], negative: true },
+  ])
+  assert.deepEqual(readImportedFutoshiki(imported.futoshiki.id)?.puzzle.kropki, imported.futoshiki.puzzle.kropki)
+  const assignment = Array<number>(16).fill(0)
+  assignment[0] = 1
+  assignment[1] = 2
+  assert.ok(checkLatin(imported.futoshiki.puzzle, assignment).conflicts.some(rule => rule.kind === 'kropki'))
+})
+
+test('boxless Coach keeps positive and negative layers of the same Kropki relation independent', async () => {
+  const imported = await detectPuzzle(coachCode({ gridSize: 4, regions: [], givenDigits: '0'.repeat(16), givenConstraints: [
+    { type: 'difference', settings: {}, segments: [{ cells: [0, 1], parameters: {} }] },
+    { type: 'difference', settings: { negativeConstraint: true }, segments: [{ cells: [1, 2], parameters: {} }] },
+  ] }))
+  assert.ok(imported.futoshiki)
+  assert.deepEqual(imported.futoshiki.puzzle.kropki?.layers, [
+    { relation: 'consecutive', pairs: [[0, 1]], negative: false },
+    { relation: 'consecutive', pairs: [[1, 2]], negative: true },
+  ])
+  const assignment = Array<number>(16).fill(0)
+  assignment[0] = 1
+  assignment[1] = 2
+  assert.equal(checkLatin(imported.futoshiki.puzzle, assignment).conflicts.filter(rule => rule.kind === 'kropki').length, 1)
+})
+
+test('boxless Coach merges positive numbered layers and keeps negative layers independent', async () => {
+  const difference = (cells: number[], amount: number, negativeConstraint = false) => ({ type: 'difference', settings: negativeConstraint ? { negativeConstraint } : {},
+    segments: [{ cells, parameters: { difference: amount } }] })
+  const imported = await detectPuzzle(coachCode({ gridSize: 4, regions: [], givenDigits: '0'.repeat(16), givenConstraints: [
+    difference([0, 1], 3), difference([2, 3], 2),
+  ] }))
+  assert.ok(imported.futoshiki)
+  assert.deepEqual(imported.futoshiki.puzzle.kropki?.difference, {
+    pairs: [{ cells: [0, 1], value: 3 }, { cells: [2, 3], value: 2 }], negative: false,
+  })
+  assert.deepEqual(readImportedFutoshiki(imported.futoshiki.id)?.puzzle.kropki?.difference,
+    imported.futoshiki.puzzle.kropki?.difference)
+  await assert.rejects(detectPuzzle(coachCode({ gridSize: 4, regions: [], givenDigits: '0'.repeat(16), givenConstraints: [
+    difference([0, 1], 2), difference([1, 0], 3),
+  ] })), /assigns conflicting numbered Difference values to one edge/)
+  const layered = await detectPuzzle(coachCode({ gridSize: 4, regions: [], givenDigits: '0'.repeat(16), givenConstraints: [
+    difference([0, 1], 2), difference([2, 3], 3, true),
+  ] }))
+  assert.ok(layered.futoshiki)
+  assert.deepEqual(layered.futoshiki.puzzle.kropki?.layers, [
+    { relation: 'difference', pairs: [{ cells: [0, 1], value: 2 }], negative: false },
+    { relation: 'difference', pairs: [{ cells: [2, 3], value: 3 }], negative: true },
+  ])
+})
+
+test('boxless Coach retains an empty negative Ratio layer beside numbered marks', async () => {
+  const imported = await detectPuzzle(coachCode({ gridSize: 4, regions: [], givenDigits: '0'.repeat(16), givenConstraints: [
+    { type: 'ratio', settings: { negativeConstraint: true }, segments: [] },
+    { type: 'ratio', settings: {}, segments: [{ cells: [0, 1], parameters: { ratio: 3 } }] },
+  ] }))
+  assert.ok(imported.futoshiki)
+  assert.deepEqual(imported.futoshiki.puzzle.kropki?.layers, [
+    { relation: 'ratio', pairs: [], negative: true },
+    { relation: 'ratio', pairs: [{ cells: [0, 1], value: 3 }], negative: false },
+  ])
+  const ratioThree = Array<number>(16).fill(0)
+  ratioThree[0] = 1
+  ratioThree[1] = 3
+  assert.equal(checkLatin(imported.futoshiki.puzzle, ratioThree).conflicts.some(rule => rule.kind === 'labeled-dots'), false)
+  const ratioTwo = [...ratioThree]
+  ratioTwo[1] = 2
+  assert.ok(checkLatin(imported.futoshiki.puzzle, ratioTwo).conflicts.some(rule => rule.kind === 'labeled-dots'))
+
+  const cages = Array.from({ length: 4 }, (_, row) => ({ cells: Array.from({ length: 4 }, (_, column) => row * 4 + column),
+    parameters: { sum: 10 } }))
+  const calcudoku = await detectPuzzle(coachCode({ gridSize: 4, regions: [], givenDigits: '0'.repeat(16), givenConstraints: [
+    { type: 'ratio', settings: { negativeConstraint: true }, segments: [] },
+    { type: 'ratio', settings: {}, segments: [{ cells: [0, 1], parameters: { ratio: 3 } }] },
+    { type: 'cage', settings: {}, segments: cages },
+  ] }))
+  assert.ok(calcudoku.calcudoku)
+  assert.deepEqual(calcudoku.calcudoku.puzzle.kropki?.layers, imported.futoshiki.puzzle.kropki?.layers)
+  assert.deepEqual(readImportedCalcudoku(calcudoku.calcudoku.id)?.puzzle.kropki, calcudoku.calcudoku.puzzle.kropki)
+})
+
+test('boxless Coach retains an empty negative Difference layer beside numbered marks', async () => {
+  const imported = await detectPuzzle(coachCode({ gridSize: 4, regions: [], givenDigits: '0'.repeat(16), givenConstraints: [
+    { type: 'difference', settings: { negativeConstraint: true }, segments: [] },
+    { type: 'difference', settings: {}, segments: [{ cells: [0, 1], parameters: { difference: 3 } }] },
+  ] }))
+  assert.ok(imported.futoshiki)
+  assert.deepEqual(imported.futoshiki.puzzle.kropki?.layers, [
+    { relation: 'difference', pairs: [], negative: true },
+    { relation: 'difference', pairs: [{ cells: [0, 1], value: 3 }], negative: false },
+  ])
+
+  const differenceOne = Array<number>(16).fill(0)
+  differenceOne[2] = 1
+  differenceOne[3] = 4
+  differenceOne[4] = 2
+  differenceOne[5] = 3
+  assert.ok(checkLatin(imported.futoshiki.puzzle, differenceOne).conflicts.some(rule => rule.kind === 'labeled-dots'))
+
+  const markedDifferenceThree = [...differenceOne]
+  markedDifferenceThree[4] = 0
+  markedDifferenceThree[5] = 0
+  assert.equal(checkLatin(imported.futoshiki.puzzle, markedDifferenceThree).conflicts.some(rule => rule.kind === 'labeled-dots'), false)
+})
+
+test('boxless Coach preserves large repeated negative Difference layer sets', async () => {
+  const layers = Array.from({ length: 128 }, () => ({
+    type: 'difference', settings: { negativeConstraint: true }, segments: [],
+  }))
+  const imported = await detectPuzzle(coachCode({ gridSize: 4, regions: [], givenDigits: '0'.repeat(16), givenConstraints: layers }))
+  assert.ok(imported.futoshiki)
+  assert.equal(imported.futoshiki.puzzle.kropki?.layers?.length, layers.length)
+  assert.equal(readImportedFutoshiki(imported.futoshiki.id)?.puzzle.kropki?.layers?.length, layers.length)
+  assert.equal(imported.futoshiki.puzzle.rules.filter(rule => rule.label.startsWith('The unmarked edge')).length, 24)
+
+  const forbiddenEdge = Array<number>(16).fill(0)
+  forbiddenEdge[0] = 1
+  forbiddenEdge[1] = 2
+  assert.ok(checkLatin(imported.futoshiki.puzzle, forbiddenEdge).conflicts.some(rule => rule.kind === 'kropki'))
+})
+
+test('boxless Coach numbered Difference and Ratio clues use their exact values in the Latin engine', async () => {
+  const solution = [...'1324324124134132'].map(Number)
+  const constraints = [
+    { type: 'ratio', settings: {}, segments: [{ cells: [1, 0], parameters: { ratio: 3 } }] },
+    { type: 'difference', settings: {}, segments: [{ cells: [2, 3], parameters: { difference: 2 } }] },
+  ]
+  const code = coachCode({ gridSize: 4, regions: [], givenDigits: solution.join(''), givenConstraints: constraints })
+  const imported = await detectPuzzle(code)
+  assert.ok(imported.futoshiki)
+  assert.deepEqual(imported.futoshiki.puzzle.kropki, {
+    difference: { pairs: [{ cells: [2, 3], value: 2 }], negative: false },
+    ratio: { pairs: [{ cells: [0, 1], value: 3 }], negative: false },
+  })
+  assert.equal(checkLatin(imported.futoshiki.puzzle, solution).complete, true)
+  assert.deepEqual(readImportedFutoshiki(imported.futoshiki.id)?.puzzle.kropki, imported.futoshiki.puzzle.kropki)
+  const preview = await prepareImportedPuzzle(code)
+  assert.deepEqual(preview.futoshiki?.puzzle.kropki, imported.futoshiki.puzzle.kropki)
+
+  const cages = Array.from({ length: 4 }, (_, row) => ({ cells: Array.from({ length: 4 }, (_, column) => row * 4 + column),
+    parameters: { sum: 10 } }))
+  const calcudokuCode = coachCode({ gridSize: 4, regions: [], givenDigits: solution.join(''), givenConstraints: [
+    ...constraints, { type: 'cage', settings: {}, segments: cages },
+  ] })
+  const calcudoku = await detectPuzzle(calcudokuCode)
+  assert.ok(calcudoku.calcudoku)
+  assert.deepEqual(calcudoku.calcudoku.puzzle.kropki, imported.futoshiki.puzzle.kropki)
+  assert.equal(checkLatin(calcudoku.calcudoku.puzzle, solution).complete, true)
+  assert.deepEqual(readImportedCalcudoku(calcudoku.calcudoku.id)?.puzzle.kropki, imported.futoshiki.puzzle.kropki)
+  const calcudokuPreview = await prepareImportedPuzzle(calcudokuCode)
+  assert.deepEqual(calcudokuPreview.calcudoku?.puzzle.kropki, imported.futoshiki.puzzle.kropki)
+
+  const blank = await detectPuzzle(coachCode({ gridSize: 4, regions: [], givenDigits: '0'.repeat(16), givenConstraints: [constraints[0]] }))
+  assert.ok(blank.futoshiki)
+  const markedRatio = Array<number>(16).fill(0)
+  markedRatio[0] = 1
+  markedRatio[1] = 3
+  assert.equal(checkLatin(blank.futoshiki.puzzle, markedRatio).conflicts.filter(rule => rule.kind === 'labeled-dots').length, 0)
+  const wrongRatio = [...markedRatio]
+  wrongRatio[1] = 2
+  assert.ok(checkLatin(blank.futoshiki.puzzle, wrongRatio).conflicts.some(rule => rule.kind === 'labeled-dots'))
+
+  const negative = await detectPuzzle(coachCode({ gridSize: 4, regions: [], givenDigits: '0'.repeat(16), givenConstraints: [
+    { type: 'difference', settings: { negativeConstraint: true }, segments: [{ cells: [2, 3], parameters: { difference: 2 } }] },
+  ] }))
+  assert.ok(negative.futoshiki)
+  const wrongNegative = Array<number>(16).fill(0)
+  wrongNegative[6] = 1
+  wrongNegative[7] = 2
+  assert.ok(checkLatin(negative.futoshiki.puzzle, wrongNegative).conflicts.some(rule => rule.kind === 'labeled-dots'))
+  wrongNegative[7] = 3
+  assert.equal(checkLatin(negative.futoshiki.puzzle, wrongNegative).conflicts.some(rule => rule.kind === 'labeled-dots'), false)
+})
+
+test('boxless Calcudoku merges default and numbered marks within the same relation', async () => {
+  const solution = [...'1234341221434321'].map(Number)
+  const cages = Array.from({ length: 4 }, (_, row) => ({
+    cells: Array.from({ length: 4 }, (_, column) => row * 4 + column), parameters: { sum: 10 },
+  }))
+  const constraints = [
+    { type: 'difference', settings: {}, segments: [
+      { cells: [0, 1], parameters: { difference: 1 } },
+      { cells: [0, 4], parameters: { difference: 2 } },
+    ] },
+    { type: 'ratio', settings: {}, segments: [
+      { cells: [3, 7], parameters: { ratio: 2 } },
+      { cells: [0, 4], parameters: { ratio: 3 } },
+    ] },
+  ]
+  const code = coachCode({ gridSize: 4, regions: [], givenDigits: solution.join(''), givenConstraints: [
+    ...constraints, { type: 'cage', settings: {}, segments: cages },
+  ] })
+  const imported = await detectPuzzle(code)
+  assert.ok(imported.calcudoku)
+  assert.deepEqual(imported.calcudoku.puzzle.kropki, {
+    difference: { pairs: [{ cells: [0, 1], value: 1 }, { cells: [0, 4], value: 2 }], negative: false },
+    ratio: { pairs: [{ cells: [3, 7], value: 2 }, { cells: [0, 4], value: 3 }], negative: false },
+  })
+  assert.equal(checkLatin(imported.calcudoku.puzzle, solution).complete, true)
+  assert.deepEqual(readImportedCalcudoku(imported.calcudoku.id)?.puzzle.kropki, imported.calcudoku.puzzle.kropki)
+  const preview = await prepareImportedPuzzle(code)
+  assert.deepEqual(preview.calcudoku?.puzzle.kropki, imported.calcudoku.puzzle.kropki)
+
+  const blank = await detectPuzzle(coachCode({ gridSize: 4, regions: [], givenDigits: '0'.repeat(16), givenConstraints: [
+    ...constraints, { type: 'cage', settings: {}, segments: cages },
+  ] }))
+  assert.ok(blank.calcudoku)
+  const solved = solveLatin(blank.calcudoku.puzzle).solution
+  assert.ok(solved)
+  assert.equal(checkLatin(blank.calcudoku.puzzle, solved).complete, true)
+})
+
+test('boxless Coach keeps default Difference exceptions with numbered Difference and Non-Consecutive', async () => {
+  const imported = await detectPuzzle(coachCode({ gridSize: 4, regions: [], givenDigits: '0'.repeat(16), givenConstraints: [
+    { type: 'nonconsecutive', settings: {}, segments: [] },
+    { type: 'difference', settings: {}, segments: [
+      { cells: [0, 1], parameters: { difference: 1 } },
+      { cells: [2, 3], parameters: { difference: 3 } },
+    ] },
+  ] }))
+  assert.ok(imported.futoshiki)
+  assert.deepEqual(imported.futoshiki.puzzle.exclusions, [{ type: 'nonconsecutive', except: [[0, 1]] }])
+  assert.deepEqual(imported.futoshiki.puzzle.kropki?.difference, {
+    pairs: [{ cells: [0, 1], value: 1 }, { cells: [2, 3], value: 3 }], negative: false,
+  })
+  assert.deepEqual(readImportedFutoshiki(imported.futoshiki.id)?.puzzle.exclusions, imported.futoshiki.puzzle.exclusions)
+})
+
 test('#483/#484 import the original Non-con exception and both Minimum cells', async () => {
   const imported = await detectPuzzle(noncon.code)
   assert.ok(imported.variant)
@@ -229,6 +557,54 @@ test('boxless Coach Futoshiki cell colors survive import and saved-definition re
   assert.equal(readImportedFutoshiki(encodeImportedNumberPuzzle('f1', {
     size: 4, givens: '1234341221434321', inequalities: [], parity: [], givenCellColors: { 16: ['red'] },
   })), undefined)
+})
+
+test('boxless Coach player cell and candidate colors survive import and portable reload', async () => {
+  const emptyGrid = { gridSize: 4, regions: [], givenDigits: '0'.repeat(16) }
+  const emptyProgressColors = {
+    colours: ['red'],
+    userColours: Array(16).fill('').join(','),
+    userCellCandidatesColours: '',
+  }
+  const futo = { ...emptyGrid, ...emptyProgressColors }
+  const calcudoku = { ...futo, givenConstraints: Array.from({ length: 4 }, (_, row) => ({
+    type: 'cage', segments: [{ cells: Array.from({ length: 4 }, (_, column) => row * 4 + column), parameters: { sum: 10 } }],
+  })) }
+  const userColours = Array(16).fill('')
+  userColours[0] = '0'
+  const candidates = Array(16).fill('0')
+  candidates[1] = '4'
+  const playerProgress = {
+    userColours: userColours.join(','),
+    userCellCandidates: candidates.join('-'),
+    userCellCandidatesColours: '1+2+0',
+  }
+
+  const importedFutoshiki = await detectPuzzle(coachCode({ ...futo, ...playerProgress }))
+  assert.ok(importedFutoshiki.futoshiki)
+  const uncoloredFutoshiki = await detectPuzzle(coachCode(futo))
+  assert.ok(uncoloredFutoshiki.futoshiki)
+  assert.equal(JSON.stringify(importedFutoshiki.futoshiki.puzzle), JSON.stringify(uncoloredFutoshiki.futoshiki.puzzle))
+  assert.deepEqual(importedFutoshiki.futoshiki.initialPosition, {
+    values: Array(16).fill(0), notes: [0, 2, ...Array(14).fill(0)],
+    importedCellColors: { 0: ['red'] }, importedCandidateColors: { 1: { 2: 'red' } },
+  })
+  assert.deepEqual(readImportedFutoshiki(importedFutoshiki.futoshiki.id)?.initialPosition,
+    importedFutoshiki.futoshiki.initialPosition)
+  const uniqueGivens = [...'1234341221434321']
+  uniqueGivens[1] = '0'
+  const futoPreview = await prepareImportedPuzzle(coachCode({ ...futo, givenDigits: uniqueGivens.join(''), ...playerProgress }))
+  assert.deepEqual(futoPreview.futoshiki?.initialPosition?.importedCandidateColors, { 1: { 2: 'red' } })
+
+  const importedCalcudoku = await detectPuzzle(coachCode({ ...calcudoku, ...playerProgress }))
+  assert.ok(importedCalcudoku.calcudoku)
+  const uncoloredCalcudoku = await detectPuzzle(coachCode(calcudoku))
+  assert.ok(uncoloredCalcudoku.calcudoku)
+  assert.equal(JSON.stringify(importedCalcudoku.calcudoku.puzzle), JSON.stringify(uncoloredCalcudoku.calcudoku.puzzle))
+  assert.deepEqual(importedCalcudoku.calcudoku.initialPosition?.importedCellColors, { 0: ['red'] })
+  assert.deepEqual(importedCalcudoku.calcudoku.initialPosition?.importedCandidateColors, { 1: { 2: 'red' } })
+  assert.deepEqual(readImportedCalcudoku(importedCalcudoku.calcudoku.id)?.initialPosition,
+    importedCalcudoku.calcudoku.initialPosition)
 })
 
 test('#456/#459/#460 keep Coach Thermometers, Arrows, and Renban rules in boxless Futoshiki and Calcudoku', async () => {
