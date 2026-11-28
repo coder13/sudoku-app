@@ -404,6 +404,16 @@ test('the zero-given Entropic Coach source has one exact solution from its encod
   assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: {
     puzzle: imported.variant.puzzle,
   } }), { status: 'unique', solution: source.solution })
+  for (const ruleType of ['global-entropy', 'entropic', 'digit-order'] as const) {
+    const withoutRule = {
+      ...imported.variant.puzzle,
+      rules: imported.variant.puzzle.rules?.filter(rule => rule.type !== ruleType),
+    }
+    assert.equal(await runEngine({ type: 'variant', operation: 'analyze', position: {
+      puzzle: withoutRule,
+      entries: imported.givens,
+    } }), 'multiple', `removing the ${ruleType} family must expose alternate solutions`)
+  }
 })
 
 test('the zero-given Entropic Coach source proves unique under all eight symmetries', async () => {
