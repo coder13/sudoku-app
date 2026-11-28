@@ -557,6 +557,11 @@ test('published Coach mixtures preserve exact rule dependency and redundancy', a
       redundantRuleTypes: ['extra-house', 'kropki', 'xv', 'adjacent-total', 'region-sum', 'palindrome', 'consecutive-run', 'renban', 'arrow'],
     },
     {
+      reference: 'coach-clue-styles.json:$[4]',
+      ruleTypes: ['thermometer', 'between', 'renban', 'parity', 'extra-house', 'kropki'],
+      redundantRuleTypes: ['thermometer', 'between', 'renban'],
+    },
+    {
       reference: 'sudoku-coach-noncon.json:$',
       ruleTypes: ['non-consecutive', 'xv', 'entropic', 'kropki', 'pill-arrow', 'arrow', 'minimum', 'quadruple', 'killer-cages'],
       redundantRuleTypes: ['xv', 'entropic', 'kropki', 'pill-arrow', 'arrow', 'minimum', 'quadruple', 'killer-cages'],
