@@ -301,6 +301,12 @@ test('Coach colored cells for Anti-Chess + Non-Consecutive remain visual metadat
   assert.ok(!('givenCellColors' in imported.variant.puzzle), 'cell colors are kept out of the engine puzzle')
   const solved = await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle: imported.variant.puzzle } })
   assert.equal(solved.status, 'unique', 'the engine solves the puzzle using its rules without cell-color constraints')
+  for (const family of fixture.rules) {
+    const withoutRule = { ...imported.variant.puzzle,
+      rules: imported.variant.puzzle.rules.filter(rule => rule.type !== family) }
+    assert.equal((await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle: withoutRule } })).status,
+      'multiple', `the published completion is no longer unique without ${family}`)
+  }
 
   const payload = await decodeSudokuCoachPayload(fixture.code)
   const evenCompanion = { type: 'even', segments: [{ cells: [14], parameters: {} }] }
