@@ -57,14 +57,21 @@ test('the chooser offers five 9×9 modes, Import, and separate custom generation
   }
   assert.doesNotMatch(builder, /Show in core modes/)
   assert.match(builder, /Save mode/)
-  assert.match(builder, /Generate puzzle/)
-  assert.match(builder, /<option value="hard">Hard<\/option>/)
+  assert.match(builder, /<button[^>]*disabled[^>]*>Continue/)
+  assert.doesNotMatch(builder, /Generate puzzle|Miracle puzzle|<option value="hard">/)
   const saved = await renderNewPuzzle('/puzzles/new/difficulty?mode=00000000-0000-4000-8000-000000000000')
   assert.match(saved, /Loading saved mode/)
   const xSudoku = await renderNewPuzzle('/puzzles/new/difficulty?variant=diagonal')
   assert.match(xSudoku, /Each of the two marked diagonals/)
   assert.deepEqual(customModeDifficulties(['jigsaw']), DIFFICULTY_LEVELS)
   assert.deepEqual(customModeDifficulties(['jigsaw', 'x-sum']), DIFFICULTY_LEVELS)
+})
+
+test('a direct custom difficulty link without a draft returns to rule selection', async () => {
+  const difficulty = await renderNewPuzzle('/puzzles/new/difficulty?draft=true', { variant: 'six', difficulty: 'medium', boxRows: 3 })
+  assert.match(difficulty, /href="\/puzzles\/new\/custom"[^>]*>Choose rules<\/a>/)
+  assert.match(difficulty, /aria-label="Back to custom puzzle setup"/)
+  assert.doesNotMatch(difficulty, /Start medium puzzle|6 × 6 Sudoku/)
 })
 
 test('smaller grids are configured inside custom generation and retain their difficulty links', async () => {

@@ -8,7 +8,7 @@ import { formatTime } from '../sudoku/game'
 import { roomStore } from '../sudoku/storage'
 import { isSizedPuzzleId, miniDifficulties, miniDifficulty, type NewPuzzleId } from '../sudoku/new-puzzle'
 import { variantDifficulties, variantDifficulty } from '../sudoku/variants'
-import type { CustomModeDefinition } from '../sudoku/custom-modes'
+import { customModeDifficulties, type CustomModeDefinition } from '../sudoku/custom-modes'
 
 export function DifficultySelector({ value, recommended, variant, customMode, disabled = false, onChange }: {
   value: DifficultyPreference
@@ -21,7 +21,8 @@ export function DifficultySelector({ value, recommended, variant, customMode, di
   const { games } = useSyncExternalStore(roomStore.subscribe, roomStore.getSnapshot, roomStore.getServerSnapshot)
   const statistics = useMemo(() => difficultyStatistics(games, customMode ?? variant), [games, customMode, variant])
   const sized = isSizedPuzzleId(variant)
-  const levels: readonly Difficulty[] = sized ? miniDifficulties : variantDifficulties(variant).filter((level): level is Difficulty => level !== 'auto')
+  const levels: readonly Difficulty[] = customMode ? customModeDifficulties(customMode.rules)
+    : sized ? miniDifficulties : variantDifficulties(variant).filter((level): level is Difficulty => level !== 'auto')
   const selected = sized ? miniDifficulty(value) : variantDifficulty(variant, value === 'auto' ? recommended : value)
   return <DifficultyOptions levels={levels} selected={selected} statistics={statistics}
     disabled={disabled} onChange={onChange}

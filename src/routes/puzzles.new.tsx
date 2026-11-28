@@ -8,6 +8,7 @@ import { isGenerationRulesetId, type GenerationRulesetId } from '../sudoku/varia
 type NewPuzzleSearch = {
   step?: 'variant' | 'difficulty'
   mode?: string
+  draft?: true
   variant?: NewPuzzleId
   difficulty?: DifficultyPreference
   ruleset?: GenerationRulesetId
@@ -18,6 +19,10 @@ export const Route = createFileRoute('/puzzles/new')({
   validateSearch: (search): NewPuzzleSearch => {
     if (isSudokuModeId(search.mode)) return {
       mode: search.mode,
+      ...(isDifficultyPreference(search.difficulty) && { difficulty: search.difficulty }),
+    }
+    if (search.draft === true) return {
+      draft: true,
       ...(isDifficultyPreference(search.difficulty) && { difficulty: search.difficulty }),
     }
     const choice: NewPuzzleSearch = {}
