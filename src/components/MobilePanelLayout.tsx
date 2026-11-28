@@ -1,5 +1,5 @@
 import { IconButton } from './Button'
-import { Component, Fragment, type CSSProperties, type ReactNode, type RefCallback, type RefObject, useId, useMemo, useRef } from 'react'
+import { Component, Fragment, type CSSProperties, type ReactNode, type RefCallback, type RefObject, useId, useMemo, useRef, useState } from 'react'
 import { GripVertical, X } from 'lucide-react'
 import { MobileHintSwipe, type HintSwipeActions } from './MobileHintSwipe'
 import { MobilePuzzleTopSpaceGesture, type PuzzleGestureAnchors } from './MobilePuzzleTopSpaceGesture'
@@ -7,6 +7,7 @@ import { MobileInputResizeHandle, type MobileInputResizeRefs } from './MobileInp
 import { useMobilePanelArrangement } from './useMobilePanelArrangement'
 import { useMobilePuzzleFit } from './useMobilePuzzleFit'
 import { animatePanelLayout, MotionSurface, motionDuration, usePresentContent } from './Presence'
+import { mergeRefs } from './merge-refs'
 import { type MobilePanelId } from '../sudoku/mobile-panels'
 import type { PlayLayoutAnchors } from './play-layout-anchors'
 
@@ -162,9 +163,11 @@ class MobilePanelMotion extends Component<MotionProps, Record<string, never>, La
         const easing = getComputedStyle(document.documentElement).getPropertyValue('--motion-move').trim()
         element.style.overflow = 'clip'
         const animation = element.animate([
-          { height: '0px', minHeight: '0px', paddingBlockStart: '0px', paddingBlockEnd: '0px', borderBottomWidth: '0px' },
+          { height: '0px', minHeight: '0px', paddingBlockStart: '0px', paddingBlockEnd: '0px',
+            borderBottomWidth: '0px', opacity: '0', translate: '0 10px' },
           { height: `${height}px`, minHeight: style.minHeight, paddingBlockStart: style.paddingBlockStart,
-            paddingBlockEnd: style.paddingBlockEnd, borderBottomWidth: style.borderBottomWidth },
+            paddingBlockEnd: style.paddingBlockEnd, borderBottomWidth: style.borderBottomWidth,
+            opacity: '1', translate: '0 0' },
         ], { duration: snapshot.duration, easing, fill: 'both' })
         this.trackAnimation(animation, () => {
           animation.cancel()
@@ -215,8 +218,14 @@ class MobilePanelMotion extends Component<MotionProps, Record<string, never>, La
 export function MobilePanelLayout(props: Props) {
   const arrangement = useMobilePanelArrangement({ panels: props.panels, rearranging: props.rearranging,
     onRearrangingChange: props.onRearrangingChange, blocked: props.blocked, puzzleId: props.puzzleId })
+  return <MobilePuzzlePanels key={props.puzzleId} {...props} arrangement={arrangement} />
+}
+
+function MobilePuzzlePanels({ arrangement, ...props }: Props & { arrangement: ReturnType<typeof useMobilePanelArrangement> }) {
   const { order, dragView, announcement, saveFailed } = arrangement
   const root = arrangement.rootRef
+  const [layoutElement, setLayoutElement] = useState<HTMLDivElement | null>(null)
+  const layoutRef = useMemo(() => mergeRefs(root, setLayoutElement), [root])
   const localPageRef = useRef<HTMLElement>(null)
   const pageRef = props.pageRef ?? localPageRef
   const panelContentElements = useRef<Partial<Record<MobilePanelId, HTMLDivElement | null>>>({})
@@ -267,7 +276,7 @@ export function MobilePanelLayout(props: Props) {
     boardViewport: props.inputResizeRefs.boardViewport, boardFrame: props.inputResizeRefs.boardFrame,
   }) : undefined, [props.inputResizeRefs])
 
-  const layout = <div ref={root} className={`mobile-panel-layout${hintLayoutActive ? ' with-hint' : ''}`}
+  const layout = <div ref={layoutRef} className={`mobile-panel-layout${hintLayoutActive ? ' with-hint' : ''}`}
     data-fit-content={(hintLayoutActive || props.fitContent) && !props.rearranging || undefined}
     data-puzzle-shrunk={Boolean(props.puzzleShrink) || undefined}
     data-input-resizing={inputResizing || undefined}
@@ -307,7 +316,7 @@ export function MobilePanelLayout(props: Props) {
             {id === 'puzzle' && <MobilePuzzleTopSpaceGesture edge="top" value={props.puzzleTopSpace ?? 0} shrink={props.puzzleShrink ?? 0}
               onChange={props.onPuzzleTopSpaceChange} disabled={props.blocked || props.rearranging}
               fitContent={props.withHint || Boolean(props.fitContent)} anchors={puzzleGestureAnchors} />}
-            {resizeEdge && props.inputResizeRefs && <MobileInputResizeHandle inputId={inputId} layoutRef={root} inputPanelRef={inputPanelRef}
+            {resizeEdge && props.inputResizeRefs && <MobileInputResizeHandle inputId={inputId} layoutElement={layoutElement} inputPanelRef={inputPanelRef}
               refs={props.inputResizeRefs} edge={resizeEdge}
               disabled={props.blocked || props.rearranging} withHint={props.withHint}
               fitContent={Boolean(props.fitContent)}

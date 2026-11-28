@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect, waitFor, within } from 'storybook/test'
 import { Workspace } from '../../src/components/Workspace'
+import { fillEntries, valuesOf } from '../../src/sudoku/game'
 import { PreviewRouter } from '../support/frames'
 import { namedDraft, solved, starter } from '../support/fixtures'
 import { seedRoom } from '../support/story-room'
@@ -100,6 +101,16 @@ export const DifficultyAfterSolve: Story = {
     await userEvent.click(await canvas.findByRole('button', { name: 'Choose difficulty' }))
     await expect(canvas.getByRole('radiogroup', { name: 'Next puzzle difficulty' })).toBeVisible()
   },
+}
+const solvedValues = valuesOf(solved)
+const beforeNextPuzzle = {
+  ...fillEntries(starter, solvedValues.slice(0, 3) + '0' + solvedValues.slice(4)),
+  id: 'before-next-puzzle',
+  elapsed: solved.elapsed,
+}
+export const NextPuzzleAfterSolve: Story = {
+  beforeEach: () => { seedRoom([beforeNextPuzzle]) },
+  render: () => <div className="story-app"><PreviewRouter shell path={`/?puzzle=${beforeNextPuzzle.id}`} /></div>,
 }
 export const ResizeInputPanel: Story = {
   beforeEach: () => { seedRoom([starter]) },

@@ -1,5 +1,5 @@
 import { Button, buttonClassName } from './Button'
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type Ref } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ArrowRight, Check, CircleHelp, Lightbulb, Search } from 'lucide-react'
 import { isCustomDifficulty } from '../sudoku/custom-modes'
@@ -68,7 +68,8 @@ function PracticeTechniqueResult({ technique, game, cellReferenceStyle }: {
 }
 
 /** Show solve results and continue a practice playlist, a collection, or ordinary Play. */
-export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficulty, ratingPending, shortcutEnabled, showGuides, cellReferenceStyle, actionsTarget, layoutBoundaryRef, onResumePuzzle, onChooseDifficulty, onChooseVariant }: {
+export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficulty, ratingPending, shortcutEnabled, showGuides,
+  cellReferenceStyle, actionsTarget, onResumePuzzle, onChooseDifficulty, onChooseVariant }: {
   game: Game
   games: Game[]
   catchUpPuzzle?: Game
@@ -78,7 +79,6 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
   showGuides: boolean
   cellReferenceStyle?: CellReferenceStyle
   actionsTarget?: HTMLElement | null
-  layoutBoundaryRef?: Ref<HTMLDivElement>
   onResumePuzzle: (id: string) => void
   onChooseDifficulty: () => void
   onChooseVariant: () => void
@@ -244,5 +244,5 @@ export function CompletedPuzzle({ game, games, catchUpPuzzle, preferredDifficult
 
   return <PuzzleCompletionView subtitle={game.title} showGuides={showGuides}
     practiceMode={Boolean(game.practiceTechnique)} practice={practice} results={resultFacts} rating={rating} stats={stats} details={details}
-    actions={footer} actionsTarget={actionsTarget} layoutBoundaryRef={layoutBoundaryRef} />
+    actions={footer} actionsTarget={actionsTarget} />
 }

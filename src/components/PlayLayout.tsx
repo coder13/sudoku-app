@@ -65,7 +65,7 @@ export function PlayLayout<Id extends string>({ desktop, puzzle, input, hintLayo
     }} />
   }
   return <>
-    <div ref={puzzleStackRef} className="standard-puzzle-stack">
+    <div key={mobile.puzzleId} ref={puzzleStackRef} className="standard-puzzle-stack">
       {puzzle}
       {hintLayout ? <DesktopHintSlot stackRef={puzzleStack} slotRef={hintSlot} forwardedRef={hintSlotRef} layout={hintLayout}>
         {hint}

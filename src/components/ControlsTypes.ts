@@ -54,7 +54,6 @@ export type ControlsProps = {
     canUndo: boolean
     canRedo: boolean
     historyDisabled?: boolean
-    hideUndo?: boolean
   }
   actions: {
     onCheck?: () => void
