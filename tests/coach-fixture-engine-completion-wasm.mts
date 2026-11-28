@@ -396,6 +396,39 @@ test('zero-given published Coach Bento needs Global Entropy and labeled dots for
   }
 })
 
+test('Entropic Spiral 3 preserves its full eight-family Coach composition', async () => {
+  const source = [...sources.values()].find(({ references }) => references.includes('fog-coach.json:$[1]'))
+  assert.ok(source)
+  const imported = await detectPuzzle(source.code)
+  assert.ok(imported.variant)
+  assert.deepEqual(new Set(imported.variant.puzzle.rules?.map(rule => rule.type)), new Set([
+    'entropic', 'global-entropy', 'killer-cages', 'kropki', 'modular', 'renban', 'sandwich', 'whispers',
+  ]))
+  assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: {
+    puzzle: imported.variant.puzzle,
+  } }), { status: 'unique', solution: source.solution })
+
+  for (const [ruleType, expected] of [
+    ['global-entropy', 'multiple'],
+    ['killer-cages', 'multiple'],
+    ['whispers', 'multiple'],
+    ['kropki', 'multiple'],
+    ['renban', 'unique'],
+    ['entropic', 'unique'],
+    ['sandwich', 'unique'],
+    ['modular', 'unique'],
+  ] as const) {
+    const withoutRule = {
+      ...imported.variant.puzzle,
+      rules: imported.variant.puzzle.rules?.filter(rule => rule.type !== ruleType),
+    }
+    const result = await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle: withoutRule } })
+    assert.equal(result.status, expected,
+      `removing ${ruleType} must ${expected === 'unique' ? 'keep' : 'break'} the source uniqueness proof`)
+    if (expected === 'unique') assert.deepEqual(result, { status: 'unique', solution: source.solution })
+  }
+})
+
 test('7HQD Jigsaw Fog requires its regions and all six Killer cages', async () => {
   const source = [...sources.values()].find(({ references }) => references.includes('fog-jigsaw-coach.json:$'))
   assert.ok(source)
