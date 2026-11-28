@@ -39,6 +39,8 @@ const appRateRequest = { type: 'variant', operation: 'rate', position, technique
 const appHintsRequest = { type: 'variant', operation: 'hints', position, techniqueOrder,
   preferProgress: true, difficulty: 'medium', limit: 10 }
 const exhaustiveRequest = { ...appHintsRequest, limit: 0xffff_ffff, collection: 100 }
+const terrainGenerationRequest = { type: 'generate-variant', seed: 8_675_309, maxAttempts: 3, maxNodes: 20_000,
+  template: { ...position.puzzle, givens: '0'.repeat(81) }, givens: [60, 60] }
 const finderHandler = await engineHandler()
 const pageHandler = await engineHandler()
 let pageRequestId = 0
@@ -51,6 +53,11 @@ const rating = await request(appRateRequest)
 const hints = await request(appHintsRequest)
 const exhaustive = await request(exhaustiveRequest)
 assert.ok(exhaustive.available >= exhaustive.choices.length)
+const generatedTerrain = await request(terrainGenerationRequest)
+assert.equal(generatedTerrain.givens, 60)
+assert.equal(generatedTerrain.puzzle.rules.filter(rule => rule.type === 'terrain-sandwich').length, 15)
+assert.deepEqual(await request({ type: 'variant', operation: 'solve-unique', position: { puzzle: generatedTerrain.puzzle } }),
+  { status: 'unique', solution: generatedTerrain.solution })
 
 class ProfileWorker {
   onmessage
@@ -142,13 +149,15 @@ async function measure(label, input, samples) {
 
 console.log(`Coach Terrain app Wasm ${process.platform} ${process.arch}, Node ${process.version}; ${wasmBytes.length} raw/${gzipSync(wasmBytes).length} gzip bytes; ${techniqueOrder.length} app-order techniques.`)
 console.log(`Published completion: unique; rating ${JSON.stringify(rating.status)}, ${rating.points} points; ${hints.length} top-ten hints; ${exhaustive.available} exhaustive choices (${exhaustive.choices.length} transferred).`)
-console.log('Five warmups; 10 samples for Finder, paged hints and exhaustive collection; 20 for rating and top-ten hints. Direct Node/Wasm timings exclude worker startup, transfer and rendering.')
+console.log(`Fixed-layout Terrain generation: unique ${generatedTerrain.givens}-given puzzle; ${generatedTerrain.puzzle.rules.filter(rule => rule.type === 'terrain-sandwich').length} Terrain clues retained.`)
+console.log('Five warmups; 10 samples for Finder, paged hints, generation and exhaustive collection; 20 for rating and top-ten hints. Direct Node/Wasm timings exclude worker startup, transfer and rendering.')
 const expectedFinderCounts = await prefixFinderCounts()
 assert.deepEqual(await finderCounts(), expectedFinderCounts)
 console.log(`Technique Finder: ${techniqueOrder.length} app-order counts match cumulative-prefix reference.`)
 await measureFunction('Technique Finder full app-order counts', finderCounts, 10)
 assert.equal((await completeHintPages()).length, exhaustive.available)
 await measureFunction('App-order complete hint pages', completeHintPages, 10)
+await measure('Fixed-layout Terrain generation', terrainGenerationRequest, 10)
 await measure('App-order rating', appRateRequest, 20)
 await measure('App-order top-ten hints', appHintsRequest, 20)
 await measure('App-order exhaustive first collection', exhaustiveRequest, 10)
