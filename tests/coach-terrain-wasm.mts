@@ -271,6 +271,18 @@ test('#196 Terrain clues prune manual candidates, report conflicts, and survive 
     candidate.type === 'terrain-sandwich' && candidate.cells[0] !== undefined)
   assert.ok(rule)
 
+  const importedPuzzle = { ...parsed.variant.puzzle, givens: '0'.repeat(81) }
+  const importedGame = { ...makeGame('terrain-imported-play', 'Terrain', importedPuzzle.givens, 'imported'),
+    variant: { ...parsed.variant, puzzle: importedPuzzle } }
+  const importedCell = rule.cells[0]
+  const importedDigit = Number(source.source.solution[importedCell])
+  const importedEntry = enter(importedGame, [importedCell], 'value', importedDigit)
+  assert.equal(valuesOf(importedEntry)[importedCell], String(importedDigit))
+  assert.deepEqual([...conflictsOf(valuesOf(importedEntry), importedPuzzle)], [],
+    'a source-valid entry stays conflict-free with all fifteen Terrain clues and companion rules active')
+  assert.deepEqual(importedEntry.variant?.puzzle.rules, parsed.variant.puzzle.rules,
+    'manual play retains the complete imported Terrain and companion rule combination')
+
   const puzzle = { ...parsed.variant.puzzle, givens: '0'.repeat(81), rules: [rule] }
   const game = { ...makeGame('terrain-play-input', 'Terrain', puzzle.givens, 'imported'),
     variant: { id: 'mixed' as const, puzzle, solution: source.source.solution } }
