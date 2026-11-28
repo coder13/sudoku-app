@@ -44,6 +44,21 @@ test('Coach cosmetic grid lines import as artwork without changing the rule set'
     { type: 'divider', points: [[3, 2], [3, 3]], thickness: .04 },
   ])
   assert.deepEqual(imported.variant?.puzzle.rules?.map(rule => rule.type), ['anti-knight'])
+
+  assert.ok(imported.variant && imported.authoredArtwork)
+  const game = {
+    ...makeGame('coach-multi-line-artwork', 'Coach line artwork', imported.givens, 'imported', 1),
+    variant: { ...imported.variant, solution: '123456789'.repeat(9) }, authoredArtwork: imported.authoredArtwork,
+  }
+  assert.deepEqual(readGame(game.id, JSON.stringify(game))?.authoredArtwork, imported.authoredArtwork)
+  const { sqlite, fetcher } = syncDatabase()
+  try {
+    const api = syncRequest(undefined, fetcher)
+    const { id } = await api<{ id: string }>('shares', 'POST', puzzleDefinitionForSharing(game))
+    const shared = await api<{ authoredArtwork: typeof game.authoredArtwork; variant: typeof game.variant }>(`shares/${id}`)
+    assert.deepEqual(shared.authoredArtwork, imported.authoredArtwork)
+    assert.deepEqual(shared.variant.puzzle.rules, imported.variant.puzzle.rules)
+  } finally { sqlite.close() }
 })
 
 test('Coach cosmetic grid line artwork rejects unreviewed settings and geometry', () => {
