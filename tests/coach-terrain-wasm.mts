@@ -142,6 +142,23 @@ test('#196 imports the reviewed Terrain source and checks its transformed maxima
   } finally { sqlite.close() }
 })
 
+test('#196 variant generation preserves the imported Terrain rules and returns a unique puzzle', async () => {
+  const parsed = await detectPuzzle(source.source.sudoku)
+  assert.ok(parsed.variant)
+  const template = { ...parsed.variant.puzzle, givens: '0'.repeat(81) }
+  const generated = await runEngine({ type: 'generate-variant', seed: 8_675_309, maxAttempts: 3,
+    maxNodes: 20_000, template, givens: [60, 60] })
+
+  assert.equal(generated.givens, 60)
+  assert.equal([...generated.puzzle.givens].filter(digit => digit !== '0').length, 60)
+  assert.deepEqual(generated.puzzle.rules, template.rules)
+  assert.equal(generated.puzzle.rules?.filter(rule => rule.type === 'terrain-sandwich').length, 15)
+  assertVariantCompletion(generated.puzzle, generated.solution)
+  assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: {
+    puzzle: generated.puzzle,
+  } }), { status: 'unique', solution: generated.solution })
+})
+
 test('#196 transforms every Terrain ray and preserves the published solution under all eight symmetries', async () => {
   const parsed = await detectPuzzle(source.source.sudoku)
   assert.ok(parsed.variant)
