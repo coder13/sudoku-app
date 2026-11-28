@@ -562,6 +562,10 @@ test('published Coach mixtures preserve exact rule dependency and redundancy', a
       redundantRuleTypes: ['thermometer', 'between', 'renban'],
     },
     {
+      reference: 'palindrome-coach.json:$.examples[1]',
+      ruleTypes: ['palindrome', 'inequality', 'kropki'],
+    },
+    {
       reference: 'sudoku-coach-noncon.json:$',
       ruleTypes: ['non-consecutive', 'xv', 'entropic', 'kropki', 'pill-arrow', 'arrow', 'minimum', 'quadruple', 'killer-cages'],
       redundantRuleTypes: ['xv', 'entropic', 'kropki', 'pill-arrow', 'arrow', 'minimum', 'quadruple', 'killer-cages'],
