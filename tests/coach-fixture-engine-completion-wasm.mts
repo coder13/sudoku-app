@@ -538,6 +538,14 @@ test('published Coach mixtures need each imported rule family for uniqueness', a
       reference: 'xv-coach.json:$.examples[1]',
       ruleTypes: ['diagonal', 'anti-king', 'xv', 'kropki', 'inequality'],
     },
+    {
+      reference: 'xv-coach.json:$.examples[2]',
+      ruleTypes: ['anti-knight', 'anti-king', 'xv'],
+    },
+    {
+      reference: 'renban-coach.json:$.examples[4]',
+      ruleTypes: ['renban', 'consecutive-run', 'kropki', 'xv'],
+    },
   ] as const
 
   for (const { reference, ruleTypes } of cases) {
