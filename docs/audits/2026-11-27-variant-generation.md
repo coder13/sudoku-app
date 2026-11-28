@@ -131,6 +131,20 @@ Windoku and Non-Consecutive have no joint completion with standard boxes. Anti-K
 
 The usual generation check runs the lower techniques in three priority orders. The optional alternate-path audit settles ordinary singles, then branches over distinct supported moves below the requested grade. It returns a replay when it finds an easier solution. If it exhausts the reachable positions, that result applies to the implemented techniques with singles played first. A budget limit leaves the difficulty bound open. Across the initial 62 deeper probes, it found no cheaper solve, exhausted 14 searches and reached the budget on 48. A separate Arrow Miracle probe at every eligible grade reached the 32-position budget without finding a cheaper path.
 
+## Fresh seeds and layout variety
+
+A fresh single-rule sweep verified 349 of 350 targets and every successful walkthrough matched its grade. Entropic Lines at Impossible reached the search limit. A separate sweep across 13 combinations verified 88 of 130 targets, including 10 of 30 requests with complete markings. Of the 35 Medium walkthroughs, 18 used fewer than four Medium steps and 26 used only one Medium technique. In 64 more checks with shuffled lower-tier orders and a short alternate-path search, 11 searches exhausted their positions and 53 reached their budget. None found a lower-grade solve.
+
+The layout audit compared which cells contain givens, where the drawn clues go and how the regions divide the grid. It ignored printed values and matched layouts under rotations and reflections. For Classic, it also matched layouts under Sudoku-preserving row, column, band and stack permutations. Each repeat series supplied the generator with the earlier puzzles in that series as play history.
+
+* Classic returned eight different given patterns at each of its ten grades. The Impossible bank contains 768 puzzles with 756 different given patterns. Three seeds reached the search limit once the complete bank was in play history.
+* All 35 individual 9×9 rule choices returned four different given patterns at Medium. Of the 26 choices with drawn clues, 21 used more than one arrangement of those clues. Between Lines, German Whispers, Dutch Whispers, Killer and Region Sum Lines each reused one arrangement in this sample.
+* Medium and Hard 9×9 Jigsaw each returned eight different given patterns, spread over four and five region maps respectively. Eight starts without history returned the same Medium region map. The usual fallback samples five distinct maps. The ordinary Impossible search can also build new maps by swapping cells between regions.
+* Hard Arrow returned six different Arrow layouts in eight ordinary puzzles. Hard Thermometer with V marks returned eight different drawn layouts in eight puzzles. Each retained the rules and difficulty it was asked for.
+* Hard Miracle delivered eight different clue layouts in eight requests each for Killer, Kropki and X-Sums with the main diagonal. Hard Arrow Miracle delivered six layouts in eight requests, including two beyond its four checked starting layouts. Impossible Arrow and Thermometer Miracle each delivered four layouts in six requests.
+* Chess returned eight different given patterns at Medium. At Hard it returned its three checked puzzles and reached the limit on the next five requests. The cyclic construction and its shifts and symmetries produce 72 completed grids. All 72 satisfy the rules, and the Boolean model became unsatisfiable after excluding them, so the construction covers every completed grid for pure Chess.
+* Five Medium draws for each of the 15 smaller-grid configurations produced 75 puzzles with unique solutions and five different given patterns per configuration. The 5×5 Jigsaw generator samples six fixed region maps. The 7×7 generator samples four.
+
 ## Reproducing the checks
 
 Build the WebAssembly engine with `npm run build:wasm`. This command replays three different cases.
@@ -150,6 +164,14 @@ Run the repeat audit with the following commands. The trace check reconstructs t
 node --experimental-strip-types scripts/audit-variant-generation.mts --strict --repeat 2 --verify-trace --matrix 7
 node --experimental-strip-types scripts/audit-variant-generation.mts --strict --repeat 2 --verify-trace --matrix 11 thermometer,xv-five
 node --experimental-strip-types scripts/audit-variant-generation.mts --strict --repeat 2 --verify-trace --miracle --matrix 7 killer-cages
+```
+
+Use `--seed-step` to change the seed with each draw while keeping the same play history. With a nonzero step, the audit continues to the next seed after a search limit.
+
+```sh
+node --experimental-strip-types scripts/audit-variant-generation.mts \
+  --repeat 8 --seed-step 2654435761 --verify-trace --include-puzzle \
+  jigsaw/medium/2817 region-sum/medium/2817 arrow/hard/2817/miracle
 ```
 
 For the standard-box incompatibility checks, generate a DIMACS formula and pass it to a SAT solver. Either of the following commands reads the same rule semantics used above.

@@ -5,9 +5,9 @@ import { makeGame, type Game } from '../src/sudoku/game.ts'
 import { isMainThread, parentPort, Worker } from 'node:worker_threads'
 import { generateCustomSudoku } from '../src/sudoku/custom-generation.ts'
 import { customRuleIds, hasOverlappingRuleChoices, isCustomDifficulty, markerOptions, type CustomRule, type MarkerRule } from '../src/sudoku/custom-modes.ts'
-import { DIFFICULTY_LEVELS } from '../src/sudoku/difficulty.ts'
+import { DIFFICULTY_LEVELS, difficultyIndex } from '../src/sudoku/difficulty.ts'
 import { miracleSymmetry } from '../src/sudoku/miracle.ts'
-import { EngineError, runEngine, type EngineRequest, type EngineResponse, type VariantDeduction } from '../src/sudoku/engine.ts'
+import { EngineError, runEngine, type Difficulty, type EngineRequest, type EngineResponse, type VariantDeduction } from '../src/sudoku/engine.ts'
 import { createEngineHandler, type EngineExports } from '../src/sudoku/engine-protocol.ts'
 import { assertVariantCompletion } from '../tests/helpers/variant-truth.ts'
 import { hasReadableArrowLayout } from '../src/sudoku/arrow-layout.ts'
@@ -25,6 +25,19 @@ function verifySolutionPath(givens: string, solution: string, steps: readonly Va
     }
   }
   assert.equal(board.join(''), solution)
+}
+
+function measurePath(steps: readonly VariantDeduction[], tiers: ReadonlyMap<string, Difficulty>) {
+  const mediumOrHigher = steps.filter(({ technique }) => {
+    const tier = tiers.get(technique)
+    assert.ok(tier, technique)
+    return difficultyIndex(tier) >= difficultyIndex('medium')
+  })
+  return {
+    steps: steps.length,
+    mediumOrHigherSteps: mediumOrHigher.length,
+    mediumOrHigherTechniques: [...new Set(mediumOrHigher.map(step => step.technique))],
+  }
 }
 
 // Use real workers so the generation deadline can interrupt synchronous Wasm.
@@ -62,12 +75,15 @@ if (!isMainThread) {
   try {
     const { values, positionals } = parseArgs({ allowPositionals: true, options: {
       matrix: { type: 'boolean' }, pairs: { type: 'string' }, miracle: { type: 'boolean' }, repeat: { type: 'string', default: '1' },
-      strict: { type: 'boolean' },
+      strict: { type: 'boolean' }, 'seed-step': { type: 'string', default: '0' },
       'lower-positions': { type: 'string' },
       'verify-trace': { type: 'boolean' }, 'include-puzzle': { type: 'boolean' },
     } })
     const repeats = Number(values.repeat)
     assert.ok(Number.isSafeInteger(repeats) && repeats > 0, 'Supply a positive integer after --repeat.')
+    const seedStep = Number(values['seed-step'])
+    assert.ok(Number.isInteger(seedStep) && seedStep >= 0 && seedStep <= 0xffff_ffff,
+      'Supply a non-negative 32-bit integer after --seed-step.')
     const lowerPositions = values['lower-positions'] === undefined ? undefined : Number(values['lower-positions'])
     assert.ok(lowerPositions === undefined || Number.isInteger(lowerPositions) && lowerPositions >= 0 && lowerPositions <= 256,
       'Supply a position budget from 0 through 256 after --lower-positions.')
@@ -86,19 +102,22 @@ if (!isMainThread) {
       const levels = values.miracle ? DIFFICULTY_LEVELS.slice(DIFFICULTY_LEVELS.indexOf('hard')) : DIFFICULTY_LEVELS
       specs = choices.flatMap(rules => levels.map(grade => `${rules}/${grade}/${seed}`))
     }
+    const tiers = values['verify-trace'] && new Map((await runEngine({ type: 'techniques', variant: true })).techniques
+      .map(technique => [technique.id, technique.difficulty]))
     for (const spec of specs) {
       const [choices, grade, seedText, ...options] = spec.split('/')
       assert.ok(isCustomDifficulty(grade))
       const rules = choices.split(',') as CustomRule[]
       assert.ok(rules.every(rule => customRuleIds.includes(rule)))
-      const seed = Number(seedText)
-      assert.ok(Number.isInteger(seed))
+      const initialSeed = Number(seedText)
+      assert.ok(Number.isInteger(initialSeed))
       assert.ok(options.every(option => option === 'miracle' || option.startsWith('negative=')))
       const miracle = values.miracle || options.includes('miracle')
       const negativeMarkers = options.flatMap(option => option.startsWith('negative=') ? option.slice(9).split(',') : []) as MarkerRule[]
       assert.ok(negativeMarkers.every(marker => Object.hasOwn(markerOptions, marker)))
       const history: Game[] = []
       for (let draw = 1; draw <= repeats; draw++) {
+        const seed = (initialSeed + Math.imul(draw - 1, seedStep)) >>> 0
         const start = performance.now()
         try {
           const { puzzle, solution, rating, givens, ruleDependencies } = await generateCustomSudoku(rules, grade, seed, history, { miracle, negativeMarkers })
@@ -150,13 +169,14 @@ if (!isMainThread) {
             verifySolutionPath(puzzle.givens, solution, lower.steps)
             if (values.strict) process.exitCode = 1
           }
-          console.log(JSON.stringify({ spec, draw, ...(values['include-puzzle'] && { puzzle }), status: 'verified', givens, classic,
-            hardest: rating.hardest, required, ...(lower && { lower }), ms: Math.round(performance.now() - start) }))
+          console.log(JSON.stringify({ spec, draw, seed, ...(values['include-puzzle'] && { puzzle }), status: 'verified', givens, classic,
+            hardest: rating.hardest, required, ...(trace && tiers && { path: measurePath(trace.steps, tiers) }),
+            ...(lower && { lower }), ms: Math.round(performance.now() - start) }))
         } catch (error) {
           if (!(error instanceof EngineError)) throw error
           if (values.strict) process.exitCode = 1
-          console.log(JSON.stringify({ spec, draw, status: error.code, reason: error.message, ms: Math.round(performance.now() - start) }))
-          break
+          console.log(JSON.stringify({ spec, draw, seed, status: error.code, reason: error.message, ms: Math.round(performance.now() - start) }))
+          if (!seedStep || error.code !== 'search-limit') break
         }
       }
     }
