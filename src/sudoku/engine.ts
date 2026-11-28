@@ -923,6 +923,9 @@ function connect(connection: EngineConnection) {
   instance.onerror = () => {
     if (connection.worker === instance) closeConnection(connection, new Error('The Sudoku engine could not start. Try again.'))
   }
+  instance.onmessageerror = () => {
+    if (connection.worker === instance) closeConnection(connection, new Error('The Sudoku engine response could not be read. Try again.'))
+  }
   return instance
 }
 

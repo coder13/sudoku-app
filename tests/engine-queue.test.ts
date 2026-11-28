@@ -10,6 +10,7 @@ test('engine queues isolate play work, replace waiting refreshes, and cancel own
     static all: TestWorker[] = []
     onmessage?: (event: { data: EngineResponse }) => void
     onerror?: () => void
+    onmessageerror?: () => void
     sent: Message[] = []
     waiting: Message[] = []
     closed = false
@@ -207,6 +208,26 @@ test('engine queues isolate play work, replace waiting refreshes, and cancel own
     const retry = session.run({ type: 'rate', values }), retryWorker = newestWorker()
     assert.notEqual(retryWorker, failedWorker)
     failedWorker.reply('stale')
+    retryWorker.reply({ status: 'stalled' })
+    assert.deepEqual(await retry, { status: 'stalled' })
+    session.close()
+  })
+
+  await t.test('unreadable worker responses reject queued calls and allow a retry', async () => {
+    const session = createEngineSession()
+    const active = session.run({ type: 'rate', values }), unreadableWorker = newestWorker()
+    const queued = session.run({ type: 'hints', values })
+    const failures = Promise.all([
+      assert.rejects(active, /response could not be read/),
+      assert.rejects(queued, /response could not be read/),
+    ])
+    unreadableWorker.onmessageerror?.()
+    await failures
+    assert.equal(unreadableWorker.closed, true)
+
+    const retry = session.run({ type: 'rate', values }), retryWorker = newestWorker()
+    assert.notEqual(retryWorker, unreadableWorker)
+    unreadableWorker.reply('unreadable stale response')
     retryWorker.reply({ status: 'stalled' })
     assert.deepEqual(await retry, { status: 'stalled' })
     session.close()
