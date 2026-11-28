@@ -11,6 +11,9 @@ assert.ok(imported.variant, 'the published Coach Terrain source should import as
 
 const wasmBytes = await readFile(new URL('../src/sudoku/generated/engine.wasm', import.meta.url))
 const { instance } = await WebAssembly.instantiate(wasmBytes)
+const memory = instance.exports.memory
+assert.ok(memory instanceof WebAssembly.Memory, 'the app Wasm should expose its linear memory')
+const initialMemoryBytes = memory.buffer.byteLength
 const handle = createEngineHandler(async () => instance.exports)
 let requestId = 0
 
@@ -62,3 +65,4 @@ console.log('Five warmups; 20 samples for rating/hints and 10 for exhaustive col
 await measure('App-order rating', appRateRequest, 20)
 await measure('App-order top-ten hints', appHintsRequest, 20)
 await measure('App-order exhaustive first collection', exhaustiveRequest, 10)
+console.log(`Wasm linear-memory buffer capacity: ${(initialMemoryBytes / 1_048_576).toFixed(3)} MiB initial, ${(memory.buffer.byteLength / 1_048_576).toFixed(3)} MiB after measured calls (buffer capacity, not live allocation or process RSS).`)
