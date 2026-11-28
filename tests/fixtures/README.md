@@ -1561,6 +1561,8 @@ The app-Wasm benchmark at `scripts/bench-coach-terrain.mjs` verifies candidate i
 
 On macOS arm64, the native release benchmark (`cargo bench -p sudoku-app-engine --bench variants --features 'wasm-api variants generation teaching' -- --terrain-sandwich`, five warmups and 40 samples) measured compilation of all 15 clues at 60.235/66.540 ms and blank-board candidate propagation on the compiled puzzle at 0.133/0.175 ms median/p95. The candidate measurement reuses the compiled definition; these are local native measurements, not browser or mobile timings.
 
+A rerun on 2026-11-27 with the same machine and sampling procedure measured 46.749/47.835 ms for compilation and 0.104/0.122 ms for blank-board candidates (median/p95). This improves on the recorded baseline above; it does not measure browser startup, Wasm profiles, memory, hints, Finder, or generation.
+
 ## General Coach Ratio markers
 
 The published [光 (Light)](https://sudoku.coach/en/s/FzrY) export has a 3:1 Ratio mark on cells 79 and 78 alongside Palindrome, Entropic, Quadruple, Minimum, Difference, and Odd rules. Its Coach rule list names the family as Ratio (Black Dot); the segment's `ratio: 3` parameter supplies the exact relationship. `coach-general-ratio-wasm.mts` checks that exact import, the 3:1 candidate support, and the published completion under the full combined rules. The Wasm solver finds one solution from the published givens with all rules, and multiple solutions when only the Ratio mark is removed. `variant-help-components.test.ts` also renders this original source and checks the numbered black dot and both accessible edge labels. The broader synthetic controls still cover every integer ratio from 2:1 through 9:1.
