@@ -285,16 +285,25 @@ test('#196 Terrain clues prune manual candidates, report conflicts, and survive 
     'a source-valid entry stays conflict-free with all fifteen Terrain clues and companion rules active')
   assert.deepEqual(importedEntry.variant?.puzzle.rules, parsed.variant.puzzle.rules,
     'manual play retains the complete imported Terrain and companion rule combination')
-  const exactCandidates = await runEngine({ type: 'variant', operation: 'candidates', position: {
-    puzzle: importedPuzzle, entries: importedEntry.position.entries,
-  } })
-  assert.ok(exactCandidates)
-  for (let cell = 0; cell < 81; cell++) if (valuesOf(importedEntry)[cell] === '0') {
-    assert.equal(exactCandidates[cell] & ~importedEntry.position.center[cell], 0,
-      `Play center marks retain every engine-supported candidate at imported cell ${cell}`)
-    assert.equal(exactCandidates[cell] & ~importedEntry.position.corner[cell], 0,
-      `Play corner marks retain every engine-supported candidate at imported cell ${cell}`)
+  const assertEngineCandidatesSurvivePlay = async (game: typeof importedEntry, stage: string) => {
+    const exactCandidates = await runEngine({ type: 'variant', operation: 'candidates', position: {
+      puzzle: importedPuzzle, entries: game.position.entries,
+    } })
+    assert.ok(exactCandidates)
+    for (let cell = 0; cell < 81; cell++) if (valuesOf(game)[cell] === '0') {
+      assert.equal(exactCandidates[cell] & ~game.position.center[cell], 0,
+        `${stage}: Play center marks retain every engine-supported candidate at imported cell ${cell}`)
+      assert.equal(exactCandidates[cell] & ~game.position.corner[cell], 0,
+        `${stage}: Play corner marks retain every engine-supported candidate at imported cell ${cell}`)
+    }
   }
+  await assertEngineCandidatesSurvivePlay(importedEntry, 'after one entry')
+  const importedSecondCell = rule.cells.find(cell => cell !== importedCell)!
+  const importedSecondDigit = Number(source.source.solution[importedSecondCell])
+  const importedProgress = enter(importedEntry, [importedSecondCell], 'value', importedSecondDigit)
+  assert.deepEqual([...conflictsOf(valuesOf(importedProgress), importedPuzzle)], [],
+    'a second source-valid entry stays conflict-free across the full imported combination')
+  await assertEngineCandidatesSurvivePlay(importedProgress, 'after two entries')
 
   const puzzle = { ...parsed.variant.puzzle, givens: '0'.repeat(81), rules: [rule] }
   const game = { ...makeGame('terrain-play-input', 'Terrain', puzzle.givens, 'imported'),
