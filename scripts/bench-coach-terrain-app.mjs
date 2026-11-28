@@ -20,6 +20,7 @@ const memorySnapshot = () => {
   return { rssMiB: memoryMiB(rss), heapMiB: memoryMiB(heapUsed), wasmMiB: memoryMiB(memory.buffer.byteLength) }
 }
 const afterWasmLoadMemory = memorySnapshot()
+const formatMemory = sample => `RSS ${sample.rssMiB}, V8 heap ${sample.heapMiB}, Wasm buffer ${sample.wasmMiB} MiB`
 const handle = createEngineHandler(async () => instance.exports)
 let requestId = 0
 
@@ -167,6 +168,24 @@ await measure('Fixed-layout Terrain generation', terrainGenerationRequest, 10)
 await measure('App-order rating', appRateRequest, 20)
 await measure('App-order top-ten hints', appHintsRequest, 20)
 await measure('App-order exhaustive first collection', exhaustiveRequest, 10)
+if (process.argv.includes('--memory-soak')) {
+  if (typeof global.gc !== 'function') throw new Error('Run the memory soak with --expose-gc.')
+  const soakCycle = async () => {
+    await request(appRateRequest)
+    await request(appHintsRequest)
+    await completeHintPages()
+  }
+  const soakSnapshot = label => {
+    global.gc()
+    const sample = memorySnapshot()
+    console.log(`Memory soak ${label}: ${formatMemory(sample)}`)
+  }
+  for (let index = 0; index < 5; index++) await soakCycle()
+  soakSnapshot('after 5 warmup cycles')
+  for (let index = 0; index < 100; index++) await soakCycle()
+  soakSnapshot('after 100 cycles')
+  for (let index = 0; index < 100; index++) await soakCycle()
+  soakSnapshot('after 200 cycles')
+}
 const afterMeasurementsMemory = memorySnapshot()
-const formatMemory = sample => `RSS ${sample.rssMiB}, V8 heap ${sample.heapMiB}, Wasm buffer ${sample.wasmMiB} MiB`
 console.log(`Memory snapshots (RSS / V8 heap / Wasm linear-buffer capacity): after Wasm load ${formatMemory(afterWasmLoadMemory)}; after core workload ${formatMemory(afterCoreWorkloadMemory)}; after timed suite ${formatMemory(afterMeasurementsMemory)}. Snapshots are not peak RSS or live-allocation measurements.`)
