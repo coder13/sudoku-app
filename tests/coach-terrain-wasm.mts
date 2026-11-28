@@ -83,7 +83,21 @@ test('#196 imports the reviewed Terrain source and checks its transformed maxima
     cells: firstRow,
     sum: [...source.source.solution.slice(0, firstDigit)].reduce((sum, digit) => sum + Number(digit), 0),
   }
-  const terrainWithXSums = { ...parsed.variant.puzzle, rules: [...rules, ratioTwoCompanion, firstRowXSum] }
+  const firstRowValues = source.source.solution.slice(0, 9)
+  const oneIndex = firstRowValues.indexOf('1'), nineIndex = firstRowValues.indexOf('9')
+  assert.notEqual(oneIndex, -1)
+  assert.notEqual(nineIndex, -1)
+  const standardSandwich = {
+    type: 'sandwich' as const,
+    direction: 'east' as const,
+    cells: firstRow,
+    sum: firstRowValues.slice(Math.min(oneIndex, nineIndex) + 1, Math.max(oneIndex, nineIndex))
+      .split('').reduce((sum, digit) => sum + Number(digit), 0),
+  }
+  const terrainWithXSums = { ...parsed.variant.puzzle,
+    rules: [...rules, ratioTwoCompanion, firstRowXSum, standardSandwich] }
+  assert.equal(terrainWithXSums.rules?.filter(rule => rule.type === 'terrain-sandwich').length, 15)
+  assert.equal(terrainWithXSums.rules?.filter(rule => rule.type === 'sandwich').length, 1)
   assertVariantCompletion(terrainWithXSums, source.source.solution)
   assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle: terrainWithXSums } }),
     { status: 'unique', solution: source.source.solution },
