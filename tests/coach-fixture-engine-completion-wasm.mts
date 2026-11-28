@@ -396,6 +396,34 @@ test('zero-given published Coach Bento needs Global Entropy and labeled dots for
   }
 })
 
+test('99Eu keeps its complete Anti-Royal and XV combination with exact rule dependencies', async () => {
+  const source = [...sources.values()].find(({ references }) => references.includes('xv-coach.json:$.examples[4]'))
+  assert.ok(source)
+  const imported = await detectPuzzle(source.code)
+  assert.ok(imported.variant)
+  assert.deepEqual(new Set(imported.variant.puzzle.rules?.map(rule => rule.type)),
+    new Set(['adjacent-total', 'anti-king', 'anti-knight', 'non-consecutive']))
+  assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: {
+    puzzle: imported.variant.puzzle,
+  } }), { status: 'unique', solution: source.solution })
+
+  for (const [ruleType, expected] of [
+    ['anti-knight', 'multiple'],
+    ['anti-king', 'unique'],
+    ['non-consecutive', 'multiple'],
+    ['adjacent-total', 'unique'],
+  ] as const) {
+    const withoutRule = {
+      ...imported.variant.puzzle,
+      rules: imported.variant.puzzle.rules?.filter(rule => rule.type !== ruleType),
+    }
+    const result = await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle: withoutRule } })
+    assert.equal(result.status, expected,
+      `removing ${ruleType} must produce ${expected === 'unique' ? 'the same unique source solution' : 'alternate solutions'}`)
+    if (expected === 'unique') assert.deepEqual(result, { status: 'unique', solution: source.solution })
+  }
+})
+
 test('the zero-given Entropic Coach source has one exact solution from its encoded rules', async () => {
   const source = [...sources.values()].find(({ references }) => references.includes('entropic-coach.json:$.examples[6]'))
   assert.ok(source)
