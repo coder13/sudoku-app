@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { restoreSizedRuleGame } from '../src/sudoku/sized-rule-game.ts'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
+import { prepareImportedPuzzle } from '../src/sudoku/puzzle-preview.ts'
 import { makeGame } from '../src/sudoku/game.ts'
 import { parsePuzzleExport, puzzleExportText } from '../src/sudoku/puzzle-sharing.ts'
 import { readGame } from '../src/sudoku/storage.ts'
@@ -10,8 +11,10 @@ import { readCoachSolutionSources, standaloneCoachSolutionSources } from './help
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { transformedBoard } from './helpers/transformed-board.ts'
 import { MemoryStorage } from './helpers/memory-storage.ts'
+import { useWasmWorker } from './helpers/wasm-worker.ts'
 
 const sources = readCoachSolutionSources()
+useWasmWorker()
 
 function assertClassicCompletion(givens: string, solution: string, source: string) {
   assert.match(solution, /^[1-9]{81}$/, source)
@@ -60,6 +63,27 @@ test('published completions satisfy every preserved Sudoku Coach fixture combina
   assert.deepEqual([...standaloneSeen].sort(), [...standaloneCoachSolutionSources].sort())
   assert.equal(ruleInventories.size, 52, 'the Coach corpus retains 52 distinct rule-family combinations')
   assert.equal(ruleFamilies.size, 34, 'the Coach corpus covers 34 imported rule families')
+})
+
+test('published Sudoku Coach variant sources pass full import preview verification', async () => {
+  let checked = 0
+  for (const source of sources.values()) {
+    const imported = await detectPuzzle(source.code)
+    if (!imported.variant) continue
+
+    const preview = await prepareImportedPuzzle(source.code, [], { deferRating: true })
+    assert.ok(preview.game.variant, `${source.references[0]}: preview retains the variant`)
+    assert.deepEqual(preview.game.variant.puzzle, imported.variant.puzzle,
+      `${source.references[0]}: preview retains every imported rule`)
+    assertVariantCompletion(preview.game.variant.puzzle, preview.game.variant.solution!,
+      `${source.references[0]}: preview solution satisfies every imported rule`)
+    if (!preview.game.nonUnique) {
+      assert.equal(preview.game.variant.solution, source.solution,
+        `${source.references[0]}: unique preview matches the published completion`)
+    }
+    checked++
+  }
+  assert.equal(checked, 59)
 })
 
 test('every published 9 × 9 Coach combination preserves its completion under all eight symmetries', async () => {
