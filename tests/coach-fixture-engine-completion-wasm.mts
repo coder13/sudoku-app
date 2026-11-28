@@ -592,6 +592,11 @@ test('published Coach mixtures preserve exact rule dependency and redundancy', a
       ruleTypes: ['kropki', 'non-consecutive'],
     },
     {
+      reference: 'global-entropy-coach.json:$.examples[3]',
+      ruleTypes: ['diagonal', 'non-consecutive', 'global-entropy', 'whispers', 'kropki'],
+      redundantRuleTypes: ['diagonal', 'non-consecutive', 'global-entropy', 'whispers', 'kropki'],
+    },
+    {
       reference: 'sudoku-coach-magic-square.json:$',
       ruleTypes: ['killer-cages', 'magic-square'],
     },
