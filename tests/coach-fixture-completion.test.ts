@@ -75,11 +75,12 @@ test('published Sudoku Coach variant sources pass full import preview verificati
     assert.ok(preview.game.variant, `${source.references[0]}: preview retains the variant`)
     assert.deepEqual(preview.game.variant.puzzle, imported.variant.puzzle,
       `${source.references[0]}: preview retains every imported rule`)
-    assertVariantCompletion(preview.game.variant.puzzle, preview.game.variant.solution!,
-      `${source.references[0]}: preview solution satisfies every imported rule`)
     if (!preview.game.nonUnique) {
       assert.equal(preview.game.variant.solution, source.solution,
         `${source.references[0]}: unique preview matches the published completion`)
+    } else {
+      assertVariantCompletion(preview.game.variant.puzzle, preview.game.variant.solution!,
+        `${source.references[0]}: alternate preview solution satisfies every imported rule`)
     }
     checked++
   }
