@@ -381,6 +381,19 @@ test('zero-given published Coach Bento needs Global Entropy and labeled dots for
       entries: imported.givens,
     } }), 'multiple', `removing the ${ruleType} family must expose alternate solutions`)
   }
+
+  // These source-authored companions remain part of the imported puzzle, but
+  // the published completion is still unique without any one of them.
+  for (const ruleType of ['kropki', 'xv', 'arrow', 'pill-arrow', 'whispers', 'quadruple'] as const) {
+    const withoutRule = {
+      ...imported.variant.puzzle,
+      rules: imported.variant.puzzle.rules?.filter(rule => rule.type !== ruleType),
+    }
+    assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: {
+      puzzle: withoutRule,
+    } }), { status: 'unique', solution: source.solution },
+    `removing ${ruleType} does not affect uniqueness; the importer must still preserve it`)
+  }
 })
 
 test('the zero-given Entropic Coach source has one exact solution from its encoded rules', async () => {
