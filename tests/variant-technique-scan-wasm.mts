@@ -14,9 +14,15 @@ const source = (JSON.parse(readFileSync(new URL('./fixtures/quadruple-coach-mixe
   coach: string
   solution: string
 }[]).find(item => item.url.endsWith('/FzrY'))!
+const terrain = (JSON.parse(readFileSync(new URL('./fixtures/coach-terrain.json', import.meta.url), 'utf8')) as {
+  source: { sudoku: string; solution: string }
+}).source
 
-test('background mixed-rule Technique Finder leaves foreground hints and candidate updates exact', async () => {
-  const imported = await detectPuzzle(source.coach)
+for (const sample of [
+  { name: 'published mixed-rule Ratio puzzle', code: source.coach, solution: source.solution },
+  { name: 'published Terrain combination', code: terrain.sudoku, solution: terrain.solution },
+]) test(`background Technique Finder on the ${sample.name} leaves foreground requests exact`, async () => {
+  const imported = await detectPuzzle(sample.code)
   assert.ok(imported.variant)
   const position = { puzzle: imported.variant.puzzle }
   const classic = await runEngine({ type: 'techniques' })
@@ -44,7 +50,7 @@ test('background mixed-rule Technique Finder leaves foreground hints and candida
   const emptyCell = imported.givens.indexOf('0')
   assert.notEqual(emptyCell, -1)
   const entries = Array(81).fill('0') as string[]
-  entries[emptyCell] = source.solution[emptyCell]!
+  entries[emptyCell] = sample.solution[emptyCell]!
   const editedPosition = { ...position, entries: entries.join('') }
   const baselineHints = await runEngine({ type: 'variant', operation: 'hints', position, limit: 10 })
   const baselineCandidates = await runEngine({ type: 'variant', operation: 'candidates', position: editedPosition })
