@@ -527,6 +527,10 @@ test('Coach carved out source needs Entropic, Whispers, Thermometer, and XV toge
 test('published Coach mixtures preserve exact rule dependency and redundancy', async () => {
   const cases = [
     {
+      reference: 'coach-clue-styles.json:$[3]',
+      ruleTypes: ['entropic', 'thermometer', 'whispers', 'xv'],
+    },
+    {
       reference: 'entropic-coach.json:$.examples[3]',
       ruleTypes: ['entropic', 'xv', 'kropki'],
     },
