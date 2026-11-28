@@ -552,6 +552,11 @@ test('published Coach mixtures preserve exact rule dependency and redundancy', a
       ruleTypes: ['adjacent-total', 'modular', 'kropki'],
     },
     {
+      reference: 'sudoku-coach-noncon.json:$',
+      ruleTypes: ['non-consecutive', 'xv', 'entropic', 'kropki', 'pill-arrow', 'arrow', 'minimum', 'quadruple', 'killer-cages'],
+      redundantRuleTypes: ['xv', 'entropic', 'kropki', 'pill-arrow', 'arrow', 'minimum', 'quadruple', 'killer-cages'],
+    },
+    {
       reference: 'renban-coach.json:$.examples[4]',
       ruleTypes: ['renban', 'consecutive-run', 'kropki', 'xv'],
     },
