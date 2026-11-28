@@ -48,6 +48,7 @@ const COACH_CODE = /^SCv([0-9]+)_([0-9]+)_/i
 const COACH_WHOLE_PROGRESS = /^32_/
 const LEGACY_COACH_CODE = /^SCv([3-6])_/i
 const MAX_COACH_PROGRESS_LENGTH = 1_048_576
+const COACH_PUZZLE_TOO_LARGE = 'This Sudoku Coach puzzle is too large.'
 const COACH_COLLECTION_LINK = /^\/(?:[a-z]{2}\/)?collections\/((?:[a-z0-9-]{1,64}\/){0,3}[a-z0-9-]{1,64})\/s\/([A-Za-z0-9]{1,16})\/?$/
 // Retain the 5NW source's visible fills only for the exact reviewed export.
 const coachRomeoAndJulietExport = '3582ebf36e054ed53bce1b471d1498a1da51c2af52102146782478564ab4c2d9'
@@ -141,7 +142,7 @@ async function inflate(bytes: Uint8Array<ArrayBuffer>, limit = MAX_DECODED_LENGT
       const { done, value } = await reader.read()
       if (done) break
       length += value.byteLength
-      if (length > limit) throw new Error('This Sudoku Coach puzzle is too large.')
+      if (length > limit) throw new Error(COACH_PUZZLE_TOO_LARGE)
       chunks.push(decoder.decode(value, { stream: true }))
     }
     return chunks.join('') + decoder.decode()
@@ -164,7 +165,8 @@ export async function decodeSudokuCoachPayload(code: string): Promise<Record<str
   let text: string
   try {
     text = await inflate(bytes, limit)
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === COACH_PUZZLE_TOO_LARGE) throw error
     throw new Error('This Sudoku Coach code could not be opened. Copy the full puzzle code and try again.')
   }
   let data = parseJSON(text, 'Sudoku Coach', limit)

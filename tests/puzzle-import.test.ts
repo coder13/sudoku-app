@@ -752,7 +752,7 @@ test('compressed puzzles enforce the decoded-size limit without committing a par
   const fpCode = lzString.compressToBase64(JSON.stringify({ size: 9, grid, title: 'x'.repeat(128_001) }))
   assert.ok(coachCode.length < MAX_IMPORT_LENGTH)
   assert.ok(fpCode.length < MAX_IMPORT_LENGTH)
-  await assert.rejects(detectPuzzle(coachCode), /could not be opened/)
+  await assert.rejects(detectPuzzle(coachCode), /Sudoku Coach puzzle is too large/)
   await assert.rejects(detectPuzzle(fpCode), /unreadable/)
 })
 
