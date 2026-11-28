@@ -328,6 +328,31 @@ test('Coach corner-snapped cosmetic lines become artwork, not engine rules', asy
   assert.ok(!('authoredArtwork' in imported.variant.puzzle), 'cosmetic line artwork stays outside the engine puzzle')
   const solved = await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle: imported.variant.puzzle } })
   assert.equal(solved.status, 'unique', 'the original mixed puzzle remains solvable with the authored dividers kept out of the engine')
+
+  const payload = await decodeSudokuCoachPayload(fixture.code)
+  const cell = 0
+  assert.equal(imported.givens[cell], '0')
+  assert.ok(solved.solution)
+  const digit = Number(solved.solution[cell])
+  const parity = digit % 2 ? 'odd' : 'even'
+  const segments = [{ cells: [cell], parameters: {} }]
+  const combined = await detectPuzzle(coachCode({ ...payload, givenConstraints: [
+    ...payload.givenConstraints, { type: parity, segments },
+  ] }))
+  assert.ok(combined.variant)
+  assert.deepEqual(combined.authoredArtwork, fixture.authoredArtwork)
+  assert.deepEqual(combined.variant.puzzle.rules.map(rule => rule.type), [...fixture.rules, 'parity'])
+  assert.deepEqual(await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle: combined.variant.puzzle } }), solved)
+
+  const opposite = parity === 'odd' ? 'even' : 'odd'
+  const contradictory = await detectPuzzle(coachCode({ ...payload, givenConstraints: [
+    ...payload.givenConstraints, { type: opposite, segments },
+  ] }))
+  assert.ok(contradictory.variant)
+  assert.deepEqual(contradictory.authoredArtwork, fixture.authoredArtwork)
+  assert.equal((await runEngine({ type: 'variant', operation: 'analyze', position: {
+    puzzle: contradictory.variant.puzzle,
+  } })), 'unsolvable')
 })
 
 test('published Jigsaw Coach combination needs both Killer and Little Killer rules for uniqueness', async () => {
