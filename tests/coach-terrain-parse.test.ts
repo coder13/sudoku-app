@@ -121,3 +121,41 @@ test('reviewed Coach Terrain composes with additional supported rules without dr
     { type: 'futureRule', segments: [] }] })
   await assert.rejects(detectPuzzle(unsupported), /unsupported rule type/)
 })
+
+test('#196 Terrain imports into Play with simultaneous Ratio, Difference, Odd and Even companions', async () => {
+  const digits = [...source.source.solution].map(Number)
+  const adjacentPairs = Array.from({ length: 81 }, (_, cell) => [
+    ...(cell % 9 < 8 ? [cell + 1] : []),
+    ...(cell < 72 ? [cell + 9] : []),
+  ].map(next => [cell, next] as const)).flat()
+  const findPair = (predicate: (left: number, right: number) => boolean) => {
+    const pair = adjacentPairs.find(([left, right]) => predicate(digits[left], digits[right]))
+    assert.ok(pair, 'the published completion contains a matching adjacent pair')
+    return pair
+  }
+  const ratioPair = findPair((left, right) => Math.max(left, right) === 2 * Math.min(left, right))
+  const differencePair = findPair((left, right) => Math.abs(left - right) === 1)
+  const oddCells = digits.flatMap((digit, cell) => digit % 2 ? [cell] : [])
+  const evenCells = digits.flatMap((digit, cell) => digit % 2 ? [] : [cell])
+  const layer = (type: string, pairs: readonly (readonly [number, number])[]) => ({ type, settings: {},
+    segments: pairs.map(cells => ({ cells, parameters: {} })) })
+  const parityLayer = (type: 'odd' | 'even', cells: readonly number[]) => ({ type, settings: {},
+    segments: cells.map(cell => ({ cells: [cell], parameters: {} })) })
+  const code = coachCode({ ...source.payload, givenConstraints: [...source.payload.givenConstraints,
+    layer('ratio', [ratioPair]), layer('difference', [differencePair]),
+    parityLayer('odd', oddCells), parityLayer('even', evenCells),
+  ] })
+
+  const imported = await detectPuzzle(code)
+  const rules = imported.variant?.puzzle.rules ?? []
+  assert.equal(rules.filter(rule => rule.type === 'terrain-sandwich').length, 15)
+  assert.equal(rules.filter(rule => rule.type === 'parity').length, 2)
+  const samePair = (actual: readonly [number, number], expected: readonly [number, number]) =>
+    actual[0] === expected[0] && actual[1] === expected[1] || actual[0] === expected[1] && actual[1] === expected[0]
+  assert.ok(rules.some(rule => rule.type === 'kropki' && rule.ratioTwo?.pairs.some(pair => samePair(pair, ratioPair))))
+  assert.ok(rules.some(rule => rule.type === 'kropki' && rule.consecutive?.pairs.some(pair => samePair(pair, differencePair))))
+
+  const { game } = await prepareImportedPuzzle(code)
+  assert.equal(game.variant?.solution, source.source.solution)
+  assert.deepEqual(game.variant?.puzzle.rules, rules)
+})
