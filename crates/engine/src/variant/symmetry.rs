@@ -226,9 +226,15 @@ impl SquareTransform {
             ConditionalNeighbor { alternatives, .. } => {
                 for alternative in alternatives.iter_mut() {
                     let (mut row, mut column) = (alternative.row_offset, alternative.column_offset);
-                    if self.0 & 1 != 0 { (row, column) = (column, row); }
-                    if self.0 & 2 != 0 { row = -row; }
-                    if self.0 & 4 != 0 { column = -column; }
+                    if self.0 & 1 != 0 {
+                        (row, column) = (column, row);
+                    }
+                    if self.0 & 2 != 0 {
+                        row = -row;
+                    }
+                    if self.0 & 4 != 0 {
+                        column = -column;
+                    }
                     alternative.row_offset = row;
                     alternative.column_offset = column;
                 }

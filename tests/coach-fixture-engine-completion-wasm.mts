@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { detectPuzzle } from '../src/sudoku/puzzle-import.ts'
 import { runEngine } from '../src/sudoku/engine.ts'
+import { isPlayablePuzzle } from '../src/sudoku/variants.ts'
 import { sizedRulePosition } from '../src/sudoku/sized-rule-game.ts'
 import { reflectVariant } from '../src/sudoku/variant-generation.ts'
 import { readCoachSolutionSources, standaloneCoachSolutionSources } from './helpers/coach-fixture-sources.ts'
@@ -224,6 +225,31 @@ test('published Jigsaw Coach combination needs both Killer and Little Killer rul
       entries: imported.givens,
     } }), 'multiple', `removing the ${ruleType} companion must expose alternate solutions`)
   }
+})
+
+test('every published Coach combination detects an inconsistent digit-restriction companion', async () => {
+  let checked = 0
+  for (const source of sources.values()) {
+    if (source.solution.length !== 81) continue
+    const imported = await detectPuzzle(source.code)
+    if (!imported.variant) continue
+    const cell = imported.givens.indexOf('0')
+    assert.notEqual(cell, -1, `${source.references[0]}: source has an editable cell`)
+    const puzzle = {
+      ...imported.variant.puzzle,
+      rules: [...(imported.variant.puzzle.rules ?? []),
+        { type: 'digit-restriction' as const, cells: [cell], digits: [1, 2, 3], shape: 'circle' as const },
+        { type: 'digit-restriction' as const, cells: [cell], digits: [8, 9], shape: 'square' as const },
+      ],
+    }
+    assert.equal(isPlayablePuzzle('mixed', puzzle), true,
+      `${source.references[0]}: individually valid companion rules pass structural validation`)
+    const candidates = await runEngine({ type: 'variant', operation: 'candidates', position: { puzzle } })
+    assert.equal(candidates[cell], 0,
+      `${source.references[0]}: disjoint circle/square restrictions intersect to no digit at cell ${cell}`)
+    checked++
+  }
+  assert.equal(checked, 59)
 })
 
 test('zero-given published Coach Bento needs Global Entropy and labeled dots for uniqueness', async () => {

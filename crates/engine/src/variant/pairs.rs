@@ -250,9 +250,6 @@ impl PairCompiler {
                     .fold(0, |mask, &digit| mask | digit_bit(digit));
                 for &cell in cells {
                     puzzle.allowed_digits[cell] &= allowed;
-                    if puzzle.allowed_digits[cell] == 0 {
-                        return Err(invalid);
-                    }
                     puzzle.digit_restriction_clues.push(DigitRestrictionClue {
                         rule: index,
                         cell,

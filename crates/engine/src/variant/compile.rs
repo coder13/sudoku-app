@@ -3,10 +3,10 @@
 use std::sync::OnceLock;
 
 use super::{
-    AqreConstraint, CompiledConditionalNeighbor, CompiledMagicSquare, CompiledNeighborMatch, CompiledUnknownCageSums,
-    CompiledVariant, LetteredQuadruples, LineConstraint, PuzzleRule, Quadruple, RegionLayout,
-    VARIANT_FORMAT_VERSION, VariantDefinitionError, VariantHouse, VariantHouseKind, VariantPuzzle,
-    cell_mask, cells_in,
+    AqreConstraint, CompiledConditionalNeighbor, CompiledMagicSquare, CompiledNeighborMatch,
+    CompiledUnknownCageSums, CompiledVariant, LetteredQuadruples, LineConstraint, PuzzleRule,
+    Quadruple, RegionLayout, VARIANT_FORMAT_VERSION, VariantDefinitionError, VariantHouse,
+    VariantHouseKind, VariantPuzzle, cell_mask, cells_in,
     lines::compile_line_sums,
     pairs::{PairCompiler, positive_sums},
 };
@@ -226,10 +226,17 @@ impl VariantPuzzle {
                         .neighbor_matches
                         .extend(CompiledNeighborMatch::compile(index, clues)?);
                 }
-                PuzzleRule::ConditionalNeighbor { trigger_digit, alternatives } => {
-                    compiled.conditional_neighbors.extend(CompiledConditionalNeighbor::compile(
-                        index, *trigger_digit, alternatives,
-                    )?);
+                PuzzleRule::ConditionalNeighbor {
+                    trigger_digit,
+                    alternatives,
+                } => {
+                    compiled
+                        .conditional_neighbors
+                        .extend(CompiledConditionalNeighbor::compile(
+                            index,
+                            *trigger_digit,
+                            alternatives,
+                        )?);
                 }
                 PuzzleRule::MagicSquare { cells } => {
                     compiled

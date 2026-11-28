@@ -1,9 +1,10 @@
 #![cfg(all(feature = "variants"))]
 
 use sudoku_app_engine::{
-    Analysis, ClueDirection, DEFAULT_VARIANT_SEARCH_NODES, Diagonal, KillerCage, LetteredQuadruple,
-    MarkedPairs, Parity, PuzzleRule, RegionLayout, VariantDefinitionError, VariantHouseKind,
-    VariantPositionError, VariantPuzzle, analyze, candidates, parse_givens,
+    Analysis, ClueDirection, DEFAULT_VARIANT_SEARCH_NODES, Diagonal, DigitRestrictionShape,
+    KillerCage, LetteredQuadruple, MarkedPairs, Parity, PuzzleRule, RegionLayout,
+    VariantDefinitionError, VariantHouseKind, VariantPositionError, VariantPuzzle, analyze,
+    candidates, parse_givens,
 };
 
 const CLASSIC_SOLUTION: &str =
@@ -45,6 +46,32 @@ fn lockout_support_respects_both_ends_and_strict_outside_digits() {
             .unwrap()
             .candidates(&entries, &NO_REMOVALS)
             .is_ok()
+    );
+}
+
+#[test]
+fn overlapping_digit_restrictions_compile_as_an_unsatisfiable_puzzle() {
+    let mut puzzle = VariantPuzzle::classic(EMPTY);
+    puzzle.rules.extend([
+        PuzzleRule::DigitRestriction {
+            cells: vec![0],
+            digits: vec![1, 2, 3],
+            shape: DigitRestrictionShape::Circle,
+        },
+        PuzzleRule::DigitRestriction {
+            cells: vec![0],
+            digits: vec![8, 9],
+            shape: DigitRestrictionShape::Square,
+        },
+    ]);
+
+    let compiled = puzzle
+        .compile()
+        .expect("both clue layers are structurally valid");
+    assert_eq!(compiled.candidates(&EMPTY, &NO_REMOVALS).unwrap()[0], 0);
+    assert_eq!(
+        compiled.analyze(&EMPTY, &NO_REMOVALS, DEFAULT_VARIANT_SEARCH_NODES),
+        Ok(Analysis::Unsolvable)
     );
 }
 
