@@ -41,6 +41,8 @@ const difficulty = Object.fromEntries([...classic.techniques, ...variant.techniq
   .map(technique => [technique.id, technique.difficulty]))
 const techniqueOrder = variantTechniqueOrder(variant.defaultOrder, classic.difficultyOrder, difficulty)
 const position = { puzzle: imported.variant.puzzle }
+const exactAnalysisRequest = { type: 'variant', operation: 'analyze', position, maxNodes: 1_000_000 }
+const exactSolveRequest = { type: 'variant', operation: 'solve', position, maxNodes: 1_000_000 }
 const appRateRequest = { type: 'variant', operation: 'rate', position, techniqueOrder }
 const appHintsRequest = { type: 'variant', operation: 'hints', position, techniqueOrder,
   preferProgress: true, difficulty: 'medium', limit: 10 }
@@ -51,9 +53,9 @@ const finderHandler = await engineHandler()
 const pageHandler = await engineHandler()
 let pageRequestId = 0
 
-const analyze = await request({ type: 'variant', operation: 'analyze', position, maxNodes: 1_000_000 })
+const analyze = await request(exactAnalysisRequest)
 assert.equal(analyze, 'unique')
-const solve = await request({ type: 'variant', operation: 'solve', position, maxNodes: 1_000_000 })
+const solve = await request(exactSolveRequest)
 assert.equal(solve, source.solution)
 const rating = await request(appRateRequest)
 const hints = await request(appHintsRequest)
@@ -157,13 +159,15 @@ async function measure(label, input, samples) {
 console.log(`Coach Terrain app Wasm ${process.platform} ${process.arch}, Node ${process.version}; ${wasmBytes.length} raw/${gzipSync(wasmBytes).length} gzip bytes; ${techniqueOrder.length} app-order techniques.`)
 console.log(`Published completion: unique; rating ${JSON.stringify(rating.status)}, ${rating.points} points; ${hints.length} top-ten hints; ${exhaustive.available} exhaustive choices (${exhaustive.choices.length} transferred).`)
 console.log(`Fixed-layout Terrain generation: unique ${generatedTerrain.givens}-given puzzle; ${generatedTerrain.puzzle.rules.filter(rule => rule.type === 'terrain-sandwich').length} Terrain clues retained.`)
-console.log('Five warmups; 10 samples for Finder, paged hints, generation and exhaustive collection; 20 for rating and top-ten hints. Direct Node/Wasm timings exclude worker startup, transfer and rendering.')
+console.log('Five warmups; 10 samples for exact solving, Finder, paged hints, generation and exhaustive collection; 20 for rating and top-ten hints. Direct Node/Wasm timings exclude worker startup, transfer and rendering.')
 const expectedFinderCounts = await prefixFinderCounts()
 assert.deepEqual(await finderCounts(), expectedFinderCounts)
 console.log(`Technique Finder: ${techniqueOrder.length} app-order counts match cumulative-prefix reference.`)
 await measureFunction('Technique Finder full app-order counts', finderCounts, 10)
 assert.equal((await completeHintPages()).length, exhaustive.available)
 await measureFunction('App-order complete hint pages', completeHintPages, 10)
+await measure('Exact uniqueness analysis', exactAnalysisRequest, 10)
+await measure('Exact solution search', exactSolveRequest, 10)
 await measure('Fixed-layout Terrain generation', terrainGenerationRequest, 10)
 await measure('App-order rating', appRateRequest, 20)
 await measure('App-order top-ten hints', appHintsRequest, 20)
