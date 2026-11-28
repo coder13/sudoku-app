@@ -341,6 +341,7 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
     match technique {
         ArrowHouseSupport => [
             arrow_house_seed(
+                "000000000000000000000000000000000000000000000000000000000000000000000000000000000",
                 66,
                 3,
                 [
@@ -357,6 +358,7 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 ],
             ),
             arrow_house_seed(
+                "000000006000000000000000000000000000000000000000000000000000000000000000000000000",
                 28,
                 4,
                 [
@@ -375,6 +377,7 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
                 ],
             ),
             arrow_house_seed(
+                "800000000000000000000000000000000000000000000000000000000000000000000000000000000",
                 41,
                 5,
                 [
@@ -2663,9 +2666,14 @@ pub(super) fn examples(technique: VariantTechnique) -> [ExampleSeed; 3] {
     }
 }
 
-fn arrow_house_seed<const N: usize>(target: usize, digit: u8, paths: [&[usize]; N]) -> ExampleSeed {
+fn arrow_house_seed<const N: usize>(
+    givens: &'static str,
+    target: usize,
+    digit: u8,
+    paths: [&[usize]; N],
+) -> ExampleSeed {
     seed(
-        "000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        givens,
         target,
         digit,
         paths.map(|path| PuzzleRule::Arrow {

@@ -2601,10 +2601,17 @@ test('the variant catalog exposes calibrated costs and practice proofs', async (
   assert.ok(!catalog.defaultOrder.includes('group-order-contradiction'))
   assert.ok(!catalog.defaultOrder.includes('group-order-elimination'))
   assert.ok(!catalog.defaultOrder.includes('kropki-house-support'))
+  assert.ok(!catalog.defaultOrder.includes('arrow-house-support'))
   assert.ok(!catalog.defaultOrder.includes('matching-digit-contradiction'))
   assert.ok(!catalog.defaultOrder.includes('matching-layout-forcing'))
   const classicIds = classic.techniques.map(({ id }) => id).filter(id => !id.startsWith('direct-'))
-  const expectedIds = new Set([...catalog.defaultOrder, 'region-sum-distinct', 'region-sum-house', 'thermometer-house-support', 'kropki-house-support', 'linked-clue-contradiction', 'matching-digit-contradiction', 'matching-layout-forcing', 'group-line-house-support', 'group-order-contradiction', 'group-order-elimination', 'little-killer-house-support', 'renban-sum-ray-houses', 'renban-locked-digit', 'renban-house-support', 'renban-group-counts', 'renban-sum', 'renban-sum-house', ...classicIds])
+  const expectedIds = new Set([
+    ...catalog.defaultOrder, ...classicIds,
+    'region-sum-distinct', 'region-sum-house', 'thermometer-house-support', 'kropki-house-support', 'arrow-house-support',
+    'linked-clue-contradiction', 'matching-digit-contradiction', 'matching-layout-forcing',
+    'group-line-house-support', 'group-order-contradiction', 'group-order-elimination', 'little-killer-house-support',
+    'renban-sum-ray-houses', 'renban-locked-digit', 'renban-house-support', 'renban-group-counts', 'renban-sum', 'renban-sum-house',
+  ])
   assert.equal(catalog.techniques.length, expectedIds.size)
   assert.deepEqual(new Set(catalog.techniques.map(technique => technique.id)), expectedIds)
   const costs = new Map(catalog.techniques.map(technique => [technique.id, technique.cost]))
@@ -2619,6 +2626,7 @@ test('the variant catalog exposes calibrated costs and practice proofs', async (
   assert.equal(costs.get('region-sum-house'), 133)
   assert.equal(costs.get('thermometer-house-support'), 64)
   assert.equal(costs.get('kropki-house-support'), 48)
+  assert.equal(costs.get('arrow-house-support'), 64)
   assert.equal(costs.get('linked-clue-contradiction'), 78)
   assert.equal(costs.get('matching-digit-contradiction'), 80)
   assert.equal(costs.get('matching-layout-forcing'), 246)
@@ -2632,7 +2640,7 @@ test('the variant catalog exposes calibrated costs and practice proofs', async (
   assert.equal(costs.get('renban-sum-house'), 88)
   assert.equal(costs.get('x-sum'), 80)
 
-  for (const technique of catalog.defaultOrder) {
+  for (const technique of [...catalog.defaultOrder, 'arrow-house-support']) {
     const examples = await run({ type: 'practice-examples', variant: true, technique })
     assert.equal(examples.length, 3, technique)
     assert.equal(new Set(examples.map(example => example.position.puzzle.givens)).size, 3, technique)

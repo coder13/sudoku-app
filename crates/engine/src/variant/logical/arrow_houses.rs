@@ -66,9 +66,6 @@ impl CompiledVariant {
         position: &ProofPosition<'_>,
         proofs: &mut Vec<VariantDeduction>,
     ) {
-        if self.givens.iter().any(|&digit| digit != 0) {
-            return;
-        }
         for line in self
             .lines
             .iter()
