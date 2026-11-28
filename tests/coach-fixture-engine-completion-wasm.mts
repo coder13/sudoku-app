@@ -632,6 +632,10 @@ test('published Coach mixtures preserve exact rule dependency and redundancy', a
       ruleTypes: ['palindrome', 'inequality', 'kropki'],
     },
     {
+      reference: 'palindrome-coach.json:$.examples[0]',
+      ruleTypes: ['whispers', 'palindrome'],
+    },
+    {
       reference: 'entropic-coach.json:$.examples[5]',
       ruleTypes: ['entropic', 'forbidden-entropic-connection', 'global-entropy'],
       redundantRuleTypes: ['forbidden-entropic-connection', 'global-entropy'],
