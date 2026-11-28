@@ -76,6 +76,17 @@ test('direct custom next steps without a draft link back to rule selection', asy
   }
 })
 
+test('the naming step can restore rule choices from a fresh navigation', async () => {
+  const draft = encodeURIComponent(JSON.stringify({ rules: ['kropki-black', 'dutch-whispers'],
+    negativeMarkers: ['kropki-black'] }))
+  const markup = await renderNewPuzzle(`/puzzles/new/save?draft=${draft}`)
+  assert.match(markup, /<h1[^>]*>Save mode<\/h1>/)
+  assert.match(markup, /Black Kropki dots · Dutch Whispers/)
+  assert.match(markup, /No doubling without a Kropki dot/)
+  assert.match(markup, /Mode name/)
+  assert.doesNotMatch(markup, /Choose rules|No consecutive digits without a Kropki dot/)
+})
+
 test('smaller grids are configured inside custom generation and retain their difficulty links', async () => {
   const six = await renderNewPuzzle('/puzzles/new/custom?variant=six&boxRows=3', undefined, false)
   assert.match(six, /<h1[^>]*>Generate a custom puzzle<\/h1>/)

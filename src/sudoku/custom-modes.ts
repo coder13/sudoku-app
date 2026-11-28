@@ -37,11 +37,12 @@ export function selectedMarkerRules(rules: readonly CustomRule[]): MarkerRule[] 
     rules.includes(rule) || rules.includes(markerOptions[rule].family))
 }
 
-export type CustomModeDefinition = {
-  name: string
+export type CustomModeSelection = {
   rules: readonly CustomRule[]
   negativeMarkers?: readonly MarkerRule[]
 }
+
+export type CustomModeDefinition = CustomModeSelection & { name: string }
 
 export type SudokuMode = CustomModeDefinition & { id: string }
 
@@ -125,11 +126,10 @@ const modePattern = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-
 export const isSudokuModeId = (value: unknown): value is string => typeof value === 'string' && modePattern.test(value)
 export const isCustomRule = (value: unknown): value is CustomRule => typeof value === 'string' && Object.hasOwn(customRules, value)
 
-export function readCustomModeDefinition(value: unknown): CustomModeDefinition | undefined {
+export function readCustomModeSelection(value: unknown): CustomModeSelection | undefined {
   if (!value || typeof value !== 'object') return
-  const { name, rules, negativeMarkers } = value as { name?: unknown; rules?: unknown; negativeMarkers?: unknown }
-  if (typeof name !== 'string' || !name.trim() || name.length > 48 || !Array.isArray(rules) ||
-      !rules.length || !rules.every(isCustomRule)) return
+  const { rules, negativeMarkers } = value as { rules?: unknown; negativeMarkers?: unknown }
+  if (!Array.isArray(rules) || !rules.length || !rules.every(isCustomRule)) return
   if (negativeMarkers !== undefined && (!Array.isArray(negativeMarkers) ||
       negativeMarkers.some(marker => typeof marker !== 'string' || !Object.hasOwn(markerOptions, marker)))) return
   const selected = Array.isArray(negativeMarkers) ? selectedMarkerRules(rules).filter(marker => negativeMarkers.includes(marker)) : []
@@ -140,7 +140,15 @@ export function readCustomModeDefinition(value: unknown): CustomModeDefinition |
       distinct.delete(b)
     }
   }
-  return { name: name.trim(), rules: [...distinct], ...(selected.length && { negativeMarkers: selected }) }
+  return { rules: [...distinct], ...(selected.length && { negativeMarkers: selected }) }
+}
+
+export function readCustomModeDefinition(value: unknown): CustomModeDefinition | undefined {
+  if (!value || typeof value !== 'object') return
+  const { name } = value as { name?: unknown }
+  if (typeof name !== 'string' || !name.trim() || name.length > 48) return
+  const selection = readCustomModeSelection(value)
+  if (selection) return { name: name.trim(), ...selection }
 }
 
 export function readSudokuModes(storage?: Pick<Storage, 'getItem'>): SudokuMode[] {
