@@ -562,6 +562,11 @@ test('published Coach mixtures preserve exact rule dependency and redundancy', a
       redundantRuleTypes: ['labeled-dots'],
     },
     {
+      reference: 'modular-coach.json:$.examples[1]',
+      ruleTypes: ['labeled-dots', 'modular'],
+      redundantRuleTypes: ['modular'],
+    },
+    {
       reference: 'region-sum-coach.json:$.examples[1]',
       ruleTypes: ['anti-king', 'anti-knight', 'non-consecutive', 'region-sum'],
       redundantRuleTypes: ['anti-king', 'anti-knight', 'non-consecutive', 'region-sum'],
