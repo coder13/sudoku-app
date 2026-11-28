@@ -327,6 +327,20 @@ test('#196 Terrain clues prune manual candidates, report conflicts, and survive 
       assert.equal(clueEntered.position.center[candidateCell], clueExpected[index], `clue ${clueIndex + 1} center candidates at cell ${candidateCell}`)
       assert.equal(clueEntered.position.corner[candidateCell], clueExpected[index], `clue ${clueIndex + 1} corner candidates at cell ${candidateCell}`)
     }
+
+    const secondCell = clue.cells[1]
+    const secondDigit = Number(source.source.solution[secondCell])
+    const clueAdvanced = enter(clueEntered, [secondCell], 'value', secondDigit)
+    const advancedDomains = clue.cells.map(candidateCell => candidateCell === cell ? 1 << (placedDigit - 1)
+      : candidateCell === secondCell ? 1 << (secondDigit - 1) : 0x1ff)
+    const advancedExpected = terrainSandwichSupports(clue, advancedDomains)
+    for (const [index, candidateCell] of clue.cells.entries()) {
+      if (candidateCell === cell || candidateCell === secondCell) continue
+      assert.equal(clueAdvanced.position.center[candidateCell], advancedExpected[index],
+        `clue ${clueIndex + 1} center candidates after two entries at cell ${candidateCell}`)
+      assert.equal(clueAdvanced.position.corner[candidateCell], advancedExpected[index],
+        `clue ${clueIndex + 1} corner candidates after two entries at cell ${candidateCell}`)
+    }
   }
 
   let badDigits: number[] | undefined
