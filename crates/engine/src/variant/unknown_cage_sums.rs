@@ -86,16 +86,12 @@ impl CompiledUnknownCageSums {
                     digit_bit(board[cell])
                 };
             }
-            let mut supports_by_sum = [[0; 9]; SUM_COUNT];
             let mut domain = 0u16;
+            let supports_by_sum = distinct_support_by_sum(&domains[..len], &cage.digit_sets_by_sum);
             for offset in 0..SUM_COUNT {
-                let support = super::cages::distinct_support(
-                    &domains[..len],
-                    cage.digit_sets_by_sum[offset].iter().copied(),
-                );
+                let support = supports_by_sum[offset];
                 if support[..len].iter().all(|&digits| digits != 0) {
                     domain |= 1 << offset;
-                    supports_by_sum[offset] = support;
                 }
             }
             if domain == 0 {
@@ -137,6 +133,54 @@ impl CompiledUnknownCageSums {
     pub fn permits(&self, board: &Board) -> bool {
         self.restrict(board, &mut [0; CELLS]).is_ok()
     }
+}
+
+fn distinct_support_by_sum(domains: &[u16], sets_by_sum: &[Vec<u16>]) -> [[u16; 9]; SUM_COUNT] {
+    let mut support_by_sum = [[0; 9]; SUM_COUNT];
+    let mut memo = [None; 512];
+    for (sum_support, sets) in support_by_sum.iter_mut().zip(sets_by_sum) {
+        for &set in sets {
+            let (possible, support) = distinct_set_support(set, domains, &mut memo);
+            if possible {
+                for (cell_support, digits) in sum_support.iter_mut().zip(support) {
+                    *cell_support |= digits;
+                }
+            }
+        }
+    }
+    support_by_sum
+}
+
+fn distinct_set_support(
+    remaining: u16,
+    domains: &[u16],
+    memo: &mut [Option<(bool, [u16; 9])>; 512],
+) -> (bool, [u16; 9]) {
+    if remaining == 0 {
+        return (true, [0; 9]);
+    }
+    if let Some(support) = memo[remaining as usize] {
+        return support;
+    }
+
+    let cell = domains.len() - remaining.count_ones() as usize;
+    let mut support = [0; 9];
+    let mut possible = false;
+    for digit in crate::hints::digits(domains[cell] & remaining) {
+        let bit = digit_bit(digit);
+        let (child_possible, child_support) = distinct_set_support(remaining ^ bit, domains, memo);
+        if child_possible {
+            possible = true;
+            support[cell] |= bit;
+            for (cell_support, digits) in support.iter_mut().zip(child_support) {
+                *cell_support |= digits;
+            }
+        }
+    }
+
+    let result = (possible, support);
+    memo[remaining as usize] = Some(result);
+    result
 }
 
 fn sequence_support(domains: &[u16; SUM_COUNT], pairs: &[[usize; 2]]) -> Option<[u16; SUM_COUNT]> {
@@ -328,6 +372,38 @@ mod tests {
                     digit_sets(cage.cells.len(), FIRST_SUM + offset as u16).collect::<Vec<_>>(),
                     "every cached total set matches the shared distinct-digit enumerator",
                 );
+            }
+        }
+    }
+
+    #[test]
+    fn shared_digit_set_memo_matches_independent_support_for_every_total() {
+        let mut occupied = 0;
+        let compiled =
+            CompiledUnknownCageSums::compile(0, &authored_cages(), &[], &mut occupied).unwrap();
+        for cage in &compiled.cages {
+            let len = cage.cells.len();
+            for offset in 0..5 {
+                let domains: Vec<_> = cage.cells[..len]
+                    .iter()
+                    .map(|&cell| {
+                        let first = (cell + offset) % 9;
+                        let second = (cell * 3 + offset + 2) % 9;
+                        let third = (cell * 7 + offset + 5) % 9;
+                        (1 << first) | (1 << second) | (1 << third)
+                    })
+                    .collect();
+                let shared = distinct_support_by_sum(&domains, &cage.digit_sets_by_sum);
+                for sum in 0..SUM_COUNT {
+                    assert_eq!(
+                        shared[sum],
+                        super::super::cages::distinct_support(
+                            &domains,
+                            cage.digit_sets_by_sum[sum].iter().copied(),
+                        ),
+                        "shared support matches independent calculation for cage and total",
+                    );
+                }
             }
         }
     }
