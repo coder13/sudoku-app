@@ -45,6 +45,8 @@ Before implementing a panel transition, trace the full geometry handoff: measure
 
 When a new panel is inserted between existing panels, animate the entering panel's size and let normal layout move its siblings. Do not also FLIP-scale those siblings from the old layout while the inserted panel is changing size; both animations would try to explain the same displacement and can make a panel appear to grow, then snap back. Reserve sibling FLIP for transitions where the target panel is already at its final size.
 
+Show solve results in the board overlay. Keep the grid in layout so it sets the result card's position and dimensions. Preserve the space used by the puzzle controls, input toolbar, and any hint that closes on the final move. The result transition changes opacity while both views use the same grid bounds. When switching puzzles, read the destination puzzle's saved layout before mounting its panels. Scope animated hints, input tabs, and their temporary sizing styles to the puzzle that owns them.
+
 ## Snap animation handoff
 
 The mobile puzzle gesture in `src/components/MobilePanelLayout.tsx` is the reference for a layout-changing snap:

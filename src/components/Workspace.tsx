@@ -484,9 +484,9 @@ export function SudokuShell({ children }: { children: ReactNode }) {
     setAppearance(current => ({ ...current, mobilePuzzleTopSpace: 0, mobilePuzzleShrink: 0 }))
     playPreferenceStore.set('desktopLayoutWidth', DEFAULT_PLAY_PREFERENCES.desktopLayoutWidth)
     playPreferenceStore.set('desktopPanelWidths', DEFAULT_PLAY_PREFERENCES.desktopPanelWidths)
+    playPreferenceStore.set('mobileInputHeight', null)
     setAdvancedPanels(DEFAULT_ADVANCED_PANEL_VISIBILITY)
     saveAdvancedPanelVisibility(DEFAULT_ADVANCED_PANEL_VISIBILITY)
-    if (game) playSession.set(game.id, 'toolPanels', current => ({ ...current, height: undefined }))
   }
 
   function cancelDraft() {

@@ -130,6 +130,20 @@ test('desktop layout width persists and can be reset without clearing other pref
   }
 })
 
+test('a mobile input height persists and an explicit reset survives reload', () => {
+  const storage = memoryStorage(null)
+  const store = createPlayPreferenceStore(storage)
+  assert.equal(store.getSnapshot().mobileInputHeight, undefined)
+  store.set('mobileInputHeight', 253.5)
+  const reloaded = createPlayPreferenceStore(storage)
+  assert.equal(reloaded.getSnapshot().mobileInputHeight, 253.5)
+  reloaded.set('mobileInputHeight', null)
+  assert.equal(createPlayPreferenceStore(storage).getSnapshot().mobileInputHeight, null)
+  for (const height of [0, -1, '270', Infinity]) {
+    assert.equal(parsePlayPreferences({ mobileInputHeight: height }).mobileInputHeight, undefined)
+  }
+})
+
 test('both desktop panel widths save and reset independently of the outer width', () => {
   const storage = memoryStorage(JSON.stringify({ desktopLayoutWidth: 1520 }))
   const store = createPlayPreferenceStore(storage)

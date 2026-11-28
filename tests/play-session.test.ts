@@ -80,6 +80,17 @@ test('saved tab state can resume on app relaunch without restoring a launch paus
   })
 })
 
+test('a puzzle can read its saved layout before becoming active', () => {
+  const session = createPlaySession(new MemoryStorage(), new MemoryStorage())
+  const layout = { open: ['chains' as const], active: 'digits' as const, height: 270 }
+  session.set('puzzle-a', 'toolPanels', layout)
+  session.activate('puzzle-b')
+  const active = session.getSnapshot()
+
+  assert.deepEqual(session.readPuzzle('puzzle-a').toolPanels, layout)
+  assert.equal(session.getSnapshot(), active)
+})
+
 test('an open hint keeps its source, selection and detail on reload for the same puzzle', () => {
   const storage = new MemoryStorage()
   const persistent = new MemoryStorage()

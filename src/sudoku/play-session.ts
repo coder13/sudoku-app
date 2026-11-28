@@ -202,6 +202,7 @@ export function createPlaySession(storage?: PlayStorage, persistentStorage?: Pla
     },
     getSnapshot: () => current,
     getServerSnapshot: () => initial,
+    readPuzzle: forPuzzle,
     activate(puzzleId: string | null) {
       if (current.puzzleId !== puzzleId) commit(forPuzzle(puzzleId), true)
     },

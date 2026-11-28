@@ -140,9 +140,9 @@ function inputOverflow(refs: MobileInputResizeRefs) {
   return [panel, ...nested].reduce((pixels, element) => pixels + Math.max(0, element.scrollHeight - element.clientHeight), 0)
 }
 
-export function MobileInputResizeHandle({ inputId, layoutRef, inputPanelRef, refs, edge, disabled, withHint, fitContent = false, savedHeight, onHeightChange, onResizingChange, onResizePreview, onResizeSettled }: {
+export function MobileInputResizeHandle({ inputId, layoutElement, inputPanelRef, refs, edge, disabled, withHint, fitContent = false, savedHeight, onHeightChange, onResizingChange, onResizePreview, onResizeSettled }: {
   inputId: string
-  layoutRef: RefObject<HTMLDivElement | null>
+  layoutElement: HTMLDivElement | null
   inputPanelRef: RefObject<HTMLDivElement | null>
   refs: MobileInputResizeRefs
   edge: 'top' | 'bottom'
@@ -173,7 +173,7 @@ export function MobileInputResizeHandle({ inputId, layoutRef, inputPanelRef, ref
     optionsTimer.current = null
   }
 
-  function getLayout() { return layoutRef.current ?? undefined }
+  function getLayout() { return layoutElement ?? undefined }
 
   function cancelSnapAnimation() {
     snapAnimations.current.forEach(animation => animation.cancel())
@@ -254,12 +254,15 @@ export function MobileInputResizeHandle({ inputId, layoutRef, inputPanelRef, ref
       cancelSizeOptions()
       lastTap.current = null
       clearSplit(layout)
+      // Measure the available board space with the input card at its natural height.
+      onResizeSettled?.()
       const split = measureSplit(layout, refs, hintOpen.current)
       if (!split) return
       const preferred = preferredHeight.current
       if (preferred === undefined) describe(split)
       // An open hint can make the page scroll when the board reaches its minimum.
       else updateHeight(layout, split, hintOpen.current ? Math.max(split.min, preferred) : clampHeight(split, preferred))
+      onResizeSettled?.()
     }
     fitToLayout()
     const observer = new ResizeObserver(entries => {
@@ -291,7 +294,7 @@ export function MobileInputResizeHandle({ inputId, layoutRef, inputPanelRef, ref
       stopResize()
       clearSplit(layout)
     }
-  }, [fitContent, edge, layoutRef, refs])
+  }, [fitContent, edge, layoutElement, refs, onResizeSettled])
 
   useLayoutEffect(() => {
     const current = drag.current

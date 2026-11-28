@@ -1,7 +1,10 @@
 import { fogView } from '../sudoku/fog'
 import { Button, IconButton } from './Button'
 import {
+  cloneElement,
+  type ComponentProps,
   type CSSProperties,
+  type ReactElement,
   type ReactNode,
   type Dispatch,
   type MouseEvent,
@@ -27,9 +30,11 @@ import {
   CloudUpload,
   Eraser,
   Eye,
+  Grid3X3,
   Info,
   Layers,
   Lightbulb,
+  ListChecks,
   Link2,
   ListFilter,
   ListOrdered,
@@ -105,7 +110,6 @@ import { highlightedDigitShortcut, shortcutLabel, shortcutMatches, shortcutStore
 import { roomStore } from '../sudoku/storage'
 import {
   defaultDigitHighlight,
-  defaultToolPanels,
   TOOL_PANEL_ORDER,
   type ToolPanelTab,
   type PuzzleTool,
@@ -150,7 +154,7 @@ import { usePuzzleSelection } from './usePuzzleSelection'
 import { usePuzzleTimer } from './usePuzzleTimer'
 import { usePuzzleZoom } from './usePuzzleZoom'
 import { useTouchHold } from './useTouchHold'
-import { PLAY_TOOL_TABS } from './PlayToolRegistry'
+import { PLAY_TOOL_TABS, playToolSupported } from './PlayToolRegistry'
 import { usePlayPanelModel } from './play/usePlayPanelModel'
 import { usePlayInputModel, type CellPaintStroke } from './play/usePlayInputModel'
 import { dispatchCommandShortcut, type UiCommand } from './UiCommand'
@@ -326,7 +330,14 @@ export function Worktable({
   const desktopHintSizeRef = useRef<number | undefined>(savedPlayState?.desktopHintSize)
   desktopHintSizeRef.current = savedPlayState?.desktopHintSize
   const saveDesktopHintSize = useCallback((size: number | undefined) => setPlaySessionState('desktopHintSize', size), [setPlaySessionState])
-  const toolPanels = savedPlayState?.toolPanels ?? defaultToolPanels
+  const toolPanels = savedPlayState.toolPanels
+  const [mobileInputHeight, setMobileInputHeight] = usePlayPreference('mobileInputHeight')
+  const legacyInputHeight = toolPanels.height
+  useLayoutEffect(() => {
+    if (mobileInputHeight === undefined && legacyInputHeight !== undefined) {
+      setMobileInputHeight(current => current === undefined ? legacyInputHeight : current)
+    }
+  }, [legacyInputHeight, mobileInputHeight, setMobileInputHeight])
   const {
     id,
     givens,
@@ -497,9 +508,15 @@ export function Worktable({
   const actionsMenuRef = useRef<HTMLDivElement>(null)
   const actionsMenuButtonRef = useRef<HTMLButtonElement>(null)
   const mobileHintPanelRef = useRef<HTMLDivElement>(null)
+  const previousHintLayout = useRef<{
+    puzzleId: string
+    panel: ReactElement<ComponentProps<typeof PlayHint>>
+    mobile: boolean
+    pinned: boolean
+  } | null>(null)
   const hintReturnFocus = useRef<HTMLElement | null>(null)
   const coloringDigit = activeHighlightDigit(values, selected, active, selectedDigit)
-  const savedSolution = savedPlayState?.solutionView
+  const savedSolution = savedPlayState.solutionView
   const solutionView = !draft && savedSolution?.identity === solutionIdentity ? savedSolution : null
   const solutionPathRevealed = solutionView !== null && !solutionView.hidden
   const { path: cachedSolution, retrySolution } = usePlaySolutionLoader({
@@ -550,6 +567,7 @@ export function Worktable({
     cellReferenceStyle,
   })
   const {
+    toolContext,
     panelAvailable,
     openPuzzlePanels,
     activeToolPanel,
@@ -2121,6 +2139,19 @@ export function Worktable({
       />
     </PlayHint>
   )
+  useLayoutEffect(() => {
+    if (completed) return
+    previousHintLayout.current = hintPanel && !advancedWorkspace
+      ? { puzzleId: id, panel: hintPanel, mobile, pinned: mobile && mobileHintPinned } : null
+  }, [advancedWorkspace, completed, hintPanel, id, mobile, mobileHintPinned])
+  // A hint closed by the final move should leave the grid where it was.
+  const previousHint = previousHintLayout.current
+  const retainedHint = completed && !hintPanel && !advancedWorkspace && !rearranging &&
+    previousHint?.puzzleId === id && previousHint.mobile === mobile ? previousHint : null
+  const retainedPinnedHint = Boolean(retainedHint?.pinned)
+  const layoutHint = retainedHint && !retainedPinnedHint
+    ? cloneElement(retainedHint.panel, { className: 'hint-layout-reservation', inert: true })
+    : hintPanel
   const cellColorsPanel = (
     <CellColorPalette
       target={colorTarget}
@@ -2197,7 +2228,6 @@ export function Worktable({
         ratingPending={ratingPending}
         shortcutEnabled={showResults && !rearranging && !modalOpen && !puzzleMenuOpen && !actionsOpen && !cancelDraftOpen && !variantRulesOpen}
         actionsTarget={mobile ? completionActionsTarget : null}
-        layoutBoundaryRef={gridAlignmentBoundaryRef}
         showGuides={appearance.showGuides}
         cellReferenceStyle={cellReferenceStyle}
         onResumePuzzle={onSelectPuzzle}
@@ -2443,7 +2473,7 @@ export function Worktable({
       {puzzleOptionItems}
     </div>
   )
-  const canSelectCell = !game.paused && !showMobileResults && !rearranging
+  const canSelectCell = !game.paused && !showResults && !rearranging
   const boardContextAvailable = canSelectCell && !interactionBlocked && !disabled && !solved && !draft && !placeholder && !previewing && !subsets.draft
   useEffect(() => {
     if (!boardContextAvailable) closeBoardContext()
@@ -2552,7 +2582,7 @@ export function Worktable({
   }
   const boardFrameLayout = {
     frameRef: hintBoardFrameRef,
-    layoutBoundaryRef: !game.paused ? gridAlignmentBoundaryRef : undefined,
+    layoutBoundaryRef: !game.paused || completed ? gridAlignmentBoundaryRef : undefined,
   }
   const liveBoardLayout = {
     ...boardFrameLayout,
@@ -2580,9 +2610,7 @@ export function Worktable({
   )
   const livePuzzleStage = previewing ? (
     solutionGrid
-  ) : !mobile && completionPanel ? (
-    completionPanel
-  ) : (sketch.drawing || sketch.erasing || browsingStrongLinks) && chainMasks ? (
+  ) : !showResults && (sketch.drawing || sketch.erasing || browsingStrongLinks) && chainMasks ? (
     <Board
       content={{
         ...boardContent,
@@ -2644,7 +2672,7 @@ export function Worktable({
         showImportedAnnotations: true,
         descriptionId: badgeMode ? modeBadgeId : undefined,
         label: cages ? 'Algebraic Cages Sudoku grid' : variant ? `${variantName(variant)} Sudoku grid` : undefined,
-        overlay: mobile && completionPanel ? { content: completionPanel, visible: showMobileResults } : undefined,
+        overlay: completionPanel ? { content: completionPanel, visible: showResults } : undefined,
         highlightedDigit: selectedDigit ?? (visibleChainAnnotations ? chainHighlightDigit : null),
         highlightedDigitMask: hintOpen ? highlightedDigitMask : playerHighlightMask,
         highlightedDigitMatch: digitHighlight.match,
@@ -2682,7 +2710,7 @@ export function Worktable({
   )
   const pausedPuzzleStage = (
     <div className={`board-frame puzzle-paused-frame ${appearance.showGuides ? '' : 'guides-hidden'}`}>
-      <div ref={game.paused ? gridAlignmentBoundaryRef : undefined} className="puzzle-paused" role="status" aria-label="Puzzle paused">
+      <div ref={game.paused && !completed ? gridAlignmentBoundaryRef : undefined} className="puzzle-paused" role="status" aria-label="Puzzle paused">
         <span className="puzzle-paused-icon" aria-hidden="true">
           <Pause size={25} />
         </span>
@@ -2693,7 +2721,7 @@ export function Worktable({
       </div>
     </div>
   )
-  const puzzlePlayLayers = <PlayStageLayers paused={game.paused} live={livePuzzleStage} pause={pausedPuzzleStage} />
+  const puzzlePlayLayers = <PlayStageLayers paused={game.paused && !completed} live={livePuzzleStage} pause={pausedPuzzleStage} />
 
   const quickActions: Record<PinnedAction, { Icon: typeof PencilLine; command: UiCommand<PinnedAction> }> = {
     candidates: { Icon: PencilLine, command: generateCandidatesCommand },
@@ -2725,8 +2753,7 @@ export function Worktable({
       command: pinnedCommand('redo', game.future.length > 0, () => edit(redo)),
     },
   }
-  const visiblePinnedActions = !placeholder && !draft && !completed ? pinnedActions : []
-  const visiblePinnedControls = visiblePinnedActions.map((id) => ({
+  const pinnedControls = (placeholder || draft ? [] : pinnedActions).map((id) => ({
     Icon: quickActions[id].Icon,
     shortLabel: pinnedActionDetails[id].shortLabel,
     command: quickActions[id].command,
@@ -2762,10 +2789,10 @@ export function Worktable({
     appearance.showGuides,
     puzzleControlsBelow,
     previewing,
-    showResults,
     sketch.drawing,
     browsingStrongLinks,
     playLayoutAnchors,
+    savedGame.id,
   ])
 
   const puzzleMetadata = (!draft || placeholder) && (
@@ -2811,26 +2838,25 @@ export function Worktable({
       )}
     </div>
   )
-  const viewToggleBesideMenu = desktop && !advancedWorkspace && puzzleControlsBelow
-  const viewToggle = completed && !previewing && (
+  const viewToggleLabel = showSolvedGrid ? 'View results' : 'View grid'
+  const viewToggle = !placeholder && !draft && !previewing && (
     <Button
       variant="quiet"
       className="puzzle-view-toggle"
+      aria-label={viewToggleLabel}
+      title={viewToggleLabel}
       aria-pressed={showSolvedGrid}
       aria-controls={puzzleStageId}
       aria-keyshortcuts={pauseKeys.join(' ')}
+      inert={!completed}
       onClick={toggleSolvedView}
     >
-      {showSolvedGrid ? 'View results' : 'View grid'}
+      {showSolvedGrid ? <ListChecks size={18} aria-hidden="true" /> : <Grid3X3 size={18} aria-hidden="true" />}
+      <span>{viewToggleLabel}</span>
     </Button>
   )
   const puzzleUtilityActions = (
     <>
-      {puzzleZoom.zoomed && (
-        <IconButton variant="quiet" className="puzzle-zoom-reset" aria-label="Reset grid zoom" title="Reset grid zoom" onClick={puzzleZoom.reset}>
-          <ZoomOut size={18} aria-hidden="true" />
-        </IconButton>
-      )}
       {nonUnique && <span className="non-unique-chip">Multiple Solutions</span>}
       {mixedVariant ? (
         <IconButton
@@ -2858,7 +2884,6 @@ export function Worktable({
           </Button>
         )
       )}
-      {!viewToggleBesideMenu && viewToggle}
     </>
   )
   const puzzleActions = (
@@ -2889,24 +2914,33 @@ export function Worktable({
         </>
       ) : (
         <>
-          {!puzzleControlsBelow && puzzleUtilityActions}
-          {viewToggleBesideMenu && viewToggle}
-          {timing.trackTime && timing.showPause && !draft && !completed && (mobile || game.started || game.paused) && !previewing && (
-            <IconButton
-              type="button"
-              variant="quiet"
-              className="puzzle-pause-trigger"
-              aria-label={game.paused ? 'Resume puzzle' : 'Pause puzzle'}
-              title={`${game.paused ? 'Resume puzzle' : 'Pause puzzle'} (${pauseKeys.join(' / ')})`}
-              aria-pressed={game.paused}
-              aria-keyshortcuts={pauseKeys.join(' ')}
-              onClick={togglePause}
-            >
-              <span className="pause-toggle-icons" aria-hidden="true">
-                <Pause className="pause-toggle-pause" size={18} />
-                <Play className="pause-toggle-play" size={18} />
-              </span>
+          {puzzleZoom.zoomed && (
+            <IconButton variant="quiet" className="puzzle-zoom-reset" aria-label="Reset grid zoom" title="Reset grid zoom" onClick={puzzleZoom.reset}>
+              <ZoomOut size={18} aria-hidden="true" />
             </IconButton>
+          )}
+          {!puzzleControlsBelow && puzzleUtilityActions}
+          {viewToggle && (
+            <div className="puzzle-play-toggle">
+              {viewToggle}
+              {timing.trackTime && timing.showPause && !completed && (mobile || game.started || game.paused) && (
+                <IconButton
+                  type="button"
+                  variant="quiet"
+                  className="puzzle-pause-trigger"
+                  aria-label={game.paused ? 'Resume puzzle' : 'Pause puzzle'}
+                  title={`${game.paused ? 'Resume puzzle' : 'Pause puzzle'} (${pauseKeys.join(' / ')})`}
+                  aria-pressed={game.paused}
+                  aria-keyshortcuts={pauseKeys.join(' ')}
+                  onClick={togglePause}
+                >
+                  <span className="pause-toggle-icons" aria-hidden="true">
+                    <Pause className="pause-toggle-pause" size={18} />
+                    <Play className="pause-toggle-play" size={18} />
+                  </span>
+                </IconButton>
+              )}
+            </div>
           )}
           <div className="puzzle-menu-wrap" data-puzzle-menu data-grid-click-away-exempt ref={puzzleMenuRef}>
             <IconButton
@@ -2979,7 +3013,7 @@ export function Worktable({
           </div>
           <div className="puzzle-placeholder-message">{placeholder}</div>
         </div>
-      ) : !draft && !completed ? (
+      ) : !draft ? (
         mobile ? (
           <div className="puzzle-zoom" data-zoomed={puzzleZoom.zoomed || undefined} {...puzzleZoom.viewportProps}>
             <div ref={puzzleZoom.content} className="puzzle-zoom-content">
@@ -2995,13 +3029,13 @@ export function Worktable({
     </div>
   )
   const puzzleTopActions =
-    puzzleControlsBelow && (puzzleZoom.zoomed || variant || grid || (!viewToggleBesideMenu && viewToggle)) ? (
+    puzzleControlsBelow && (variant || grid) ? (
       <div key="top-actions" className="puzzle-actions puzzle-top-actions">
         {puzzleUtilityActions}
       </div>
     ) : null
   const puzzlePanel = (
-    <div ref={hintColumnRef} className="puzzle-column" data-reserve-badge-space={(!placeholder && !draft) || undefined}>
+    <div key={savedGame.id} ref={hintColumnRef} className="puzzle-column" data-reserve-badge-space={(!placeholder && !draft) || undefined}>
       <section
         ref={puzzleCardLayoutRef}
         className="puzzle puzzle-flat"
@@ -3009,7 +3043,7 @@ export function Worktable({
         aria-label={game.title}
         data-placeholder={Boolean(placeholder) || undefined}
         data-puzzle-controls={puzzleControlsBelow ? 'bottom' : undefined}
-        data-desktop-solved={(desktop && completed && !previewing) || undefined}
+        data-puzzle-mode-edge={!placeholder && !draft ? modeBadgePosition.edge : undefined}
         style={
           {
             '--board-font-scale': appearance.gridTextScale,
@@ -3041,7 +3075,7 @@ export function Worktable({
             label: choice.label, icon: choice.kind === 'candidate' ? Link2 : Layers, run: choice.run,
           }))} />}
         {showKillerCombinations && <KillerCombos puzzle={game.variant?.puzzle} values={values} active={selected.at(-1) ?? -1} visible={selected.length > 0} />}
-        <PinnedActionBar actions={visiblePinnedControls} disabled={disabled} />
+        <PinnedActionBar actions={pinnedControls} disabled={disabled} visible={!completed} />
         {presentationDraft && (
           <div className="draft-tip">
             <PencilLine size={16} /> Enter the givens, then save your puzzle.
@@ -3118,13 +3152,12 @@ export function Worktable({
           canUndo: !!game.past.length,
           canRedo: !!game.future.length,
           historyDisabled: historyDisabled,
-          hideUndo: completed,
         }}
         actions={{
           onCheck: presentationDraft || previewing ? undefined : () => checkCommand.run(),
           actionsButtonRef: actionsMenuButtonRef,
           actionsOpen: actionsOpen,
-          reserveSolvingSlots: desktop && !advancedWorkspace && solved && !previewing,
+          reserveSolvingSlots: !advancedWorkspace && solved && !previewing,
           actionsMenu: !mobile && !advancedWorkspace ? desktopActionsMenu : undefined,
           inputTools:
             desktop && panelToggles.length > 0 ? (
@@ -3166,12 +3199,12 @@ export function Worktable({
           aria-label="Next puzzle options"
           hidden={!showMobileResults}
           data-no-panel-hold
-        ></section>
+        />
       )}
     </div>
   )
   const advancedHintPanel = (
-    <div className="dock-hint-content">
+    <div key={savedGame.id} className="dock-hint-content">
       <MotionSurface speed="tabs">{hintPanel}</MotionSurface>
       {!hintPanel && (
         <section className="advanced-spoiler-panel motion-surface" data-presence="open" aria-label="Hint">
@@ -3346,6 +3379,8 @@ export function Worktable({
     Record<PuzzleTool, ReactNode>
   >
   const pinnedHint = mobile && mobileHintPinned ? hintPanel : undefined
+  const keepInputTabBar = mobile && completed && toolPanels.open.some(id => playToolSupported(id, toolContext))
+  const hasPinnedHintSlot = Boolean(pinnedHint || retainedPinnedHint)
 
   return (
     <CellReferenceHighlightProvider>
@@ -3353,7 +3388,7 @@ export function Worktable({
       <PlayLayout
         desktop={desktop}
         puzzle={puzzlePanel}
-        hint={hintPanel}
+        hint={layoutHint}
         hintLayout={desktopHintLayout}
         input={
           desktop ? (
@@ -3364,6 +3399,8 @@ export function Worktable({
               open={openPuzzlePanels}
               panels={toolPanelContents}
               pinnedHint={pinnedHint}
+              keepTabBar={keepInputTabBar}
+              retainPinnedHintSpace={retainedPinnedHint}
               activeTabRef={activeMobileInputTabRef}
               layoutRefs={mobileInputTabsLayoutRefs}
               toolsDisabled={rearranging}
@@ -3389,23 +3426,19 @@ export function Worktable({
             : undefined
         }
         mobile={{
-          puzzleId: game.id,
+          puzzleId: savedGame.id,
           rearranging,
-          withHint: !pinnedHint && (mobileHintOpen || Boolean(solutionHintPanel) || rearranging),
-          hintInTabs: Boolean(pinnedHint),
-          fitContent: (pinnedActions.length > 0 && !placeholder && !draft) || Boolean(pinnedHint),
-          resizableInput: mobileToolsAvailable || openPuzzlePanels.length > 0,
-          inputTabCount: openPuzzlePanels.length + Number(Boolean(pinnedHint)),
+          withHint: !hasPinnedHintSlot && (mobileHintOpen || Boolean(solutionHintPanel || retainedHint) || rearranging),
+          hintInTabs: hasPinnedHintSlot,
+          fitContent: (pinnedActions.length > 0 && !placeholder && !draft) || hasPinnedHintSlot,
+          resizableInput: !placeholder && !draft,
+          inputTabCount: Math.max(openPuzzlePanels.length + Number(hasPinnedHintSlot), Number(keepInputTabBar)),
           inputResizeRefs: mobileInputResizeRefs,
-          savedInputHeight: toolPanels.height,
+          savedInputHeight: mobileInputHeight === undefined ? legacyInputHeight : mobileInputHeight ?? undefined,
           puzzleTopSpace: appearance.mobilePuzzleTopSpace,
           puzzleShrink: appearance.mobilePuzzleShrink,
           onPuzzleTopSpaceChange: onMobilePuzzleTopSpaceChange,
-          onInputHeightChange: (height) =>
-            setPlaySessionState('toolPanels', (current) => {
-              if (height !== undefined) return { ...current, height }
-              return { open: current.open, active: current.active }
-            }),
+          onInputHeightChange: height => setMobileInputHeight(height ?? null),
           hintSwipe: mobileHintOpen && !pinnedHint ? { dismiss: closeHint, apply: applyHintAction } : undefined,
           blocked:
             Boolean(placeholder) ||
