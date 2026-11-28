@@ -299,6 +299,24 @@ test('Coach colored cells for Anti-Chess + Non-Consecutive remain visual metadat
   assert.ok(imported.variant)
   assert.deepEqual(imported.variant.puzzle.rules.map(rule => rule.type), fixture.rules)
   assert.ok(!('givenCellColors' in imported.variant.puzzle), 'cell colors are kept out of the engine puzzle')
+  const solved = await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle: imported.variant.puzzle } })
+  assert.equal(solved.status, 'unique', 'the engine solves the puzzle using its rules without cell-color constraints')
+
+  const payload = await decodeSudokuCoachPayload(fixture.code)
+  const evenCompanion = { type: 'even', segments: [{ cells: [14], parameters: {} }] }
+  const combined = await detectPuzzle(coachCode({ ...payload, givenConstraints: [...payload.givenConstraints, evenCompanion] }))
+  assert.deepEqual(combined.givenCellColors, fixture.givenCellColors)
+  assert.ok(combined.variant)
+  assert.deepEqual(combined.variant.puzzle.rules.map(rule => rule.type), [...fixture.rules, 'parity'])
+  const combinedSolution = await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle: combined.variant.puzzle } })
+  assert.deepEqual(combinedSolution, solved, 'a supported companion rule composes while visual colors stay outside the engine')
+
+  const contradictory = await detectPuzzle(coachCode({ ...payload, givenConstraints: [...payload.givenConstraints,
+    { type: 'odd', segments: [{ cells: [14], parameters: {} }] }] }))
+  assert.ok(contradictory.variant)
+  assert.deepEqual(contradictory.givenCellColors, fixture.givenCellColors)
+  const contradiction = await runEngine({ type: 'variant', operation: 'solve-unique', position: { puzzle: contradictory.variant.puzzle } })
+  assert.equal(contradiction.status, 'conflict', 'a contradictory parity companion is rejected without changing the overlays')
 })
 
 test('Coach corner-snapped cosmetic lines become artwork, not engine rules', async () => {
