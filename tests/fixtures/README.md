@@ -83,6 +83,8 @@ Fixed operations use five warmups and 40 samples; exhaustive collection uses fiv
 
 The Coach Anti-Royal arithmetic source `J6TH` retains Anti-Knight, Anti-King and Killer cages together. Its exact completion is unique only with the full combination: removing any one family produces multiple solutions. The source already participates in deferred-import rating and complete-proof checks; this dedicated Wasm regression makes the source-rule dependency explicit.
 
+`region-sum-coach.json:$.examples[0]` (*Thermos and Region Sums*) is another published mixed-rule dependency control. Its completion is unique with both Region Sum and Thermometer rules; removing Region Sum exposes multiple solutions, while removing Thermometer leaves the same unique completion. The import test retains the redundant Thermometer alongside the necessary Region Sum rule.
+
 ## Repeating the mixed-rule checks
 
 Run `npm test` for decoder, independent-counter, and storage contracts. Run `npm run test:wasm` for the compiled browser engine, imported-game flow, and family-subset matrix. The original mixed-rule suite is `../variant-import-wasm.mts`; Quadruple and Odd/Even have separate suites. Browser verification of the original eight-family stage on 2026-11-17 covered desktop Play and preview, 390-by-844 preview and rule dialogs, overlapping dot visibility, move/undo/redo, reload, multiple hints, the full share payload, and completion returning to the puzzle chooser.

@@ -596,6 +596,11 @@ test('published Coach mixtures preserve exact rule dependency and redundancy', a
       ruleTypes: ['distant-neighbors', 'extra-house'],
     },
     {
+      reference: 'region-sum-coach.json:$.examples[0]',
+      ruleTypes: ['region-sum', 'thermometer'],
+      redundantRuleTypes: ['thermometer'],
+    },
+    {
       reference: 'coach-clue-styles.json:$[0]',
       ruleTypes: ['extra-house', 'kropki', 'sandwich', 'xv', 'adjacent-total', 'region-sum', 'palindrome', 'consecutive-run', 'renban', 'arrow'],
       redundantRuleTypes: ['extra-house', 'kropki', 'xv', 'adjacent-total', 'region-sum', 'palindrome', 'consecutive-run', 'renban', 'arrow'],
