@@ -1,0 +1,139 @@
+{
+  "id": "cosmetic-line-board-dividers",
+  "title": "Coach corner-snapped cosmetic lines",
+  "retrieved": "2026-11-28",
+  "code": "SCv7_32_f2e9qlebdqhk047sisstf0bp0erlbbjr9dn9c3u83otq69e01psa6r74fvfmdohlooc8eh224kfdanet9l9rpcrtu3dkfvunm4u062retvlqkpfpd86rdtrvbjqk15qt51udbtbnructvcks4tgdqmq346jg01mmnbuonuqfrasb5r6fdg597g9460e4dg3ikg4mo1kra3tac265hfllo876vforhrjjeieqvtnt6mlpmon3ncrpc9u74d7b4v51ljj500ii88l4g3d5k0ir904iru91a2r5gk1dec5g930ir141q3gecmsqvambjaar1bqpn7tue9pslao4qjd8khok25ik85ah8sq12re46hh4ce5d1obni3di32ckdd0h9l21qkctud9b64bpojid7f16qph64b96qph6th2s9mla869s7ntsrbuamlqc7oj3felq4uda3tk2lgehrlel3djeuii0slacr22o66q6dj727rh3tfjft2250af839u881jq0js0qq8kc3aq1sn42ao6log29140s2fnacikc63uaahqbv7sj4vaen756g1e8qhuqaqsp2afrqqroi62mdebjhliqfdnmrqrn78blrdcp3vngr14al6e8s2qivnt2qpujfc9t7qatu3j9liee9lqavdb3cjs7iucodehnfe59a55g1e8uaka5qs88i56d4jcnt21sj4ohmdrdat8hmcbrv4jico865sftqtjdsdhfpl6434gli2vt14a1i4ooheimk3448b9kv4j1o2nngt25vchil0a9mb423j2c4vjblt1vrgufkfombu12gnt7bttnukqg47hlgsvsbrq3m468d9ssblsjhv7mmtvusuomm9md9ddtuhk9pa379lap6o0falukbfcjamomj3vbs8v33epo70",
+  "rules": [
+    "extra-house",
+    "extra-house",
+    "extra-house",
+    "entropic",
+    "kropki",
+    "kropki",
+    "xv",
+    "whispers",
+    "whispers",
+    "whispers",
+    "pill-arrow",
+    "quadruple",
+    "quadruple",
+    "quadruple",
+    "quadruple"
+  ],
+  "authoredArtwork": [
+    {
+      "type": "divider",
+      "points": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          3
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          4,
+          3
+        ],
+        [
+          5,
+          3
+        ],
+        [
+          6,
+          3
+        ],
+        [
+          7,
+          3
+        ],
+        [
+          8,
+          3
+        ],
+        [
+          9,
+          3
+        ]
+      ],
+      "thickness": 0.07
+    },
+    {
+      "type": "divider",
+      "points": [
+        [
+          6,
+          9
+        ],
+        [
+          6,
+          8
+        ],
+        [
+          6,
+          7
+        ],
+        [
+          6,
+          6
+        ],
+        [
+          6,
+          5
+        ],
+        [
+          6,
+          4
+        ],
+        [
+          6,
+          3
+        ],
+        [
+          6,
+          2
+        ],
+        [
+          6,
+          1
+        ],
+        [
+          6,
+          0
+        ]
+      ],
+      "thickness": 0.07
+    },
+    {
+      "type": "divider",
+      "points": [
+        [
+          6,
+          6
+        ],
+        [
+          7,
+          6
+        ],
+        [
+          8,
+          6
+        ],
+        [
+          9,
+          6
+        ]
+      ],
+      "thickness": 0.07
+    }
+  ]
+}

@@ -301,6 +301,15 @@ test('Coach colored cells for Anti-Chess + Non-Consecutive remain visual metadat
   assert.ok(!('givenCellColors' in imported.variant.puzzle), 'cell colors are kept out of the engine puzzle')
 })
 
+test('Coach corner-snapped cosmetic lines become artwork, not engine rules', async () => {
+  const fixture = JSON.parse(readFileSync(new URL('./fixtures/sudoku-coach-cosmetic-line-artwork.json', import.meta.url), 'utf8'))
+  const imported = await detectPuzzle(fixture.code)
+  assert.deepEqual(imported.authoredArtwork, fixture.authoredArtwork)
+  assert.ok(imported.variant)
+  assert.deepEqual(imported.variant.puzzle.rules.map(rule => rule.type), fixture.rules)
+  assert.ok(!('authoredArtwork' in imported.variant.puzzle), 'cosmetic line artwork stays outside the engine puzzle')
+})
+
 test('published Jigsaw Coach combination needs both Killer and Little Killer rules for uniqueness', async () => {
   const source = [...sources.values()].find(({ references }) =>
     references.includes('disconnected-jigsaw-coach.json:$'))

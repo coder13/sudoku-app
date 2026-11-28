@@ -119,7 +119,7 @@ const expectedRejections = new Map([
 ])
 
 test('every preserved raw Coach fixture imports or matches its explicit unsupported control', async () => {
-  assert.equal(codes.size, 122)
+  assert.equal(codes.size, 123)
   const rejected = new Set<string>()
 
   for (const [code, source] of [...codes].sort(([, left], [, right]) => left.localeCompare(right))) {
@@ -504,7 +504,7 @@ test('preserved Coach exports reject unknown root, layer, setting, segment and p
       }
     }
   }
-  assert.equal(mutations, 6744)
+  assert.equal(mutations, 6821)
 })
 
 test('every preserved Coach Sudoku export survives public sharing and reopen', async () => {
