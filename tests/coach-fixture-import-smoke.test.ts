@@ -24,6 +24,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
 
+function withoutGeneratedSupport(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutGeneratedSupport)
+  if (!isRecord(value)) return value
+  return Object.fromEntries(Object.entries(value)
+    .filter(([key]) => key !== 'support')
+    .map(([key, child]) => [key, withoutGeneratedSupport(child)]))
+}
+
 function collectCoachDotMarks(value: unknown): CoachDotMark[] {
   const marks: CoachDotMark[] = []
   const readMarkGroup = (relation: string, group: unknown) => {
@@ -181,6 +189,55 @@ test('SCv7 Coach solution sources preserve authored data with an appended soluti
     checked++
   }
   assert.ok(checked >= 70, `expected broad coverage of current Coach combinations, checked ${checked}`)
+})
+
+test('Current State progress preserves rules and authored data across every published 9 × 9 Coach source', async () => {
+  let checked = 0
+  const sources = [...readCoachSolutionSources().values()]
+    .filter(source => source.code.startsWith('SCv7_32_') && source.solution.length === 81)
+  for (const source of sources) {
+    const original = await detectPuzzle(source.code)
+    const payload = await decodeSudokuCoachPayload(source.code)
+    const editable = [...original.givens].flatMap((digit, cell) => digit === '0' ? [cell] : [])
+    assert.ok(editable.length >= 3, `${source.references.join(', ')}: fixture needs editable cells`)
+    const [placedCell, centerCell, cornerCell] = editable
+    const entries = Array(81).fill('0')
+    entries[placedCell] = source.solution[placedCell]
+    const center = Array<number>(81).fill(0)
+    const corner = Array<number>(81).fill(0)
+    center[centerCell] = 1 << (Number(source.solution[centerCell]) - 1)
+    corner[cornerCell] = 1 << (Number(source.solution[cornerCell]) - 1)
+
+    const progressed = await detectPuzzle(coachCode({
+      ...payload,
+      userDigits: [...original.givens].map((digit, cell) => digit === '0' ? entries[cell] : digit).join(''),
+      userCellCandidates: center.map(mask => mask << 1).join('-'),
+      userBoxCandidates: corner.map(mask => mask << 1).join('-'),
+    }))
+    const { progress, ...definition } = progressed
+    const numberKind = original.futoshiki ? 'futoshiki' : original.calcudoku ? 'calcudoku' : undefined
+    if (numberKind) {
+      const sourceNumber = numberKind === 'futoshiki' ? original.futoshiki : original.calcudoku
+      const progressedNumber = numberKind === 'futoshiki' ? progressed.futoshiki : progressed.calcudoku
+      assert.ok(sourceNumber && progressedNumber)
+      const { id: _sourceId, initialPosition: _sourcePosition, ...sourceDefinition } = sourceNumber
+      const { id: _progressedId, initialPosition, ...progressedDefinition } = progressedNumber
+      assert.deepEqual(withoutGeneratedSupport({ ...definition, [numberKind]: progressedDefinition }),
+        withoutGeneratedSupport({ ...original, [numberKind]: sourceDefinition }),
+        `${source.references.join(', ')}: puzzle definition`)
+      assert.deepEqual(initialPosition, {
+        values: [...original.givens].map((digit, cell) => digit === '0' ? Number(entries[cell]) : 0),
+        notes: [...original.givens].map((digit, cell) => digit === '0' ? center[cell] | corner[cell] : 0),
+      }, `${source.references.join(', ')}: restored boxless progress`)
+      assert.equal(progress, undefined, `${source.references.join(', ')}: boxless progress uses its native position model`)
+    } else {
+      assert.deepEqual(definition, original, `${source.references.join(', ')}: puzzle definition`)
+      assert.deepEqual(progress, { entries: entries.join(''), center, corner },
+        `${source.references.join(', ')}: restored progress`)
+    }
+    checked++
+  }
+  assert.equal(checked, sources.length, 'expected each supported published 9 × 9 source exactly once')
 })
 
 test('SCv7 9 × 9 Coach variants preserve their rules with appended solution-valid Odd and Even layers', async () => {
