@@ -1,5 +1,5 @@
 import { customRuleIds, ruleSelectionConflict, selectedMarkerRules, type CustomDifficulty, type CustomRule, type MarkerRule } from './custom-modes.ts'
-import { EngineError, withGenerationWorker, type EngineRunner, type VariantClueLayout, type VariantPuzzle, type VariantRule, type MarkedPairs } from './engine.ts'
+import { EngineError, withGenerationWorker, type EngineRunner, type VariantClueLayout, type VariantGenerationRequest, type VariantPuzzle, type VariantRule, type MarkedPairs } from './engine.ts'
 import { EMPTY, type Game } from './game.ts'
 import { connectedGridCells } from './grid.ts'
 import { regionIndex } from './region-sum.ts'
@@ -11,6 +11,7 @@ import { miracleSymmetry, offersMiracle } from './miracle.ts'
 import { arrowSumPaths, regionSumPaths } from './miracle-paths.ts'
 import { markerTrade } from './marker-construction.ts'
 import { hasReadableArrowLayout, MAX_GENERATED_ARROWS, selectReadableArrows } from './arrow-layout.ts'
+import { hasGeneratedVariantLayout, isBentKillerCage, isSquareJigsawRegion } from './variant-layout-quality.ts'
 
 type Pair = [number, number]
 const cells = Array.from({ length: 81 }, (_, cell) => cell)
@@ -20,6 +21,11 @@ const edges: Pair[] = cells.flatMap(cell => [
 ])
 const neighbors = cells.map(cell => cells.filter(other => other !== cell &&
   Math.abs(cell % 9 - other % 9) <= 1 && Math.abs(Math.floor(cell / 9) - Math.floor(other / 9)) <= 1))
+const edgeNeighbors = neighbors.map((otherCells, cell) => otherCells.filter(other =>
+  cell % 9 === other % 9 || Math.floor(cell / 9) === Math.floor(other / 9)))
+const cellPairs = cells.flatMap((a, index) => cells.slice(index + 1).map(b => [a, b] as const))
+const classicRegions = Array.from({ length: 9 }, (_, i) => cells.filter(cell => regionIndex(cell) === i))
+const jigsawStarts = variantSeeds.jigsaw.easy!.map(recipe => jigsawLayout(recipe.regions!).regions)
 const triples = cells.flatMap(a => neighbors[a].flatMap(b => neighbors[b].filter(c => c !== a).map(c => [a, b, c] as const)))
 const outsideLines = cells.slice(0, 18).map(line => Array.from({ length: 9 }, (_, offset) =>
   line < 9 ? line * 9 + offset : offset * 9 + line - 9))
@@ -70,10 +76,9 @@ function modeTemplate(selected: ReadonlySet<CustomRule>, random: () => number) {
   const whiteDots = selected.has('kropki') || selected.has('kropki-white')
   if (selected.has('non-consecutive')) rules.push({ type: 'non-consecutive',
     ...(whiteDots && { except: sample(edges, 26, random) }) })
-  const regions = selected.has('jigsaw')
-    ? reflectVariant({ version: 1, givens: EMPTY, regions: jigsawLayout(sample(variantSeeds.jigsaw.easy!, 1, random)[0].regions!) },
-      Math.floor(random() * 8)).regions
-    : undefined
+  const regions = selected.has('jigsaw') ? exchangeRegions(random, undefined,
+    random() < 0.5 ? classicRegions : sample(jigsawStarts, 1, random)[0]) : undefined
+  if (selected.has('jigsaw') && !regions) return
   return { version: 1, extendedLogic: true, givens: EMPTY, rules, ...(regions && { regions }),
     ...((regions || selected.has('global-entropy')) && { logicVersion: 29 }) } satisfies VariantPuzzle
 }
@@ -148,17 +153,15 @@ function orderedCompletion(random: () => number) {
   }).join('')
 }
 
-// With zero givens, row-only partitions can leave two columns interchangeable.
-// Grow cages across shared edges, keeping distinct digits and at least two cells per cage.
-function miracleCages(digits: readonly number[], random: () => number) {
+// Grow cages from shared edges so each stays connected and has distinct digits.
+function growKillerCages(digits: readonly number[], random: () => number, target: number, maxSize: number) {
   const cages = cells.map(c => [c])
   const owner = [...cells]
   let total = cells.length
-  const target = 29 + Math.floor(random() * 11)
-  const maxSize = 3 + Math.floor(random() * 3)
-  function merge(a: number, b: number) {
+  function merge(a: number, b: number, requireBend = false) {
     const left = cages[owner[a]], right = cages[owner[b]]
     if (left === right || left.length + right.length > maxSize || right.some(c => left.some(d => digits[d] === digits[c]))) return
+    if (requireBend && !isBentKillerCage([...left, ...right])) return
     for (const c of right) owner[c] = owner[a]
     left.push(...right)
     right.length = 0
@@ -171,7 +174,12 @@ function miracleCages(digits: readonly number[], random: () => number) {
     if (cages[owner[a]].length === 1 || cages[owner[b]].length === 1) merge(a, b)
   }
   if (cages.some(cage => cage.length === 1)) return
-  for (const [a, b] of sample(edges, edges.length, random)) {
+  const joins = sample(edges, edges.length, random)
+  for (const [a, b] of joins) {
+    if (total <= target) break
+    merge(a, b, true)
+  }
+  for (const [a, b] of joins) {
     if (total <= target) break
     merge(a, b)
   }
@@ -230,22 +238,13 @@ function addClues(template: VariantPuzzle, chosen: ReadonlySet<CustomRule>, mark
   if (chosen.has('quadruple')) for (const topLeft of sample(cells.filter(cell => cell % 9 < 8 && cell < 72), count(6, 48), random)) {
     layouts.push({ type: 'quadruple', topLeft, clueSize: 3 })
   }
-  if (chosen.has('killer-cages') && miracle) {
-    const cages = miracleCages(digits, random)
+  if (chosen.has('killer-cages')) {
+    // A looser cage partition leaves room for fish deductions in a Tricky Jigsaw Killer.
+    const larger = method === 'ordinary' && difficulty === 'tricky' && chosen.has('jigsaw')
+    const target = (miracle ? 29 : larger ? 15 : 20) + Math.floor(random() * (larger ? 8 : 11))
+    const maxSize = (miracle ? 3 : larger ? 5 : 4) + Math.floor(random() * 3)
+    const cages = growKillerCages(digits, random, target, maxSize)
     if (!cages) return
-    layouts.push({ type: 'killer-cages', cages, coverGrid: true })
-  } else if (chosen.has('killer-cages')) {
-    // Straight connected cages keep distinct digits because they lie in one house.
-    const vertical = random() < 0.5
-    const cages = Array.from({ length: 9 }, (_, line) => {
-      const lengths = sample([2, 3, 4], 3, random)
-      let start = 0
-      return lengths.map(length => {
-        const group = Array.from({ length }, (_, offset) => vertical ? 9 * (start + offset) + line : 9 * line + start + offset)
-        start += length
-        return group
-      })
-    }).flat()
     layouts.push({ type: 'killer-cages', cages, coverGrid: true })
   }
   if (chosen.has('clone')) {
@@ -354,28 +353,36 @@ const globalRules = new Set<CustomRule>(['diagonal', 'diagonal-main', 'diagonal-
 const editableMiracleClues = new Set<CustomRule>(['arrow', 'region-sum', 'thermometer',
   'little-killer', 'x-sum', 'skyscrapers', 'adjacent-total', 'inequality', 'quadruple'])
 
-// Exchanging equal digits across a boundary preserves the digits in both regions.
-function exchangeRegions(solution: string, random: () => number) {
-  const regions = Array.from({ length: 9 }, (_, i) => cells.filter(c => regionIndex(c) === i))
-  const owner = cells.map(c => regionIndex(c))
+// Swap boundary cells while keeping both regions connected. A known solution
+// restricts exchanges to equal digits so the new regions still fit that grid.
+function exchangeRegions(random: () => number, solution?: string, start: readonly (readonly number[])[] = classicRegions) {
+  const regions = start.map(region => [...region])
+  const owner = cells.map(cell => regions.findIndex(region => region.includes(cell)))
+  const squares = regions.map(isSquareJigsawRegion)
+  let remaining = squares.filter(Boolean).length
   const changed = new Set<number>()
-  const pairs = cells.flatMap(a => cells.filter(b => b > a && solution[a] === solution[b]).map(b => [a, b] as const))
-  const target = 1 + Math.floor(random() * 5)
+  const pairs = solution ? cellPairs.filter(([a, b]) => solution[a] === solution[b]) : cellPairs
+  const target = (solution ? 5 : 8) + Math.floor(random() * 5)
   for (const [a, b] of sample(pairs, pairs.length, random)) {
     const i = owner[a], j = owner[b]
     if (i === j || changed.has(a) || changed.has(b)) continue
+    if (remaining && !squares[i] && !squares[j]) continue
+    if (!edgeNeighbors[a].some(cell => cell !== b && owner[cell] === j)
+      || !edgeNeighbors[b].some(cell => cell !== a && owner[cell] === i)) continue
     const left = regions[i].map(c => c === a ? b : c)
     const right = regions[j].map(c => c === b ? a : c)
-    if (!connectedGridCells(left, 9) || !connectedGridCells(right, 9)) continue
+    if (isSquareJigsawRegion(left) || isSquareJigsawRegion(right) || !connectedGridCells(left, 9) || !connectedGridCells(right, 9)) continue
     regions[i] = left
     regions[j] = right
     owner[a] = j
     owner[b] = i
     changed.add(a)
     changed.add(b)
-    if (changed.size === 2 * target) break
+    remaining -= Number(squares[i]) + Number(squares[j])
+    squares[i] = squares[j] = false
+    if (!remaining && changed.size >= 2 * target) break
   }
-  return changed.size ? { type: 'jigsaw' as const, regions } : undefined
+  return remaining ? undefined : { type: 'jigsaw' as const, regions }
 }
 
 function clueCells(clue: VariantRule | VariantClueLayout): readonly number[] {
@@ -400,7 +407,7 @@ export function exchangeVariantGivens(selected: readonly CustomRule[], givens: s
   const removed = new Set<number>()
   if (selected.includes('jigsaw')) {
     template.logicVersion = 29
-    template.regions = exchangeRegions(solution, random)
+    template.regions = exchangeRegions(random, solution)
     if (!template.regions) return
     removed.add(sample(cells.filter(c => givens[c] !== '0'), 1, random)[0])
   }
@@ -436,7 +443,7 @@ async function checkedTemplates(chosen: ReadonlySet<CustomRule>, negative: Reado
         ...(item.regions && { regions: jigsawLayout(item.regions) }),
         ...((item.regions || chosen.has('global-entropy')) && { logicVersion: 29 }) }
       return antiXSums ? reflectVariant(template, 2) : template
-    }).filter(template => hasReadableArrowLayout(template.rules))
+    }).filter(hasGeneratedVariantLayout)
   }
   const target = templatesFor(difficulty)
   const grade = difficultyIndex(difficulty)
@@ -472,6 +479,12 @@ export async function generateCustomSudoku(rules: readonly CustomRule[], difficu
 
   try {
     return await withGenerationWorker(searchSignal, async run => {
+      async function generate(request: VariantGenerationRequest) {
+        const result = await run(request)
+        if (!hasGeneratedVariantLayout(result.puzzle)) throw exhausted()
+        return result
+      }
+
       const [only] = chosen
       const family = only === 'dutch-whispers' ? 'whispers' : only
       const requiredRules = [...chosen].map(rule => rule === 'windoku' ? 'extra-house' : rule === 'whispers' ? 'german-whispers' : rule)
@@ -483,7 +496,7 @@ export async function generateCustomSudoku(rules: readonly CustomRule[], difficu
         if ((givenCells.length === 0) !== miracle) continue
         try {
           // The request seed rotates the layouts. A fixed search order reproduces each certificate.
-          return await run({ type: 'generate-variant', template, givens: givenCells.length, givenCells,
+          return await generate({ type: 'generate-variant', template, givens: givenCells.length, givenCells,
             difficulty, maxAttempts: 1, maxNodes: miracle ? 60_000 : 20_000, seed: 7, requiredRules,
             techniqueOrder: await getVariantPlayOrder(template),
             exclude: exclude.filter(p => p.givens.replaceAll('0', '').length === givenCells.length) })
@@ -510,11 +523,15 @@ export async function generateCustomSudoku(rules: readonly CustomRule[], difficu
       const editable = [...chosen].filter(rule => editableMiracleClues.has(rule))
       const checkedSolutions = new Map<VariantPuzzle, string>()
       const revisable = checked.length ? checked : nearby
-      // Higher target grades need more layouts, especially when every edge is marked.
-      const maxLayouts = negative.size && chosen.size > 1 ? 360 : miracle || hardOrHigher ? 72 : 36
+      // These searches can reject a layout before reaching the difficulty check.
+      const shaped = chosen.has('jigsaw') || chosen.has('killer-cages')
+      const needsMoreLayouts = negative.size && chosen.size > 1
+        || shaped && difficultyIndex(difficulty) >= difficultyIndex('tricky')
+      const maxLayouts = needsMoreLayouts ? 360 : miracle || hardOrHigher ? 72 : 36
       for (let attempt = 0; attempt < maxLayouts; attempt++) {
         searchSignal.throwIfAborted()
         const template = modeTemplate(chosen, random)
+        if (!template) continue
         const samplingSeed = Math.floor(random() * 0x1_0000_0000)
         try {
           if (miracle && revisable.length && (!checked.length || exclude.length) && attempt % 3 === 0) {
@@ -533,7 +550,7 @@ export async function generateCustomSudoku(rules: readonly CustomRule[], difficu
             const rules = [...source.rules ?? [], ...extra?.puzzle.rules ?? []]
             if (!hasReadableArrowLayout(rules)) extra = undefined
             const revised = { ...source, givens: solution, ...(extra && { rules }) }
-            return await run({ type: 'generate-variant', template: revised, derivedClues: extra?.layouts,
+            return await generate({ type: 'generate-variant', template: revised, derivedClues: extra?.layouts,
               givens: 0, thinClues: true, difficulty, seed: samplingSeed, maxAttempts: 1, maxNodes: 20_000,
               requiredRules, techniqueOrder: await getVariantPlayOrder({ ...revised, givens: EMPTY }, extra?.layouts), exclude })
           }
@@ -542,7 +559,7 @@ export async function generateCustomSudoku(rules: readonly CustomRule[], difficu
             const solution = await run({ type: 'solve', values: board })
             const exchanged = solution && exchangeVariantGivens([...chosen], board, solution, samplingSeed)
             if (!exchanged) continue
-            return await run({ type: 'generate-variant', ...exchanged, seed: samplingSeed, maxAttempts: 1,
+            return await generate({ type: 'generate-variant', ...exchanged, seed: samplingSeed, maxAttempts: 1,
               maxNodes: 20_000, difficulty, requiredRules, exclude,
               techniqueOrder: await getVariantPlayOrder(exchanged.template, exchanged.derivedClues) })
           }
@@ -590,7 +607,8 @@ export async function generateCustomSudoku(rules: readonly CustomRule[], difficu
           }
           const trade = negative.size && chosen.has('arrow') && !template.rules.length && !template.regions
             ? markerTrade(solution, negative, edges, random) : undefined
-          const clues = addClues(template, chosen, markers, negative, trade?.solution ?? solution, difficulty, random,
+          const completed = trade?.solution ?? solution
+          const clues = addClues(template, chosen, markers, negative, completed, difficulty, random,
             miracle ? 'miracle' : 'ordinary', trade?.alternative)
           if (!clues) continue
           const techniqueOrder = await getVariantPlayOrder(miracle ? { ...clues.puzzle, givens: EMPTY } : clues.puzzle, clues.layouts)
@@ -600,8 +618,9 @@ export async function generateCustomSudoku(rules: readonly CustomRule[], difficu
           let givens: number | readonly [number, number] = miracle ? 0 : [1, hardOrHigher ? 32 : 40]
           if (pureChess && (hardOrHigher || difficulty === 'tricky') && attempt % 6 !== 5) givens = 3 + Math.floor(random() * 10)
           else if (pureChess && difficulty === 'beginner' && attempt % 3 === 1) givens = 26 + Math.floor(random() * 15)
-          return await run({ type: 'generate-variant', seed: Math.floor(random() * 0x1_0000_0000), maxAttempts: 2,
-            maxNodes: 20_000, template: clues.puzzle, derivedClues: clues.layouts,
+          const candidate = chosen.has('killer-cages') ? { ...clues.puzzle, givens: completed } : clues.puzzle
+          return await generate({ type: 'generate-variant', seed: Math.floor(random() * 0x1_0000_0000), maxAttempts: 2,
+            maxNodes: 20_000, template: candidate, derivedClues: clues.layouts,
             givens, thinClues: miracle, requiredRules, difficulty, techniqueOrder, exclude })
         } catch (error) {
           if (!(error instanceof EngineError && ['search-limit', 'unsolvable', 'conflict'].includes(error.code ?? ''))) throw error

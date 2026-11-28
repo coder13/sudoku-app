@@ -145,6 +145,16 @@ The layout audit compared which cells contain givens, where the drawn clues go a
 * Chess returned eight different given patterns at Medium. At Hard it returned its three checked puzzles and reached the limit on the next five requests. The cyclic construction and its shifts and symmetries produce 72 completed grids. All 72 satisfy the rules, and the Boolean model became unsatisfiable after excluding them, so the construction covers every completed grid for pure Chess.
 * Five Medium draws for each of the 15 smaller-grid configurations produced 75 puzzles with unique solutions and five different given patterns per configuration. The 5×5 Jigsaw generator samples six fixed region maps. The 7×7 generator samples four.
 
+## Cage shapes and Jigsaw regions
+
+Andrew Stuart describes building Killer cages over a completed grid and rejecting cage arrangements that have too many small cages or repeat a digit. Our ordinary and Miracle generators grow cages across shared edges and use the completed grid to keep each cage's digits distinct. A full layout must contain several cages that bend across rows and columns. The same check applies to starting layouts and to puzzles returned by the search. [Sudoku Creation and Grading](https://www.sudokuwiki.org/Sudoku_Creation_and_Grading.pdf)
+
+Jigsaw generation exchanges boundary cells between nine-cell regions. Both regions must stay connected after each exchange. When starting from a known completion, the constructor exchanges equal digits so every region still contains all nine digits. The generator rejects square 3×3 regions anywhere on the grid.
+
+The mixed Tricky search samples larger cages. Two layouts built this way required an X-Wing and relied on both Killer and Jigsaw. The checked starting layouts include those puzzles and other rare grades with the same geometry requirements.
+
+The new layout checks verified all 30 targets at seed 7 across Killer, Jigsaw and Killer with Jigsaw. Two successive draws each for Medium and Tricky Killer with Jigsaw also verified at rotating seeds starting at 2817. The Medium puzzle rendered in the browser at seed 7 had 13 bent cages out of 25 and nine irregular regions.
+
 ## Reproducing the checks
 
 Build the WebAssembly engine with `npm run build:wasm`. This command replays three different cases.
@@ -172,6 +182,13 @@ Use `--seed-step` to change the seed with each draw while keeping the same play 
 node --experimental-strip-types scripts/audit-variant-generation.mts \
   --repeat 8 --seed-step 2654435761 --verify-trace --include-puzzle \
   jigsaw/medium/2817 region-sum/medium/2817 arrow/hard/2817/miracle
+```
+
+This command checks the ten grades for the new cage and region layouts. It also verifies a unique solution, the difficulty and each rule's contribution.
+
+```sh
+node --experimental-strip-types scripts/audit-variant-generation.mts \
+  --strict --verify-trace --matrix 7 killer-cages jigsaw jigsaw,killer-cages
 ```
 
 For the standard-box incompatibility checks, generate a DIMACS formula and pass it to a SAT solver. Either of the following commands reads the same rule semantics used above.

@@ -10,7 +10,7 @@ import { miracleSymmetry } from '../src/sudoku/miracle.ts'
 import { EngineError, runEngine, type Difficulty, type EngineRequest, type EngineResponse, type VariantDeduction } from '../src/sudoku/engine.ts'
 import { createEngineHandler, type EngineExports } from '../src/sudoku/engine-protocol.ts'
 import { assertVariantCompletion } from '../tests/helpers/variant-truth.ts'
-import { hasReadableArrowLayout } from '../src/sudoku/arrow-layout.ts'
+import { hasGeneratedVariantLayout } from '../src/sudoku/variant-layout-quality.ts'
 
 function verifySolutionPath(givens: string, solution: string, steps: readonly VariantDeduction[]) {
   const board = [...givens]
@@ -124,7 +124,7 @@ if (!isMainThread) {
           assert.deepEqual(rating.status, { solved: grade })
           assert.equal(givens, puzzle.givens.replaceAll('0', '').length)
           if (miracle) assert.equal(givens, 0)
-          assert.ok(hasReadableArrowLayout(puzzle.rules), 'Generated arrows should have clear separate paths.')
+          assert.ok(hasGeneratedVariantLayout(puzzle), 'Generated variant layout should pass the shape checks.')
           const complete = new Set<MarkerRule>()
           for (const rule of puzzle.rules ?? []) {
             if (rule.type === 'kropki') {

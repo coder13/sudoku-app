@@ -10,7 +10,7 @@ import { readDisabledHintTechniques } from './hint-preferences.ts'
 import { variantGenerationRequest, variantSeeds, variantTechniqueOrder, withMediumVariantTechniques } from './variant-generation.ts'
 import { hasBetweenAndPairClues, hasMatchingAndPairClues, hasPrintedKropki, type PlayableVariant, type VariantGame } from './variants.ts'
 import { generationRuleset, isGenerationRulesetId, type VariantGenerationOptions } from './variant-rulesets.ts'
-import { hasReadableArrowLayout } from './arrow-layout.ts'
+import { hasGeneratedVariantLayout } from './variant-layout-quality.ts'
 
 let playProfile: Promise<{ techniqueOrder: string[]; catalog: TechniqueCatalog; tiers: Record<string, Difficulty>; firstBeyondHard: string | undefined }> | undefined
 
@@ -126,12 +126,12 @@ export async function tryVariantRecipe(id: PlayableVariant, difficulty: Difficul
   // Let the native logical key compare complete definitions across that history.
   const excluded = games.flatMap(game => game.variant ? [game.variant.puzzle] : [])
   const tryGenerate = async (request: VariantGenerationRequest) => {
-    if (id === 'arrow' && !hasReadableArrowLayout(request.template.rules)) return
+    if (!hasGeneratedVariantLayout(request.template)) return
     request.techniqueOrder = await getVariantPlayOrder(request.template, request.derivedClues)
     if (excluded.length) request.exclude = excluded
     try {
       const result = await run(request, { signal: options.signal })
-      if (result.givens === 0) return
+      if (result.givens === 0 || !hasGeneratedVariantLayout(result.puzzle)) return
       // A sampled positive marker layout can contain only one symbol.
       if (id === 'xv' && !result.puzzle.rules?.some(rule =>
         rule.type === 'xv' && rule.five?.pairs?.length && rule.ten?.pairs?.length)) return

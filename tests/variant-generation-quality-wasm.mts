@@ -13,6 +13,7 @@ import { EMPTY, makeGame, peer } from '../src/sudoku/game.ts'
 import { useWasmWorker } from './helpers/wasm-worker.ts'
 import { assertVariantCompletion } from './helpers/variant-truth.ts'
 import { hasReadableArrowLayout } from '../src/sudoku/arrow-layout.ts'
+import { hasGeneratedVariantLayout, isSquareJigsawRegion } from '../src/sudoku/variant-layout-quality.ts'
 useWasmWorker()
 
 test('zero-given X-Sum and diagonal need both rules on the Hard solve path', async () => {
@@ -185,6 +186,7 @@ test('Jigsaw wings, grouped links and forcing chains replay using the actual reg
   for (const grade of ['hard', 'master', 'extreme'] as const) {
     const { puzzle, solution, rating } = await generateCustomSudoku(['jigsaw'], grade, 7, [])
     assert.ok(puzzle.regions?.type === 'jigsaw')
+    assert.ok(puzzle.regions.regions.every(region => !isSquareJigsawRegion(region)))
     assert.equal(rating.scoringVersion, 29)
     const request = { type: 'variant', operation: 'trace', position: { puzzle }, techniqueOrder: rating.techniqueOrder } as const
     const trace = await runEngine(request)
@@ -252,12 +254,37 @@ test('Jigsaw wings, grouped links and forcing chains replay using the actual reg
   }
 })
 
+test('generated Jigsaw Killer uses irregular regions and bent cages', async () => {
+  const { puzzle, solution, rating, ruleDependencies } = await generateCustomSudoku(['jigsaw', 'killer-cages'], 'medium', 7, [])
+  assert.deepEqual(rating.status, { solved: 'medium' })
+  assert.deepEqual(new Set(ruleDependencies?.map(item => item.rule)), new Set(['jigsaw', 'killer-cages']))
+  assertVariantCompletion(puzzle, solution)
+  assert.ok(puzzle.regions?.type === 'jigsaw')
+  const regions = puzzle.regions.regions
+  assert.equal(regions.length, 9)
+  assert.equal(new Set(regions.flat()).size, 81)
+  assert.ok(regions.every(region => region.length === 9 && connectedGridCells(region, 9) && !isSquareJigsawRegion(region)))
+  assert.ok(isSquareJigsawRegion([10, 11, 12, 19, 20, 21, 28, 29, 30]))
+
+  const killer = puzzle.rules?.find(rule => rule.type === 'killer-cages')
+  assert.ok(killer?.coverGrid)
+  assert.equal(new Set(killer.cages.flatMap(cage => cage.cells)).size, 81)
+  assert.ok(killer.cages.every(cage => cage.cells.length >= 2 && connectedGridCells(cage.cells, 9)))
+  const bent = killer.cages.filter(({ cells }) => {
+    const rows = new Set(cells.map(cell => Math.floor(cell / 9))).size
+    const columns = new Set(cells.map(cell => cell % 9)).size
+    return rows > 1 && columns > 1 && rows * columns > cells.length
+  })
+  assert.ok(bent.length >= 4)
+})
+
 test('Killer Miracle layouts use connected multi-cell cages and can reach every eligible grade', async () => {
   for (const grade of DIFFICULTY_LEVELS.slice(DIFFICULTY_LEVELS.indexOf('hard'))) {
     const { puzzle, rating, solution, ruleDependencies } = await generateCustomSudoku(['killer-cages'], grade, 7, [], { miracle: true })
     assert.equal(puzzle.givens, EMPTY)
     assert.deepEqual(rating.status, { solved: grade })
     assert.deepEqual(ruleDependencies?.map(d => d.rule), ['killer-cages'])
+    assert.ok(hasGeneratedVariantLayout(puzzle))
     const [rule] = puzzle.rules!
     assert.ok(rule.type === 'killer-cages' && rule.coverGrid)
     const cells = rule.cages.flatMap(c => c.cells)
