@@ -119,7 +119,7 @@ The Arrow search also found unique layouts with ten to twelve separate arrows at
 
 The pair audit verified **588 of 589** selections at Medium across the seeds tested. Windoku with Non-Consecutive is the remaining pair and has a standard-box incompatibility proof. All 34 Arrow pairs also passed the separate-path check after the geometry change. Three more mixed modes produced two distinct ordinary puzzles at every grade. These were Jigsaw with Arrows, Anti-Knight with the main diagonal, and both diagonals with Non-Consecutive.
 
-The checked starting layouts cover 58 of 66 single-rule Miracle targets. The remaining search targets are Extreme Kropki, Very Hard and Impossible Region Sum Lines, Extreme and Impossible Skyscrapers, and Impossible Inequality, Little Killer and X-Sums. Revising a layout from a nearby grade found an Impossible Quadruple puzzle whose solve uses a Nested Forcing Net. Open search targets have no impossibility proof.
+The checked starting layouts cover 59 of 66 single-rule Miracle targets. The remaining search targets are Very Hard and Impossible Region Sum Lines, Extreme and Impossible Skyscrapers, and Impossible Inequality, Little Killer and X-Sums. Revising a layout from a nearby grade found an Impossible Quadruple puzzle whose solve uses a Nested Forcing Net. Varying the Kropki dot layout found an Extreme puzzle whose solve uses an Advanced Forcing Net. Open search targets have no impossibility proof.
 
 ## Incompatible fixed rules
 
