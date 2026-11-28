@@ -658,6 +658,10 @@ test('published Coach mixtures preserve exact rule dependency and redundancy', a
       ruleTypes: ['quadruple', 'global-entropy'],
     },
     {
+      reference: 'global-entropy-coach.json:$.examples[1]',
+      ruleTypes: ['global-entropy', 'quadruple'],
+    },
+    {
       reference: 'entropic-coach.json:$.examples[5]',
       ruleTypes: ['entropic', 'forbidden-entropic-connection', 'global-entropy'],
       redundantRuleTypes: ['forbidden-entropic-connection', 'global-entropy'],
