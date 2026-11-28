@@ -1,0 +1,43 @@
+{
+  "id": "anti-chess-nonconsecutive-colored-cells",
+  "title": "Anti-Chess with Non-Consecutive colored-cell overlay",
+  "retrieved": "2026-11-28",
+  "code": "SCv7_32_f2e8r41h1u140345vt5lievkhg1r5qn6t141g20scs9jq30k2civotqb0gai71lnrjqltfvkuld705f70uv5n21m11cniakrla32h1h0kih0g28ggbvd8ms2s3s6lvce3m5vc02dmij3j6apst5j0j6ohooo046hs0kc43uhtubqbtjriqnqaimpuslsabbg1q8i215pbnq4u87lo9tsvrh81badd7fdmcouiaohup7andnbe0gcr52kfscreujhnrq9iplib4hplrpvjlq0vd7ufbng",
+  "givenCellColors": {
+    "0": [
+      "#80ff80"
+    ],
+    "3": [
+      "#ff8080"
+    ],
+    "12": [
+      "#80ff80"
+    ],
+    "24": [
+      "#80ff80"
+    ],
+    "28": [
+      "#80ff80"
+    ],
+    "40": [
+      "#80ff80"
+    ],
+    "52": [
+      "#80ff80"
+    ],
+    "56": [
+      "#80ff80"
+    ],
+    "68": [
+      "#80ff80"
+    ],
+    "80": [
+      "#80ff80"
+    ]
+  },
+  "rules": [
+    "anti-knight",
+    "anti-king",
+    "non-consecutive"
+  ]
+}
