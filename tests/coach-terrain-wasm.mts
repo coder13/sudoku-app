@@ -298,17 +298,20 @@ test('#196 every Terrain hint premise matches the independent numeric oracle acr
 test('#196 Terrain clues prune manual candidates, report conflicts, and survive input history', async () => {
   const parsed = await detectPuzzle(source.source.sudoku)
   assert.ok(parsed.variant)
+  const { game: importedGame } = await prepareImportedPuzzle(source.source.sudoku)
+  assert.equal(importedGame.variant?.solution, source.source.solution)
+  const importedPuzzle = importedGame.variant!.puzzle
   const rule = parsed.variant.puzzle.rules?.find((candidate): candidate is Extract<typeof candidate, { type: 'terrain-sandwich' }> =>
-    candidate.type === 'terrain-sandwich' && candidate.cells[0] !== undefined)
+    candidate.type === 'terrain-sandwich' && candidate.cells.filter(cell => importedPuzzle.givens[cell] === '0').length >= 2)
   assert.ok(rule)
 
-  const importedPuzzle = { ...parsed.variant.puzzle, givens: '0'.repeat(81) }
-  const importedGame = { ...makeGame('terrain-imported-play', 'Terrain', importedPuzzle.givens, 'imported'),
-    variant: { ...parsed.variant, puzzle: importedPuzzle } }
   const importedMarkedGame = { ...importedGame, position: { ...importedGame.position,
-    center: Array<number>(81).fill(0x1ff), corner: Array<number>(81).fill(0x1ff),
+    center: Array.from(importedPuzzle.givens, digit => digit === '0' ? 0x1ff : 0),
+    corner: Array.from(importedPuzzle.givens, digit => digit === '0' ? 0x1ff : 0),
   } }
-  const importedCell = rule.cells[0]
+  const editableRuleCells = rule.cells.filter(cell => importedPuzzle.givens[cell] === '0')
+  const importedCell = editableRuleCells[0]
+  assert.notEqual(importedCell, undefined)
   const importedDigit = Number(source.source.solution[importedCell])
   const importedEntry = enter(importedMarkedGame, [importedCell], 'value', importedDigit)
   assert.equal(valuesOf(importedEntry)[importedCell], String(importedDigit))
@@ -329,12 +332,28 @@ test('#196 Terrain clues prune manual candidates, report conflicts, and survive 
     }
   }
   await assertEngineCandidatesSurvivePlay(importedEntry, 'after one entry')
-  const importedSecondCell = rule.cells.find(cell => cell !== importedCell)!
+  const importedSecondCell = editableRuleCells.find(cell => cell !== importedCell)!
   const importedSecondDigit = Number(source.source.solution[importedSecondCell])
   const importedProgress = enter(importedEntry, [importedSecondCell], 'value', importedSecondDigit)
   assert.deepEqual([...conflictsOf(valuesOf(importedProgress), importedPuzzle)], [],
     'a second source-valid entry stays conflict-free across the full imported combination')
   await assertEngineCandidatesSurvivePlay(importedProgress, 'after two entries')
+
+  const restoredProgress = readGame(importedProgress.id, JSON.stringify(importedProgress))
+  assert.ok(restoredProgress, 'the imported Terrain game reloads after player progress')
+  assert.deepEqual(restoredProgress.variant, importedProgress.variant,
+    'reload retains all Terrain and companion rules')
+  assert.deepEqual(restoredProgress.position, importedProgress.position,
+    'reload retains placed digits and manually pruned candidates')
+  assert.deepEqual(restoredProgress.past, importedProgress.past,
+    'reload retains the undo history for imported entries')
+  assert.deepEqual([...conflictsOf(valuesOf(restoredProgress), importedPuzzle)], [],
+    'reloaded source-valid entries remain conflict-free')
+  await assertEngineCandidatesSurvivePlay(restoredProgress, 'after reload')
+  assert.deepEqual(undo(restoredProgress).position, undo(importedProgress).position,
+    'undo after reload restores the prior Terrain progress')
+  assert.deepEqual(redo(undo(restoredProgress)).position, importedProgress.position,
+    'redo after reload restores the imported Terrain progress')
 
   const puzzle = { ...parsed.variant.puzzle, givens: '0'.repeat(81), rules: [rule] }
   const game = { ...makeGame('terrain-play-input', 'Terrain', puzzle.givens, 'imported'),
